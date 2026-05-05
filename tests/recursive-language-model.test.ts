@@ -14,6 +14,8 @@ import type { ToolExecutionResult, ToolPort } from "../src/ports/tool-port.js";
 import { InMemoryTrace } from "../src/adapters/in-memory-trace.js";
 import { GuardedShellTool } from "../src/adapters/guarded-shell-tool.js";
 import { WorkspaceFileWriteTool } from "../src/adapters/workspace-file-write-tool.js";
+import { SerpApiGoogleSearchTool, buildGoogleQuery } from "../src/adapters/serpapi-google-search-tool.js";
+import { createAgentRegistry, selectAgent } from "../src/application/agent-registry.js";
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
 
@@ -223,11 +225,12 @@ test("parses cli options with granite default", () => {
 });
 
 test("parses direct prompt command shape and json output flag", () => {
-  const options = parseArgs(["hello", "world", "--json"], {});
+  const options = parseArgs(["hello", "world", "--json", "--agent", "research"], {});
 
   assert.equal(options.prompt, "hello world");
   assert.equal(options.command, "ask");
   assert.equal(options.json, true);
+  assert.equal(options.agent, "research");
   assert.equal(options.config.maxDepth, undefined);
   assert.equal(options.config.maxDynamicDepth, 4);
 });
@@ -384,11 +387,102 @@ test("workspace file write tool rejects paths outside the open directory", async
   }
 });
 
+test("agent router selects research for source-backed prompts", () => {
+  const registry = createAgentRegistry({
+    defaultTools: [new EchoTool()],
+    researchTools: [],
+  });
+
+  assert.equal(selectAgent(registry, "Research the latest TypeScript release").id, "research");
+  assert.equal(selectAgent(registry, "Explain recursion").id, "default");
+  assert.equal(selectAgent(registry, "Explain recursion", "research").id, "research");
+});
+
+test("google search query builder applies search operators", () => {
+  const query = buildGoogleQuery({
+    terms: ["recursive language model"],
+    exactPhrases: ["tool calling"],
+    requiredTerms: ["benchmark"],
+    excludedTerms: ["reddit"],
+    siteFilters: ["arxiv.org"],
+    fileType: "pdf",
+    after: "2025-01-01",
+    before: "2026-01-01",
+  });
+
+  assert.equal(
+    query,
+    'recursive language model "tool calling" +benchmark -reddit site:arxiv.org filetype:pdf after:2025-01-01 before:2026-01-01',
+  );
+});
+
+test("google search tool rejects missing SerpAPI key", async () => {
+  const tool = new SerpApiGoogleSearchTool({
+    apiKey: "",
+  });
+
+  const result = await tool.execute({
+    terms: ["test"],
+  });
+
+  assert.equal(result.status, "error");
+  assert.match(result.output, /SERPAPI_API_KEY/);
+});
+
+test("google search tool normalizes SerpAPI organic results", async () => {
+  let requestedUrl: URL | undefined;
+  const tool = new SerpApiGoogleSearchTool({
+    apiKey: "test-key",
+    fetchFn: async (input) => {
+      requestedUrl = input instanceof URL ? input : new URL(String(input));
+      return new Response(JSON.stringify({
+        organic_results: [
+          {
+            position: 1,
+            title: "Official docs",
+            link: "https://example.com/docs",
+            displayed_link: "example.com/docs",
+            snippet: "A useful result.",
+            date: "May 1, 2026",
+          },
+        ],
+      }), {
+        status: 200,
+      });
+    },
+  });
+
+  const result = await tool.execute({
+    exactPhrases: ["tool calling"],
+    siteFilters: ["example.com"],
+  });
+
+  assert.equal(result.status, "success");
+  assert.equal(requestedUrl?.searchParams.get("engine"), "google");
+  assert.equal(requestedUrl?.searchParams.get("q"), '"tool calling" site:example.com');
+  const output = JSON.parse(result.output);
+  assert.equal(output.query, '"tool calling" site:example.com');
+  assert.deepEqual(output.results, [
+    {
+      position: 1,
+      title: "Official docs",
+      link: "https://example.com/docs",
+      displayedLink: "example.com/docs",
+      snippet: "A useful result.",
+      date: "May 1, 2026",
+    },
+  ]);
+});
+
 test("renders compact output for subprocess use", () => {
   const output = renderResult(
     {
       answer: "Hello\nworld",
       metadata: {
+        agent: {
+          id: "default",
+          source: "auto",
+        },
         depth: {
           selected: 2,
           source: "override",
@@ -424,6 +518,10 @@ test("renders json output for tool use", () => {
     {
       answer: "Hello world",
       metadata: {
+        agent: {
+          id: "research",
+          source: "auto",
+        },
         depth: {
           selected: 1,
           source: "model",
@@ -444,6 +542,10 @@ test("renders json output for tool use", () => {
   assert.deepEqual(JSON.parse(output), {
     answer: "Hello world",
     model: "granite4.1:3b",
+    agent: {
+      id: "research",
+      source: "auto",
+    },
     depth: {
       selected: 1,
       source: "model",

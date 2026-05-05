@@ -2,7 +2,9 @@
 import { OllamaLanguageModelAdapter } from "./adapters/ollama-language-model.js";
 import { GuardedShellTool } from "./adapters/guarded-shell-tool.js";
 import { InMemoryTrace } from "./adapters/in-memory-trace.js";
+import { SerpApiGoogleSearchTool } from "./adapters/serpapi-google-search-tool.js";
 import { WorkspaceFileWriteTool } from "./adapters/workspace-file-write-tool.js";
+import { createAgentRegistry, selectAgent, selectedAgentMetadata } from "./application/agent-registry.js";
 import { runRecursivePrompt } from "./application/run-recursive-prompt.js";
 import { helpText, parseArgs } from "./cli/args.js";
 import { renderResult } from "./cli/render.js";
@@ -23,7 +25,7 @@ async function main(): Promise<void> {
 
   const model = new OllamaLanguageModelAdapter(modelOptions);
   const trace = new InMemoryTrace();
-  const tools = [
+  const defaultTools = [
     new GuardedShellTool({
       workspaceRoot: process.cwd(),
     }),
@@ -31,12 +33,18 @@ async function main(): Promise<void> {
       workspaceRoot: process.cwd(),
     }),
   ];
+  const registry = createAgentRegistry({
+    defaultTools,
+    researchTools: [new SerpApiGoogleSearchTool()],
+  });
+  const selectedAgent = selectAgent(registry, options.prompt, options.agent);
   const result = await runRecursivePrompt({
     prompt: options.prompt,
     config: options.config,
     model,
     trace,
-    tools,
+    tools: selectedAgent.tools,
+    agent: selectedAgentMetadata(selectedAgent, options.agent ? "override" : "auto"),
   });
 
   console.log(

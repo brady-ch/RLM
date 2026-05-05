@@ -10,6 +10,11 @@ export interface RecursiveModelConfig {
 export interface RecursivePromptRequest {
   prompt: string;
   config: RecursiveModelConfig;
+  agent?: {
+    id: string;
+    source: "auto" | "override";
+    systemPrompt: string;
+  };
 }
 
 export interface RecursivePromptResult {
@@ -51,6 +56,10 @@ export interface SolvedTask {
 }
 
 export interface RecursivePromptMetadata {
+  agent: {
+    id: string;
+    source: "auto" | "override";
+  };
   depth: {
     selected: number;
     source: "model" | "override" | "fallback";

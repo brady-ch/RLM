@@ -19,6 +19,7 @@ export class RecursiveLanguageModel {
   private modelCalls = 0;
   private maxModelCalls = Number.POSITIVE_INFINITY;
   private toolRoundLimit = 0;
+  private agentSystemPrompt = "";
   private metadata: RecursivePromptMetadata = createEmptyMetadata();
   private readonly toolsByName: Map<string, ToolPort>;
 
@@ -36,6 +37,15 @@ export class RecursiveLanguageModel {
     this.maxModelCalls = request.config.maxModelCalls;
     this.toolRoundLimit = request.config.maxToolRounds;
     this.metadata = createEmptyMetadata();
+    if (request.agent) {
+      this.agentSystemPrompt = request.agent.systemPrompt;
+      this.metadata.agent = {
+        id: request.agent.id,
+        source: request.agent.source,
+      };
+    } else {
+      this.agentSystemPrompt = "";
+    }
     const depth = await this.selectDepth(request.prompt, request.config);
     const config: RecursiveModelConfig = {
       ...request.config,
@@ -223,7 +233,7 @@ export class RecursiveLanguageModel {
     const conversation = [...messages];
     for (let round = 0; round <= this.maxToolRounds(); round += 1) {
       this.modelCalls += 1;
-      const response = await this.model.complete(conversation, {
+      const response = await this.model.complete(this.withAgentSystemPrompt(conversation), {
         tools: allowTools ? [...this.toolsByName.values()] : [],
       });
 
@@ -347,6 +357,20 @@ export class RecursiveLanguageModel {
     return Math.max(0, this.toolRoundLimit);
   }
 
+  private withAgentSystemPrompt(messages: Parameters<LanguageModelPort["complete"]>[0]): Parameters<LanguageModelPort["complete"]>[0] {
+    if (!this.agentSystemPrompt) {
+      return messages;
+    }
+
+    return [
+      {
+        role: "system",
+        content: this.agentSystemPrompt,
+      },
+      ...messages,
+    ];
+  }
+
   private record(task: TaskNode, kind: Parameters<TracePort["record"]>[0]["kind"], prompt: string, output: string): void {
     const event: Parameters<TracePort["record"]>[0] = {
       id: task.id,
@@ -379,6 +403,10 @@ export class RecursiveLanguageModel {
 
 function createEmptyMetadata(): RecursivePromptMetadata {
   return {
+    agent: {
+      id: "default",
+      source: "auto",
+    },
     depth: {
       selected: 0,
       source: "fallback",

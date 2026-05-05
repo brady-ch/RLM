@@ -27,6 +27,7 @@ export function renderResult(result: RecursivePromptResult, options: RenderOptio
 function renderCompact(result: RecursivePromptResult, options: RenderOptions): string {
   const lines = [
     `model: ${options.model}`,
+    `agent: ${result.metadata.agent.id} (${result.metadata.agent.source})`,
     `depth: ${result.metadata.depth.selected} (${result.metadata.depth.source})`,
     `answer: ${singleLine(result.answer)}`,
   ];
@@ -45,6 +46,7 @@ function renderJson(result: RecursivePromptResult, options: RenderOptions): stri
   return JSON.stringify({
     answer: result.answer,
     model: options.model,
+    agent: result.metadata.agent,
     depth: result.metadata.depth,
     trace: options.includeTrace ? result.trace : [],
     toolCalls: result.metadata.toolCalls,
