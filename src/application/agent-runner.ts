@@ -7,6 +7,7 @@ import type { ProjectConfig } from "./project-config.js";
 import { MemoryManager } from "./memory-manager.js";
 import { estimateAgentRamMb, PurposeRoutingLanguageModel } from "./model-provider.js";
 import { selectedAgentMetadata } from "./agent-registry.js";
+import { createYamlModelScoreStore } from "./model-score-store.js";
 
 export interface RunConfiguredAgentInput {
   prompt: string;
@@ -33,6 +34,9 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
       config: input.projectConfig,
       agent: input.agent.config,
       createModel: input.createModel,
+      scoreStore: input.projectConfig.models.rotation.enabled
+        ? createYamlModelScoreStore(process.cwd(), input.projectConfig.models.rotation.scorePath)
+        : undefined,
       recordSelection: (selection) => {
         modelSelections.push({
           agent: input.agent.id,
@@ -40,6 +44,8 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
           model: selection.model,
           tier: selection.tier,
           estimatedRamMb: selection.estimatedRamMb,
+          source: selection.source,
+          evaluatorModel: selection.evaluatorModel,
         });
       },
     });

@@ -14,6 +14,19 @@ export type ModelSelection = string | "dynamic";
 export interface ModelTierConfig {
   name: string;
   estimatedRamMb: number;
+  alternateModels?: ModelCandidateConfig[] | undefined;
+}
+
+export interface ModelCandidateConfig {
+  name: string;
+  useCases: ModelPurpose[];
+}
+
+export interface ModelRotationConfig {
+  enabled: boolean;
+  sampleRate: number;
+  scorePath: string;
+  evaluatorTier?: string | undefined;
 }
 
 export interface AgentConfig {
@@ -42,6 +55,7 @@ export interface ProjectConfig {
   models: {
     default: string;
     tiers: Record<string, ModelTierConfig>;
+    rotation: ModelRotationConfig;
   };
   memory: {
     maxRamMb: MemoryMode;
@@ -74,7 +88,21 @@ const configSchema = z.object({
     tiers: z.record(z.string(), z.object({
       name: z.string().min(1),
       estimatedRamMb: z.number().int().positive(),
+      alternateModels: z.array(z.object({
+        name: z.string().min(1),
+        useCases: z.array(z.enum(MODEL_PURPOSES)).min(1),
+      })).default([]),
     })),
+    rotation: z.object({
+      enabled: z.boolean().default(true),
+      sampleRate: z.number().min(0).max(1).default(0.1),
+      scorePath: z.string().min(1).default("rlm.model-scores.yaml"),
+      evaluatorTier: z.string().min(1).optional(),
+    }).default({
+      enabled: true,
+      sampleRate: 0.1,
+      scorePath: "rlm.model-scores.yaml",
+    }),
   }),
   memory: z.object({
     maxRamMb: z.union([z.literal("auto"), z.number().int().positive()]),
@@ -109,18 +137,26 @@ const configSchema = z.object({
 export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
   models: {
     default: "granite4.1:3b",
+    rotation: {
+      enabled: true,
+      sampleRate: 0.1,
+      scorePath: "rlm.model-scores.yaml",
+    },
     tiers: {
       small: {
         name: "granite4.1:3b",
         estimatedRamMb: 4096,
+        alternateModels: [],
       },
       medium: {
         name: "llama3.1:8b",
         estimatedRamMb: 8192,
+        alternateModels: [],
       },
       large: {
         name: "qwen2.5-coder:14b",
         estimatedRamMb: 16000,
+        alternateModels: [],
       },
     },
   },

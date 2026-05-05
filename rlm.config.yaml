@@ -1,15 +1,22 @@
 models:
   default: granite4.1:3b
+  rotation:
+    enabled: true
+    sampleRate: 0.1
+    scorePath: rlm.model-scores.yaml
   tiers:
     small:
       name: granite4.1:3b
       estimatedRamMb: 4096
+      alternateModels: []
     medium:
       name: llama3.1:8b
       estimatedRamMb: 8192
+      alternateModels: []
     large:
       name: qwen2.5-coder:14b
       estimatedRamMb: 16000
+      alternateModels: []
 
 memory:
   maxRamMb: auto

@@ -22,6 +22,7 @@ import { createAgentRegistry, selectAgent } from "../src/application/agent-regis
 import { loadProjectConfig } from "../src/application/project-config.js";
 import { MemoryManager } from "../src/application/memory-manager.js";
 import { PurposeRoutingLanguageModel, selectDynamicTier } from "../src/application/model-provider.js";
+import { createYamlModelScoreStore } from "../src/application/model-score-store.js";
 import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
@@ -485,6 +486,11 @@ test("workflow runs QA validation and exposes bugfix tasks in a higher-priority 
   const projectConfig = {
     models: {
       default: "small-model",
+      rotation: {
+        enabled: false,
+        sampleRate: 0,
+        scorePath: "rlm.model-scores.yaml",
+      },
       tiers: {
         small: {
           name: "small-model",
@@ -787,6 +793,11 @@ test("purpose routing model selects per-purpose and dynamic tiers", async () => 
     config: {
       models: {
         default: "small-model",
+        rotation: {
+          enabled: false,
+          sampleRate: 0,
+          scorePath: "rlm.model-scores.yaml",
+        },
         tiers: {
           small: {
             name: "small-model",
@@ -832,6 +843,97 @@ test("purpose routing model selects per-purpose and dynamic tiers", async () => 
   assert.equal((await model.complete([], { purpose: "answer", complexityDepth: 3 })).content, "large-model response");
   assert.equal((await model.complete([], { purpose: "decompose", complexityDepth: 1 })).content, "medium-model response");
   assert.deepEqual(calls, ["answer:large-model", "decompose:medium-model"]);
+});
+
+test("purpose routing occasionally selects use-case alternates and records yaml scores", async () => {
+  const workspace = await mkdtemp(join(tmpdir(), "rlm-model-scores-"));
+  try {
+    const selections: string[] = [];
+    const createdModels = new Map<string, QueueModel>();
+    const model = new PurposeRoutingLanguageModel({
+      config: {
+        models: {
+          default: "small-model",
+          rotation: {
+            enabled: true,
+            sampleRate: 1,
+            scorePath: "rlm.model-scores.yaml",
+          },
+          tiers: {
+            small: {
+              name: "small-model",
+              estimatedRamMb: 512,
+              alternateModels: [
+                {
+                  name: "small-alt-model",
+                  useCases: ["answer"],
+                },
+                {
+                  name: "classify-alt-model",
+                  useCases: ["classify"],
+                },
+              ],
+            },
+            large: {
+              name: "large-judge-model",
+              estimatedRamMb: 2048,
+            },
+          },
+        },
+        memory: {
+          maxRamMb: 4096,
+          reserveSystemRamMb: 0,
+          waitForCapacity: false,
+          capacityCheckIntervalMs: 1,
+        },
+        agents: {},
+        workflows: {},
+      },
+      agent: {
+        tools: [],
+        models: {
+          depth: "small",
+          classify: "small",
+          decompose: "small",
+          answer: "small",
+          summarize: "small",
+          synthesize: "small",
+        },
+      },
+      createModel: (name) => {
+        const responses = name === "large-judge-model"
+          ? ["score: 4.5\nreason: useful alternate answer"]
+          : [`${name} response`];
+        const created = new QueueModel(responses);
+        createdModels.set(name, created);
+        return created;
+      },
+      scoreStore: createYamlModelScoreStore(workspace, "rlm.model-scores.yaml"),
+      random: () => 0,
+      recordSelection: (selection) => selections.push(`${selection.purpose}:${selection.model}:${selection.source}:${selection.evaluatorModel ?? ""}`),
+    });
+
+    const response = await model.complete([
+      {
+        role: "user",
+        content: "answer this",
+      },
+    ], {
+      purpose: "answer",
+      complexityDepth: 1,
+    });
+
+    assert.equal(response.content, "small-alt-model response");
+    assert.deepEqual(selections, ["answer:small-alt-model:rotation:large-judge-model"]);
+    assert.equal(createdModels.get("small-model"), undefined);
+    assert.equal(createdModels.get("large-judge-model")?.calls.length, 1);
+    const scoreFile = await readFile(join(workspace, "rlm.model-scores.yaml"), "utf8");
+    assert.match(scoreFile, /small-alt-model/);
+    assert.match(scoreFile, /averageScore: 4\.5/);
+    assert.match(scoreFile, /useful alternate answer/);
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
 });
 
 test("memory manager reserves, releases, and rejects over-capacity requests", async () => {

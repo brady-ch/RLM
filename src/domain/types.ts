@@ -86,6 +86,8 @@ export interface ModelSelectionTrace {
   model: string;
   tier: string;
   estimatedRamMb: number;
+  source?: "configured" | "rotation" | undefined;
+  evaluatorModel?: string | undefined;
 }
 
 export interface MemoryReservationTrace {
