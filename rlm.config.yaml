@@ -36,6 +36,15 @@ agents:
       answer: dynamic
       summarize: small
       synthesize: medium
+  qa:
+    tools: [shell, write_file]
+    models:
+      depth: small
+      classify: small
+      decompose: medium
+      answer: dynamic
+      summarize: small
+      synthesize: medium
   product_designer:
     tools: [google_search, web_fetch, write_file]
     models:
@@ -60,3 +69,12 @@ workflows:
     mode: ram_queue
     agents: [research, product_designer, coding]
     continueOnError: false
+    qa:
+      agent: qa
+      validationCommands:
+        - npm test
+        - npm run build
+      bugfixQueue:
+        id: bugfix
+        priority: 100
+        highestPriorityKeywords: [fail, error, regression, broken, crash]

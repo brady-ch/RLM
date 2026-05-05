@@ -22,6 +22,7 @@ import { createAgentRegistry, selectAgent } from "../src/application/agent-regis
 import { loadProjectConfig } from "../src/application/project-config.js";
 import { MemoryManager } from "../src/application/memory-manager.js";
 import { PurposeRoutingLanguageModel, selectDynamicTier } from "../src/application/model-provider.js";
+import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
 
@@ -404,9 +405,11 @@ test("agent router selects research for source-backed prompts", () => {
   assert.equal(selectAgent(registry, "Research the latest TypeScript release").id, "research");
   assert.equal(selectAgent(registry, "Implement a parser fix and add tests").id, "coding");
   assert.equal(selectAgent(registry, "Design the onboarding UX flow").id, "product_designer");
+  assert.equal(selectAgent(registry, "Validate the release workflow").id, "qa");
   assert.equal(selectAgent(registry, "Explain recursion").id, "default");
   assert.equal(selectAgent(registry, "Explain recursion", "research").id, "research");
   assert.equal(selectAgent(registry, "Explain recursion", "coding").id, "coding");
+  assert.equal(selectAgent(registry, "Explain recursion", "qa").id, "qa");
   assert.equal(selectAgent(registry, "Explain recursion", "product_designer").id, "product_designer");
 });
 
@@ -440,6 +443,139 @@ test("agent profiles expose scoped tool sets", () => {
   assert.deepEqual(selectAgent(registry, "Research docs", "research").tools.map((tool) => tool.name), [
     "google_search",
     "web_fetch",
+  ]);
+});
+
+test("bugfix queue skips duplicate highest-priority keywords", () => {
+  const queue = buildBugfixQueue({
+    id: "bugfix",
+    priority: 100,
+    highestPriorityKeywords: ["fail", "error", "regression"],
+  }, [
+    "BUGFIX[fail, build]: Fix failing build command.",
+    "BUGFIX[fail, test]: Fix duplicate failing test report.",
+    "BUGFIX[regression]: Restore changed CLI output.",
+    "BUGFIX: Investigate broken renderer error handling.",
+  ].join("\n"), "qa");
+
+  assert.equal(queue.id, "bugfix");
+  assert.equal(queue.priority, 100);
+  assert.deepEqual(queue.items.map((item) => item.task), [
+    "Fix failing build command.",
+    "Restore changed CLI output.",
+    "Investigate broken renderer error handling.",
+  ]);
+  assert.deepEqual(queue.items.map((item) => item.keywords), [
+    ["fail", "build"],
+    ["regression"],
+    ["error"],
+  ]);
+});
+
+test("workflow runs QA validation and exposes bugfix tasks in a higher-priority queue", async () => {
+  const tool = new EchoTool();
+  const agentModels = {
+    depth: "small",
+    classify: "small",
+    decompose: "small",
+    answer: "small",
+    summarize: "small",
+    synthesize: "small",
+  };
+  const projectConfig = {
+    models: {
+      default: "small-model",
+      tiers: {
+        small: {
+          name: "small-model",
+          estimatedRamMb: 512,
+        },
+      },
+    },
+    memory: {
+      maxRamMb: 2048,
+      reserveSystemRamMb: 0,
+      waitForCapacity: false,
+      capacityCheckIntervalMs: 1,
+    },
+    agents: {
+      default: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      coding: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      qa: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      product_designer: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      research: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+    },
+    workflows: {
+      default: {
+        mode: "ram_queue" as const,
+        agents: ["coding"],
+        continueOnError: false,
+        qa: {
+          agent: "qa",
+          validationCommands: ["npm test", "npm run build"],
+          bugfixQueue: {
+            id: "bugfix",
+            priority: 100,
+            highestPriorityKeywords: ["fail", "error"],
+          },
+        },
+      },
+    },
+  };
+  const registry = createAgentRegistry({
+    defaultTools: [tool],
+    codingTools: [tool],
+    qaTools: [tool],
+    productDesignerTools: [tool],
+    researchTools: [tool],
+    agentConfigs: projectConfig.agents,
+  });
+  const responses = [
+    "Implementation complete.",
+    "BUGFIX[error]: Fix build error reported by validation.\nBUGFIX[error]: Duplicate error should not be queued.",
+  ];
+
+  const result = await runWorkflow({
+    workflowId: "default",
+    prompt: "Implement the parser change",
+    config: {
+      ...config,
+      maxDepth: 0,
+    },
+    projectConfig,
+    registry,
+    memoryManager: new MemoryManager({
+      config: projectConfig.memory,
+    }),
+    createModel: () => new QueueModel([responses.shift() ?? "ok"]),
+    runValidationCommand: async (command) => ({
+      command,
+      status: command === "npm test" ? "success" : "error",
+      output: command === "npm test" ? "tests passed" : "build failed",
+    }),
+  });
+
+  assert.deepEqual(result.metadata.workflow?.agents, ["coding", "qa"]);
+  assert.deepEqual(result.metadata.workflow?.qa?.validationCommands.map((item) => item.command), ["npm test", "npm run build"]);
+  assert.equal(result.metadata.workflowQueues?.[0]?.id, "bugfix");
+  assert.equal(result.metadata.workflowQueues?.[0]?.priority, 100);
+  assert.deepEqual(result.metadata.workflowQueues?.[0]?.items.map((item) => item.task), [
+    "Fix build error reported by validation.",
   ]);
 });
 

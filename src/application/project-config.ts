@@ -25,6 +25,17 @@ export interface WorkflowConfig {
   mode: "ram_queue";
   agents: string[];
   continueOnError: boolean;
+  qa?: WorkflowQaConfig | undefined;
+}
+
+export interface WorkflowQaConfig {
+  agent: string;
+  validationCommands: string[];
+  bugfixQueue: {
+    id: string;
+    priority: number;
+    highestPriorityKeywords: string[];
+  };
 }
 
 export interface ProjectConfig {
@@ -79,6 +90,19 @@ const configSchema = z.object({
     mode: z.literal("ram_queue"),
     agents: z.array(z.string().min(1)).min(1),
     continueOnError: z.boolean().default(false),
+    qa: z.object({
+      agent: z.string().min(1),
+      validationCommands: z.array(z.string().min(1)).default(["npm test", "npm run build"]),
+      bugfixQueue: z.object({
+        id: z.string().min(1).default("bugfix"),
+        priority: z.number().int().default(100),
+        highestPriorityKeywords: z.array(z.string().min(1)).default(["fail", "error", "regression", "broken", "crash"]),
+      }).default({
+        id: "bugfix",
+        priority: 100,
+        highestPriorityKeywords: ["fail", "error", "regression", "broken", "crash"],
+      }),
+    }).optional(),
   })),
 });
 
@@ -115,6 +139,10 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
       tools: ["shell", "write_file", "google_search", "web_fetch"],
       models: defaultAgentModels(),
     },
+    qa: {
+      tools: ["shell", "write_file"],
+      models: defaultAgentModels(),
+    },
     product_designer: {
       tools: ["google_search", "web_fetch", "write_file"],
       models: defaultAgentModels(),
@@ -129,6 +157,15 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
       mode: "ram_queue",
       agents: ["research", "product_designer", "coding"],
       continueOnError: false,
+      qa: {
+        agent: "qa",
+        validationCommands: ["npm test", "npm run build"],
+        bugfixQueue: {
+          id: "bugfix",
+          priority: 100,
+          highestPriorityKeywords: ["fail", "error", "regression", "broken", "crash"],
+        },
+      },
     },
   },
 };
@@ -224,6 +261,10 @@ function validateConfigReferences(config: ProjectConfig): void {
       if (!config.agents[agentId]) {
         throw new Error(`Workflow "${workflowId}" references unknown agent "${agentId}".`);
       }
+    }
+
+    if (workflow.qa && !config.agents[workflow.qa.agent]) {
+      throw new Error(`Workflow "${workflowId}" references unknown QA agent "${workflow.qa.agent}".`);
     }
   }
 }

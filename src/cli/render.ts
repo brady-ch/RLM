@@ -49,6 +49,7 @@ function renderJson(result: RecursivePromptResult, options: RenderOptions): stri
     agent: result.metadata.agent,
     configPath: result.metadata.configPath,
     workflow: result.metadata.workflow,
+    workflowQueues: result.metadata.workflowQueues,
     depth: result.metadata.depth,
     modelSelections: result.metadata.modelSelections,
     memoryReservations: result.metadata.memoryReservations,

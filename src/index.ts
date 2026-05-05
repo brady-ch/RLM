@@ -58,6 +58,7 @@ async function main(): Promise<void> {
     defaultTools: toolsFor("default"),
     researchTools: toolsFor("research"),
     codingTools: toolsFor("coding"),
+    qaTools: projectConfig.agents["qa"] ? toolsFor("qa") : toolsFor("coding"),
     productDesignerTools: toolsFor("product_designer"),
     agentConfigs: projectConfig.agents,
   });

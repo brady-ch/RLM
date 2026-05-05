@@ -64,7 +64,12 @@ export interface RecursivePromptMetadata {
   workflow?: {
     id: string;
     agents: string[];
+    qa?: {
+      agent: string;
+      validationCommands: ValidationCommandResult[];
+    } | undefined;
   } | undefined;
+  workflowQueues?: WorkflowTaskQueue[] | undefined;
   depth: {
     selected: number;
     source: "model" | "override" | "fallback";
@@ -96,4 +101,23 @@ export interface ToolCallRecord {
   args: Record<string, unknown>;
   status: "success" | "error";
   output: string;
+}
+
+export interface ValidationCommandResult {
+  command: string;
+  status: "success" | "error";
+  output: string;
+}
+
+export interface WorkflowTaskQueue {
+  id: string;
+  priority: number;
+  items: WorkflowTaskQueueItem[];
+}
+
+export interface WorkflowTaskQueueItem {
+  id: string;
+  task: string;
+  keywords: string[];
+  sourceAgent: string;
 }
