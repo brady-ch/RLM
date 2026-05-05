@@ -11,7 +11,11 @@ export interface LanguageModelPort {
 
 export interface LanguageModelCompleteOptions {
   tools?: LanguageModelTool[];
+  purpose?: LanguageModelPurpose | undefined;
+  complexityDepth?: number;
 }
+
+export type LanguageModelPurpose = "depth" | "classify" | "decompose" | "answer" | "summarize" | "synthesize";
 
 export interface LanguageModelResponse {
   content: string;

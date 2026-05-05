@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 import { OllamaLanguageModelAdapter } from "./adapters/ollama-language-model.js";
 import { GuardedShellTool } from "./adapters/guarded-shell-tool.js";
-import { InMemoryTrace } from "./adapters/in-memory-trace.js";
 import { SerpApiGoogleSearchTool } from "./adapters/serpapi-google-search-tool.js";
 import { WorkspaceFileWriteTool } from "./adapters/workspace-file-write-tool.js";
-import { createAgentRegistry, selectAgent, selectedAgentMetadata } from "./application/agent-registry.js";
-import { runRecursivePrompt } from "./application/run-recursive-prompt.js";
+import { runConfiguredAgent } from "./application/agent-runner.js";
+import { createAgentRegistry, selectAgent } from "./application/agent-registry.js";
+import { MemoryManager } from "./application/memory-manager.js";
+import { applyModelOverride, loadProjectConfig } from "./application/project-config.js";
+import { runWorkflow } from "./application/workflow-runner.js";
 import { helpText, parseArgs } from "./cli/args.js";
 import { renderResult } from "./cli/render.js";
+import type { ToolPort } from "./ports/tool-port.js";
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
@@ -16,43 +19,84 @@ async function main(): Promise<void> {
     return;
   }
 
-  const modelOptions: ConstructorParameters<typeof OllamaLanguageModelAdapter>[0] = {
-    model: options.model,
-  };
-  if (options.baseUrl) {
-    modelOptions.baseUrl = options.baseUrl;
-  }
+  const loadedConfig = await loadProjectConfig(options.configPath);
+  const projectConfig = applyModelOverride(loadedConfig.config, options.model);
+  const memoryManager = new MemoryManager({
+    config: projectConfig.memory,
+  });
+  const shellTool = new GuardedShellTool({
+    workspaceRoot: process.cwd(),
+  });
+  const writeFileTool = new WorkspaceFileWriteTool({
+    workspaceRoot: process.cwd(),
+  });
+  const googleSearchTool = new SerpApiGoogleSearchTool();
+  const toolsByName = new Map<string, ToolPort>([
+    [shellTool.name, shellTool],
+    [writeFileTool.name, writeFileTool],
+    [googleSearchTool.name, googleSearchTool],
+  ]);
+  const toolsFor = (agentId: string) => {
+    const agentConfig = projectConfig.agents[agentId];
+    if (!agentConfig) {
+      throw new Error(`Missing configuration for agent "${agentId}".`);
+    }
 
-  const model = new OllamaLanguageModelAdapter(modelOptions);
-  const trace = new InMemoryTrace();
-  const defaultTools = [
-    new GuardedShellTool({
-      workspaceRoot: process.cwd(),
-    }),
-    new WorkspaceFileWriteTool({
-      workspaceRoot: process.cwd(),
-    }),
-  ];
+    return agentConfig.tools.map((toolName) => {
+      const tool = toolsByName.get(toolName);
+      if (!tool) {
+        throw new Error(`Agent "${agentId}" references unknown tool "${toolName}".`);
+      }
+
+      return tool;
+    });
+  };
   const registry = createAgentRegistry({
-    defaultTools,
-    researchTools: [new SerpApiGoogleSearchTool()],
+    defaultTools: toolsFor("default"),
+    researchTools: toolsFor("research"),
+    codingTools: toolsFor("coding"),
+    productDesignerTools: toolsFor("product_designer"),
+    agentConfigs: projectConfig.agents,
   });
-  const selectedAgent = selectAgent(registry, options.prompt, options.agent);
-  const result = await runRecursivePrompt({
-    prompt: options.prompt,
-    config: options.config,
-    model,
-    trace,
-    tools: selectedAgent.tools,
-    agent: selectedAgentMetadata(selectedAgent, options.agent ? "override" : "auto"),
-  });
+  const createModel = (model: string) => {
+    const modelOptions: ConstructorParameters<typeof OllamaLanguageModelAdapter>[0] = {
+      model,
+    };
+    if (options.baseUrl) {
+      modelOptions.baseUrl = options.baseUrl;
+    }
+
+    return new OllamaLanguageModelAdapter(modelOptions);
+  };
+  const result = options.workflow
+    ? await runWorkflow({
+      workflowId: options.workflow,
+      prompt: options.prompt,
+      config: options.config,
+      projectConfig,
+      registry,
+      memoryManager,
+      createModel,
+    })
+    : await runConfiguredAgent({
+      prompt: options.prompt,
+      config: options.config,
+      projectConfig,
+      agent: selectAgent(registry, options.prompt, options.agent),
+      agentSource: options.agent ? "override" : "auto",
+      memoryManager,
+      createModel,
+    });
+  if (loadedConfig.path) {
+    result.metadata.configPath = loadedConfig.path;
+  }
 
   console.log(
     renderResult(result, {
       compact: options.compact,
       json: options.json,
       includeTrace: options.trace,
-      model: options.model,
+      model: projectConfig.models.default,
     }),
   );
 }

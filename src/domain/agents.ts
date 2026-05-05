@@ -1,4 +1,5 @@
 import type { ToolPort } from "../ports/tool-port.js";
+import type { AgentConfig } from "../application/project-config.js";
 
 export interface AgentProfile {
   id: string;
@@ -6,6 +7,7 @@ export interface AgentProfile {
   systemPrompt: string;
   tools: ToolPort[];
   routingHints: string[];
+  config: AgentConfig;
 }
 
 export interface SelectedAgent {

@@ -1,4 +1,5 @@
 import type { LanguageModelPort } from "../ports/language-model-port.js";
+import type { LanguageModelPurpose } from "../ports/language-model-port.js";
 import type { ToolPort } from "../ports/tool-port.js";
 import type { TracePort } from "../ports/trace-port.js";
 import type {
@@ -235,6 +236,8 @@ export class RecursiveLanguageModel {
       this.modelCalls += 1;
       const response = await this.model.complete(this.withAgentSystemPrompt(conversation), {
         tools: allowTools ? [...this.toolsByName.values()] : [],
+        purpose: toModelPurpose(kind),
+        complexityDepth: this.metadata.depth.selected,
       });
 
       if (response.toolCalls.length === 0) {
@@ -411,6 +414,8 @@ function createEmptyMetadata(): RecursivePromptMetadata {
       selected: 0,
       source: "fallback",
     },
+    modelSelections: [],
+    memoryReservations: [],
     toolCalls: [],
     errors: [],
   };
@@ -427,4 +432,19 @@ function parseFirstInteger(value: string): number | undefined {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function toModelPurpose(kind: Parameters<TracePort["record"]>[0]["kind"]): LanguageModelPurpose | undefined {
+  if (
+    kind === "depth" ||
+    kind === "classify" ||
+    kind === "decompose" ||
+    kind === "answer" ||
+    kind === "summarize" ||
+    kind === "synthesize"
+  ) {
+    return kind;
+  }
+
+  return undefined;
 }

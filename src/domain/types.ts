@@ -60,12 +60,34 @@ export interface RecursivePromptMetadata {
     id: string;
     source: "auto" | "override";
   };
+  configPath?: string | undefined;
+  workflow?: {
+    id: string;
+    agents: string[];
+  } | undefined;
   depth: {
     selected: number;
     source: "model" | "override" | "fallback";
   };
+  modelSelections: ModelSelectionTrace[];
+  memoryReservations: MemoryReservationTrace[];
   toolCalls: ToolCallRecord[];
   errors: string[];
+}
+
+export interface ModelSelectionTrace {
+  agent: string;
+  purpose: string;
+  model: string;
+  tier: string;
+  estimatedRamMb: number;
+}
+
+export interface MemoryReservationTrace {
+  agent: string;
+  requestedRamMb: number;
+  availableRamMb: number;
+  waitedMs: number;
 }
 
 export interface ToolCallRecord {

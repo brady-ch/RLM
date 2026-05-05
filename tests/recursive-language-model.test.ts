@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -16,6 +17,9 @@ import { GuardedShellTool } from "../src/adapters/guarded-shell-tool.js";
 import { WorkspaceFileWriteTool } from "../src/adapters/workspace-file-write-tool.js";
 import { SerpApiGoogleSearchTool, buildGoogleQuery } from "../src/adapters/serpapi-google-search-tool.js";
 import { createAgentRegistry, selectAgent } from "../src/application/agent-registry.js";
+import { loadProjectConfig } from "../src/application/project-config.js";
+import { MemoryManager } from "../src/application/memory-manager.js";
+import { PurposeRoutingLanguageModel, selectDynamicTier } from "../src/application/model-provider.js";
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
 
@@ -225,12 +229,14 @@ test("parses cli options with granite default", () => {
 });
 
 test("parses direct prompt command shape and json output flag", () => {
-  const options = parseArgs(["hello", "world", "--json", "--agent", "research"], {});
+  const options = parseArgs(["hello", "world", "--json", "--agent", "research", "--workflow", "default", "--config", "custom.yaml"], {});
 
   assert.equal(options.prompt, "hello world");
   assert.equal(options.command, "ask");
   assert.equal(options.json, true);
   assert.equal(options.agent, "research");
+  assert.equal(options.workflow, "default");
+  assert.equal(options.configPath, "custom.yaml");
   assert.equal(options.config.maxDepth, undefined);
   assert.equal(options.config.maxDynamicDepth, 4);
 });
@@ -394,8 +400,34 @@ test("agent router selects research for source-backed prompts", () => {
   });
 
   assert.equal(selectAgent(registry, "Research the latest TypeScript release").id, "research");
+  assert.equal(selectAgent(registry, "Implement a parser fix and add tests").id, "coding");
+  assert.equal(selectAgent(registry, "Design the onboarding UX flow").id, "product_designer");
   assert.equal(selectAgent(registry, "Explain recursion").id, "default");
   assert.equal(selectAgent(registry, "Explain recursion", "research").id, "research");
+  assert.equal(selectAgent(registry, "Explain recursion", "coding").id, "coding");
+  assert.equal(selectAgent(registry, "Explain recursion", "product_designer").id, "product_designer");
+});
+
+test("agent profiles expose scoped tool sets", () => {
+  const shellTool = new EchoTool();
+  const writeTool = new EchoTool();
+  const searchTool = new EchoTool();
+  Object.defineProperty(shellTool, "name", { value: "shell" });
+  Object.defineProperty(writeTool, "name", { value: "write_file" });
+  Object.defineProperty(searchTool, "name", { value: "google_search" });
+  const registry = createAgentRegistry({
+    defaultTools: [shellTool, writeTool],
+    researchTools: [searchTool],
+    codingTools: [shellTool, writeTool],
+    productDesignerTools: [searchTool, writeTool],
+  });
+
+  assert.deepEqual(selectAgent(registry, "Fix the CLI", "coding").tools.map((tool) => tool.name), ["shell", "write_file"]);
+  assert.deepEqual(selectAgent(registry, "Design a settings page", "product_designer").tools.map((tool) => tool.name), [
+    "google_search",
+    "write_file",
+  ]);
+  assert.deepEqual(selectAgent(registry, "Research docs", "research").tools.map((tool) => tool.name), ["google_search"]);
 });
 
 test("google search query builder applies search operators", () => {
@@ -474,6 +506,148 @@ test("google search tool normalizes SerpAPI organic results", async () => {
   ]);
 });
 
+test("loads yaml project config from an explicit path", async () => {
+  const workspace = await mkdtemp(join(tmpdir(), "rlm-config-"));
+  try {
+    const configPath = join(workspace, "rlm.config.yaml");
+    await writeFile(configPath, `
+models:
+  default: small-model
+  tiers:
+    small:
+      name: small-model
+      estimatedRamMb: 512
+memory:
+  maxRamMb: 1024
+  reserveSystemRamMb: 128
+  waitForCapacity: false
+  capacityCheckIntervalMs: 1
+agents:
+  default:
+    tools: [shell]
+    models:
+      depth: small
+      classify: small
+      decompose: small
+      answer: dynamic
+      summarize: small
+      synthesize: small
+  coding:
+    tools: [shell]
+    models:
+      depth: small
+      classify: small
+      decompose: small
+      answer: dynamic
+      summarize: small
+      synthesize: small
+  product_designer:
+    tools: [write_file]
+    models:
+      depth: small
+      classify: small
+      decompose: small
+      answer: dynamic
+      summarize: small
+      synthesize: small
+  research:
+    tools: [google_search]
+    models:
+      depth: small
+      classify: small
+      decompose: small
+      answer: dynamic
+      summarize: small
+      synthesize: small
+workflows:
+  default:
+    mode: ram_queue
+    agents: [research, coding]
+    continueOnError: true
+`, "utf8");
+
+    const loaded = await loadProjectConfig(configPath);
+
+    assert.equal(loaded.path, configPath);
+    assert.equal(loaded.config.models.default, "small-model");
+    assert.deepEqual(loaded.config.workflows["default"]?.agents, ["research", "coding"]);
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test("purpose routing model selects per-purpose and dynamic tiers", async () => {
+  const calls: string[] = [];
+  const model = new PurposeRoutingLanguageModel({
+    config: {
+      models: {
+        default: "small-model",
+        tiers: {
+          small: {
+            name: "small-model",
+            estimatedRamMb: 512,
+          },
+          medium: {
+            name: "medium-model",
+            estimatedRamMb: 1024,
+          },
+          large: {
+            name: "large-model",
+            estimatedRamMb: 2048,
+          },
+        },
+      },
+      memory: {
+        maxRamMb: 4096,
+        reserveSystemRamMb: 0,
+        waitForCapacity: false,
+        capacityCheckIntervalMs: 1,
+      },
+      agents: {},
+      workflows: {},
+    },
+    agent: {
+      tools: [],
+      models: {
+        depth: "small",
+        classify: "small",
+        decompose: "medium",
+        answer: "dynamic",
+        summarize: "small",
+        synthesize: "medium",
+      },
+    },
+    createModel: (name) => new QueueModel([`${name} response`]),
+    recordSelection: (selection) => calls.push(`${selection.purpose}:${selection.model}`),
+  });
+
+  assert.equal(selectDynamicTier(1), "small");
+  assert.equal(selectDynamicTier(2), "medium");
+  assert.equal(selectDynamicTier(3), "large");
+  assert.equal((await model.complete([], { purpose: "answer", complexityDepth: 3 })).content, "large-model response");
+  assert.equal((await model.complete([], { purpose: "decompose", complexityDepth: 1 })).content, "medium-model response");
+  assert.deepEqual(calls, ["answer:large-model", "decompose:medium-model"]);
+});
+
+test("memory manager reserves, releases, and rejects over-capacity requests", async () => {
+  const manager = new MemoryManager({
+    config: {
+      maxRamMb: 1024,
+      reserveSystemRamMb: 0,
+      waitForCapacity: false,
+      capacityCheckIntervalMs: 1,
+    },
+    freememBytes: () => 2048 * 1024 * 1024,
+    totalmemBytes: () => 4096 * 1024 * 1024,
+  });
+
+  const reservation = await manager.reserve(512);
+  assert.equal(manager.snapshot().reservedRamMb, 512);
+  await assert.rejects(() => manager.reserve(600), /Insufficient RAM/);
+  reservation.release();
+  assert.equal(manager.snapshot().reservedRamMb, 0);
+});
+
 test("renders compact output for subprocess use", () => {
   const output = renderResult(
     {
@@ -487,6 +661,8 @@ test("renders compact output for subprocess use", () => {
           selected: 2,
           source: "override",
         },
+        modelSelections: [],
+        memoryReservations: [],
         toolCalls: [],
         errors: [],
       },
@@ -526,6 +702,8 @@ test("renders json output for tool use", () => {
           selected: 1,
           source: "model",
         },
+        modelSelections: [],
+        memoryReservations: [],
         toolCalls: [],
         errors: [],
       },
@@ -550,6 +728,8 @@ test("renders json output for tool use", () => {
       selected: 1,
       source: "model",
     },
+    modelSelections: [],
+    memoryReservations: [],
     trace: [],
     toolCalls: [],
     errors: [],

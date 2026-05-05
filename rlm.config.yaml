@@ -1,0 +1,62 @@
+models:
+  default: granite4.1:3b
+  tiers:
+    small:
+      name: granite4.1:3b
+      estimatedRamMb: 4096
+    medium:
+      name: llama3.1:8b
+      estimatedRamMb: 8192
+    large:
+      name: qwen2.5-coder:14b
+      estimatedRamMb: 16000
+
+memory:
+  maxRamMb: auto
+  reserveSystemRamMb: 2048
+  waitForCapacity: true
+  capacityCheckIntervalMs: 1000
+
+agents:
+  default:
+    tools: [shell, write_file]
+    models:
+      depth: small
+      classify: small
+      decompose: medium
+      answer: dynamic
+      summarize: small
+      synthesize: medium
+  coding:
+    tools: [shell, write_file]
+    models:
+      depth: small
+      classify: small
+      decompose: medium
+      answer: dynamic
+      summarize: small
+      synthesize: medium
+  product_designer:
+    tools: [google_search, write_file]
+    models:
+      depth: small
+      classify: small
+      decompose: medium
+      answer: dynamic
+      summarize: small
+      synthesize: medium
+  research:
+    tools: [google_search]
+    models:
+      depth: small
+      classify: small
+      decompose: medium
+      answer: dynamic
+      summarize: small
+      synthesize: medium
+
+workflows:
+  default:
+    mode: ram_queue
+    agents: [research, product_designer, coding]
+    continueOnError: false
