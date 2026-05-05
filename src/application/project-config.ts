@@ -108,19 +108,19 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
   },
   agents: {
     default: {
-      tools: ["shell", "write_file"],
+      tools: ["shell", "write_file", "google_search", "web_fetch"],
       models: defaultAgentModels(),
     },
     coding: {
-      tools: ["shell", "write_file"],
+      tools: ["shell", "write_file", "google_search", "web_fetch"],
       models: defaultAgentModels(),
     },
     product_designer: {
-      tools: ["google_search", "write_file"],
+      tools: ["google_search", "web_fetch", "write_file"],
       models: defaultAgentModels(),
     },
     research: {
-      tools: ["google_search"],
+      tools: ["google_search", "web_fetch"],
       models: defaultAgentModels(),
     },
   },

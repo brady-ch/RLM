@@ -16,6 +16,8 @@ import { InMemoryTrace } from "../src/adapters/in-memory-trace.js";
 import { GuardedShellTool } from "../src/adapters/guarded-shell-tool.js";
 import { WorkspaceFileWriteTool } from "../src/adapters/workspace-file-write-tool.js";
 import { SerpApiGoogleSearchTool, buildGoogleQuery } from "../src/adapters/serpapi-google-search-tool.js";
+import { WebFetchTool } from "../src/adapters/web-fetch-tool.js";
+import { analyzeHtmlContent, stripFluffWords, stripHtmlTags } from "../src/application/content-tree.js";
 import { createAgentRegistry, selectAgent } from "../src/application/agent-registry.js";
 import { loadProjectConfig } from "../src/application/project-config.js";
 import { MemoryManager } from "../src/application/memory-manager.js";
@@ -412,22 +414,33 @@ test("agent profiles expose scoped tool sets", () => {
   const shellTool = new EchoTool();
   const writeTool = new EchoTool();
   const searchTool = new EchoTool();
+  const webFetchTool = new EchoTool();
   Object.defineProperty(shellTool, "name", { value: "shell" });
   Object.defineProperty(writeTool, "name", { value: "write_file" });
   Object.defineProperty(searchTool, "name", { value: "google_search" });
+  Object.defineProperty(webFetchTool, "name", { value: "web_fetch" });
   const registry = createAgentRegistry({
-    defaultTools: [shellTool, writeTool],
-    researchTools: [searchTool],
-    codingTools: [shellTool, writeTool],
-    productDesignerTools: [searchTool, writeTool],
+    defaultTools: [shellTool, writeTool, searchTool, webFetchTool],
+    researchTools: [searchTool, webFetchTool],
+    codingTools: [shellTool, writeTool, searchTool, webFetchTool],
+    productDesignerTools: [searchTool, webFetchTool, writeTool],
   });
 
-  assert.deepEqual(selectAgent(registry, "Fix the CLI", "coding").tools.map((tool) => tool.name), ["shell", "write_file"]);
+  assert.deepEqual(selectAgent(registry, "Fix the CLI", "coding").tools.map((tool) => tool.name), [
+    "shell",
+    "write_file",
+    "google_search",
+    "web_fetch",
+  ]);
   assert.deepEqual(selectAgent(registry, "Design a settings page", "product_designer").tools.map((tool) => tool.name), [
     "google_search",
+    "web_fetch",
     "write_file",
   ]);
-  assert.deepEqual(selectAgent(registry, "Research docs", "research").tools.map((tool) => tool.name), ["google_search"]);
+  assert.deepEqual(selectAgent(registry, "Research docs", "research").tools.map((tool) => tool.name), [
+    "google_search",
+    "web_fetch",
+  ]);
 });
 
 test("google search query builder applies search operators", () => {
@@ -504,6 +517,62 @@ test("google search tool normalizes SerpAPI organic results", async () => {
       date: "May 1, 2026",
     },
   ]);
+});
+
+test("content analysis strips html and fluff words into scored sections", () => {
+  const html = `
+    <html>
+      <head><title>The Best Guide to Tool Calling</title><style>.x{}</style></head>
+      <body>
+        <h1>Tool Calling Architecture</h1>
+        <p>This is the best practical guide for model tool calling systems.</p>
+        <h2>Unrelated Notes</h2>
+        <p>The weather and office lunch are not important.</p>
+        <script>alert("ignore")</script>
+      </body>
+    </html>
+  `;
+
+  assert.equal(stripHtmlTags("<p>The useful text</p>"), "The useful text");
+  assert.equal(stripFluffWords("The useful text is in the guide"), "useful text guide");
+  const analysis = analyzeHtmlContent(html, "tool calling architecture", 1);
+
+  assert.equal(analysis.title, "best guide tool calling");
+  assert.equal(analysis.selected[0]?.title, "tool calling architecture");
+  assert.match(analysis.selected[0]?.text ?? "", /practical guide model tool calling systems/);
+});
+
+test("web fetch tool returns selected content tree sections", async () => {
+  const tool = new WebFetchTool({
+    fetchFn: async () => new Response(`
+      <html>
+        <head><title>Docs</title></head>
+        <body>
+          <h1>Install Tool Calling</h1>
+          <p>Use bind tools with structured schemas for model calls.</p>
+          <h1>Other</h1>
+          <p>General unrelated content.</p>
+        </body>
+      </html>
+    `, {
+      status: 200,
+      headers: {
+        "content-type": "text/html",
+      },
+    }),
+  });
+
+  const result = await tool.execute({
+    url: "https://example.com/docs",
+    query: "tool calling schemas",
+    maxSections: 1,
+  });
+
+  assert.equal(result.status, "success");
+  const output = JSON.parse(result.output);
+  assert.equal(output.url, "https://example.com/docs");
+  assert.equal(output.selected.length, 1);
+  assert.equal(output.selected[0].title, "install tool calling");
 });
 
 test("loads yaml project config from an explicit path", async () => {

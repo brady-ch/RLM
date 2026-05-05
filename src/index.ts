@@ -2,6 +2,7 @@
 import { OllamaLanguageModelAdapter } from "./adapters/ollama-language-model.js";
 import { GuardedShellTool } from "./adapters/guarded-shell-tool.js";
 import { SerpApiGoogleSearchTool } from "./adapters/serpapi-google-search-tool.js";
+import { WebFetchTool } from "./adapters/web-fetch-tool.js";
 import { WorkspaceFileWriteTool } from "./adapters/workspace-file-write-tool.js";
 import { runConfiguredAgent } from "./application/agent-runner.js";
 import { createAgentRegistry, selectAgent } from "./application/agent-registry.js";
@@ -31,10 +32,12 @@ async function main(): Promise<void> {
     workspaceRoot: process.cwd(),
   });
   const googleSearchTool = new SerpApiGoogleSearchTool();
+  const webFetchTool = new WebFetchTool();
   const toolsByName = new Map<string, ToolPort>([
     [shellTool.name, shellTool],
     [writeFileTool.name, writeFileTool],
     [googleSearchTool.name, googleSearchTool],
+    [webFetchTool.name, webFetchTool],
   ]);
   const toolsFor = (agentId: string) => {
     const agentConfig = projectConfig.agents[agentId];
