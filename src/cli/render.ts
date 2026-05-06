@@ -29,6 +29,8 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
     `model: ${options.model}`,
     `agent: ${result.metadata.agent.id} (${result.metadata.agent.source})`,
     `depth: ${result.metadata.depth.selected} (${result.metadata.depth.source})`,
+    `modelCalls: ${result.metadata.modelCalls}`,
+    `tokens: input=${result.metadata.tokenUsage.inputTokens} output=${result.metadata.tokenUsage.outputTokens} total=${result.metadata.tokenUsage.totalTokens} unknown=${result.metadata.tokenUsage.unknownCompletions}`,
     `answer: ${singleLine(result.answer)}`,
   ];
 
@@ -53,6 +55,8 @@ function renderJson(result: RecursivePromptResult, options: RenderOptions): stri
     depth: result.metadata.depth,
     modelSelections: result.metadata.modelSelections,
     memoryReservations: result.metadata.memoryReservations,
+    modelCalls: result.metadata.modelCalls,
+    tokenUsage: result.metadata.tokenUsage,
     trace: options.includeTrace ? result.trace : [],
     toolCalls: result.metadata.toolCalls,
     errors: result.metadata.errors,

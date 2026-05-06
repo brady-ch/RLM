@@ -4,10 +4,13 @@ export interface CliOptions {
   command: "ask" | "help";
   prompt: string;
   config: RecursiveModelConfig;
+  configOverrides: Partial<RecursiveModelConfig>;
   compact: boolean;
   json: boolean;
   trace: boolean;
+  verbose: boolean;
   model: string;
+  modelOverride?: string;
   agent?: string;
   workflow?: string;
   configPath?: string;
@@ -31,10 +34,13 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   const args = commandCandidate === "ask" ? rest : argv;
 
   const config = { ...DEFAULT_CONFIG };
+  const configOverrides: Partial<RecursiveModelConfig> = {};
   let compact = false;
   let json = false;
   let trace = false;
+  let verbose = env.RLM_VERBOSE === "1" || env.RLM_VERBOSE === "true";
   let model = env.RLM_MODEL ?? "granite4.1:3b";
+  let modelOverride = env.RLM_MODEL;
   let agent: string | undefined;
   let workflow: string | undefined;
   let configPath: string | undefined;
@@ -62,44 +68,62 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
       continue;
     }
 
+    if (arg === "--verbose") {
+      verbose = true;
+      continue;
+    }
+
     if (arg === "--depth") {
-      config.maxDepth = parsePositiveInteger(readValue(args, index, arg), arg);
+      const value = parsePositiveInteger(readValue(args, index, arg), arg);
+      config.maxDepth = value;
+      configOverrides.maxDepth = value;
       index += 1;
       continue;
     }
 
     if (arg === "--max-depth") {
-      config.maxDynamicDepth = parsePositiveInteger(readValue(args, index, arg), arg);
+      const value = parsePositiveInteger(readValue(args, index, arg), arg);
+      config.maxDynamicDepth = value;
+      configOverrides.maxDynamicDepth = value;
       index += 1;
       continue;
     }
 
     if (arg === "--branches") {
-      config.maxBranches = parsePositiveInteger(readValue(args, index, arg), arg);
+      const value = parsePositiveInteger(readValue(args, index, arg), arg);
+      config.maxBranches = value;
+      configOverrides.maxBranches = value;
       index += 1;
       continue;
     }
 
     if (arg === "--max-prompt-chars") {
-      config.maxPromptCharacters = parsePositiveInteger(readValue(args, index, arg), arg);
+      const value = parsePositiveInteger(readValue(args, index, arg), arg);
+      config.maxPromptCharacters = value;
+      configOverrides.maxPromptCharacters = value;
       index += 1;
       continue;
     }
 
     if (arg === "--max-model-calls") {
-      config.maxModelCalls = parsePositiveInteger(readValue(args, index, arg), arg);
+      const value = parsePositiveInteger(readValue(args, index, arg), arg);
+      config.maxModelCalls = value;
+      configOverrides.maxModelCalls = value;
       index += 1;
       continue;
     }
 
     if (arg === "--max-tool-rounds") {
-      config.maxToolRounds = parsePositiveInteger(readValue(args, index, arg), arg);
+      const value = parsePositiveInteger(readValue(args, index, arg), arg);
+      config.maxToolRounds = value;
+      configOverrides.maxToolRounds = value;
       index += 1;
       continue;
     }
 
     if (arg === "--model") {
       model = readValue(args, index, arg);
+      modelOverride = model;
       index += 1;
       continue;
     }
@@ -140,9 +164,11 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     command: "ask",
     prompt,
     config,
+    configOverrides,
     compact,
     json,
     trace,
+    verbose,
     model,
   };
   if (agent) {
@@ -157,6 +183,9 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   if (baseUrl) {
     options.baseUrl = baseUrl;
   }
+  if (modelOverride) {
+    options.modelOverride = modelOverride;
+  }
 
   return options;
 }
@@ -170,13 +199,13 @@ export function helpText(): string {
     "  rlm ask \"your prompt\" [--depth 2] [--branches 3]",
     "",
     "Options:",
-    "  --depth <n>             Override recursion depth. Default: model-selected",
-    "  --max-depth <n>         Maximum model-selected recursion depth. Default: 4",
-    "  --branches <n>          Maximum subtasks per recursive step. Default: 3",
-    "  --max-prompt-chars <n>  Truncate individual task prompts. Default: 6000",
-    "  --max-model-calls <n>   Stop recursive expansion after this many model calls. Default: 24",
-    "  --max-tool-rounds <n>   Maximum tool-call rounds per model step. Default: 3",
-    "  --model <name>          Ollama model. Default: granite4.1:3b or RLM_MODEL",
+    "  --depth <n>             Override YAML runtime recursion depth. Default: model-selected",
+    "  --max-depth <n>         Override YAML runtime maximum model-selected recursion depth",
+    "  --branches <n>          Override YAML runtime maximum subtasks per recursive step",
+    "  --max-prompt-chars <n>  Override YAML runtime task prompt truncation",
+    "  --max-model-calls <n>   Override YAML runtime total model-call budget",
+    "  --max-tool-rounds <n>   Override YAML runtime maximum tool-call rounds per model step",
+    "  --model <name>          Override YAML default Ollama model",
     "  --agent <id>            Agent override. Default: auto-route. Available: default, coding, product_designer, research",
     "  --workflow <id>         Run configured agent workflow. Default workflow id: default",
     "  --config <path>         YAML config path. Default: ./rlm.config.yaml when present",
@@ -184,6 +213,7 @@ export function helpText(): string {
     "  --json                 Print stable JSON output for tool consumption",
     "  --compact              Print compact output for compatibility",
     "  --trace                Print recursion trace",
+    "  --verbose              Log workflow progress, model calls, completions, and token usage to stderr",
   ].join("\n");
 }
 
@@ -192,11 +222,16 @@ function helpOptions(env: NodeJS.ProcessEnv): CliOptions {
     command: "help",
     prompt: "",
     config: { ...DEFAULT_CONFIG },
+    configOverrides: {},
     compact: false,
     json: false,
     trace: false,
+    verbose: env.RLM_VERBOSE === "1" || env.RLM_VERBOSE === "true",
     model: env.RLM_MODEL ?? "granite4.1:3b",
   };
+  if (env.RLM_MODEL) {
+    options.modelOverride = env.RLM_MODEL;
+  }
   if (env.OLLAMA_HOST) {
     options.baseUrl = env.OLLAMA_HOST;
   }

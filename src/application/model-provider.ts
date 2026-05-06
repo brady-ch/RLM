@@ -8,6 +8,7 @@ import type {
 import type { AgentConfig, ModelCandidateConfig, ModelTierConfig, ProjectConfig } from "./project-config.js";
 import { resolveModelTier } from "./project-config.js";
 import type { ModelScoreStore } from "./model-score-store.js";
+import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 
 export interface ModelProviderOptions {
   config: ProjectConfig;
@@ -17,6 +18,7 @@ export interface ModelProviderOptions {
   recordSelection?: (selection: ModelSelectionRecord) => void;
   scoreStore?: ModelScoreStore | undefined;
   random?: (() => number) | undefined;
+  logger?: RuntimeLogger | undefined;
 }
 
 export interface ModelSelectionRecord {
@@ -39,7 +41,19 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
   ): Promise<LanguageModelResponse> {
     const selection = await this.selectModel(completeOptions.purpose, completeOptions.complexityDepth);
     this.options.recordSelection?.(selection);
+    this.options.logger?.log({
+      stage: "model",
+      message: "selected model",
+      data: {
+        purpose: selection.purpose,
+        model: selection.model,
+        tier: selection.tier,
+        estimatedRamMb: selection.estimatedRamMb,
+        source: selection.source,
+      },
+    });
     const response = await this.getModel(selection.model).complete(messages, completeOptions);
+    response.model ??= selection.model;
     if (selection.source === "rotation") {
       try {
         await this.rateRotatedResponse(selection, messages, response, completeOptions);

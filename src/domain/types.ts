@@ -1,3 +1,5 @@
+import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
+
 export interface RecursiveModelConfig {
   maxDepth?: number;
   maxDynamicDepth: number;
@@ -10,6 +12,7 @@ export interface RecursiveModelConfig {
 export interface RecursivePromptRequest {
   prompt: string;
   config: RecursiveModelConfig;
+  logger?: RuntimeLogger | undefined;
   agent?: {
     id: string;
     source: "auto" | "override";
@@ -76,8 +79,17 @@ export interface RecursivePromptMetadata {
   };
   modelSelections: ModelSelectionTrace[];
   memoryReservations: MemoryReservationTrace[];
+  modelCalls: number;
+  tokenUsage: TokenUsageTrace;
   toolCalls: ToolCallRecord[];
   errors: string[];
+}
+
+export interface TokenUsageTrace {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  unknownCompletions: number;
 }
 
 export interface ModelSelectionTrace {

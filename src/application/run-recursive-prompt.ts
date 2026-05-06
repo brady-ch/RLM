@@ -4,6 +4,7 @@ import type { SelectedAgent } from "../domain/agents.js";
 import type { LanguageModelPort } from "../ports/language-model-port.js";
 import type { ToolPort } from "../ports/tool-port.js";
 import type { TracePort } from "../ports/trace-port.js";
+import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 
 export interface RunRecursivePromptInput {
   prompt: string;
@@ -12,6 +13,7 @@ export interface RunRecursivePromptInput {
   trace: TracePort;
   tools?: ToolPort[];
   agent?: SelectedAgent;
+  logger?: RuntimeLogger | undefined;
 }
 
 export async function runRecursivePrompt(input: RunRecursivePromptInput): Promise<RecursivePromptResult> {
@@ -19,6 +21,7 @@ export async function runRecursivePrompt(input: RunRecursivePromptInput): Promis
   const request: Parameters<typeof engine.run>[0] = {
     prompt: input.prompt,
     config: input.config,
+    logger: input.logger,
   };
   if (input.agent) {
     request.agent = input.agent;

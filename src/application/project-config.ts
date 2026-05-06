@@ -3,6 +3,7 @@ import { constants } from "node:fs";
 import { resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
+import type { RecursiveModelConfig } from "../domain/types.js";
 import type { LanguageModelPurpose } from "../ports/language-model-port.js";
 
 export const MODEL_PURPOSES = ["depth", "classify", "decompose", "answer", "summarize", "synthesize"] as const satisfies readonly LanguageModelPurpose[];
@@ -34,11 +35,24 @@ export interface AgentConfig {
   models: Record<ModelPurpose, ModelSelection>;
 }
 
+export interface WorkflowDispatchConfig {
+  strategy: "complexity_tiers";
+  tiers: WorkflowDispatchTierConfig[];
+}
+
+export interface WorkflowDispatchTierConfig {
+  name: string;
+  agents: string[];
+  qa: boolean;
+  maxEstimatedDepth?: number | undefined;
+}
+
 export interface WorkflowConfig {
   mode: "ram_queue";
   agents: string[];
   continueOnError: boolean;
   qa?: WorkflowQaConfig | undefined;
+  dispatch?: WorkflowDispatchConfig | undefined;
 }
 
 export interface WorkflowQaConfig {
@@ -63,6 +77,7 @@ export interface ProjectConfig {
     waitForCapacity: boolean;
     capacityCheckIntervalMs: number;
   };
+  runtime: RecursiveModelConfig;
   agents: Record<string, AgentConfig>;
   workflows: Record<string, WorkflowConfig>;
 }
@@ -80,6 +95,15 @@ const agentModelsSchema = z.object({
   answer: modelSelectionSchema,
   summarize: modelSelectionSchema,
   synthesize: modelSelectionSchema,
+});
+
+const runtimeSchema = z.object({
+  maxDepth: z.number().int().nonnegative().optional(),
+  maxDynamicDepth: z.number().int().nonnegative().default(4),
+  maxBranches: z.number().int().nonnegative().default(3),
+  maxPromptCharacters: z.number().int().positive().default(6_000),
+  maxModelCalls: z.number().int().nonnegative().default(24),
+  maxToolRounds: z.number().int().nonnegative().default(3),
 });
 
 const configSchema = z.object({
@@ -110,6 +134,13 @@ const configSchema = z.object({
     waitForCapacity: z.boolean(),
     capacityCheckIntervalMs: z.number().int().positive(),
   }),
+  runtime: runtimeSchema.default({
+    maxDynamicDepth: 4,
+    maxBranches: 3,
+    maxPromptCharacters: 6_000,
+    maxModelCalls: 24,
+    maxToolRounds: 3,
+  }),
   agents: z.record(z.string(), z.object({
     tools: z.array(z.string().min(1)),
     models: agentModelsSchema,
@@ -130,6 +161,15 @@ const configSchema = z.object({
         priority: 100,
         highestPriorityKeywords: ["fail", "error", "regression", "broken", "crash"],
       }),
+    }).optional(),
+    dispatch: z.object({
+      strategy: z.literal("complexity_tiers"),
+      tiers: z.array(z.object({
+        name: z.string().min(1),
+        maxEstimatedDepth: z.number().int().nonnegative().optional(),
+        agents: z.array(z.string().min(1)).min(1),
+        qa: z.boolean().default(false),
+      })).min(1),
     }).optional(),
   })),
 });
@@ -166,6 +206,13 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
     waitForCapacity: true,
     capacityCheckIntervalMs: 1000,
   },
+  runtime: {
+    maxDynamicDepth: 4,
+    maxBranches: 3,
+    maxPromptCharacters: 6_000,
+    maxModelCalls: 24,
+    maxToolRounds: 3,
+  },
   agents: {
     default: {
       tools: ["shell", "write_file", "google_search", "web_fetch"],
@@ -193,6 +240,28 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
       mode: "ram_queue",
       agents: ["research", "product_designer", "coding"],
       continueOnError: false,
+      dispatch: {
+        strategy: "complexity_tiers",
+        tiers: [
+          {
+            name: "simple",
+            maxEstimatedDepth: 1,
+            agents: ["coding"],
+            qa: false,
+          },
+          {
+            name: "normal",
+            maxEstimatedDepth: 2,
+            agents: ["coding"],
+            qa: true,
+          },
+          {
+            name: "complex",
+            agents: ["research", "product_designer", "coding"],
+            qa: true,
+          },
+        ],
+      },
       qa: {
         agent: "qa",
         validationCommands: ["npm test", "npm run build"],
@@ -250,6 +319,19 @@ export function applyModelOverride(config: ProjectConfig, modelOverride?: string
   };
 }
 
+export function resolveRuntimeConfig(config: ProjectConfig, overrides: Partial<RecursiveModelConfig> = {}): RecursiveModelConfig {
+  const runtime: RecursiveModelConfig = {
+    ...DEFAULT_PROJECT_CONFIG.runtime,
+    ...config.runtime,
+    ...overrides,
+  };
+  if (runtime.maxDepth === undefined) {
+    delete runtime.maxDepth;
+  }
+
+  return runtime;
+}
+
 export function resolveModelTier(config: ProjectConfig, selection: string): ModelTierConfig {
   const tier = config.models.tiers[selection];
   if (tier) {
@@ -301,6 +383,18 @@ function validateConfigReferences(config: ProjectConfig): void {
 
     if (workflow.qa && !config.agents[workflow.qa.agent]) {
       throw new Error(`Workflow "${workflowId}" references unknown QA agent "${workflow.qa.agent}".`);
+    }
+
+    for (const tier of workflow.dispatch?.tiers ?? []) {
+      for (const agentId of tier.agents) {
+        if (!config.agents[agentId]) {
+          throw new Error(`Workflow "${workflowId}" dispatch tier "${tier.name}" references unknown agent "${agentId}".`);
+        }
+      }
+
+      if (tier.qa && !workflow.qa) {
+        throw new Error(`Workflow "${workflowId}" dispatch tier "${tier.name}" enables QA but no QA config is present.`);
+      }
     }
   }
 }

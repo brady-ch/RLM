@@ -7,6 +7,7 @@ export interface LanguageModelMessage {
 
 export interface LanguageModelPort {
   complete(messages: LanguageModelMessage[], options?: LanguageModelCompleteOptions): Promise<LanguageModelResponse>;
+  close?(): Promise<void>;
 }
 
 export interface LanguageModelCompleteOptions {
@@ -20,6 +21,14 @@ export type LanguageModelPurpose = "depth" | "classify" | "decompose" | "answer"
 export interface LanguageModelResponse {
   content: string;
   toolCalls: LanguageModelToolCall[];
+  usage?: LanguageModelUsage | undefined;
+  model?: string | undefined;
+}
+
+export interface LanguageModelUsage {
+  inputTokens?: number | undefined;
+  outputTokens?: number | undefined;
+  totalTokens?: number | undefined;
 }
 
 export interface LanguageModelTool {

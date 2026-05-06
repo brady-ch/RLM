@@ -6,6 +6,7 @@ import type {
   LanguageModelMessage,
   LanguageModelPort,
   LanguageModelResponse,
+  LanguageModelUsage,
 } from "../ports/language-model-port.js";
 
 export interface OllamaLanguageModelOptions {
@@ -16,8 +17,12 @@ export interface OllamaLanguageModelOptions {
 
 export class OllamaLanguageModelAdapter implements LanguageModelPort {
   private readonly client: ChatOllama;
+  private readonly modelName: string;
+  private readonly baseUrl: string;
 
   constructor(options: OllamaLanguageModelOptions) {
+    this.modelName = options.model;
+    this.baseUrl = options.baseUrl ?? "http://127.0.0.1:11434";
     const fields: ConstructorParameters<typeof ChatOllama>[0] = {
       model: options.model,
       temperature: options.temperature ?? 0.2,
@@ -43,8 +48,67 @@ export class OllamaLanguageModelAdapter implements LanguageModelPort {
         name: toolCall.name,
         args: toolCall.args,
       })),
+      usage: extractUsage(response),
+      model: this.modelName,
     };
   }
+
+  async close(): Promise<void> {
+    const response = await fetch(new URL("/api/generate", this.baseUrl), {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: this.modelName,
+        prompt: "",
+        stream: false,
+        keep_alive: 0,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Ollama unload failed for ${this.modelName}: HTTP ${response.status}`);
+    }
+  }
+}
+
+function extractUsage(response: unknown): LanguageModelUsage | undefined {
+  const candidate = response as {
+    usage_metadata?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      total_tokens?: number;
+    };
+    response_metadata?: {
+      prompt_eval_count?: number;
+      eval_count?: number;
+    };
+  };
+  const usageMetadata = candidate.usage_metadata;
+  if (usageMetadata) {
+    return {
+      inputTokens: usageMetadata.input_tokens,
+      outputTokens: usageMetadata.output_tokens,
+      totalTokens: usageMetadata.total_tokens,
+    };
+  }
+
+  const responseMetadata = candidate.response_metadata;
+  if (!responseMetadata) {
+    return undefined;
+  }
+
+  const inputTokens = responseMetadata.prompt_eval_count;
+  const outputTokens = responseMetadata.eval_count;
+  if (inputTokens === undefined && outputTokens === undefined) {
+    return undefined;
+  }
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens: (inputTokens ?? 0) + (outputTokens ?? 0),
+  };
 }
 
 function toLangChainMessage(message: LanguageModelMessage): BaseMessageLike {

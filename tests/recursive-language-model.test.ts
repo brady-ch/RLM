@@ -19,13 +19,14 @@ import { SerpApiGoogleSearchTool, buildGoogleQuery } from "../src/adapters/serpa
 import { WebFetchTool } from "../src/adapters/web-fetch-tool.js";
 import { analyzeHtmlContent, stripFluffWords, stripHtmlTags } from "../src/application/content-tree.js";
 import { createAgentRegistry, selectAgent } from "../src/application/agent-registry.js";
-import { loadProjectConfig } from "../src/application/project-config.js";
+import { loadProjectConfig, resolveRuntimeConfig } from "../src/application/project-config.js";
 import { MemoryManager } from "../src/application/memory-manager.js";
 import { PurposeRoutingLanguageModel, selectDynamicTier } from "../src/application/model-provider.js";
 import { createYamlModelScoreStore } from "../src/application/model-score-store.js";
 import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
+import type { RuntimeLogEvent, RuntimeLogger } from "../src/ports/runtime-logger-port.js";
 
 type QueueResponse = string | LanguageModelResponse;
 
@@ -45,6 +46,14 @@ class QueueModel implements LanguageModelPort {
     }
 
     return typeof response === "string" ? { content: response, toolCalls: [] } : response;
+  }
+}
+
+class CaptureLogger implements RuntimeLogger {
+  readonly events: RuntimeLogEvent[] = [];
+
+  log(event: RuntimeLogEvent): void {
+    this.events.push(event);
   }
 }
 
@@ -226,10 +235,22 @@ test("parses cli options with granite default", () => {
 
   assert.equal(options.prompt, "hello");
   assert.equal(options.model, "granite4.1:3b");
+  assert.equal(options.modelOverride, undefined);
   assert.equal(options.config.maxDepth, 3);
   assert.equal(options.config.maxBranches, 4);
+  assert.deepEqual(options.configOverrides, {
+    maxDepth: 3,
+    maxBranches: 4,
+  });
   assert.equal(options.config.maxModelCalls, 24);
   assert.equal(options.compact, true);
+  assert.equal(options.verbose, false);
+});
+
+test("parses verbose cli option and env default", () => {
+  assert.equal(parseArgs(["ask", "hello", "--verbose"], {}).verbose, true);
+  assert.equal(parseArgs(["ask", "hello"], { RLM_VERBOSE: "1" }).verbose, true);
+  assert.equal(parseArgs(["ask", "hello"], { RLM_MODEL: "yaml-override-model" }).modelOverride, "yaml-override-model");
 });
 
 test("parses direct prompt command shape and json output flag", () => {
@@ -264,6 +285,26 @@ test("stops recursive expansion when model call budget is nearly exhausted", asy
   assert.deepEqual(
     result.trace.map((event) => event.kind),
     ["classify", "answer"],
+  );
+});
+
+test("counts depth selection against the total model call budget", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(new QueueModel(["3", "direct within budget"]), trace);
+
+  const result = await engine.run({
+    prompt: "Analyze a complex project",
+    config: {
+      ...dynamicDepthConfig,
+      maxModelCalls: 2,
+    },
+  });
+
+  assert.equal(result.answer, "direct within budget");
+  assert.equal(result.metadata.modelCalls, 2);
+  assert.deepEqual(
+    result.trace.map((event) => event.kind),
+    ["depth", "answer"],
   );
 });
 
@@ -304,6 +345,7 @@ test("falls back when dynamic depth classifier does not return an integer", asyn
 
 test("executes bounded tool calls during answer steps", async () => {
   const trace = new InMemoryTrace();
+  const logger = new CaptureLogger();
   const model = new QueueModel([
     {
       content: "",
@@ -327,6 +369,7 @@ test("executes bounded tool calls during answer steps", async () => {
       ...config,
       maxDepth: 0,
     },
+    logger,
   });
 
   assert.equal(result.answer, "final answer");
@@ -338,6 +381,111 @@ test("executes bounded tool calls during answer steps", async () => {
   );
   assert.equal(model.calls[0]?.options.tools?.length, 1);
   assert.equal(model.calls[1]?.messages.at(-1)?.role, "tool");
+  assert.ok(logger.events.some((event) => event.stage === "tool" && event.message === "starting tool call"));
+  assert.ok(logger.events.some((event) => event.stage === "tool" && event.message === "completed tool call"));
+});
+
+test("logs recursive task plan after decomposition", async () => {
+  const trace = new InMemoryTrace();
+  const logger = new CaptureLogger();
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      "RECURSIVE",
+      "First child\nSecond child",
+      "First answer",
+      "First summary",
+      "Second answer",
+      "Second summary",
+      "Final answer",
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Split this",
+    config: {
+      ...config,
+      maxDepth: 1,
+    },
+    logger,
+  });
+
+  assert.equal(result.answer, "Final answer");
+  const planEvent = logger.events.find((event) => event.stage === "plan" && event.message === "created recursive task plan");
+  assert.ok(planEvent);
+  assert.deepEqual((planEvent.data?.["children"] as Array<{ id: string; prompt: string }>).map((child) => child.prompt), [
+    "First child",
+    "Second child",
+  ]);
+});
+
+test("logs failed unknown tool calls and continues with tool result context", async () => {
+  const trace = new InMemoryTrace();
+  const logger = new CaptureLogger();
+  const model = new QueueModel([
+    {
+      content: "",
+      toolCalls: [
+        {
+          id: "call-missing",
+          name: "missing_tool",
+          args: {
+            text: "hello",
+          },
+        },
+      ],
+    },
+    "final answer",
+  ]);
+  const engine = new RecursiveLanguageModel(model, trace, []);
+
+  const result = await engine.run({
+    prompt: "Use a missing tool",
+    config: {
+      ...config,
+      maxDepth: 0,
+    },
+    logger,
+  });
+
+  assert.equal(result.answer, "final answer");
+  assert.match(result.metadata.errors[0] ?? "", /Unknown tool/);
+  assert.ok(logger.events.some((event) => event.stage === "tool" && event.message === "failed tool call"));
+  assert.equal(model.calls[1]?.messages.at(-1)?.role, "tool");
+});
+
+test("answers from available context when tool round limit is reached", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel([
+    {
+      content: "",
+      toolCalls: [
+        {
+          id: "call-1",
+          name: "echo",
+          args: {
+            text: "hello",
+          },
+        },
+      ],
+    },
+    "direct answer after tool limit",
+  ]);
+  const engine = new RecursiveLanguageModel(model, trace, [new EchoTool()]);
+
+  const result = await engine.run({
+    prompt: "Use a tool once",
+    config: {
+      ...config,
+      maxDepth: 0,
+      maxToolRounds: 0,
+    },
+  });
+
+  assert.equal(result.answer, "direct answer after tool limit");
+  assert.equal(result.metadata.modelCalls, 2);
+  assert.ok(result.metadata.errors.some((error) => error.includes("tool round limit reached")));
+  assert.equal(model.calls[1]?.options.tools?.length, 0);
 });
 
 test("guarded shell tool rejects non-allowlisted commands", async () => {
@@ -504,6 +652,7 @@ test("workflow runs QA validation and exposes bugfix tasks in a higher-priority 
       waitForCapacity: false,
       capacityCheckIntervalMs: 1,
     },
+    runtime: config,
     agents: {
       default: {
         tools: ["echo"],
@@ -555,6 +704,7 @@ test("workflow runs QA validation and exposes bugfix tasks in a higher-priority 
     "Implementation complete.",
     "BUGFIX[error]: Fix build error reported by validation.\nBUGFIX[error]: Duplicate error should not be queued.",
   ];
+  const logger = new CaptureLogger();
 
   const result = await runWorkflow({
     workflowId: "default",
@@ -569,6 +719,7 @@ test("workflow runs QA validation and exposes bugfix tasks in a higher-priority 
       config: projectConfig.memory,
     }),
     createModel: () => new QueueModel([responses.shift() ?? "ok"]),
+    logger,
     runValidationCommand: async (command) => ({
       command,
       status: command === "npm test" ? "success" : "error",
@@ -583,6 +734,242 @@ test("workflow runs QA validation and exposes bugfix tasks in a higher-priority 
   assert.deepEqual(result.metadata.workflowQueues?.[0]?.items.map((item) => item.task), [
     "Fix build error reported by validation.",
   ]);
+  assert.ok(logger.events.some((event) => event.stage === "workflow" && event.message === "starting workflow"));
+  assert.ok(logger.events.some((event) => event.stage === "workflow" && event.message === "workflow agent completed"));
+  assert.ok(logger.events.some((event) => event.stage === "validation" && event.message === "starting validation command"));
+  assert.ok(logger.events.some((event) => event.stage === "validation" && event.message === "completed validation command"));
+});
+
+test("workflow dispatch tiers run minimal agents for simple prompts", async () => {
+  const tool = new EchoTool();
+  const agentModels = {
+    depth: "small",
+    classify: "small",
+    decompose: "small",
+    answer: "small",
+    summarize: "small",
+    synthesize: "small",
+  };
+  const projectConfig = {
+    models: {
+      default: "small-model",
+      rotation: {
+        enabled: false,
+        sampleRate: 0,
+        scorePath: "rlm.model-scores.yaml",
+      },
+      tiers: {
+        small: {
+          name: "small-model",
+          estimatedRamMb: 512,
+        },
+      },
+    },
+    memory: {
+      maxRamMb: 2048,
+      reserveSystemRamMb: 0,
+      waitForCapacity: false,
+      capacityCheckIntervalMs: 1,
+    },
+    runtime: config,
+    agents: {
+      default: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      coding: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      qa: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      product_designer: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      research: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+    },
+    workflows: {
+      default: {
+        mode: "ram_queue" as const,
+        agents: ["research", "product_designer", "coding"],
+        continueOnError: false,
+        dispatch: {
+          strategy: "complexity_tiers" as const,
+          tiers: [
+            {
+              name: "simple",
+              maxEstimatedDepth: 1,
+              agents: ["coding"],
+              qa: false,
+            },
+            {
+              name: "complex",
+              agents: ["research", "product_designer", "coding"],
+              qa: true,
+            },
+          ],
+        },
+        qa: {
+          agent: "qa",
+          validationCommands: [],
+          bugfixQueue: {
+            id: "bugfix",
+            priority: 100,
+            highestPriorityKeywords: ["fail", "error"],
+          },
+        },
+      },
+    },
+  };
+  const registry = createAgentRegistry({
+    defaultTools: [tool],
+    codingTools: [tool],
+    qaTools: [tool],
+    productDesignerTools: [tool],
+    researchTools: [tool],
+    agentConfigs: projectConfig.agents,
+  });
+
+  const result = await runWorkflow({
+    workflowId: "default",
+    prompt: "Fix typo",
+    config: {
+      ...config,
+      maxDepth: 0,
+    },
+    projectConfig,
+    registry,
+    memoryManager: new MemoryManager({
+      config: projectConfig.memory,
+    }),
+    createModel: () => new QueueModel(["Implementation complete."]),
+  });
+
+  assert.deepEqual(result.metadata.workflow?.agents, ["coding"]);
+  assert.equal(result.metadata.workflow?.qa, undefined);
+  assert.equal(result.metadata.modelCalls, 1);
+});
+
+test("workflow dispatch tiers run complex agent sets and QA for complex prompts", async () => {
+  const tool = new EchoTool();
+  const agentModels = {
+    depth: "small",
+    classify: "small",
+    decompose: "small",
+    answer: "small",
+    summarize: "small",
+    synthesize: "small",
+  };
+  const projectConfig = {
+    models: {
+      default: "small-model",
+      rotation: {
+        enabled: false,
+        sampleRate: 0,
+        scorePath: "rlm.model-scores.yaml",
+      },
+      tiers: {
+        small: {
+          name: "small-model",
+          estimatedRamMb: 512,
+        },
+      },
+    },
+    memory: {
+      maxRamMb: 4096,
+      reserveSystemRamMb: 0,
+      waitForCapacity: false,
+      capacityCheckIntervalMs: 1,
+    },
+    runtime: config,
+    agents: {
+      default: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      coding: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      qa: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      product_designer: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      research: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+    },
+    workflows: {
+      default: {
+        mode: "ram_queue" as const,
+        agents: ["coding"],
+        continueOnError: false,
+        dispatch: {
+          strategy: "complexity_tiers" as const,
+          tiers: [
+            {
+              name: "simple",
+              maxEstimatedDepth: 1,
+              agents: ["coding"],
+              qa: false,
+            },
+            {
+              name: "complex",
+              agents: ["research", "product_designer", "coding"],
+              qa: true,
+            },
+          ],
+        },
+        qa: {
+          agent: "qa",
+          validationCommands: [],
+          bugfixQueue: {
+            id: "bugfix",
+            priority: 100,
+            highestPriorityKeywords: ["fail", "error"],
+          },
+        },
+      },
+    },
+  };
+  const registry = createAgentRegistry({
+    defaultTools: [tool],
+    codingTools: [tool],
+    qaTools: [tool],
+    productDesignerTools: [tool],
+    researchTools: [tool],
+    agentConfigs: projectConfig.agents,
+  });
+
+  const result = await runWorkflow({
+    workflowId: "default",
+    prompt: "Design the architecture for a multi-agent workflow system",
+    config: {
+      ...config,
+      maxDepth: 0,
+    },
+    projectConfig,
+    registry,
+    memoryManager: new MemoryManager({
+      config: projectConfig.memory,
+    }),
+    createModel: () => new QueueModel(["ok"]),
+  });
+
+  assert.deepEqual(result.metadata.workflow?.agents, ["research", "product_designer", "coding", "qa"]);
+  assert.equal(result.metadata.workflow?.qa?.agent, "qa");
+  assert.equal(result.metadata.modelCalls, 4);
 });
 
 test("google search query builder applies search operators", () => {
@@ -733,6 +1120,12 @@ memory:
   reserveSystemRamMb: 128
   waitForCapacity: false
   capacityCheckIntervalMs: 1
+runtime:
+  maxDynamicDepth: 2
+  maxBranches: 5
+  maxPromptCharacters: 3000
+  maxModelCalls: 9
+  maxToolRounds: 1
 agents:
   default:
     tools: [shell]
@@ -781,7 +1174,16 @@ workflows:
 
     assert.equal(loaded.path, configPath);
     assert.equal(loaded.config.models.default, "small-model");
+    assert.equal(loaded.config.runtime.maxModelCalls, 9);
+    assert.equal(loaded.config.runtime.maxBranches, 5);
     assert.deepEqual(loaded.config.workflows["default"]?.agents, ["research", "coding"]);
+    assert.deepEqual(resolveRuntimeConfig(loaded.config, { maxModelCalls: 3 }), {
+      maxDynamicDepth: 2,
+      maxBranches: 5,
+      maxPromptCharacters: 3000,
+      maxModelCalls: 3,
+      maxToolRounds: 1,
+    });
   } finally {
     await rm(workspace, { recursive: true, force: true });
   }
@@ -819,6 +1221,7 @@ test("purpose routing model selects per-purpose and dynamic tiers", async () => 
         waitForCapacity: false,
         capacityCheckIntervalMs: 1,
       },
+      runtime: config,
       agents: {},
       workflows: {},
     },
@@ -886,6 +1289,7 @@ test("purpose routing occasionally selects use-case alternates and records yaml 
           waitForCapacity: false,
           capacityCheckIntervalMs: 1,
         },
+        runtime: config,
         agents: {},
         workflows: {},
       },
@@ -970,6 +1374,13 @@ test("renders compact output for subprocess use", () => {
         },
         modelSelections: [],
         memoryReservations: [],
+        modelCalls: 1,
+        tokenUsage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          unknownCompletions: 0,
+        },
         toolCalls: [],
         errors: [],
       },
@@ -1011,6 +1422,13 @@ test("renders json output for tool use", () => {
         },
         modelSelections: [],
         memoryReservations: [],
+        modelCalls: 1,
+        tokenUsage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          unknownCompletions: 0,
+        },
         toolCalls: [],
         errors: [],
       },
@@ -1037,6 +1455,13 @@ test("renders json output for tool use", () => {
     },
     modelSelections: [],
     memoryReservations: [],
+    modelCalls: 1,
+    tokenUsage: {
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      unknownCompletions: 0,
+    },
     trace: [],
     toolCalls: [],
     errors: [],

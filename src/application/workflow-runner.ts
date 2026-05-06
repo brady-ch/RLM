@@ -12,7 +12,8 @@ import type {
 } from "../domain/types.js";
 import type { LanguageModelPort } from "../ports/language-model-port.js";
 import { MemoryManager } from "./memory-manager.js";
-import { runConfiguredAgent } from "./agent-runner.js";
+import { estimatePromptDepth, runConfiguredAgent } from "./agent-runner.js";
+import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -27,6 +28,7 @@ export interface RunWorkflowInput {
   baseUrl?: string | undefined;
   createModel: (model: string) => LanguageModelPort;
   runValidationCommand?: ((command: string) => Promise<ValidationCommandResult>) | undefined;
+  logger?: RuntimeLogger | undefined;
 }
 
 export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePromptResult> {
@@ -35,7 +37,8 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
     throw new Error(`Unknown workflow "${input.workflowId}". Available workflows: ${Object.keys(input.projectConfig.workflows).join(", ")}`);
   }
 
-  const agents = workflow.agents.map((agentId) => {
+  const dispatch = selectWorkflowDispatch(workflow, input.prompt);
+  const agents = dispatch.agents.map((agentId) => {
     const agent = input.registry.profiles.find((profile) => profile.id === agentId);
     if (!agent) {
       throw new Error(`Workflow "${input.workflowId}" references unavailable agent "${agentId}".`);
@@ -43,19 +46,41 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
 
     return agent;
   });
+  input.logger?.log({
+    stage: "workflow",
+    message: "starting workflow",
+    data: {
+      workflow: input.workflowId,
+      dispatchTier: dispatch.tierName,
+      estimatedDepth: dispatch.estimatedDepth,
+      agents: agents.map((agent) => agent.id),
+      qaAgent: dispatch.qa?.agent,
+    },
+  });
 
   const settled = await Promise.allSettled(
-    agents.map((agent) => runConfiguredAgent({
-      prompt: input.prompt,
-      config: input.config,
-      projectConfig: input.projectConfig,
-      configPath: input.configPath,
-      agent,
-      agentSource: "auto",
-      baseUrl: input.baseUrl,
-      memoryManager: input.memoryManager,
-      createModel: input.createModel,
-    })),
+    agents.map((agent) => {
+      input.logger?.log({
+        stage: "workflow",
+        message: "dispatching workflow agent",
+        data: {
+          workflow: input.workflowId,
+          agent: agent.id,
+        },
+      });
+      return runConfiguredAgent({
+        prompt: input.prompt,
+        config: input.config,
+        projectConfig: input.projectConfig,
+        configPath: input.configPath,
+        agent,
+        agentSource: "auto",
+        baseUrl: input.baseUrl,
+        memoryManager: input.memoryManager,
+        createModel: input.createModel,
+        logger: input.logger,
+      });
+    }),
   );
 
   const errors: string[] = [];
@@ -68,37 +93,57 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
 
     if (result.status === "fulfilled") {
       successfulResults[index] = result.value;
+      input.logger?.log({
+        stage: "workflow",
+        message: "workflow agent completed",
+        data: {
+          workflow: input.workflowId,
+          agent: agents[index]?.id,
+          modelCalls: result.value.metadata.modelCalls,
+          toolCalls: result.value.metadata.toolCalls.length,
+        },
+      });
       continue;
     }
 
     const agentId = agents[index]?.id ?? `agent-${index + 1}`;
     const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
+    input.logger?.log({
+      stage: "workflow",
+      message: "workflow agent failed",
+      data: {
+        workflow: input.workflowId,
+        agent: agentId,
+        error: message,
+      },
+    });
     errors.push(`${agentId}: ${message}`);
     if (!workflow.continueOnError) {
       throw new Error(`Workflow "${input.workflowId}" failed: ${errors.join("; ")}`);
     }
   }
 
-  const validationResults = workflow.qa
-    ? await runValidationCommands(workflow.qa.validationCommands, input.runValidationCommand)
+  const validationResults = dispatch.qa
+    ? await runValidationCommands(dispatch.qa.validationCommands, input.runValidationCommand, input.logger)
     : [];
   let qaResult: RecursivePromptResult | undefined;
-  if (workflow.qa) {
+  if (dispatch.qa) {
     try {
       qaResult = await runConfiguredAgent({
         prompt: buildQaPrompt(input.prompt, successfulResults.filter(Boolean), validationResults),
         config: input.config,
         projectConfig: input.projectConfig,
         configPath: input.configPath,
-        agent: findWorkflowAgent(input.registry, input.workflowId, workflow.qa.agent),
+        agent: findWorkflowAgent(input.registry, input.workflowId, dispatch.qa.agent),
         agentSource: "auto",
         baseUrl: input.baseUrl,
         memoryManager: input.memoryManager,
         createModel: input.createModel,
+        logger: input.logger,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      errors.push(`${workflow.qa.agent}: ${message}`);
+      errors.push(`${dispatch.qa.agent}: ${message}`);
       if (!workflow.continueOnError) {
         throw new Error(`Workflow "${input.workflowId}" failed: ${errors.join("; ")}`);
       }
@@ -108,26 +153,78 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
     successfulResults.push(qaResult);
   }
 
-  const queues = workflow.qa
-    ? [buildBugfixQueue(workflow.qa.bugfixQueue, qaResult?.answer ?? "", workflow.qa.agent)]
+  const queues = dispatch.qa
+    ? [buildBugfixQueue(dispatch.qa.bugfixQueue, qaResult?.answer ?? "", dispatch.qa.agent)]
     : [];
 
-  return combineWorkflowResults(
+  const combined = combineWorkflowResults(
     input.workflowId,
     [
       ...agents.map((agent) => agent.id),
-      ...(workflow.qa ? [workflow.qa.agent] : []),
+      ...(dispatch.qa ? [dispatch.qa.agent] : []),
     ],
     successfulResults.filter(Boolean),
     errors,
-    workflow.qa
+    dispatch.qa
       ? {
-        agent: workflow.qa.agent,
+        agent: dispatch.qa.agent,
         validationCommands: validationResults,
       }
       : undefined,
     queues,
   );
+  input.logger?.log({
+    stage: "workflow",
+    message: "completed workflow",
+    data: {
+      workflow: input.workflowId,
+      agents: combined.metadata.workflow?.agents,
+      modelCalls: combined.metadata.modelCalls,
+      toolCalls: combined.metadata.toolCalls.length,
+      errors: combined.metadata.errors.length,
+    },
+  });
+  return combined;
+}
+
+function selectWorkflowDispatch(
+  workflow: ProjectConfig["workflows"][string],
+  prompt: string,
+): {
+  agents: string[];
+  qa: ProjectConfig["workflows"][string]["qa"] | undefined;
+  tierName: string | undefined;
+  estimatedDepth: number | undefined;
+} {
+  if (!workflow.dispatch) {
+    return {
+      agents: workflow.agents,
+      qa: workflow.qa,
+      tierName: undefined,
+      estimatedDepth: undefined,
+    };
+  }
+
+  const estimatedDepth = estimatePromptDepth(prompt);
+  const tier = workflow.dispatch.tiers.find((candidate) =>
+    candidate.maxEstimatedDepth === undefined || estimatedDepth <= candidate.maxEstimatedDepth
+  ) ?? workflow.dispatch.tiers.at(-1);
+
+  if (!tier) {
+    return {
+      agents: workflow.agents,
+      qa: workflow.qa,
+      tierName: undefined,
+      estimatedDepth,
+    };
+  }
+
+  return {
+    agents: tier.agents,
+    qa: tier.qa ? workflow.qa : undefined,
+    tierName: tier.name,
+    estimatedDepth,
+  };
 }
 
 function combineWorkflowResults(
@@ -159,6 +256,21 @@ function combineWorkflowResults(
     },
     modelSelections: results.flatMap((result) => result.metadata.modelSelections),
     memoryReservations: results.flatMap((result) => result.metadata.memoryReservations),
+    modelCalls: results.reduce((total, result) => total + result.metadata.modelCalls, 0),
+    tokenUsage: results.reduce(
+      (total, result) => ({
+        inputTokens: total.inputTokens + result.metadata.tokenUsage.inputTokens,
+        outputTokens: total.outputTokens + result.metadata.tokenUsage.outputTokens,
+        totalTokens: total.totalTokens + result.metadata.tokenUsage.totalTokens,
+        unknownCompletions: total.unknownCompletions + result.metadata.tokenUsage.unknownCompletions,
+      }),
+      {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        unknownCompletions: 0,
+      },
+    ),
     toolCalls: results.flatMap((result) => result.metadata.toolCalls),
     errors: [
       ...results.flatMap((result) => result.metadata.errors),
@@ -179,11 +291,31 @@ function combineWorkflowResults(
 async function runValidationCommands(
   commands: string[],
   runner: ((command: string) => Promise<ValidationCommandResult>) | undefined,
+  logger: RuntimeLogger | undefined,
 ): Promise<ValidationCommandResult[]> {
   const run = runner ?? runValidationCommand;
   const results: ValidationCommandResult[] = [];
   for (const command of commands) {
-    results.push(await run(command));
+    logger?.log({
+      stage: "validation",
+      message: "starting validation command",
+      data: {
+        command,
+      },
+    });
+    const startedAt = Date.now();
+    const result = await run(command);
+    logger?.log({
+      stage: "validation",
+      message: "completed validation command",
+      data: {
+        command,
+        status: result.status,
+        durationMs: Date.now() - startedAt,
+        output: preview(result.output),
+      },
+    });
+    results.push(result);
   }
 
   return results;
@@ -371,4 +503,9 @@ function parseCommand(command: string): string[] {
 
 function formatCommandOutput(stdout: string, stderr: string, exitCode: number): string {
   return [`exitCode: ${exitCode}`, `stdout:\n${stdout.trim()}`, `stderr:\n${stderr.trim()}`].join("\n");
+}
+
+function preview(value: string, maxLength = 180): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 3)}...`;
 }

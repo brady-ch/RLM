@@ -75,6 +75,10 @@ export class MemoryManager {
       await this.sleep(this.options.config.capacityCheckIntervalMs);
     }
   }
+
+  releaseAll(): void {
+    this.reservedRamMb = 0;
+  }
 }
 
 function bytesToMb(value: number): number {

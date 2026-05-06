@@ -7,7 +7,7 @@ models:
   tiers:
     small:
       name: granite4.1:3b
-      estimatedRamMb: 4096
+      estimatedRamMb: 1024
       alternateModels: []
     medium:
       name: llama3.1:8b
@@ -19,10 +19,17 @@ models:
       alternateModels: []
 
 memory:
-  maxRamMb: auto
-  reserveSystemRamMb: 2048
-  waitForCapacity: true
+  maxRamMb: 4096
+  reserveSystemRamMb: 512
+  waitForCapacity: false
   capacityCheckIntervalMs: 1000
+
+runtime:
+  maxDynamicDepth: 4
+  maxBranches: 3
+  maxPromptCharacters: 6000
+  maxModelCalls: 24
+  maxToolRounds: 3
 
 agents:
   default:
@@ -30,52 +37,66 @@ agents:
     models:
       depth: small
       classify: small
-      decompose: medium
-      answer: dynamic
+      decompose: small
+      answer: small
       summarize: small
-      synthesize: medium
+      synthesize: small
   coding:
     tools: [shell, write_file, google_search, web_fetch]
     models:
       depth: small
       classify: small
-      decompose: medium
-      answer: dynamic
+      decompose: small
+      answer: small
       summarize: small
-      synthesize: medium
+      synthesize: small
   qa:
     tools: [shell, write_file]
     models:
       depth: small
       classify: small
-      decompose: medium
-      answer: dynamic
+      decompose: small
+      answer: small
       summarize: small
-      synthesize: medium
+      synthesize: small
   product_designer:
     tools: [google_search, web_fetch, write_file]
     models:
       depth: small
       classify: small
-      decompose: medium
-      answer: dynamic
+      decompose: small
+      answer: small
       summarize: small
-      synthesize: medium
+      synthesize: small
   research:
     tools: [google_search, web_fetch]
     models:
       depth: small
       classify: small
-      decompose: medium
-      answer: dynamic
+      decompose: small
+      answer: small
       summarize: small
-      synthesize: medium
+      synthesize: small
 
 workflows:
   default:
     mode: ram_queue
     agents: [research, product_designer, coding]
     continueOnError: false
+    dispatch:
+      strategy: complexity_tiers
+      tiers:
+        - name: simple
+          maxEstimatedDepth: 1
+          agents: [coding]
+          qa: false
+        - name: normal
+          maxEstimatedDepth: 2
+          agents: [coding]
+          qa: true
+        - name: complex
+          agents: [research, product_designer, coding]
+          qa: true
     qa:
       agent: qa
       validationCommands:

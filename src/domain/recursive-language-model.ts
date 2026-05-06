@@ -1,5 +1,8 @@
 import type { LanguageModelPort } from "../ports/language-model-port.js";
 import type { LanguageModelPurpose } from "../ports/language-model-port.js";
+import type { LanguageModelUsage } from "../ports/language-model-port.js";
+import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
+import type { ToolExecutionResult } from "../ports/tool-port.js";
 import type { ToolPort } from "../ports/tool-port.js";
 import type { TracePort } from "../ports/trace-port.js";
 import type {
@@ -22,6 +25,7 @@ export class RecursiveLanguageModel {
   private toolRoundLimit = 0;
   private agentSystemPrompt = "";
   private metadata: RecursivePromptMetadata = createEmptyMetadata();
+  private logger: RuntimeLogger | undefined;
   private readonly toolsByName: Map<string, ToolPort>;
 
   constructor(
@@ -38,6 +42,7 @@ export class RecursiveLanguageModel {
     this.maxModelCalls = request.config.maxModelCalls;
     this.toolRoundLimit = request.config.maxToolRounds;
     this.metadata = createEmptyMetadata();
+    this.logger = request.logger;
     if (request.agent) {
       this.agentSystemPrompt = request.agent.systemPrompt;
       this.metadata.agent = {
@@ -59,6 +64,14 @@ export class RecursiveLanguageModel {
     };
 
     const answer = await this.solve(root, config);
+    this.metadata.modelCalls = this.modelCalls;
+    this.log("run", "completed recursive run", {
+      modelCalls: this.metadata.modelCalls,
+      inputTokens: this.metadata.tokenUsage.inputTokens,
+      outputTokens: this.metadata.tokenUsage.outputTokens,
+      totalTokens: this.metadata.tokenUsage.totalTokens,
+      unknownCompletions: this.metadata.tokenUsage.unknownCompletions,
+    });
     return {
       answer,
       trace: this.trace.events(),
@@ -67,33 +80,83 @@ export class RecursiveLanguageModel {
   }
 
   private async solve(task: TaskNode, config: RecursiveModelConfig): Promise<string> {
+    this.log("task", "solving task", {
+      id: task.id,
+      depth: task.depth,
+      maxDepth: config.maxDepth ?? 0,
+      prompt: preview(task.prompt),
+    });
     const maxDepth = config.maxDepth ?? 0;
     if (task.depth >= maxDepth) {
-      return this.answerDirectly(task, "Depth limit reached; answer directly.");
+      const answer = await this.answerDirectly(task, "Depth limit reached; answer directly.");
+      this.log("task", "completed task", {
+        id: task.id,
+        depth: task.depth,
+        mode: "direct",
+      });
+      return answer;
     }
 
     if (this.remainingModelCalls() <= 1) {
-      return this.answerDirectly(task, "Model call budget is nearly exhausted; answer directly.");
+      const answer = await this.answerDirectly(task, "Model call budget is nearly exhausted; answer directly.");
+      this.log("task", "completed task", {
+        id: task.id,
+        depth: task.depth,
+        mode: "direct",
+      });
+      return answer;
     }
 
     const classification = await this.classify(task);
+    this.log("task", "classification received", {
+      id: task.id,
+      depth: task.depth,
+      classification,
+    });
     if (classification !== RECURSIVE) {
-      return this.answerDirectly(task, "Task is simple enough for a direct answer.");
+      const answer = await this.answerDirectly(task, "Task is simple enough for a direct answer.");
+      this.log("task", "completed task", {
+        id: task.id,
+        depth: task.depth,
+        mode: "direct",
+      });
+      return answer;
     }
 
     if (!this.hasCallReservedForDirectAnswer(config)) {
-      return this.answerDirectly(task, "Model call budget is nearly exhausted; answer directly.");
+      const answer = await this.answerDirectly(task, "Model call budget is nearly exhausted; answer directly.");
+      this.log("task", "completed task", {
+        id: task.id,
+        depth: task.depth,
+        mode: "direct",
+      });
+      return answer;
     }
 
     const children = await this.decompose(task, config);
+    this.log("task", "decomposed task", {
+      id: task.id,
+      children: children.length,
+    });
     if (children.length === 0) {
-      return this.answerDirectly(task, "No useful subtasks were found; answer directly.");
+      const answer = await this.answerDirectly(task, "No useful subtasks were found; answer directly.");
+      this.log("task", "completed task", {
+        id: task.id,
+        depth: task.depth,
+        mode: "direct",
+      });
+      return answer;
     }
 
     const solvedChildren: SolvedTask[] = [];
     for (const child of children) {
+      if (this.remainingModelCalls() <= 1) {
+        this.recordLimit(task, "model call budget reached before all child tasks could be solved");
+        break;
+      }
+
       const answer = await this.solve(child, config);
-      const summary = this.canSpendAnyModelCall() ? await this.summarize(child, answer) : answer;
+      const summary = this.remainingModelCalls() > 1 ? await this.summarize(child, answer) : answer;
       solvedChildren.push({
         id: child.id,
         prompt: child.prompt,
@@ -102,9 +165,16 @@ export class RecursiveLanguageModel {
       });
     }
 
-    return this.canSpendAnyModelCall()
+    const answer = await (this.canSpendAnyModelCall()
       ? this.synthesize(task, solvedChildren)
-      : this.synthesizeWithoutModel(task, solvedChildren);
+      : this.synthesizeWithoutModel(task, solvedChildren));
+    this.log("task", "completed task", {
+      id: task.id,
+      depth: task.depth,
+      mode: "recursive",
+      children: solvedChildren.length,
+    });
+    return answer;
   }
 
   private async classify(task: TaskNode): Promise<string> {
@@ -125,6 +195,11 @@ export class RecursiveLanguageModel {
   }
 
   private async decompose(task: TaskNode, config: RecursiveModelConfig): Promise<TaskNode[]> {
+    this.log("phase", "decomposing task", {
+      id: task.id,
+      depth: task.depth,
+      maxBranches: config.maxBranches,
+    });
     const output = await this.complete(task, "decompose", [
       {
         role: "system",
@@ -139,7 +214,7 @@ export class RecursiveLanguageModel {
     ]);
     this.record(task, "decompose", task.prompt, output);
 
-    return output
+    const children = output
       .split("\n")
       .map((line) => line.replace(/^\s*[-*\d.)]+\s*/, "").trim())
       .filter((line) => line.length > 0)
@@ -150,15 +225,28 @@ export class RecursiveLanguageModel {
         prompt: this.limitPrompt(prompt, config),
         depth: task.depth + 1,
       }));
+    this.log("plan", "created recursive task plan", {
+      parentTask: task.id,
+      depth: task.depth,
+      children: children.map((child) => ({
+        id: child.id,
+        prompt: preview(child.prompt),
+      })),
+    });
+    return children;
   }
 
   private async answerDirectly(task: TaskNode, reason: string): Promise<string> {
     if (!this.canSpendAnyModelCall()) {
-      const output = `Unable to continue: model call budget exhausted before task could be answered. Task: ${task.prompt}`;
-      this.record(task, "error", task.prompt, output);
-      return output;
+      this.recordLimit(task, "model call budget reached before direct answer");
+      return fallbackFromMessages([{ role: "user", content: task.prompt }]);
     }
 
+    this.log("phase", "answering task directly", {
+      id: task.id,
+      depth: task.depth,
+      reason,
+    });
     const output = await this.complete(task, "answer", [
       {
         role: "system",
@@ -176,6 +264,10 @@ export class RecursiveLanguageModel {
   }
 
   private async summarize(task: TaskNode, answer: string): Promise<string> {
+    this.log("phase", "summarizing task answer", {
+      id: task.id,
+      depth: task.depth,
+    });
     const output = await this.complete(task, "summarize", [
       {
         role: "system",
@@ -191,6 +283,11 @@ export class RecursiveLanguageModel {
   }
 
   private async synthesize(task: TaskNode, solvedChildren: SolvedTask[]): Promise<string> {
+    this.log("phase", "synthesizing child task summaries", {
+      id: task.id,
+      depth: task.depth,
+      children: solvedChildren.length,
+    });
     const childContext = solvedChildren
       .map((child, index) => `Subtask ${index + 1}: ${child.prompt}\nSummary: ${child.summary}`)
       .join("\n\n");
@@ -226,18 +323,39 @@ export class RecursiveLanguageModel {
     allowTools = false,
   ): Promise<string> {
     if (!this.canSpendAnyModelCall()) {
-      const output = `Model call budget exhausted before ${kind}.`;
-      this.record(task, "error", task.prompt, output);
-      return output;
+      this.recordLimit(task, `model call budget reached before ${kind}`);
+      return fallbackFromMessages(messages);
     }
 
     const conversation = [...messages];
     for (let round = 0; round <= this.maxToolRounds(); round += 1) {
       this.modelCalls += 1;
+      const callNumber = this.modelCalls;
+      this.log("completion", "starting model completion", {
+        call: callNumber,
+        task: task.id,
+        depth: task.depth,
+        kind,
+        round,
+        toolsEnabled: allowTools,
+        prompt: preview(messages.at(-1)?.content ?? ""),
+      });
       const response = await this.model.complete(this.withAgentSystemPrompt(conversation), {
         tools: allowTools ? [...this.toolsByName.values()] : [],
         purpose: toModelPurpose(kind),
         complexityDepth: this.metadata.depth.selected,
+      });
+      this.recordUsage(response.usage);
+      this.log("completion", "completed model completion", {
+        call: callNumber,
+        task: task.id,
+        kind,
+        model: response.model,
+        toolCalls: response.toolCalls.length,
+        inputTokens: response.usage?.inputTokens,
+        outputTokens: response.usage?.outputTokens,
+        totalTokens: response.usage?.totalTokens,
+        output: preview(response.content),
       });
 
       if (response.toolCalls.length === 0) {
@@ -248,14 +366,29 @@ export class RecursiveLanguageModel {
         const output = `Model requested tools during ${kind}, but tools are disabled for this step.`;
         this.record(task, "error", task.prompt, output);
         this.metadata.errors.push(output);
-        return response.content || output;
+        return response.content || fallbackFromMessages(conversation);
       }
 
       if (round >= this.maxToolRounds()) {
-        const output = `Tool round limit reached during ${kind}.`;
-        this.record(task, "error", task.prompt, output);
-        this.metadata.errors.push(output);
-        return response.content || output;
+        this.recordLimit(task, `tool round limit reached during ${kind}`);
+        if (response.content) {
+          return response.content;
+        }
+
+        return this.canSpendAnyModelCall()
+          ? this.completeWithoutTools(task, kind, [
+            ...conversation,
+            {
+              role: "assistant",
+              content: response.content,
+              toolCalls: response.toolCalls,
+            },
+            {
+              role: "system",
+              content: "Tool use is no longer available. Answer directly from the conversation and tool context already present.",
+            },
+          ])
+          : fallbackFromMessages(conversation);
       }
 
       conversation.push({
@@ -267,9 +400,28 @@ export class RecursiveLanguageModel {
       for (const toolCall of response.toolCalls) {
         const tool = this.toolsByName.get(toolCall.name);
         this.record(task, "tool-call", JSON.stringify(toolCall.args), toolCall.name);
-        const result = tool
-          ? await tool.execute(toolCall.args)
-          : { status: "error" as const, output: `Unknown tool: ${toolCall.name}` };
+        this.log("tool", "starting tool call", {
+          task: task.id,
+          depth: task.depth,
+          call: toolCall.id,
+          name: toolCall.name,
+          args: toolCall.args,
+        });
+        const startedAt = Date.now();
+        let result: ToolExecutionResult;
+        if (tool) {
+          try {
+            result = await tool.execute(toolCall.args);
+          } catch (error: unknown) {
+            result = {
+              status: "error" as const,
+              output: error instanceof Error ? error.message : String(error),
+            };
+          }
+        } else {
+          result = { status: "error" as const, output: `Unknown tool: ${toolCall.name}` };
+        }
+        const durationMs = Date.now() - startedAt;
         const record: ToolCallRecord = {
           id: toolCall.id,
           name: toolCall.name,
@@ -281,6 +433,14 @@ export class RecursiveLanguageModel {
         if (result.status === "error") {
           this.metadata.errors.push(result.output);
         }
+        this.log("tool", result.status === "success" ? "completed tool call" : "failed tool call", {
+          task: task.id,
+          call: toolCall.id,
+          name: toolCall.name,
+          status: result.status,
+          durationMs,
+          output: preview(result.output),
+        });
         this.record(task, result.status === "success" ? "tool-result" : "error", toolCall.name, result.output);
         conversation.push({
           role: "tool",
@@ -290,14 +450,59 @@ export class RecursiveLanguageModel {
       }
 
       if (!this.canSpendAnyModelCall()) {
-        const output = `Model call budget exhausted after tool calls during ${kind}.`;
-        this.record(task, "error", task.prompt, output);
-        this.metadata.errors.push(output);
-        return output;
+        this.recordLimit(task, `model call budget reached after tool calls during ${kind}`);
+        return response.content || fallbackFromMessages(conversation);
       }
     }
 
-    return `Tool round limit reached during ${kind}.`;
+    this.recordLimit(task, `tool round limit reached during ${kind}`);
+    return fallbackFromMessages(conversation);
+  }
+
+  private async completeWithoutTools(
+    task: TaskNode,
+    kind: Parameters<TracePort["record"]>[0]["kind"],
+    messages: Parameters<LanguageModelPort["complete"]>[0],
+  ): Promise<string> {
+    if (!this.canSpendAnyModelCall()) {
+      this.recordLimit(task, `model call budget reached before direct ${kind} follow-up`);
+      return fallbackFromMessages(messages);
+    }
+
+    this.modelCalls += 1;
+    const callNumber = this.modelCalls;
+    this.log("completion", "starting model completion", {
+      call: callNumber,
+      task: task.id,
+      depth: task.depth,
+      kind,
+      round: "direct",
+      toolsEnabled: false,
+      prompt: preview(messages.at(-1)?.content ?? ""),
+    });
+    const response = await this.model.complete(this.withAgentSystemPrompt(messages), {
+      tools: [],
+      purpose: toModelPurpose(kind),
+      complexityDepth: this.metadata.depth.selected,
+    });
+    this.recordUsage(response.usage);
+    this.log("completion", "completed model completion", {
+      call: callNumber,
+      task: task.id,
+      kind,
+      model: response.model,
+      toolCalls: response.toolCalls.length,
+      inputTokens: response.usage?.inputTokens,
+      outputTokens: response.usage?.outputTokens,
+      totalTokens: response.usage?.totalTokens,
+      output: preview(response.content),
+    });
+
+    if (response.toolCalls.length > 0) {
+      this.recordLimit(task, `ignored tool requests during direct ${kind} follow-up`);
+    }
+
+    return response.content || fallbackFromMessages(messages);
   }
 
   private async selectDepth(prompt: string, config: RecursiveModelConfig): Promise<number> {
@@ -306,6 +511,9 @@ export class RecursiveLanguageModel {
         selected: config.maxDepth,
         source: "override",
       };
+      this.log("depth", "using configured depth override", {
+        selected: config.maxDepth,
+      });
       return config.maxDepth;
     }
 
@@ -320,6 +528,10 @@ export class RecursiveLanguageModel {
       prompt: this.limitPrompt(prompt, config),
       depth: 0,
     };
+    this.log("depth", "selecting recursion depth", {
+      maxDynamicDepth,
+      prompt: preview(prompt),
+    });
     const output = await this.complete(task, "depth", [
       {
         role: "system",
@@ -340,6 +552,11 @@ export class RecursiveLanguageModel {
       selected,
       source,
     };
+    this.log("depth", "selected recursion depth", {
+      selected,
+      source,
+      output: preview(output),
+    });
     this.record(task, "depth", prompt, output);
     return selected;
   }
@@ -389,6 +606,36 @@ export class RecursiveLanguageModel {
     this.trace.record(event);
   }
 
+  private recordUsage(usage: LanguageModelUsage | undefined): void {
+    if (!usage) {
+      this.metadata.tokenUsage.unknownCompletions += 1;
+      return;
+    }
+
+    this.metadata.tokenUsage.inputTokens += usage.inputTokens ?? 0;
+    this.metadata.tokenUsage.outputTokens += usage.outputTokens ?? 0;
+    this.metadata.tokenUsage.totalTokens += usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
+  }
+
+  private log(stage: string, message: string, data?: Record<string, unknown>): void {
+    this.logger?.log({
+      stage,
+      message,
+      data,
+    });
+  }
+
+  private recordLimit(task: TaskNode, message: string): void {
+    this.record(task, "error", task.prompt, message);
+    this.metadata.errors.push(message);
+    this.log("limit", message, {
+      task: task.id,
+      depth: task.depth,
+      modelCalls: this.modelCalls,
+      maxModelCalls: this.maxModelCalls,
+    });
+  }
+
   private limitPrompt(prompt: string, config: RecursiveModelConfig): string {
     if (prompt.length <= config.maxPromptCharacters) {
       return prompt;
@@ -416,9 +663,21 @@ function createEmptyMetadata(): RecursivePromptMetadata {
     },
     modelSelections: [],
     memoryReservations: [],
+    modelCalls: 0,
+    tokenUsage: {
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      unknownCompletions: 0,
+    },
     toolCalls: [],
     errors: [],
   };
+}
+
+function preview(value: string, maxLength = 180): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 3)}...`;
 }
 
 function parseFirstInteger(value: string): number | undefined {
@@ -432,6 +691,11 @@ function parseFirstInteger(value: string): number | undefined {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function fallbackFromMessages(messages: Parameters<LanguageModelPort["complete"]>[0]): string {
+  const userContent = [...messages].reverse().find((message) => message.role === "user")?.content;
+  return userContent?.trim() || "No additional model calls are available.";
 }
 
 function toModelPurpose(kind: Parameters<TracePort["record"]>[0]["kind"]): LanguageModelPurpose | undefined {

@@ -8,6 +8,7 @@ import { MemoryManager } from "./memory-manager.js";
 import { estimateAgentRamMb, PurposeRoutingLanguageModel } from "./model-provider.js";
 import { selectedAgentMetadata } from "./agent-registry.js";
 import { createYamlModelScoreStore } from "./model-score-store.js";
+import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 
 export interface RunConfiguredAgentInput {
   prompt: string;
@@ -19,14 +20,34 @@ export interface RunConfiguredAgentInput {
   baseUrl?: string | undefined;
   memoryManager: MemoryManager;
   createModel: (model: string) => LanguageModelPort;
+  logger?: RuntimeLogger | undefined;
 }
 
 export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promise<RecursivePromptResult> {
   const estimatedDepth = estimatePromptDepth(input.prompt);
   const requestedRamMb = estimateAgentRamMb(input.projectConfig, input.agent.config, estimatedDepth);
   const startedAt = Date.now();
+  input.logger?.log({
+    stage: "agent",
+    message: "requesting memory reservation",
+    data: {
+      agent: input.agent.id,
+      estimatedDepth,
+      requestedRamMb,
+    },
+  });
   const reservation = await input.memoryManager.reserve(requestedRamMb);
   const waitedMs = Date.now() - startedAt;
+  input.logger?.log({
+    stage: "agent",
+    message: "memory reservation acquired",
+    data: {
+      agent: input.agent.id,
+      requestedRamMb: reservation.requestedRamMb,
+      availableRamMb: reservation.snapshot.availableRamMb,
+      waitedMs,
+    },
+  });
   const modelSelections: ModelSelectionTrace[] = [];
 
   try {
@@ -37,6 +58,7 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
       scoreStore: input.projectConfig.models.rotation.enabled
         ? createYamlModelScoreStore(process.cwd(), input.projectConfig.models.rotation.scorePath)
         : undefined,
+      logger: input.logger,
       recordSelection: (selection) => {
         modelSelections.push({
           agent: input.agent.id,
@@ -57,6 +79,7 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
       trace,
       tools: input.agent.tools,
       agent: selectedAgentMetadata(input.agent, input.agentSource),
+      logger: input.logger,
     });
 
     result.metadata.configPath = input.configPath;
