@@ -26,6 +26,7 @@ import { PurposeRoutingLanguageModel, selectDynamicTier } from "../src/applicati
 import { createYamlModelScoreStore } from "../src/application/model-score-store.js";
 import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
 import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
+import { startControlServer } from "../src/application/control-server.js";
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
 import type { RuntimeLogEvent, RuntimeLogger } from "../src/ports/runtime-logger-port.js";
@@ -456,6 +457,234 @@ test("interactive execution applies model override to current node only", async 
   assert.equal(childWithOverride?.effectiveModel, "override-model");
   assert.equal(childWithOverride?.modelOverrideSource, "user");
   assert.equal(siblingNode?.modelOverride, undefined);
+});
+
+test("initial-plan mode pauses on newly spawned recursive branches", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel(["RECURSIVE", "child task", "child answer", "child summary", "final answer"]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession({ approvalMode: "initial-plan" });
+  const run = engine.run({
+    prompt: "root task",
+    config: { ...config, maxDepth: 1 },
+    execution: session.control,
+  });
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+  await session.waitForNodeStatus("task-2", "awaiting_approval");
+  const node = session.snapshot().graph.nodes.find((item) => item.id === "task-2");
+  assert.equal(node?.spawnedAfterInitialApproval, true);
+  session.approveNode("task-2");
+  await run;
+});
+
+test("initial-plan-recursive mode auto-approves newly spawned recursive branches", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel(["RECURSIVE", "child task", "child answer", "child summary", "final answer"]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
+  const run = engine.run({
+    prompt: "root task",
+    config: { ...config, maxDepth: 1 },
+    execution: session.control,
+  });
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+  const result = await run;
+  const child = result.metadata.executionGraph?.nodes.find((node) => node.id === "task-2");
+  assert.equal(child?.approvalSource, "auto");
+});
+
+test("pause future auto approvals affects future nodes only", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel(["RECURSIVE", "child one\nchild two", "first", "first summary", "second", "second summary", "final"]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
+  const run = engine.run({
+    prompt: "root task",
+    config: { ...config, maxDepth: 1, maxBranches: 2 },
+    execution: session.control,
+  });
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+  await session.waitForNodeStatus("task-2", "running");
+  session.pauseFutureAutoApprovals();
+  await session.waitForNodeStatus("task-3", "awaiting_approval");
+  const node2 = session.snapshot().graph.nodes.find((node) => node.id === "task-2");
+  assert.notEqual(node2?.status, "cancelled");
+  session.approveNode("task-3");
+  await run;
+});
+
+test("auto-approved nodes are emitted before running", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel(["RECURSIVE", "child task", "child answer", "child summary", "final answer"]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
+  const events: Array<{ nodeId: string | undefined; status: string; message: string | undefined }> = [];
+  session.subscribe((event) => events.push({ nodeId: event.nodeId, status: event.status, message: event.message }));
+  const run = engine.run({
+    prompt: "root task",
+    config: { ...config, maxDepth: 1 },
+    execution: session.control,
+  });
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+  await run;
+  const autoEventIndex = events.findIndex((event) => event.nodeId === "task-2" && event.message === "node auto-approved");
+  const runningEventIndex = events.findIndex((event) => event.nodeId === "task-2" && event.status === "running");
+  assert.ok(autoEventIndex >= 0);
+  assert.ok(runningEventIndex > autoEventIndex);
+});
+
+test("recursive spawning remains observable under initial-plan-recursive", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel([
+    "RECURSIVE",
+    "child one\nchild two",
+    "DIRECT",
+    "answer one",
+    "summary one",
+    "DIRECT",
+    "answer two",
+    "summary two",
+    "final answer",
+  ]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
+  const run = engine.run({ prompt: "root", config: { ...config, maxDepth: 1 }, execution: session.control });
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+  const result = await run;
+  const nodes = session.snapshot().graph.nodes;
+  assert.ok(nodes.some((node) => node.id === "task-2" && node.parentId === "task-1" && node.approvalSource === "auto"));
+  assert.ok(nodes.some((node) => node.id === "task-3" && node.parentId === "task-1" && node.approvalSource === "auto"));
+  assert.ok(result.metadata.executionGraph?.edges.some((edge) => edge.from === "task-1" && edge.to === "task-2"));
+});
+
+test("model errors remain visible in initial-plan-recursive mode", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(new ThrowingModel("model exploded"), trace);
+  const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
+  const run = engine.run({ prompt: "root", config: { ...config, maxDepth: 0 }, execution: session.control });
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+  await assert.rejects(run, /model exploded/);
+});
+
+test("tool errors remain visible in initial-plan-recursive mode", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel([{
+    content: "",
+    toolCalls: [{ id: "t1", name: "missing_tool", args: {} }],
+  }, "fallback"]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
+  const run = engine.run({
+    prompt: "root",
+    config: { ...config, maxDepth: 0 },
+    execution: session.control,
+  });
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+  const result = await run;
+  assert.ok(result.metadata.errors.some((error) => error.includes("Unknown tool")));
+  assert.equal(result.metadata.executionStatus, "failed");
+});
+
+test("budget exhaustion remains visible in initial-plan-recursive mode", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(new QueueModel(["RECURSIVE", "direct answer"]), trace);
+  const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
+  const run = engine.run({
+    prompt: "root",
+    config: { ...config, maxModelCalls: 2 },
+    execution: session.control,
+  });
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+  const result = await run;
+  assert.equal(result.metadata.modelCalls, 2);
+  assert.equal(result.metadata.executionStatus, "completed");
+});
+
+test("cancellation remains visible in initial-plan-recursive mode", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel(["answer"]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
+  session.stop("cancelled by test");
+  await assert.rejects(
+    engine.run({ prompt: "root", config: { ...config, maxDepth: 0 }, execution: session.control }),
+    /cancelled by test/,
+  );
+});
+
+test("approval mode contract is consistent across cli api and ui labels", async () => {
+  const parsed = parseArgs(["ask", "hello", "--approval-mode", "initial-plan-recursive"], {});
+  assert.equal(parsed.approvalMode, "initial-plan-recursive");
+  const session = createInteractiveExecutionSession({ approvalMode: "initial-plan" });
+  const server = await startControlServer({ session });
+  try {
+    const response = await fetch(`${server.url}/api/run-mode`);
+    const payload = await response.json() as { approvalMode: string };
+    assert.equal(payload.approvalMode, "initial-plan");
+  } finally {
+    await server.close();
+  }
+  const uiSource = await readFile(join(process.cwd(), "ui/src/main.tsx"), "utf8");
+  assert.match(uiSource, /Full checkpoints/);
+  assert.match(uiSource, /Initial plan/);
+  assert.match(uiSource, /Initial plan \+ recursive/);
+  const rendered = renderResult({
+    answer: "ok",
+    trace: [],
+    metadata: {
+      agent: { id: "default", source: "auto" },
+      depth: { selected: 0, source: "override" },
+      modelSelections: [],
+      memoryReservations: [],
+      modelCalls: 0,
+      tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, unknownCompletions: 0 },
+      toolCalls: [],
+      errors: [],
+      executionGraph: { nodes: [{ id: "task-1", kind: "task", label: "x", depth: 0, status: "ready", approvalMode: "initial-plan-recursive", approvalSource: "none" }], edges: [] },
+    },
+  }, { compact: true, json: false, includeTrace: false, model: "m" });
+  assert.match(rendered, /approvalMode=initial-plan-recursive/);
+});
+
+test("initial-plan modes differ only on spawned branch auto approval", async () => {
+  const traceA = new InMemoryTrace();
+  const traceB = new InMemoryTrace();
+  const responses: QueueResponse[] = ["RECURSIVE", "child task", "child answer", "child summary", "final answer"];
+  const modelA = new QueueModel([...responses]);
+  const modelB = new QueueModel([...responses]);
+  const sessionA = createInteractiveExecutionSession({ approvalMode: "initial-plan" });
+  const sessionB = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
+  const runA = new RecursiveLanguageModel(modelA, traceA).run({
+    prompt: "root",
+    config: { ...config, maxDepth: 1 },
+    execution: sessionA.control,
+  });
+  await sessionA.waitForNodeStatus("task-1", "awaiting_approval");
+  sessionA.approveNode("task-1");
+  await sessionA.waitForNodeStatus("task-2", "awaiting_approval");
+  const conservativeChildStatus = sessionA.snapshot().graph.nodes.find((node) => node.id === "task-2")?.status;
+  sessionA.approveNode("task-2");
+  await runA;
+
+  const runB = new RecursiveLanguageModel(modelB, traceB).run({
+    prompt: "root",
+    config: { ...config, maxDepth: 1 },
+    execution: sessionB.control,
+  });
+  await sessionB.waitForNodeStatus("task-1", "awaiting_approval");
+  sessionB.approveNode("task-1");
+  await runB;
+  const recursiveChild = sessionB.snapshot().graph.nodes.find((node) => node.id === "task-2");
+  assert.equal(conservativeChildStatus, "awaiting_approval");
+  assert.equal(recursiveChild?.approvalSource, "auto");
 });
 
 test("explicit node model override failure is strict and does not fallback", async () => {
@@ -1732,4 +1961,135 @@ test("renders json output for tool use", () => {
     toolCalls: [],
     errors: [],
   });
+});
+
+test("Phase 5 regression: workflow model failure marks executionStatus and graph nodes failed", async () => {
+  const tool = new EchoTool();
+  const agentModels = {
+    depth: "small",
+    classify: "small",
+    decompose: "small",
+    answer: "small",
+    summarize: "small",
+    synthesize: "small",
+  };
+  const projectConfig = {
+    models: {
+      default: "small-model",
+      rotation: {
+        enabled: false,
+        sampleRate: 0,
+        scorePath: "rlm.model-scores.yaml",
+      },
+      tiers: {
+        small: {
+          name: "small-model",
+          estimatedRamMb: 512,
+        },
+      },
+    },
+    memory: {
+      maxRamMb: 2048,
+      reserveSystemRamMb: 0,
+      waitForCapacity: false,
+      capacityCheckIntervalMs: 1,
+    },
+    runtime: config,
+    agents: {
+      default: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      coding: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      qa: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      product_designer: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+      research: {
+        tools: ["echo"],
+        models: agentModels,
+      },
+    },
+    workflows: {
+      flaky: {
+        mode: "ram_queue" as const,
+        agents: ["coding"],
+        continueOnError: true,
+      },
+    },
+  };
+  const registry = createAgentRegistry({
+    defaultTools: [tool],
+    codingTools: [tool],
+    qaTools: [tool],
+    productDesignerTools: [tool],
+    researchTools: [tool],
+    agentConfigs: projectConfig.agents,
+  });
+  const result = await runWorkflow({
+    workflowId: "flaky",
+    prompt: "short prompt",
+    config: { ...config, maxDepth: 0 },
+    projectConfig,
+    registry,
+    memoryManager: new MemoryManager({
+      config: projectConfig.memory,
+    }),
+    createModel: () => new ThrowingModel("workflow model down"),
+  });
+  assert.equal(result.metadata.executionStatus, "failed");
+  const node = result.metadata.executionGraph?.nodes[0];
+  assert.equal(node?.status, "failed");
+  assert.ok(result.metadata.errors.some((line) => line.includes("workflow model down")));
+});
+
+test("Phase 5 regression: approval loop surfaces failed session snapshot when model throws after approve", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(new ThrowingModel("boom-after-approval"), trace);
+  const session = createInteractiveExecutionSession();
+  const run = engine.run({
+    prompt: "hello",
+    config: { ...config, maxDepth: 0 },
+    execution: session.control,
+  });
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+  await assert.rejects(run, /boom-after-approval/);
+  assert.equal(session.snapshot().status, "failed");
+});
+
+test("Phase 5 regression: default text render shows explicit Errors section when run failed", () => {
+  const text = renderResult(
+    {
+      answer: "partial answer",
+      trace: [],
+      metadata: {
+        agent: { id: "default", source: "auto" },
+        depth: { selected: 0, source: "override" },
+        modelSelections: [],
+        memoryReservations: [],
+        modelCalls: 1,
+        tokenUsage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          unknownCompletions: 0,
+        },
+        toolCalls: [],
+        errors: ["simulated tool failure"],
+        executionStatus: "failed",
+      },
+    },
+    { compact: false, json: false, includeTrace: false, model: "granite4.1:3b" },
+  );
+  assert.match(text, /Run status: failed/);
+  assert.match(text, /Errors:/);
+  assert.match(text, /simulated tool failure/);
 });

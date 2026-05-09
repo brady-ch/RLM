@@ -37,6 +37,11 @@ type ExecutionNode = {
   effectiveModel?: string;
   modelOverride?: string;
   modelOverrideSource?: "user" | "none";
+  approvalMode?: "full" | "initial-plan" | "initial-plan-recursive";
+  approvalSource?: "manual" | "auto" | "none";
+  approvalReason?: string;
+  spawnedAfterInitialApproval?: boolean;
+  autoApprovalPaused?: boolean;
   depth: number;
   status: ExecutionStatus;
 };
@@ -50,6 +55,22 @@ type SessionSnapshot = {
   graph: ExecutionGraph;
   status: ExecutionStatus;
   activeNodeId?: string;
+  approvalMode: "full" | "initial-plan" | "initial-plan-recursive";
+  autoApprovalPaused: boolean;
+  runSummary?: { message?: string };
+};
+
+/** Mirror `labelForCategory` / status strings in `src/domain/execution-failure.ts` for header copy. */
+const uiRunStatusLabels: Record<ExecutionStatus, string> = {
+  planned: "Planned",
+  ready: "Ready",
+  awaiting_approval: "Awaiting approval",
+  approved: "Approved",
+  running: "Running",
+  completed: "Completed",
+  skipped: "Skipped",
+  failed: "Failed",
+  cancelled: "Cancelled",
 };
 
 type FlowNodeData = {
@@ -64,6 +85,8 @@ function App() {
   const [snapshot, setSnapshot] = useState<SessionSnapshot>({
     graph: { nodes: [], edges: [] },
     status: "planned",
+    approvalMode: "full",
+    autoApprovalPaused: false,
   });
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
@@ -120,7 +143,22 @@ function App() {
       </section>
       <aside className="inspector">
         <header>
-          <span className={`status ${snapshot.status}`}>{snapshot.status}</span>
+          <div className="run-status-block">
+            <span className={`status ${snapshot.status}`} title={snapshot.runSummary?.message}>
+              {uiRunStatusLabels[snapshot.status] ?? snapshot.status}
+            </span>
+            {snapshot.status === "failed" && snapshot.runSummary?.message
+              ? <span className="run-failure-hint">{snapshot.runSummary.message}</span>
+              : null}
+          </div>
+          <span className="meta-pill">{approvalModeLabel(snapshot.approvalMode)}</span>
+          <button
+            className="icon"
+            title="Pause future auto-approvals"
+            onClick={() => runAction(setErrorMessage, () => post("/api/pause-future-auto-approvals", {}), refresh)}
+          >
+            Pause future auto
+          </button>
           <button
             className="icon danger"
             title="Stop run"
@@ -151,6 +189,9 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
       <div className="node-models">
         <div>P: {node.plannedModel ?? "resolved-at-runtime"}</div>
         <div>E: {node.effectiveModel ?? "pending"}</div>
+        <div>Mode: {node.approvalMode ?? "full"}</div>
+        <div>Approval: {node.approvalSource ?? "none"}</div>
+        {node.spawnedAfterInitialApproval ? <div className="badge">spawned branch</div> : null}
       </div>
       <Handle type="source" position={Position.Right} />
     </div>
@@ -188,6 +229,12 @@ function NodeInspector(
         <div className="meta-row">Planned: {node.plannedModel ?? "resolved-at-runtime"}</div>
         <div className="meta-row">Effective: {node.effectiveModel ?? "pending"}</div>
         <div className="meta-row">Override Source: {node.modelOverrideSource ?? "none"}</div>
+      </div>
+      <div>
+        <label>Approval</label>
+        <div className="meta-row">Mode: {approvalModeLabel(node.approvalMode ?? "full")}</div>
+        <div className="meta-row">Source: {node.approvalSource ?? "none"}</div>
+        <div className="meta-row">Spawned after initial approval: {String(node.spawnedAfterInitialApproval ?? false)}</div>
       </div>
       <div>
         <label>Model Override</label>
@@ -301,3 +348,13 @@ async function post(path: string, body: Record<string, unknown>) {
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+function approvalModeLabel(mode: "full" | "initial-plan" | "initial-plan-recursive"): string {
+  if (mode === "initial-plan") {
+    return "Initial plan";
+  }
+  if (mode === "initial-plan-recursive") {
+    return "Initial plan + recursive";
+  }
+  return "Full checkpoints";
+}

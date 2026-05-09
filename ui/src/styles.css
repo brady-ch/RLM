@@ -31,6 +31,13 @@ button:disabled {
   opacity: 0.42;
 }
 
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #2d6cdf;
+  outline-offset: 2px;
+}
+
 .shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
@@ -66,12 +73,44 @@ button:disabled {
   background: #923b34;
 }
 
+.run-status-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 220px;
+}
+
+.run-failure-hint {
+  color: #7a2a2a;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .status {
   border: 1px solid #cad3ce;
   border-radius: 999px;
   font-size: 12px;
   padding: 5px 9px;
   text-transform: uppercase;
+}
+
+.status.failed {
+  background: #fde8e8;
+  border-color: #a53d3d;
+  color: #5c1f1f;
+  font-weight: 600;
+}
+
+.status.cancelled {
+  background: #f2f2f2;
+  border-color: #8a8f8b;
+}
+
+.meta-pill {
+  border: 1px solid #cad3ce;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 5px 9px;
 }
 
 .node-card {
@@ -120,6 +159,17 @@ button:disabled {
   color: #56665d;
   font-size: 11px;
   margin-top: 10px;
+}
+
+.badge {
+  background: #e8f0ff;
+  border: 1px solid #b7c9ef;
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 10px;
+  margin-top: 4px;
+  padding: 2px 8px;
+  text-transform: uppercase;
 }
 
 .node-inspector {
