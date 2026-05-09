@@ -13,7 +13,7 @@ This is not a hosted product: it runs on your machine, reads [`rlm.config.yaml`]
 
 ## Non-goals
 
-- No cloud orchestration or accounts; you bring Ollama and optional API keys for tools (for example web search).
+- No cloud orchestration or accounts; you bring Ollama and optional dependencies for tools (for example `curl` and `sed` for web search).
 - You are not forced into one global model: configuration chooses how monolithic or split the stack is.
 
 ## How it works
@@ -48,7 +48,7 @@ flowchart LR
 
 - **Node.js** (see `package.json` engines if added later).
 - **Ollama** installed and running, with the models referenced in `models.tiers` / `models.default` pulled locally.
-- Optional: **`SERPAPI_API_KEY`** in the environment if any agent uses the `google_search` tool ([`src/adapters/serpapi-google-search-tool.ts`](src/adapters/serpapi-google-search-tool.ts)).
+- **`curl`** and **`sed`** installed on your `PATH` if any agent uses the **`web_search`** tool ([`src/adapters/web-search-tool.ts`](src/adapters/web-search-tool.ts)). The provider may block automated requests with an interactive challenge; use a normal desktop network if that happens.
 
 ## Install and build
 
@@ -82,7 +82,6 @@ npx rlm "Plan a small CLI feature" --workflow default --verbose
 | `OLLAMA_HOST` | Default Ollama base URL (overridable with `--base-url`). |
 | `RLM_MODEL` | Same as `--model`: overrides the YAML default model (see `applyModelOverride` in [`project-config.ts`](src/application/project-config.ts)). |
 | `RLM_VERBOSE` | `1` or `true` enables stderr progress logging (same idea as `--verbose`). |
-| `SERPAPI_API_KEY` | Required for the `google_search` tool. |
 
 ## Configuration (`rlm.config.yaml`)
 
@@ -94,7 +93,7 @@ High-level sections (validated by [`src/application/project-config.ts`](src/appl
 | `models.tiers` | Named tiers (`small`, `medium`, …): each has `name` (Ollama tag), `estimatedRamMb`, optional `alternateModels` for rotation. |
 | `models.rotation` | Optional A/B-style rotation: `enabled`, `sampleRate`, `scorePath`, optional `evaluatorTier`. |
 | `agents.<id>.models` | Maps each **purpose** to a tier name or `dynamic` (tier scales with estimated recursion depth). |
-| `agents.<id>.tools` | Tool ids wired in the CLI (`shell`, `write_file`, `google_search`, `web_fetch`). Unknown names fail at startup. |
+| `agents.<id>.tools` | Tool ids wired in the CLI (`shell`, `write_file`, `web_search`, `web_fetch`). Unknown names fail at startup. |
 | `workflows.<id>` | `mode: ram_queue`, `agents: [...]`, `continueOnError`, optional `qa` (agent + `validationCommands` + `bugfixQueue`), optional `dispatch` with `strategy: complexity_tiers` to vary agents by estimated prompt depth. |
 | `memory` | RAM caps and waiting behavior for concurrent workflow agents. |
 | `runtime` | Defaults for `maxDynamicDepth`, `maxBranches`, `maxPromptCharacters`, `maxModelCalls`, `maxToolRounds`, optional `maxDepth`. |

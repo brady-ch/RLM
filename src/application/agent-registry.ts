@@ -38,7 +38,7 @@ export function createAgentRegistry(input: {
       systemPrompt:
         "You are a coding agent. Inspect the workspace before changing behavior, prefer small scoped edits, " +
         "use shell for read-only inspection and write_file for file changes, and verify with targeted tests or type checks when possible. " +
-        "For external docs, use google_search, then web_fetch to extract the most relevant page sections before answering.",
+        "For external docs, use web_search, then web_fetch to extract the most relevant page sections before answering.",
       tools: codingTools,
       routingHints: [
         "code",
@@ -87,7 +87,7 @@ export function createAgentRegistry(input: {
       description: "Product design specialist with research and artifact-writing tools.",
       systemPrompt:
         "You are a product designer. Focus on user goals, product flows, UX tradeoffs, information architecture, " +
-        "interface states, and concise design artifacts. Use google_search for market or pattern research, web_fetch to analyze chosen pages, " +
+        "interface states, and concise design artifacts. Use web_search for market or pattern research, web_fetch to analyze chosen pages, " +
         "and write_file for specs when useful.",
       tools: productDesignerTools,
       routingHints: [
@@ -110,12 +110,12 @@ export function createAgentRegistry(input: {
       id: "research",
       description: "Research specialist with web search access and source-grounded answers.",
       systemPrompt:
-        "You are a research specialist. Use google_search for current facts, source-backed claims, comparisons, and verification. " +
+        "You are a research specialist. Use web_search for current facts, source-backed claims, comparisons, and verification. " +
         "Build focused searches with exact phrases, required terms, excluded terms, site filters, filetype filters, and date bounds where useful. " +
         "Fetch promising result URLs with web_fetch, use the selected content-tree sections, prefer primary or official sources, " +
         "and cite the links you rely on in the final answer.",
       tools: input.researchTools,
-      routingHints: ["research", "search", "google", "latest", "current", "source", "sources", "cite", "verify", "compare"],
+      routingHints: ["research", "search", "lookup", "latest", "current", "source", "sources", "cite", "verify", "compare"],
       config: agentConfigOrThrow(agentConfigs, "research"),
     },
   );

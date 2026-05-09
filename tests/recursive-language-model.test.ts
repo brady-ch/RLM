@@ -15,7 +15,8 @@ import type { ToolExecutionResult, ToolPort } from "../src/ports/tool-port.js";
 import { InMemoryTrace } from "../src/adapters/in-memory-trace.js";
 import { GuardedShellTool } from "../src/adapters/guarded-shell-tool.js";
 import { WorkspaceFileWriteTool } from "../src/adapters/workspace-file-write-tool.js";
-import { SerpApiGoogleSearchTool, buildGoogleQuery } from "../src/adapters/serpapi-google-search-tool.js";
+import { buildSearchQuery } from "../src/adapters/search-query.js";
+import { WebSearchTool, parseUddgLines } from "../src/adapters/web-search-tool.js";
 import { WebFetchTool } from "../src/adapters/web-fetch-tool.js";
 import { analyzeHtmlContent, stripFluffWords, stripHtmlTags } from "../src/application/content-tree.js";
 import { createAgentRegistry, selectAgent } from "../src/application/agent-registry.js";
@@ -569,7 +570,7 @@ test("agent profiles expose scoped tool sets", () => {
   const webFetchTool = new EchoTool();
   Object.defineProperty(shellTool, "name", { value: "shell" });
   Object.defineProperty(writeTool, "name", { value: "write_file" });
-  Object.defineProperty(searchTool, "name", { value: "google_search" });
+  Object.defineProperty(searchTool, "name", { value: "web_search" });
   Object.defineProperty(webFetchTool, "name", { value: "web_fetch" });
   const registry = createAgentRegistry({
     defaultTools: [shellTool, writeTool, searchTool, webFetchTool],
@@ -581,16 +582,16 @@ test("agent profiles expose scoped tool sets", () => {
   assert.deepEqual(selectAgent(registry, "Fix the CLI", "coding").tools.map((tool) => tool.name), [
     "shell",
     "write_file",
-    "google_search",
+    "web_search",
     "web_fetch",
   ]);
   assert.deepEqual(selectAgent(registry, "Design a settings page", "product_designer").tools.map((tool) => tool.name), [
-    "google_search",
+    "web_search",
     "web_fetch",
     "write_file",
   ]);
   assert.deepEqual(selectAgent(registry, "Research docs", "research").tools.map((tool) => tool.name), [
-    "google_search",
+    "web_search",
     "web_fetch",
   ]);
 });
@@ -972,8 +973,8 @@ test("workflow dispatch tiers run complex agent sets and QA for complex prompts"
   assert.equal(result.metadata.modelCalls, 4);
 });
 
-test("google search query builder applies search operators", () => {
-  const query = buildGoogleQuery({
+test("search query builder applies search operators", () => {
+  const query = buildSearchQuery({
     terms: ["recursive language model"],
     exactPhrases: ["tool calling"],
     requiredTerms: ["benchmark"],
@@ -990,9 +991,20 @@ test("google search query builder applies search operators", () => {
   );
 });
 
-test("google search tool rejects missing SerpAPI key", async () => {
-  const tool = new SerpApiGoogleSearchTool({
-    apiKey: "",
+test("parseUddgLines extracts title, link, and optional snippet", () => {
+  const htmlLine =
+    `<a class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fdocs">Official docs</a>`;
+  assert.deepEqual(parseUddgLines(htmlLine), [{
+    title: "Official docs",
+    link: "https://example.com/docs",
+    snippet: "",
+  }]);
+});
+
+test("web_search returns error when provider serves an interactive challenge", async () => {
+  const tool = new WebSearchTool({
+    runCurl: async () =>
+      "<html><div class=\"anomaly-modal__title\">blocked</div></html>",
   });
 
   const result = await tool.execute({
@@ -1000,29 +1012,19 @@ test("google search tool rejects missing SerpAPI key", async () => {
   });
 
   assert.equal(result.status, "error");
-  assert.match(result.output, /SERPAPI_API_KEY/);
+  assert.match(result.output, /interactive challenge|automated access blocked/i);
 });
 
-test("google search tool normalizes SerpAPI organic results", async () => {
-  let requestedUrl: URL | undefined;
-  const tool = new SerpApiGoogleSearchTool({
-    apiKey: "test-key",
-    fetchFn: async (input) => {
-      requestedUrl = input instanceof URL ? input : new URL(String(input));
-      return new Response(JSON.stringify({
-        organic_results: [
-          {
-            position: 1,
-            title: "Official docs",
-            link: "https://example.com/docs",
-            displayed_link: "example.com/docs",
-            snippet: "A useful result.",
-            date: "May 1, 2026",
-          },
-        ],
-      }), {
-        status: 200,
-      });
+test("web_search parses DuckDuckGo-style redirect HTML", async () => {
+  let requestedUrl = "";
+  const fixture = `<!DOCTYPE html><html><body>
+<a class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fdocs">Official docs</a>
+</body></html>`;
+
+  const tool = new WebSearchTool({
+    runCurl: async (url) => {
+      requestedUrl = url;
+      return fixture;
     },
   });
 
@@ -1032,8 +1034,8 @@ test("google search tool normalizes SerpAPI organic results", async () => {
   });
 
   assert.equal(result.status, "success");
-  assert.equal(requestedUrl?.searchParams.get("engine"), "google");
-  assert.equal(requestedUrl?.searchParams.get("q"), '"tool calling" site:example.com');
+  const u = new URL(requestedUrl);
+  assert.equal(u.searchParams.get("q"), '"tool calling" site:example.com');
   const output = JSON.parse(result.output);
   assert.equal(output.query, '"tool calling" site:example.com');
   assert.deepEqual(output.results, [
@@ -1041,9 +1043,7 @@ test("google search tool normalizes SerpAPI organic results", async () => {
       position: 1,
       title: "Official docs",
       link: "https://example.com/docs",
-      displayedLink: "example.com/docs",
-      snippet: "A useful result.",
-      date: "May 1, 2026",
+      snippet: "",
     },
   ]);
 });
@@ -1155,7 +1155,7 @@ agents:
       summarize: small
       synthesize: small
   research:
-    tools: [google_search]
+    tools: [web_search]
     models:
       depth: small
       classify: small

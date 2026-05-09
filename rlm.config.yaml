@@ -33,7 +33,7 @@ runtime:
 
 agents:
   default:
-    tools: [shell, write_file, google_search, web_fetch]
+    tools: [shell, write_file, web_search, web_fetch]
     models:
       depth: small
       classify: small
@@ -42,7 +42,7 @@ agents:
       summarize: small
       synthesize: small
   coding:
-    tools: [shell, write_file, google_search, web_fetch]
+    tools: [shell, write_file, web_search, web_fetch]
     models:
       depth: small
       classify: small
@@ -60,7 +60,7 @@ agents:
       summarize: small
       synthesize: small
   product_designer:
-    tools: [google_search, web_fetch, write_file]
+    tools: [web_search, web_fetch, write_file]
     models:
       depth: small
       classify: small
@@ -69,7 +69,7 @@ agents:
       summarize: small
       synthesize: small
   research:
-    tools: [google_search, web_fetch]
+    tools: [web_search, web_fetch]
     models:
       depth: small
       classify: small

@@ -215,11 +215,11 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
   },
   agents: {
     default: {
-      tools: ["shell", "write_file", "google_search", "web_fetch"],
+      tools: ["shell", "write_file", "web_search", "web_fetch"],
       models: defaultAgentModels(),
     },
     coding: {
-      tools: ["shell", "write_file", "google_search", "web_fetch"],
+      tools: ["shell", "write_file", "web_search", "web_fetch"],
       models: defaultAgentModels(),
     },
     qa: {
@@ -227,11 +227,11 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
       models: defaultAgentModels(),
     },
     product_designer: {
-      tools: ["google_search", "web_fetch", "write_file"],
+      tools: ["web_search", "web_fetch", "write_file"],
       models: defaultAgentModels(),
     },
     research: {
-      tools: ["google_search", "web_fetch"],
+      tools: ["web_search", "web_fetch"],
       models: defaultAgentModels(),
     },
   },
