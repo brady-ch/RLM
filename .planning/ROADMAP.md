@@ -17,7 +17,7 @@
 
 **Requirements:** PLAN-01, APRV-01
 
-### Phase 2: Interactive Graph Mutation at Checkpoints
+### Phase 2: Interactive Graph Mutation at Checkpoints ✅ (Completed 2026-05-08)
 **Goal:** Allow safe in-memory node edit/add/delete at every paused checkpoint.
 **Mode:** mvp
 **Success Criteria**:
@@ -68,9 +68,9 @@
 | PLAN-01 | Phase 1 | Complete |
 | PLAN-02 | Phase 3 | Pending |
 | APRV-01 | Phase 1 | Complete |
-| APRV-02 | Phase 2 | Pending |
-| APRV-03 | Phase 2 | Pending |
-| APRV-04 | Phase 2 | Pending |
+| APRV-02 | Phase 2 | Complete |
+| APRV-03 | Phase 2 | Complete |
+| APRV-04 | Phase 2 | Complete |
 | APRV-05 | Phase 4 | Pending |
 | MODL-01 | Phase 3 | Pending |
 | MODL-02 | Phase 3 | Pending |
@@ -78,7 +78,7 @@
 | RECR-01 | Phase 4 | Pending |
 | RECR-02 | Phase 4 | Pending |
 | ERRO-01 | Phase 5 | Pending |
-| ERRO-02 | Phase 2 | Pending |
+| ERRO-02 | Phase 2 | Complete |
 | ERRO-03 | Phase 5 | Pending |
 
 **Coverage:**

@@ -18,6 +18,8 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Tool adapters for shell, file write, web search, and web fetch exist — existing
 - ✓ User can submit a prompt and receive a planning node graph before execution — Phase 1
 - ✓ Approval checkpoints are backend-authoritative with explicit stale/duplicate handling — Phase 1
+- ✓ Checkpoint graph mutations (edit/add/delete/connect) are controller-authoritative and in-memory — Phase 2
+- ✓ Mutation validation failures are explicit and structured for UI/CLI handling — Phase 2
 
 ### Active
 
@@ -74,4 +76,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-08 after Phase 1 completion*
+*Last updated: 2026-05-08 after Phase 2 completion*
