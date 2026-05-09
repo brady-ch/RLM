@@ -28,7 +28,7 @@
 
 **Requirements:** APRV-02, APRV-03, APRV-04, ERRO-02
 
-### Phase 3: Model-Aware Node Planning and Overrides
+### Phase 3: Model-Aware Node Planning and Overrides ✅ (Completed 2026-05-08)
 **Goal:** Make model assignment a first-class, visible, and overridable property per node.
 **Mode:** mvp
 **Success Criteria**:
@@ -66,15 +66,15 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PLAN-01 | Phase 1 | Complete |
-| PLAN-02 | Phase 3 | Pending |
+| PLAN-02 | Phase 3 | Complete |
 | APRV-01 | Phase 1 | Complete |
 | APRV-02 | Phase 2 | Complete |
 | APRV-03 | Phase 2 | Complete |
 | APRV-04 | Phase 2 | Complete |
 | APRV-05 | Phase 4 | Pending |
-| MODL-01 | Phase 3 | Pending |
-| MODL-02 | Phase 3 | Pending |
-| MODL-03 | Phase 3 | Pending |
+| MODL-01 | Phase 3 | Complete |
+| MODL-02 | Phase 3 | Complete |
+| MODL-03 | Phase 3 | Complete |
 | RECR-01 | Phase 4 | Pending |
 | RECR-02 | Phase 4 | Pending |
 | ERRO-01 | Phase 5 | Pending |

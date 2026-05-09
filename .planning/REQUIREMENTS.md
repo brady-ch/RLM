@@ -8,7 +8,7 @@
 ### Planning
 
 - [ ] **PLAN-01**: User can submit a prompt and receive an execution node graph plan before child-node execution starts.
-- [ ] **PLAN-02**: Planned nodes include intended model assignment metadata.
+- [x] **PLAN-02**: Planned nodes include intended model assignment metadata.
 
 ### Approval and Graph Editing
 
@@ -20,9 +20,9 @@
 
 ### Model Routing
 
-- [ ] **MODL-01**: Each node card displays planned model assignment in the UI.
-- [ ] **MODL-02**: User can override model assignment per node before resuming.
-- [ ] **MODL-03**: Runtime executes each node using the final assignment (planned or user-overridden) and supports cross-model handoff to final result node.
+- [x] **MODL-01**: Each node card displays planned model assignment in the UI.
+- [x] **MODL-02**: User can override model assignment per node before resuming.
+- [x] **MODL-03**: Runtime executes each node using the final assignment (planned or user-overridden) and supports cross-model handoff to final result node.
 
 ### Recursive Execution
 
@@ -56,15 +56,15 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PLAN-01 | Phase 1 | Complete |
-| PLAN-02 | Phase 3 | Pending |
+| PLAN-02 | Phase 3 | Complete |
 | APRV-01 | Phase 1 | Complete |
 | APRV-02 | Phase 2 | Complete |
 | APRV-03 | Phase 2 | Complete |
 | APRV-04 | Phase 2 | Complete |
 | APRV-05 | Phase 4 | Pending |
-| MODL-01 | Phase 3 | Pending |
-| MODL-02 | Phase 3 | Pending |
-| MODL-03 | Phase 3 | Pending |
+| MODL-01 | Phase 3 | Complete |
+| MODL-02 | Phase 3 | Complete |
+| MODL-03 | Phase 3 | Complete |
 | RECR-01 | Phase 4 | Pending |
 | RECR-02 | Phase 4 | Pending |
 | ERRO-01 | Phase 5 | Pending |
@@ -78,4 +78,4 @@
 
 ---
 *Requirements defined: 2026-05-08*
-*Last updated: 2026-05-08 after initial definition*
+*Last updated: 2026-05-08 after Phase 3 completion*

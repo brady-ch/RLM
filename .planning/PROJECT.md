@@ -20,14 +20,17 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Approval checkpoints are backend-authoritative with explicit stale/duplicate handling — Phase 1
 - ✓ Checkpoint graph mutations (edit/add/delete/connect) are controller-authoritative and in-memory — Phase 2
 - ✓ Mutation validation failures are explicit and structured for UI/CLI handling — Phase 2
+- ✓ Planned/effective model metadata is captured and surfaced per node — Phase 3
+- ✓ Per-node model overrides at checkpoints route execution model selection — Phase 3
+- ✓ Explicit selected-model failures are strict and user-visible (no silent fallback) — Phase 3
 
 ### Active
 
 - [ ] User can submit a prompt and receive a planning node graph before execution.
 - [ ] Execution pauses at every approval checkpoint and allows node edit/delete/add before continuing.
-- [ ] Each node card displays the model planned for that node.
-- [ ] Planning can assign model per downstream node, including final-node handoff to a different model.
-- [ ] User can override node model assignments before execution resumes.
+- [x] Each node card displays the model planned for that node.
+- [x] Planning can assign model per downstream node, including final-node handoff to a different model.
+- [x] User can override node model assignments before execution resumes.
 - [ ] User can enable an override mode that requires only initial-plan approval and then runs without further approvals.
 - [ ] Recursive execution can spawn additional agents/nodes when needed while respecting approval/override behavior.
 - [ ] Failures are always surfaced to the user (UI and/or CLI) with no silent failure paths.
@@ -76,4 +79,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-08 after Phase 2 completion*
+*Last updated: 2026-05-08 after Phase 3 completion*
