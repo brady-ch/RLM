@@ -46,7 +46,7 @@ flowchart LR
 
 ## Prerequisites
 
-- **Node.js** (see `package.json` engines if added later).
+- **Node.js** (a current LTS release is a practical baseline).
 - **Ollama** installed and running, with the models referenced in `models.tiers` / `models.default` pulled locally.
 - **`curl`** and **`sed`** installed on your `PATH` if any agent uses the **`web_search`** tool ([`src/adapters/web-search-tool.ts`](src/adapters/web-search-tool.ts)). The provider may block automated requests with an interactive challenge; use a normal desktop network if that happens.
 
