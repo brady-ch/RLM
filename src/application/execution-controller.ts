@@ -3,6 +3,7 @@ import type {
   ExecutionEvent,
   ExecutionGraph,
   ExecutionGraphNode,
+  GraphMutationError,
   ExecutionStatus,
   NodeApprovalDecision,
 } from "../domain/types.js";
@@ -29,6 +30,19 @@ type PendingApproval = {
   resolve: (decision: NodeApprovalDecision) => void;
   token: string;
 };
+
+class MutationError extends Error implements GraphMutationError {
+  constructor(
+    public readonly code: string,
+    message: string,
+    public readonly nodeIds: string[],
+    public readonly details?: string,
+    public readonly suggestedFix?: string,
+  ) {
+    super(message);
+    this.name = "MutationError";
+  }
+}
 
 export class InteractiveExecutionSession {
   private readonly nodes = new Map<string, ExecutionGraphNode>();
@@ -99,6 +113,80 @@ export class InteractiveExecutionSession {
     node.prompt = normalized;
     node.label = preview(normalized, 80);
     this.publish({ type: "execution", status: node.status, nodeId, message: "node prompt edited" });
+  }
+
+  addNode(input: {
+    parentId: string;
+    prompt: string;
+    kind?: ExecutionGraphNode["kind"];
+  }): ExecutionGraphNode {
+    const parent = this.nodes.get(input.parentId);
+    if (!parent) {
+      throw new MutationError("invalid_parent", `Unknown parent node "${input.parentId}".`, [input.parentId], undefined, "Choose an existing parent node.");
+    }
+    const normalized = input.prompt.trim();
+    if (!normalized) {
+      throw new MutationError("invalid_prompt", "Node prompt cannot be empty.", [input.parentId], undefined, "Provide a non-empty prompt.");
+    }
+    const parentDepth = parent.depth;
+    if (parentDepth + 1 > 64) {
+      throw new MutationError("max_depth_exceeded", "Node depth exceeds configured max depth guardrail.", [input.parentId], `depth=${parentDepth + 1}`, "Attach under a shallower parent.");
+    }
+    const id = `task-manual-${this.nodes.size + 1}`;
+    const node: ExecutionGraphNode = {
+      id,
+      parentId: input.parentId,
+      kind: input.kind ?? "task",
+      label: preview(normalized, 80),
+      prompt: normalized,
+      originalPrompt: normalized,
+      editableFields: ["prompt"],
+      depth: parentDepth + 1,
+      status: "ready",
+    };
+    this.registerNode(node);
+    this.reevaluateSubtreeFrom(input.parentId);
+    return node;
+  }
+
+  connectNode(input: { nodeId: string; parentId: string }): void {
+    const node = this.nodes.get(input.nodeId);
+    const parent = this.nodes.get(input.parentId);
+    if (!node || !parent) {
+      throw new MutationError("unknown_node", "Cannot connect unknown nodes.", [input.nodeId, input.parentId], undefined, "Select valid existing nodes.");
+    }
+    node.parentId = input.parentId;
+    node.depth = parent.depth + 1;
+    if (node.depth > 64) {
+      throw new MutationError("max_depth_exceeded", "Node depth exceeds configured max depth guardrail.", [node.id, parent.id], `depth=${node.depth}`, "Connect under a shallower parent.");
+    }
+    if (!this.edges.some((edge) => edge.from === input.parentId && edge.to === input.nodeId)) {
+      this.edges.push({ from: input.parentId, to: input.nodeId });
+    }
+    this.reevaluateSubtreeFrom(input.parentId);
+  }
+
+  deleteNode(nodeId: string): { deleted: string[] } {
+    if (!this.nodes.has(nodeId)) {
+      throw new MutationError("unknown_node", `Unknown node "${nodeId}".`, [nodeId], undefined, "Select an existing node.");
+    }
+    const deleted = this.collectDescendants(nodeId);
+    for (const id of deleted) {
+      this.nodes.delete(id);
+      this.pending.delete(id);
+      this.statusWaiters.delete(id);
+    }
+    for (let i = this.edges.length - 1; i >= 0; i -= 1) {
+      const edge = this.edges[i];
+      if (!edge) {
+        continue;
+      }
+      if (deleted.includes(edge.from) || deleted.includes(edge.to)) {
+        this.edges.splice(i, 1);
+      }
+    }
+    this.publish({ type: "execution", status: "ready", message: `deleted ${deleted.length} node(s)` });
+    return { deleted };
   }
 
   approveNode(nodeId: string, token?: string): { duplicate: boolean } {
@@ -227,6 +315,19 @@ export class InteractiveExecutionSession {
     });
   }
 
+  toMutationError(error: unknown): GraphMutationError | undefined {
+    if (error instanceof MutationError) {
+      return {
+        code: error.code,
+        message: error.message,
+        nodeIds: error.nodeIds,
+        details: error.details,
+        suggestedFix: error.suggestedFix,
+      };
+    }
+    return undefined;
+  }
+
   private requireEditableNode(nodeId: string): ExecutionGraphNode {
     const node = this.nodes.get(nodeId);
     if (!node) {
@@ -242,6 +343,30 @@ export class InteractiveExecutionSession {
     for (const subscriber of this.subscribers) {
       subscriber(event);
     }
+  }
+
+  private collectDescendants(nodeId: string): string[] {
+    const result = [nodeId];
+    for (let i = 0; i < result.length; i += 1) {
+      const current = result[i];
+      for (const node of this.nodes.values()) {
+        if (node.parentId === current && !result.includes(node.id)) {
+          result.push(node.id);
+        }
+      }
+    }
+    return result;
+  }
+
+  private reevaluateSubtreeFrom(nodeId: string): void {
+    for (const node of this.nodes.values()) {
+      if (node.parentId === nodeId) {
+        node.status = "ready";
+        node.startedAt = undefined;
+        node.completedAt = undefined;
+      }
+    }
+    this.publish({ type: "execution", status: "ready", nodeId, message: "subtree scheduled for reevaluation" });
   }
 
   private notifyStatusWaiters(node: ExecutionGraphNode): void {

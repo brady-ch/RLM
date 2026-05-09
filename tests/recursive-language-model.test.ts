@@ -358,6 +358,50 @@ test("interactive execution treats duplicate approval token as no-op", async () 
   assert.equal(result.answer, "approved answer");
 });
 
+test("interactive execution session supports add/connect/delete mutations at checkpoint", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel(["approved answer"]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession();
+
+  const run = engine.run({
+    prompt: "mutation test",
+    config: {
+      ...config,
+      maxDepth: 0,
+    },
+    execution: session.control,
+  });
+
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  const child = session.addNode({ parentId: "task-1", prompt: "child prompt" });
+  session.connectNode({ nodeId: child.id, parentId: "task-1" });
+  const deleted = session.deleteNode(child.id);
+  assert.ok(deleted.deleted.includes(child.id));
+
+  const token = session.snapshot().graph.nodes.find((node) => node.id === "task-1")?.approvalToken;
+  assert.ok(token);
+  session.approveNode("task-1", token);
+  const result = await run;
+  assert.equal(result.answer, "approved answer");
+});
+
+test("interactive execution session returns structured mutation errors", () => {
+  const session = createInteractiveExecutionSession();
+  const err = (() => {
+    try {
+      session.addNode({ parentId: "missing", prompt: "child" });
+      return null;
+    } catch (error) {
+      return session.toMutationError(error);
+    }
+  })();
+
+  assert.ok(err);
+  assert.equal(err?.code, "invalid_parent");
+  assert.ok(Array.isArray(err?.nodeIds));
+});
+
 test("stops recursive expansion when model call budget is nearly exhausted", async () => {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(

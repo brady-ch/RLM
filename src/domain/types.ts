@@ -158,6 +158,14 @@ export interface NodeApprovalDecision {
   prompt: string;
 }
 
+export interface GraphMutationError {
+  code: string;
+  message: string;
+  nodeIds: string[];
+  details?: string | undefined;
+  suggestedFix?: string | undefined;
+}
+
 export interface TokenUsageTrace {
   inputTokens: number;
   outputTokens: number;
