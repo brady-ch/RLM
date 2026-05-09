@@ -2,15 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Interop, chat-first, plugins, constrained tools
-status: planning
-last_updated: "2026-05-09T22:38:51.680Z"
-last_activity: 2026-05-09
+status: Roadmap defined
+last_updated: "2026-05-09T23:53:05.652Z"
+last_activity: 2026-05-09 — v1.1 roadmap written (Phases 6–9, 7 requirements mapped)
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
