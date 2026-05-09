@@ -34,6 +34,14 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
     `tokens: input=${result.metadata.tokenUsage.inputTokens} output=${result.metadata.tokenUsage.outputTokens} total=${result.metadata.tokenUsage.totalTokens} unknown=${result.metadata.tokenUsage.unknownCompletions}`,
     `answer: ${singleLine(result.answer)}`,
   ];
+  if (result.metadata.executionGraph?.nodes.length) {
+    lines.push("nodeModels:");
+    for (const node of result.metadata.executionGraph.nodes) {
+      lines.push(
+        `- ${node.id} planned=${node.plannedModel ?? "resolved-at-runtime"} override=${node.modelOverride ?? "none"} source=${node.modelOverrideSource ?? "none"} effective=${node.effectiveModel ?? "pending"}`,
+      );
+    }
+  }
 
   if (options.includeTrace) {
     lines.push(
@@ -53,6 +61,8 @@ function renderJson(result: RecursivePromptResult, options: RenderOptions): stri
     configPath: result.metadata.configPath,
     workflow: result.metadata.workflow,
     workflowQueues: result.metadata.workflowQueues,
+    executionGraph: result.metadata.executionGraph,
+    executionStatus: result.metadata.executionStatus,
     depth: result.metadata.depth,
     modelSelections: result.metadata.modelSelections,
     memoryReservations: result.metadata.memoryReservations,

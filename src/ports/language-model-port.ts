@@ -14,6 +14,7 @@ export interface LanguageModelCompleteOptions {
   tools?: LanguageModelTool[];
   purpose?: LanguageModelPurpose | undefined;
   complexityDepth?: number;
+  overrideModel?: string | undefined;
 }
 
 export type LanguageModelPurpose = "depth" | "classify" | "decompose" | "answer" | "summarize" | "synthesize";

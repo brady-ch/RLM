@@ -61,6 +61,12 @@ async function routeRequest(
       session.editNodePrompt(nodeId, String(body["prompt"] ?? ""));
       return sendJson(response, session.snapshot());
     }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/model$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const body = await readJsonBody(request);
+      session.setNodeModelOverride(nodeId, String(body["model"] ?? ""));
+      return sendJson(response, session.snapshot());
+    }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/approve$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const body = await readJsonBody(request);

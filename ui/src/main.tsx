@@ -33,6 +33,10 @@ type ExecutionNode = {
   prompt?: string;
   originalPrompt?: string;
   approvalToken?: string;
+  plannedModel?: string;
+  effectiveModel?: string;
+  modelOverride?: string;
+  modelOverrideSource?: "user" | "none";
   depth: number;
   status: ExecutionStatus;
 };
@@ -144,6 +148,10 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
         <b>{node.status}</b>
       </div>
       <div className="node-title">{node.label}</div>
+      <div className="node-models">
+        <div>P: {node.plannedModel ?? "resolved-at-runtime"}</div>
+        <div>E: {node.effectiveModel ?? "pending"}</div>
+      </div>
       <Handle type="source" position={Position.Right} />
     </div>
   );
@@ -153,11 +161,13 @@ function NodeInspector(
   { node, refresh, setErrorMessage }: { node: ExecutionNode; refresh: () => Promise<void>; setErrorMessage: (message: string | undefined) => void },
 ) {
   const [prompt, setPrompt] = useState(node.prompt ?? node.label);
+  const [modelOverride, setModelOverride] = useState(node.modelOverride ?? "");
   const [newChildPrompt, setNewChildPrompt] = useState("");
   const [connectParentId, setConnectParentId] = useState("");
 
   useEffect(() => {
     setPrompt(node.prompt ?? node.label);
+    setModelOverride(node.modelOverride ?? "");
   }, [node.id, node.label, node.prompt]);
 
   const editable = node.status === "planned" || node.status === "ready" || node.status === "awaiting_approval";
@@ -172,6 +182,29 @@ function NodeInspector(
       <div>
         <label>Prompt</label>
         <textarea value={prompt} disabled={!editable} onChange={(event) => setPrompt(event.target.value)} />
+      </div>
+      <div>
+        <label>Model Trail</label>
+        <div className="meta-row">Planned: {node.plannedModel ?? "resolved-at-runtime"}</div>
+        <div className="meta-row">Effective: {node.effectiveModel ?? "pending"}</div>
+        <div className="meta-row">Override Source: {node.modelOverrideSource ?? "none"}</div>
+      </div>
+      <div>
+        <label>Model Override</label>
+        <input
+          value={modelOverride}
+          disabled={!editable}
+          onChange={(event) => setModelOverride(event.target.value)}
+          placeholder="model-name"
+        />
+        <div className="actions">
+          <button
+            disabled={!editable || modelOverride.trim().length === 0}
+            onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/model`, { model: modelOverride }), refresh)}
+          >
+            Set model
+          </button>
+        </div>
       </div>
       <div className="actions">
         <button disabled={!editable} onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/edit`, { prompt }), refresh)}>
@@ -256,7 +289,14 @@ async function post(path: string, body: Record<string, unknown>) {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(await response.text());
+    const text = await response.text();
+    try {
+      const parsed = JSON.parse(text) as { error?: string; message?: string; details?: string; suggestedFix?: string };
+      const parts = [parsed.error ?? parsed.message, parsed.details, parsed.suggestedFix].filter(Boolean);
+      throw new Error(parts.join(" | "));
+    } catch {
+      throw new Error(text);
+    }
   }
 }
 

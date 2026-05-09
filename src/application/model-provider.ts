@@ -39,6 +39,31 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
     messages: LanguageModelMessage[],
     completeOptions: LanguageModelCompleteOptions = {},
   ): Promise<LanguageModelResponse> {
+    if (completeOptions.overrideModel) {
+      const model = completeOptions.overrideModel;
+      const response = await this.getModel(model).complete(messages, completeOptions);
+      response.model ??= model;
+      this.options.recordSelection?.({
+        purpose: completeOptions.purpose ?? "default",
+        model,
+        tier: "override",
+        estimatedRamMb: 0,
+        source: "configured",
+      });
+      this.options.logger?.log({
+        stage: "model",
+        message: "selected model",
+        data: {
+          purpose: completeOptions.purpose ?? "default",
+          model,
+          tier: "override",
+          estimatedRamMb: 0,
+          source: "configured",
+        },
+      });
+      return response;
+    }
+
     const selection = await this.selectModel(completeOptions.purpose, completeOptions.complexityDepth);
     this.options.recordSelection?.(selection);
     this.options.logger?.log({

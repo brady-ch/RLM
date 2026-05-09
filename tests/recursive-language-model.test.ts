@@ -51,6 +51,14 @@ class QueueModel implements LanguageModelPort {
   }
 }
 
+class ThrowingModel implements LanguageModelPort {
+  constructor(private readonly message: string) {}
+
+  async complete(): Promise<LanguageModelResponse> {
+    throw new Error(this.message);
+  }
+}
+
 class CaptureLogger implements RuntimeLogger {
   readonly events: RuntimeLogEvent[] = [];
 
@@ -400,6 +408,129 @@ test("interactive execution session returns structured mutation errors", () => {
   assert.ok(err);
   assert.equal(err?.code, "invalid_parent");
   assert.ok(Array.isArray(err?.nodeIds));
+});
+
+test("interactive execution applies model override to current node only", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel([
+    { content: "RECURSIVE", toolCalls: [], model: "planner" },
+    { content: "First child\nSecond child", toolCalls: [], model: "planner" },
+    { content: "first answer", toolCalls: [], model: "override-model" },
+    { content: "first summary", toolCalls: [], model: "override-model" },
+    { content: "second answer", toolCalls: [], model: "base-model" },
+    { content: "second summary", toolCalls: [], model: "base-model" },
+    { content: "combined", toolCalls: [], model: "planner" },
+  ]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession();
+
+  const run = engine.run({
+    prompt: "model override scope test",
+    config: {
+      ...config,
+      maxDepth: 1,
+    },
+    execution: session.control,
+  });
+
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+
+  await session.waitForNodeStatus("task-2", "awaiting_approval");
+  session.setNodeModelOverride("task-2", "override-model");
+  session.approveNode("task-2");
+
+  await session.waitForNodeStatus("task-3", "awaiting_approval");
+  session.approveNode("task-3");
+
+  const result = await run;
+  assert.equal(result.answer, "combined");
+  const overrideCalls = model.calls.filter((call) => call.options.overrideModel === "override-model");
+  const nonOverrideCalls = model.calls.filter((call) => call.options.overrideModel === undefined);
+  assert.ok(overrideCalls.length >= 1);
+  assert.ok(nonOverrideCalls.length >= 1);
+
+  const childWithOverride = result.metadata.executionGraph?.nodes.find((node) => node.id === "task-2");
+  const siblingNode = result.metadata.executionGraph?.nodes.find((node) => node.id === "task-3");
+  assert.equal(childWithOverride?.plannedModel, "override-model");
+  assert.equal(childWithOverride?.effectiveModel, "override-model");
+  assert.equal(childWithOverride?.modelOverrideSource, "user");
+  assert.equal(siblingNode?.modelOverride, undefined);
+});
+
+test("explicit node model override failure is strict and does not fallback", async () => {
+  const trace = new InMemoryTrace();
+  let defaultCalls = 0;
+  const routedModel = new PurposeRoutingLanguageModel({
+    config: {
+      models: {
+        default: "base-model",
+        tiers: {
+          small: { name: "base-model", estimatedRamMb: 10 },
+          medium: { name: "base-model", estimatedRamMb: 10 },
+          large: { name: "base-model", estimatedRamMb: 10 },
+        },
+        rotation: {
+          enabled: false,
+          sampleRate: 0,
+          scorePath: "scores.yaml",
+          evaluatorTier: "large",
+        },
+      },
+      agents: {},
+      workflows: {},
+      runtime: {
+        maxDynamicDepth: 1,
+        maxBranches: 1,
+        maxPromptCharacters: 1_000,
+        maxModelCalls: 10,
+        maxToolRounds: 1,
+      },
+      memory: {
+        maxRamMb: "auto",
+        reserveSystemRamMb: 0,
+        waitForCapacity: false,
+        capacityCheckIntervalMs: 1,
+      },
+    },
+    agent: {
+      tools: [],
+      models: {
+        classify: "small",
+        decompose: "small",
+        answer: "small",
+        summarize: "small",
+        synthesize: "small",
+        depth: "small",
+      },
+    },
+    createModel: (modelName) => {
+      if (modelName === "failing-model") {
+        return new ThrowingModel("selected model unavailable");
+      }
+      return {
+        complete: async () => {
+          defaultCalls += 1;
+          return { content: "fallback-used", toolCalls: [], model: modelName };
+        },
+      };
+    },
+  });
+  const engine = new RecursiveLanguageModel(routedModel, trace);
+  const session = createInteractiveExecutionSession();
+
+  const run = engine.run({
+    prompt: "strict fail",
+    config: { ...config, maxDepth: 0 },
+    execution: session.control,
+  });
+
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.setNodeModelOverride("task-1", "failing-model");
+  session.approveNode("task-1");
+
+  await assert.rejects(run, /selected model unavailable/);
+  assert.equal(defaultCalls, 0);
 });
 
 test("stops recursive expansion when model call budget is nearly exhausted", async () => {

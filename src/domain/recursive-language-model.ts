@@ -404,7 +404,9 @@ export class RecursiveLanguageModel {
         tools: allowTools ? [...this.toolsByName.values()] : [],
         purpose: toModelPurpose(kind),
         complexityDepth: this.metadata.depth.selected,
+        overrideModel: task.modelOverride,
       });
+      this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
       this.recordUsage(response.usage);
       this.log("completion", "completed model completion", {
         call: callNumber,
@@ -545,7 +547,9 @@ export class RecursiveLanguageModel {
       tools: [],
       purpose: toModelPurpose(kind),
       complexityDepth: this.metadata.depth.selected,
+      overrideModel: task.modelOverride,
     });
+    this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
     this.recordUsage(response.usage);
     this.log("completion", "completed model completion", {
       call: callNumber,
@@ -734,6 +738,9 @@ export class RecursiveLanguageModel {
         label: preview(label, 80),
         prompt: task.prompt,
         originalPrompt: task.prompt,
+        plannedModel: task.modelOverride ?? "resolved-at-runtime",
+        modelOverride: task.modelOverride,
+        modelOverrideSource: task.modelOverride ? "user" : "none",
         editableFields: ["prompt"],
         depth: task.depth,
         status: "ready",
@@ -814,6 +821,9 @@ export class RecursiveLanguageModel {
       label: preview(task.prompt, 80),
       prompt: task.prompt,
       originalPrompt: task.prompt,
+      plannedModel: task.modelOverride ?? "resolved-at-runtime",
+      modelOverride: task.modelOverride,
+      modelOverrideSource: task.modelOverride ? "user" : "none",
       editableFields: ["prompt"],
       depth: task.depth,
       status: "awaiting_approval",
@@ -824,9 +834,19 @@ export class RecursiveLanguageModel {
     const decision = await this.execution?.waitForNodeApproval?.(node);
     this.throwIfCancelled(task);
     if (!decision || decision.status === "approved") {
+      if (decision?.modelOverride) {
+        const executionNode = this.executionNodes.get(task.id);
+        if (executionNode) {
+          executionNode.modelOverride = decision.modelOverride;
+          executionNode.modelOverrideSource = "user";
+          executionNode.plannedModel = decision.modelOverride;
+          this.updateExecutionGraph();
+        }
+      }
       return {
         ...task,
         prompt: decision?.prompt ?? task.prompt,
+        modelOverride: decision?.modelOverride ?? task.modelOverride,
       };
     }
     if (decision.status === "skipped") {
@@ -854,6 +874,24 @@ export class RecursiveLanguageModel {
       modelCallsRemaining: this.remainingModelCalls(),
       toolCallsUsed: this.metadata.toolCalls.length,
     };
+  }
+
+  private updateExecutionNodeModel(nodeId: string, effectiveModel: string | undefined, overrideModel: string | undefined): void {
+    const node = this.executionNodes.get(nodeId);
+    if (!node) {
+      return;
+    }
+    if (overrideModel) {
+      node.modelOverride = overrideModel;
+      node.modelOverrideSource = "user";
+      node.plannedModel = overrideModel;
+    } else if (!node.plannedModel || node.plannedModel === "resolved-at-runtime") {
+      node.plannedModel = effectiveModel ?? node.plannedModel;
+    }
+    if (effectiveModel) {
+      node.effectiveModel = effectiveModel;
+    }
+    this.updateExecutionGraph();
   }
 
   private emitExecution(event: ExecutionEvent): void {

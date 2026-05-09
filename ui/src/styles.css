@@ -116,6 +116,12 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.node-models {
+  color: #56665d;
+  font-size: 11px;
+  margin-top: 10px;
+}
+
 .node-inspector {
   display: flex;
   flex-direction: column;
@@ -162,6 +168,15 @@ input {
 
 .empty {
   color: #68756e;
+}
+
+.meta-row {
+  background: #eff3f0;
+  border: 1px solid #d4ddd7;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 6px;
+  padding: 8px 10px;
 }
 
 .error {

@@ -115,6 +115,17 @@ export class InteractiveExecutionSession {
     this.publish({ type: "execution", status: node.status, nodeId, message: "node prompt edited" });
   }
 
+  setNodeModelOverride(nodeId: string, model: string): void {
+    const node = this.requireEditableNode(nodeId);
+    const normalized = model.trim();
+    if (!normalized) {
+      throw new MutationError("invalid_model", "Model override cannot be empty.", [nodeId], undefined, "Provide a model name.");
+    }
+    node.modelOverride = normalized;
+    node.modelOverrideSource = "user";
+    this.publish({ type: "execution", status: node.status, nodeId, message: "node model override set" });
+  }
+
   addNode(input: {
     parentId: string;
     prompt: string;
@@ -213,6 +224,7 @@ export class InteractiveExecutionSession {
     pending.resolve({
       status: "approved",
       prompt: node.prompt ?? node.label,
+      modelOverride: node.modelOverride,
     });
     return { duplicate: false };
   }
@@ -241,6 +253,7 @@ export class InteractiveExecutionSession {
     pending.resolve({
       status: "skipped",
       prompt: node.prompt ?? node.label,
+      modelOverride: node.modelOverride,
     });
     return { duplicate: false };
   }
@@ -273,6 +286,8 @@ export class InteractiveExecutionSession {
       ...input,
       prompt: input.prompt ?? input.label,
       originalPrompt: input.originalPrompt ?? input.prompt ?? input.label,
+      plannedModel: input.plannedModel ?? "resolved-at-runtime",
+      modelOverrideSource: input.modelOverrideSource ?? "none",
       editableFields: input.editableFields ?? ["prompt"],
     };
     this.nodes.set(node.id, node);

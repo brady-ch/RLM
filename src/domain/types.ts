@@ -50,6 +50,7 @@ export interface TaskNode {
   parentId?: string;
   prompt: string;
   depth: number;
+  modelOverride?: string | undefined;
 }
 
 export interface SolvedTask {
@@ -116,6 +117,10 @@ export interface ExecutionGraphNode {
   prompt?: string | undefined;
   originalPrompt?: string | undefined;
   approvalToken?: string | undefined;
+  plannedModel?: string | undefined;
+  effectiveModel?: string | undefined;
+  modelOverride?: string | undefined;
+  modelOverrideSource?: "user" | "none" | undefined;
   editableFields?: Array<"prompt"> | undefined;
   depth: number;
   status: ExecutionStatus;
@@ -156,6 +161,7 @@ export interface ExecutionControl {
 export interface NodeApprovalDecision {
   status: "approved" | "skipped" | "cancelled";
   prompt: string;
+  modelOverride?: string | undefined;
 }
 
 export interface GraphMutationError {
