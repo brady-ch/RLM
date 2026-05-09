@@ -39,9 +39,10 @@
 
 **Requirements:** PLAN-02, MODL-01, MODL-02, MODL-03
 
-### Phase 4: Recursive Spawning with Run-Mode Controls
+### Phase 4: Recursive Spawning with Run-Mode Controls ✅ (Completed 2026-05-08)
 **Goal:** Preserve recursive expansion while honoring checkpoint controls and initial-plan-only override mode.
 **Mode:** mvp
+**Plans:** 3 plans
 **Success Criteria**:
 1. Recursive flow can spawn downstream nodes/agents when needed.
 2. Spawned nodes follow active approval policy (full-checkpoint or initial-plan-only override).
@@ -50,9 +51,15 @@
 
 **Requirements:** RECR-01, RECR-02, APRV-05
 
-### Phase 5: Reliability and No-Silent-Failure Hardening
+Plans:
+- [x] 04-01-PLAN.md — Implement run-mode contract, recursive approval inheritance, and domain/controller test coverage.
+- [x] 04-02-PLAN.md — Deliver control-server/UI/CLI run-mode observability and pause-future controls.
+- [x] 04-03-PLAN.md — Harden cross-surface regression coverage and spawned-node summary visibility.
+
+### Phase 5: Reliability and No-Silent-Failure Hardening ✅ (Completed 2026-05-08)
 **Goal:** Ensure all failure paths are explicit, actionable, and test-covered.
 **Mode:** mvp
+**Plans:** 4 plans
 **Success Criteria**:
 1. Model/tool/workflow failures are always visible in UI and CLI.
 2. No silent execution failure paths remain in approval/edit/run loops.
@@ -60,6 +67,12 @@
 4. Regression tests cover critical failure surfacing flows.
 
 **Requirements:** ERRO-01, ERRO-03
+
+Plans:
+- [x] 05-01-PLAN.md — Domain failure vocabulary, session snapshot correctness, recursive engine terminal status.
+- [x] 05-02-PLAN.md — Workflow graph and model-routing failure propagation (parity with single-agent runs).
+- [x] 05-03-PLAN.md — Control server, CLI render/exit parity, stderr and `--json-stream` failure facts.
+- [x] 05-04-PLAN.md — UI failure styling and regression tests (model, tool, workflow, checkpoint loop).
 
 ## Requirement Mapping Table
 
@@ -71,15 +84,15 @@
 | APRV-02 | Phase 2 | Complete |
 | APRV-03 | Phase 2 | Complete |
 | APRV-04 | Phase 2 | Complete |
-| APRV-05 | Phase 4 | Pending |
+| APRV-05 | Phase 4 | Complete |
 | MODL-01 | Phase 3 | Complete |
 | MODL-02 | Phase 3 | Complete |
 | MODL-03 | Phase 3 | Complete |
-| RECR-01 | Phase 4 | Pending |
-| RECR-02 | Phase 4 | Pending |
-| ERRO-01 | Phase 5 | Pending |
+| RECR-01 | Phase 4 | Complete |
+| RECR-02 | Phase 4 | Complete |
+| ERRO-01 | Phase 5 | Complete |
 | ERRO-02 | Phase 2 | Complete |
-| ERRO-03 | Phase 5 | Pending |
+| ERRO-03 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 15 total

@@ -1,32 +1,56 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: completed
+last_updated: "2026-05-08T18:00:00.000Z"
+progress:
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 13
+  completed_plans: 13
+  percent: 100
+---
+
 # Project State
 
 ## Snapshot
+
 - Date: 2026-05-08
-- Current phase: Phase 4
-- Current status: ready_to_discuss
+- Current phase: Phase 5 (complete)
+- Current status: Phase 5 executed — plans `05-01` … `05-04` and summaries recorded
 
 ## Project Reference
+
 See: .planning/PROJECT.md (updated 2026-05-08)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.
-**Current focus:** Phase 4 - Recursive Spawning with Run-Mode Controls
+**Current focus:** Milestone v1.0 planning complete — Phase 5 delivered (ERRO-01 / ERRO-03)
 
 ## Artifacts
-- ROADMAP.md: phases 1-3 complete
+
+- ROADMAP.md: phases 1-5 complete
 - REQUIREMENTS.md: phase-3 traceability updated
-- 03-CONTEXT.md: captured
-- 03-DISCUSSION-LOG.md: captured
-- 03-RESEARCH.md: completed
-- 03-01-PLAN.md: completed
-- 03-02-PLAN.md: completed
-- 03-01-SUMMARY.md: completed
-- 03-02-SUMMARY.md: completed
-- 03-VERIFICATION.md: passed
+- 04-CONTEXT.md: captured
+- 04-DISCUSSION-LOG.md: captured
+- 04-01-PLAN.md: executed
+- 04-02-PLAN.md: executed
+- 04-03-PLAN.md: executed
+- 04-01-SUMMARY.md: created
+- 04-02-SUMMARY.md: created
+- 04-03-SUMMARY.md: created
+- 05-01-PLAN.md: created (phase 5)
+- 05-02-PLAN.md: created
+- 05-03-PLAN.md: created
+- 05-04-PLAN.md: created
+- 05-01-SUMMARY.md … 05-04-SUMMARY.md: written (phase 5 execution)
 
 ## Session
-- Stopped at: Phase 3 execution complete
-- Resume file: .planning/ROADMAP.md
+
+- Stopped at: Phase 5 complete — verification `npm test`, `npm run build:ui`
+- Resume file: None
 
 ## Notes
-- Phase 3 shipped: model-aware node planning and per-node override with strict-fail semantics.
-- Next recommended command: $gsd-discuss-phase 4
+
+- Phase 5: domain/workflow/CLI/UI alignment for explicit failures; exit code 1 on failed runs; regression tests added.
+- Prior: Phase 4 completed with approval-mode contracts, recursive branch policy controls, and cross-surface observability.

@@ -16,7 +16,7 @@
 - [ ] **APRV-02**: User can edit node prompt/details at a paused checkpoint and resume execution with updated node data.
 - [ ] **APRV-03**: User can delete a planned node at a paused checkpoint with graph integrity validation.
 - [ ] **APRV-04**: User can add a new node at a paused checkpoint and connect it into execution flow with validation.
-- [ ] **APRV-05**: User can choose an override mode that requires approval only for the initial plan and then auto-runs remaining checkpoints.
+- [x] **APRV-05**: User can choose an override mode that requires approval only for the initial plan and then auto-runs remaining checkpoints.
 
 ### Model Routing
 
@@ -26,14 +26,14 @@
 
 ### Recursive Execution
 
-- [ ] **RECR-01**: Recursive flow can spawn additional downstream nodes/agents when needed after approvals.
-- [ ] **RECR-02**: Spawned nodes inherit approval/override behavior consistently with the active run mode.
+- [x] **RECR-01**: Recursive flow can spawn additional downstream nodes/agents when needed after approvals.
+- [x] **RECR-02**: Spawned nodes inherit approval/override behavior consistently with the active run mode.
 
 ### Error Visibility and Reliability
 
-- [ ] **ERRO-01**: Runtime failures surface explicitly in UI node status and CLI output.
+- [x] **ERRO-01**: Runtime failures surface explicitly in UI node status and CLI output.
 - [ ] **ERRO-02**: Graph mutation validation errors surface immediately and prevent invalid execution.
-- [ ] **ERRO-03**: System does not fail silently on model/tool/workflow errors.
+- [x] **ERRO-03**: System does not fail silently on model/tool/workflow errors.
 
 ## v2 Requirements
 
@@ -61,15 +61,15 @@
 | APRV-02 | Phase 2 | Complete |
 | APRV-03 | Phase 2 | Complete |
 | APRV-04 | Phase 2 | Complete |
-| APRV-05 | Phase 4 | Pending |
+| APRV-05 | Phase 4 | Complete |
 | MODL-01 | Phase 3 | Complete |
 | MODL-02 | Phase 3 | Complete |
 | MODL-03 | Phase 3 | Complete |
-| RECR-01 | Phase 4 | Pending |
-| RECR-02 | Phase 4 | Pending |
-| ERRO-01 | Phase 5 | Pending |
+| RECR-01 | Phase 4 | Complete |
+| RECR-02 | Phase 4 | Complete |
+| ERRO-01 | Phase 5 | Complete |
 | ERRO-02 | Phase 2 | Complete |
-| ERRO-03 | Phase 5 | Pending |
+| ERRO-03 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 15 total
