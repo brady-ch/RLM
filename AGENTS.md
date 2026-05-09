@@ -27,3 +27,14 @@ This repository is a **recursive language model CLI**: orchestration in `src/app
 - **New workflows**: add under `workflows` in YAML; ensure agent ids exist in the registry.
 
 For install, usage, and configuration fields, start with [`README.md`](README.md).
+
+## GSD Project Context (2026-05-08)
+
+- Project initialized for recursive workflow planning/execution UX hardening.
+- Active roadmap: `.planning/ROADMAP.md` (5 phases, vertical MVP mode).
+- Current focus: Phase 1 (`$gsd-discuss-phase 1`) — planned graph + approval gate foundation.
+- Key v1 priorities:
+  - Approval checkpoint edit/add/delete across execution graph.
+  - Node-card model visibility and per-node override.
+  - Initial-plan-only approval override mode.
+  - No silent failures.

@@ -55,26 +55,26 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLAN-01 | Phase TBD | Pending |
-| PLAN-02 | Phase TBD | Pending |
-| APRV-01 | Phase TBD | Pending |
-| APRV-02 | Phase TBD | Pending |
-| APRV-03 | Phase TBD | Pending |
-| APRV-04 | Phase TBD | Pending |
-| APRV-05 | Phase TBD | Pending |
-| MODL-01 | Phase TBD | Pending |
-| MODL-02 | Phase TBD | Pending |
-| MODL-03 | Phase TBD | Pending |
-| RECR-01 | Phase TBD | Pending |
-| RECR-02 | Phase TBD | Pending |
-| ERRO-01 | Phase TBD | Pending |
-| ERRO-02 | Phase TBD | Pending |
-| ERRO-03 | Phase TBD | Pending |
+| PLAN-01 | Phase 1 | Pending |
+| PLAN-02 | Phase 3 | Pending |
+| APRV-01 | Phase 1 | Pending |
+| APRV-02 | Phase 2 | Pending |
+| APRV-03 | Phase 2 | Pending |
+| APRV-04 | Phase 2 | Pending |
+| APRV-05 | Phase 4 | Pending |
+| MODL-01 | Phase 3 | Pending |
+| MODL-02 | Phase 3 | Pending |
+| MODL-03 | Phase 3 | Pending |
+| RECR-01 | Phase 4 | Pending |
+| RECR-02 | Phase 4 | Pending |
+| ERRO-01 | Phase 5 | Pending |
+| ERRO-02 | Phase 2 | Pending |
+| ERRO-03 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-08*
