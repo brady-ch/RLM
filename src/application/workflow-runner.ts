@@ -1,9 +1,12 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { AgentRegistry } from "./agent-registry.js";
+import type { AgentProfile } from "../domain/agents.js";
 import type { ProjectConfig } from "./project-config.js";
 import type {
   ExecutionControl,
+  ExecutionGraphNode,
+  ExecutionStatus,
   RecursiveModelConfig,
   RecursivePromptResult,
   TraceEvent,
@@ -66,12 +69,10 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
   });
 
   if (input.execution?.planOnly) {
+    const planSlots = buildWorkflowGraphSlots(agents, dispatch.qa, "ready");
     return combineWorkflowResults(
       input.workflowId,
-      [
-        ...agents.map((agent) => agent.id),
-        ...(dispatch.qa ? [dispatch.qa.agent] : []),
-      ],
+      planSlots,
       [],
       [],
       dispatch.qa
@@ -156,7 +157,22 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
   const validationResults = dispatch.qa
     ? await runValidationCommands(dispatch.qa.validationCommands, input.runValidationCommand, input.logger)
     : [];
+  for (const validation of validationResults) {
+    if (validation.status === "error") {
+      errors.push(`validation ${validation.command}: ${validation.output}`);
+    }
+  }
+
+  const graphSlots = buildWorkflowGraphSlots(agents, dispatch.qa, "completed");
+  if (dispatch.qa && validationResults.some((v) => v.status === "error")) {
+    const qaSlot = graphSlots[graphSlots.length - 1];
+    if (qaSlot) {
+      qaSlot.terminalStatus = "failed";
+    }
+  }
+
   let qaResult: RecursivePromptResult | undefined;
+  let qaRejected = false;
   if (dispatch.qa) {
     try {
       qaResult = await runConfiguredAgent({
@@ -173,6 +189,7 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
         execution: input.execution,
       });
     } catch (error: unknown) {
+      qaRejected = true;
       const message = error instanceof Error ? error.message : String(error);
       errors.push(`${dispatch.qa.agent}: ${message}`);
       if (!workflow.continueOnError) {
@@ -188,12 +205,39 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
     ? [buildBugfixQueue(dispatch.qa.bugfixQueue, qaResult?.answer ?? "", dispatch.qa.agent)]
     : [];
 
+  for (let index = 0; index < settled.length; index += 1) {
+    const slot = graphSlots[index];
+    const outcome = settled[index];
+    if (!slot || !outcome) {
+      continue;
+    }
+
+    if (outcome.status === "rejected") {
+      slot.terminalStatus = "failed";
+      continue;
+    }
+
+    const value = outcome.value;
+    if (value.metadata.errors.length > 0 || value.metadata.executionStatus === "failed") {
+      slot.terminalStatus = "failed";
+    }
+  }
+
+  if (dispatch.qa) {
+    const qaIndex = graphSlots.length - 1;
+    const qaSlot = graphSlots[qaIndex];
+    if (qaSlot) {
+      if (qaRejected || !qaResult) {
+        qaSlot.terminalStatus = "failed";
+      } else if (qaResult.metadata.errors.length > 0 || qaResult.metadata.executionStatus === "failed") {
+        qaSlot.terminalStatus = "failed";
+      }
+    }
+  }
+
   const combined = combineWorkflowResults(
     input.workflowId,
-    [
-      ...agents.map((agent) => agent.id),
-      ...(dispatch.qa ? [dispatch.qa.agent] : []),
-    ],
+    graphSlots,
     successfulResults.filter(Boolean),
     errors,
     dispatch.qa
@@ -203,7 +247,7 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
       }
       : undefined,
     queues,
-    "completed",
+    "executed",
     input.config.maxModelCalls,
     input.config.maxToolRounds,
   );
@@ -261,20 +305,66 @@ function selectWorkflowDispatch(
   };
 }
 
+type WorkflowGraphSlot = {
+  agentId: string;
+  kind: ExecutionGraphNode["kind"];
+  terminalStatus: ExecutionStatus;
+};
+
+function buildWorkflowGraphSlots(
+  agents: AgentProfile[],
+  qa: ProjectConfig["workflows"][string]["qa"] | undefined,
+  initialStatus: ExecutionStatus,
+): WorkflowGraphSlot[] {
+  const slots: WorkflowGraphSlot[] = agents.map((agent) => ({
+    agentId: agent.id,
+    kind: "workflow-agent",
+    terminalStatus: initialStatus,
+  }));
+  if (qa) {
+    slots.push({
+      agentId: qa.agent,
+      kind: "workflow-qa",
+      terminalStatus: initialStatus,
+    });
+  }
+
+  return slots;
+}
+
 function combineWorkflowResults(
   workflowId: string,
-  agents: string[],
+  graphSlots: WorkflowGraphSlot[],
   results: RecursivePromptResult[],
   errors: string[],
   qa: { agent: string; validationCommands: ValidationCommandResult[] } | undefined,
   queues: WorkflowTaskQueue[],
-  executionStatus: "planned" | "completed",
+  planExecutionStatus: "planned" | "executed",
   maxModelCalls: number,
   maxToolRounds: number,
 ): RecursivePromptResult {
   const trace: TraceEvent[] = results.flatMap((result) => result.trace);
-  const answer = results.map((result) => `## ${result.metadata.agent.id}\n${result.answer}`).join("\n\n");
-  const first = results[0];
+  const answer = planExecutionStatus === "planned"
+    ? ""
+    : graphSlots
+      .map((slot) => {
+        const match = results.find((result) => result.metadata.agent.id === slot.agentId);
+        if (match) {
+          return `## ${slot.agentId}\n${match.answer}`;
+        }
+        const errLine = errors.find((line) => line.startsWith(`${slot.agentId}:`));
+        return `## ${slot.agentId}\n${errLine ?? "(agent did not return a result)"}`;
+      })
+      .join("\n\n");
+  const first = results.find(Boolean);
+  const agents = graphSlots.map((slot) => slot.agentId);
+  const anySlotFailed = graphSlots.some((slot) => slot.terminalStatus === "failed");
+  const executionStatus =
+    planExecutionStatus === "planned"
+      ? "planned"
+      : errors.length > 0 || anySlotFailed
+        ? "failed"
+        : "completed";
 
   const metadata: RecursivePromptResult["metadata"] = {
     agent: {
@@ -289,12 +379,12 @@ function combineWorkflowResults(
     workflowQueues: queues,
     executionStatus,
     executionGraph: {
-      nodes: agents.map((agentId, index) => ({
+      nodes: graphSlots.map((slot, index) => ({
         id: `workflow-agent-${index + 1}`,
-        kind: qa?.agent === agentId ? "workflow-qa" : "workflow-agent",
-        label: agentId,
+        kind: slot.kind,
+        label: slot.agentId,
         depth: 0,
-        status: executionStatus === "planned" ? "ready" : "completed",
+        status: planExecutionStatus === "planned" ? "ready" : slot.terminalStatus,
       })),
       edges: [],
     },
