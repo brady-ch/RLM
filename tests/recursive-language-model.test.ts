@@ -303,6 +303,61 @@ test("interactive execution waits for node approval and uses edited prompt", asy
   assert.equal(session.snapshot().graph.nodes.find((node) => node.id === "task-1")?.status, "completed");
 });
 
+test("interactive execution rejects stale approval tokens", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel(["approved answer"]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession();
+
+  const run = engine.run({
+    prompt: "token test",
+    config: {
+      ...config,
+      maxDepth: 0,
+    },
+    execution: session.control,
+  });
+
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  const token = session.snapshot().graph.nodes.find((node) => node.id === "task-1")?.approvalToken;
+  assert.ok(token);
+
+  assert.throws(() => session.approveNode("task-1", "task-1:0"), /Stale approval token/);
+  session.approveNode("task-1", token);
+
+  const result = await run;
+  assert.equal(result.answer, "approved answer");
+});
+
+test("interactive execution treats duplicate approval token as no-op", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel(["approved answer"]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession();
+
+  const run = engine.run({
+    prompt: "duplicate test",
+    config: {
+      ...config,
+      maxDepth: 0,
+    },
+    execution: session.control,
+  });
+
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  const token = session.snapshot().graph.nodes.find((node) => node.id === "task-1")?.approvalToken;
+  assert.ok(token);
+
+  const first = session.approveNode("task-1", token);
+  const duplicate = session.approveNode("task-1", token);
+
+  assert.equal(first.duplicate, false);
+  assert.equal(duplicate.duplicate, true);
+
+  const result = await run;
+  assert.equal(result.answer, "approved answer");
+});
+
 test("stops recursive expansion when model call budget is nearly exhausted", async () => {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(

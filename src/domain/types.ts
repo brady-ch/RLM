@@ -115,6 +115,7 @@ export interface ExecutionGraphNode {
   label: string;
   prompt?: string | undefined;
   originalPrompt?: string | undefined;
+  approvalToken?: string | undefined;
   editableFields?: Array<"prompt"> | undefined;
   depth: number;
   status: ExecutionStatus;

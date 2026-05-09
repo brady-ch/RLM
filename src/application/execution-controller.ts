@@ -27,15 +27,18 @@ export class CancellationController {
 
 type PendingApproval = {
   resolve: (decision: NodeApprovalDecision) => void;
+  token: string;
 };
 
 export class InteractiveExecutionSession {
   private readonly nodes = new Map<string, ExecutionGraphNode>();
   private readonly edges: ExecutionGraph["edges"] = [];
   private readonly pending = new Map<string, PendingApproval>();
+  private readonly resolvedApprovalTokens = new Set<string>();
   private readonly statusWaiters = new Map<string, Array<(node: ExecutionGraphNode) => void>>();
   private readonly subscribers = new Set<(event: ExecutionEvent) => void>();
   private readonly cancellation = new CancellationController();
+  private approvalVersion = 0;
 
   readonly control: ExecutionControl = {
     isCancelled: () => this.cancellation.isCancelled(),
@@ -98,34 +101,60 @@ export class InteractiveExecutionSession {
     this.publish({ type: "execution", status: node.status, nodeId, message: "node prompt edited" });
   }
 
-  approveNode(nodeId: string): void {
+  approveNode(nodeId: string, token?: string): { duplicate: boolean } {
     const node = this.nodes.get(nodeId);
     const pending = this.pending.get(nodeId);
-    if (!node || !pending) {
+    if (!node) {
+      throw new Error(`Unknown node "${nodeId}".`);
+    }
+
+    if (!pending) {
+      if (token && this.resolvedApprovalTokens.has(token)) {
+        return { duplicate: true };
+      }
       throw new Error(`Node "${nodeId}" is not awaiting approval.`);
+    }
+    if (token && token !== pending.token) {
+      throw new Error(`Stale approval token for node "${nodeId}".`);
     }
 
     this.pending.delete(nodeId);
+    this.resolvedApprovalTokens.add(pending.token);
+    node.approvalToken = undefined;
     this.updateNodeStatus(nodeId, "approved");
     pending.resolve({
       status: "approved",
       prompt: node.prompt ?? node.label,
     });
+    return { duplicate: false };
   }
 
-  skipNode(nodeId: string): void {
+  skipNode(nodeId: string, token?: string): { duplicate: boolean } {
     const node = this.nodes.get(nodeId);
     const pending = this.pending.get(nodeId);
-    if (!node || !pending) {
+    if (!node) {
+      throw new Error(`Unknown node "${nodeId}".`);
+    }
+
+    if (!pending) {
+      if (token && this.resolvedApprovalTokens.has(token)) {
+        return { duplicate: true };
+      }
       throw new Error(`Node "${nodeId}" is not awaiting approval.`);
+    }
+    if (token && token !== pending.token) {
+      throw new Error(`Stale approval token for node "${nodeId}".`);
     }
 
     this.pending.delete(nodeId);
+    this.resolvedApprovalTokens.add(pending.token);
+    node.approvalToken = undefined;
     this.updateNodeStatus(nodeId, "skipped");
     pending.resolve({
       status: "skipped",
       prompt: node.prompt ?? node.label,
     });
+    return { duplicate: false };
   }
 
   stop(reason = "stopped by user"): void {
@@ -134,6 +163,7 @@ export class InteractiveExecutionSession {
       const node = this.nodes.get(nodeId);
       if (node) {
         node.status = "cancelled";
+        node.approvalToken = undefined;
       }
       pending.resolve({
         status: "cancelled",
@@ -188,10 +218,12 @@ export class InteractiveExecutionSession {
     if (!node) {
       throw new Error(`Node "${input.id}" was not registered.`);
     }
+    const token = `${input.id}:${++this.approvalVersion}`;
+    node.approvalToken = token;
     this.updateNodeStatus(input.id, "awaiting_approval");
 
     return new Promise((resolve) => {
-      this.pending.set(input.id, { resolve });
+      this.pending.set(input.id, { resolve, token });
     });
   }
 
