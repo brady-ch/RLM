@@ -4,6 +4,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { extname, join, normalize } from "node:path";
 import type { AddressInfo } from "node:net";
 import type { InteractiveExecutionSession } from "./execution-controller.js";
+import type { ApprovalMode } from "../domain/types.js";
 
 export interface ControlServer {
   url: string;
@@ -48,6 +49,14 @@ async function routeRequest(
   try {
     if (request.method === "GET" && url.pathname === "/api/session") {
       return sendJson(response, session.snapshot());
+    }
+    if (request.method === "GET" && url.pathname === "/api/run-mode") {
+      const snapshot = session.snapshot();
+      return sendJson(response, {
+        approvalMode: snapshot.approvalMode,
+        approvalModeLabel: toApprovalModeLabel(snapshot.approvalMode),
+        autoApprovalPaused: snapshot.autoApprovalPaused,
+      });
     }
     if (request.method === "GET" && url.pathname === "/api/graph") {
       return sendJson(response, session.snapshot().graph);
@@ -104,6 +113,46 @@ async function routeRequest(
       const body = await readJsonBody(request);
       session.stop(typeof body["reason"] === "string" ? body["reason"] : undefined);
       return sendJson(response, session.snapshot());
+    }
+    if (request.method === "POST" && url.pathname === "/api/pause-future-auto-approvals") {
+      const snapshot = session.snapshot();
+      if (snapshot.status === "cancelled" || snapshot.status === "completed" || snapshot.status === "failed") {
+        return sendJson(response, {
+          error: "Cannot pause future auto-approvals after execution has finished.",
+          approvalMode: snapshot.approvalMode,
+          status: snapshot.status,
+        }, 409);
+      }
+      session.pauseFutureAutoApprovals();
+      const updated = session.snapshot();
+      return sendJson(response, {
+        ...updated,
+        approvalModeLabel: toApprovalModeLabel(updated.approvalMode),
+        message: "future auto-approvals paused",
+      });
+    }
+    if (request.method === "POST" && url.pathname === "/api/approval-mode") {
+      const body = await readJsonBody(request);
+      const requested = body["approvalMode"];
+      if (!isApprovalMode(requested)) {
+        return sendJson(response, {
+          error: "Invalid approval mode. Expected one of: full, initial-plan, initial-plan-recursive.",
+          received: requested,
+        }, 400);
+      }
+      // Mode is selected at session creation and exposed here for a stable API contract.
+      const snapshot = session.snapshot();
+      if (snapshot.approvalMode !== requested) {
+        return sendJson(response, {
+          error: "Approval mode cannot be changed after session start.",
+          approvalMode: snapshot.approvalMode,
+          requested,
+        }, 409);
+      }
+      return sendJson(response, {
+        approvalMode: snapshot.approvalMode,
+        approvalModeLabel: toApprovalModeLabel(snapshot.approvalMode),
+      });
     }
 
     return serveUiAsset(request, response, uiDistDir);
@@ -189,5 +238,20 @@ function contentType(filePath: string): string {
       return "text/html; charset=utf-8";
     default:
       return "application/octet-stream";
+  }
+}
+
+function isApprovalMode(value: unknown): value is ApprovalMode {
+  return value === "full" || value === "initial-plan" || value === "initial-plan-recursive";
+}
+
+function toApprovalModeLabel(mode: ApprovalMode): string {
+  switch (mode) {
+    case "initial-plan":
+      return "Initial plan";
+    case "initial-plan-recursive":
+      return "Initial plan + recursive";
+    default:
+      return "Full checkpoints";
   }
 }
