@@ -110,15 +110,15 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INT-01 | — | Pending roadmap |
-| INT-02 | — | Pending roadmap |
-| CHAT-01 | — | Pending roadmap |
-| PLUG-01 | — | Pending roadmap |
-| HOST-01 | — | Pending roadmap |
-| QUES-01 | — | Pending roadmap |
-| TCON-01 | — | Pending roadmap |
+| INT-01 | Phase 7 | Pending |
+| INT-02 | Phase 7 | Pending |
+| CHAT-01 | Phase 9 | Pending |
+| PLUG-01 | Phase 6 | Pending |
+| HOST-01 | Phase 8 | Pending |
+| QUES-01 | Phase 9 | Pending |
+| TCON-01 | Phase 8 | Pending |
 
-**Coverage (v1.1):** 7 requirements — pending roadmap mapping
+**Coverage (v1.1):** 7/7 requirements mapped ✓
 
 ---
 *Requirements defined: 2026-05-08 (v1); 2026-05-09 (v1.1)*
