@@ -63,13 +63,17 @@ async function routeRequest(
     }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/approve$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
-      session.approveNode(nodeId);
-      return sendJson(response, session.snapshot());
+      const body = await readJsonBody(request);
+      const token = typeof body["token"] === "string" ? body["token"] : undefined;
+      const result = session.approveNode(nodeId, token);
+      return sendJson(response, { ...session.snapshot(), duplicate: result.duplicate });
     }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/skip$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
-      session.skipNode(nodeId);
-      return sendJson(response, session.snapshot());
+      const body = await readJsonBody(request);
+      const token = typeof body["token"] === "string" ? body["token"] : undefined;
+      const result = session.skipNode(nodeId, token);
+      return sendJson(response, { ...session.snapshot(), duplicate: result.duplicate });
     }
     if (request.method === "POST" && url.pathname === "/api/stop") {
       const body = await readJsonBody(request);
@@ -79,7 +83,13 @@ async function routeRequest(
 
     return serveUiAsset(request, response, uiDistDir);
   } catch (error: unknown) {
-    return sendJson(response, { error: error instanceof Error ? error.message : String(error) }, 400);
+    const message = error instanceof Error ? error.message : String(error);
+    const status = message.includes("Unknown node")
+      ? 404
+      : message.includes("Stale approval token") || message.includes("not awaiting approval")
+        ? 409
+        : 400;
+    return sendJson(response, { error: message }, status);
   }
 }
 

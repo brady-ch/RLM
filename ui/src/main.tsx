@@ -32,6 +32,7 @@ type ExecutionNode = {
   label: string;
   prompt?: string;
   originalPrompt?: string;
+  approvalToken?: string;
   depth: number;
   status: ExecutionStatus;
 };
@@ -61,6 +62,7 @@ function App() {
     status: "planned",
   });
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
+  const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const selectedNode = snapshot.graph.nodes.find((node) => node.id === selectedNodeId) ?? snapshot.graph.nodes[0];
 
   const refresh = useCallback(async () => {
@@ -115,11 +117,18 @@ function App() {
       <aside className="inspector">
         <header>
           <span className={`status ${snapshot.status}`}>{snapshot.status}</span>
-          <button className="icon danger" title="Stop run" onClick={() => post("/api/stop", { reason: "stopped from UI" }).then(refresh)}>
+          <button
+            className="icon danger"
+            title="Stop run"
+            onClick={() => runAction(setErrorMessage, () => post("/api/stop", { reason: "stopped from UI" }), refresh)}
+          >
             <Square size={16} />
           </button>
         </header>
-        {selectedNode ? <NodeInspector node={selectedNode} refresh={refresh} /> : <p className="empty">Waiting for execution graph.</p>}
+        {errorMessage ? <p className="error">{errorMessage}</p> : null}
+        {selectedNode
+          ? <NodeInspector node={selectedNode} refresh={refresh} setErrorMessage={setErrorMessage} />
+          : <p className="empty">Waiting for execution graph.</p>}
       </aside>
     </main>
   );
@@ -140,7 +149,9 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
   );
 }
 
-function NodeInspector({ node, refresh }: { node: ExecutionNode; refresh: () => Promise<void> }) {
+function NodeInspector(
+  { node, refresh, setErrorMessage }: { node: ExecutionNode; refresh: () => Promise<void>; setErrorMessage: (message: string | undefined) => void },
+) {
   const [prompt, setPrompt] = useState(node.prompt ?? node.label);
 
   useEffect(() => {
@@ -161,18 +172,39 @@ function NodeInspector({ node, refresh }: { node: ExecutionNode; refresh: () => 
         <textarea value={prompt} disabled={!editable} onChange={(event) => setPrompt(event.target.value)} />
       </div>
       <div className="actions">
-        <button disabled={!editable} onClick={() => post(`/api/nodes/${node.id}/edit`, { prompt }).then(refresh)}>
+        <button disabled={!editable} onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/edit`, { prompt }), refresh)}>
           <Edit3 size={16} /> Edit
         </button>
-        <button disabled={!waiting} onClick={() => post(`/api/nodes/${node.id}/approve`, {}).then(refresh)}>
+        <button
+          disabled={!waiting}
+          onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/approve`, { token: node.approvalToken }), refresh)}
+        >
           <Check size={16} /> Approve
         </button>
-        <button disabled={!waiting} onClick={() => post(`/api/nodes/${node.id}/skip`, {}).then(refresh)}>
+        <button
+          disabled={!waiting}
+          onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/skip`, { token: node.approvalToken }), refresh)}
+        >
           <X size={16} /> Skip
         </button>
       </div>
     </div>
   );
+}
+
+async function runAction(
+  setErrorMessage: (message: string | undefined) => void,
+  operation: () => Promise<void>,
+  refresh: () => Promise<void>,
+) {
+  try {
+    setErrorMessage(undefined);
+    await operation();
+    await refresh();
+  } catch (error) {
+    setErrorMessage(error instanceof Error ? error.message : String(error));
+    await refresh();
+  }
 }
 
 async function post(path: string, body: Record<string, unknown>) {

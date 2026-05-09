@@ -155,6 +155,16 @@ textarea {
   color: #68756e;
 }
 
+.error {
+  background: #fceae7;
+  border: 1px solid #e4b0a8;
+  border-radius: 8px;
+  color: #8f2f2f;
+  font-size: 13px;
+  margin: 0;
+  padding: 10px 12px;
+}
+
 @media (max-width: 800px) {
   .shell {
     grid-template-columns: 1fr;
