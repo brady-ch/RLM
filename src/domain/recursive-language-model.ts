@@ -6,6 +6,7 @@ import type { ToolExecutionResult } from "../ports/tool-port.js";
 import type { ToolPort } from "../ports/tool-port.js";
 import type { TracePort } from "../ports/trace-port.js";
 import type {
+  ExecutionEvent,
   RecursiveModelConfig,
   RecursivePromptMetadata,
   RecursivePromptRequest,
@@ -26,6 +27,9 @@ export class RecursiveLanguageModel {
   private agentSystemPrompt = "";
   private metadata: RecursivePromptMetadata = createEmptyMetadata();
   private logger: RuntimeLogger | undefined;
+  private execution: RecursivePromptRequest["execution"] | undefined;
+  private executionNodes = new Map<string, NonNullable<RecursivePromptMetadata["executionGraph"]>["nodes"][number]>();
+  private executionEdges: NonNullable<RecursivePromptMetadata["executionGraph"]>["edges"] = [];
   private readonly toolsByName: Map<string, ToolPort>;
 
   constructor(
@@ -43,6 +47,7 @@ export class RecursiveLanguageModel {
     this.toolRoundLimit = request.config.maxToolRounds;
     this.metadata = createEmptyMetadata();
     this.logger = request.logger;
+    this.execution = request.execution;
     if (request.agent) {
       this.agentSystemPrompt = request.agent.systemPrompt;
       this.metadata.agent = {
@@ -62,24 +67,69 @@ export class RecursiveLanguageModel {
       prompt: this.limitPrompt(request.prompt, config),
       depth: 0,
     };
-
-    const answer = await this.solve(root, config);
-    this.metadata.modelCalls = this.modelCalls;
-    this.log("run", "completed recursive run", {
-      modelCalls: this.metadata.modelCalls,
-      inputTokens: this.metadata.tokenUsage.inputTokens,
-      outputTokens: this.metadata.tokenUsage.outputTokens,
-      totalTokens: this.metadata.tokenUsage.totalTokens,
-      unknownCompletions: this.metadata.tokenUsage.unknownCompletions,
+    this.ensureExecutionNode(root, "task", request.prompt);
+    this.metadata.executionStatus = request.execution?.planOnly ? "planned" : "running";
+    this.emitExecution({
+      type: "execution",
+      status: this.metadata.executionStatus,
+      nodeId: root.id,
+      modelCallsUsed: this.modelCalls,
+      modelCallsRemaining: this.remainingModelCalls(),
+      toolCallsUsed: this.metadata.toolCalls.length,
+      message: request.execution?.planOnly ? "execution plan created" : "execution started",
     });
-    return {
-      answer,
-      trace: this.trace.events(),
-      metadata: this.metadata,
-    };
+
+    if (request.execution?.planOnly) {
+      this.updateExecutionGraph();
+      this.metadata.budget = {
+        estimatedModelCalls: this.estimateModelCalls(config),
+        estimatedToolRounds: this.estimateToolRounds(config),
+        modelCallsUsed: 0,
+        modelCallsRemaining: this.maxModelCalls,
+        toolCallsUsed: 0,
+      };
+      return {
+        answer: "",
+        trace: this.trace.events(),
+        metadata: this.metadata,
+      };
+    }
+
+    try {
+      const answer = await this.solve(root, config);
+      this.metadata.executionStatus = "completed";
+      this.metadata.modelCalls = this.modelCalls;
+      this.log("run", "completed recursive run", {
+        modelCalls: this.metadata.modelCalls,
+        inputTokens: this.metadata.tokenUsage.inputTokens,
+        outputTokens: this.metadata.tokenUsage.outputTokens,
+        totalTokens: this.metadata.tokenUsage.totalTokens,
+        unknownCompletions: this.metadata.tokenUsage.unknownCompletions,
+      });
+      this.updateExecutionGraph();
+      return {
+        answer,
+        trace: this.trace.events(),
+        metadata: this.metadata,
+      };
+    } catch (error: unknown) {
+      if (!this.execution?.isCancelled()) {
+        this.metadata.executionStatus = "failed";
+      }
+
+      this.updateExecutionGraph();
+      throw error;
+    }
   }
 
   private async solve(task: TaskNode, config: RecursiveModelConfig): Promise<string> {
+    this.throwIfCancelled(task);
+    const approval = await this.waitForNodeApproval(task);
+    if (approval === "skipped") {
+      return "";
+    }
+    task = approval;
+    this.markExecutionNodeRunning(task.id);
     this.log("task", "solving task", {
       id: task.id,
       depth: task.depth,
@@ -89,6 +139,7 @@ export class RecursiveLanguageModel {
     const maxDepth = config.maxDepth ?? 0;
     if (task.depth >= maxDepth) {
       const answer = await this.answerDirectly(task, "Depth limit reached; answer directly.");
+      this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
         id: task.id,
         depth: task.depth,
@@ -99,6 +150,7 @@ export class RecursiveLanguageModel {
 
     if (this.remainingModelCalls() <= 1) {
       const answer = await this.answerDirectly(task, "Model call budget is nearly exhausted; answer directly.");
+      this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
         id: task.id,
         depth: task.depth,
@@ -115,6 +167,7 @@ export class RecursiveLanguageModel {
     });
     if (classification !== RECURSIVE) {
       const answer = await this.answerDirectly(task, "Task is simple enough for a direct answer.");
+      this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
         id: task.id,
         depth: task.depth,
@@ -125,6 +178,7 @@ export class RecursiveLanguageModel {
 
     if (!this.hasCallReservedForDirectAnswer(config)) {
       const answer = await this.answerDirectly(task, "Model call budget is nearly exhausted; answer directly.");
+      this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
         id: task.id,
         depth: task.depth,
@@ -140,6 +194,7 @@ export class RecursiveLanguageModel {
     });
     if (children.length === 0) {
       const answer = await this.answerDirectly(task, "No useful subtasks were found; answer directly.");
+      this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
         id: task.id,
         depth: task.depth,
@@ -174,6 +229,7 @@ export class RecursiveLanguageModel {
       mode: "recursive",
       children: solvedChildren.length,
     });
+    this.markExecutionNodeCompleted(task.id);
     return answer;
   }
 
@@ -225,6 +281,9 @@ export class RecursiveLanguageModel {
         prompt: this.limitPrompt(prompt, config),
         depth: task.depth + 1,
       }));
+    for (const child of children) {
+      this.ensureExecutionNode(child, "task", child.prompt);
+    }
     this.log("plan", "created recursive task plan", {
       parentTask: task.id,
       depth: task.depth,
@@ -322,6 +381,7 @@ export class RecursiveLanguageModel {
     messages: Parameters<LanguageModelPort["complete"]>[0],
     allowTools = false,
   ): Promise<string> {
+    this.throwIfCancelled(task);
     if (!this.canSpendAnyModelCall()) {
       this.recordLimit(task, `model call budget reached before ${kind}`);
       return fallbackFromMessages(messages);
@@ -399,6 +459,7 @@ export class RecursiveLanguageModel {
 
       for (const toolCall of response.toolCalls) {
         const tool = this.toolsByName.get(toolCall.name);
+        this.throwIfCancelled(task);
         this.record(task, "tool-call", JSON.stringify(toolCall.args), toolCall.name);
         this.log("tool", "starting tool call", {
           task: task.id,
@@ -528,11 +589,18 @@ export class RecursiveLanguageModel {
       prompt: this.limitPrompt(prompt, config),
       depth: 0,
     };
+    this.ensureExecutionNode(task, "task", task.prompt);
+    const approvedTask = await this.waitForNodeApproval(task);
+    if (approvedTask === "skipped") {
+      this.metadata.depth = { selected: 0, source: "fallback" };
+      return 0;
+    }
+    this.markExecutionNodeRunning(task.id);
     this.log("depth", "selecting recursion depth", {
       maxDynamicDepth,
-      prompt: preview(prompt),
+      prompt: preview(approvedTask.prompt),
     });
-    const output = await this.complete(task, "depth", [
+    const output = await this.complete(approvedTask, "depth", [
       {
         role: "system",
         content:
@@ -542,7 +610,7 @@ export class RecursiveLanguageModel {
       },
       {
         role: "user",
-        content: prompt,
+        content: approvedTask.prompt,
       },
     ]);
     const parsedDepth = parseFirstInteger(output);
@@ -557,7 +625,8 @@ export class RecursiveLanguageModel {
       source,
       output: preview(output),
     });
-    this.record(task, "depth", prompt, output);
+    this.record(approvedTask, "depth", approvedTask.prompt, output);
+    this.markExecutionNodeCompleted(task.id);
     return selected;
   }
 
@@ -604,6 +673,7 @@ export class RecursiveLanguageModel {
     }
 
     this.trace.record(event);
+    this.updateExecutionGraph();
   }
 
   private recordUsage(usage: LanguageModelUsage | undefined): void {
@@ -634,6 +704,176 @@ export class RecursiveLanguageModel {
       modelCalls: this.modelCalls,
       maxModelCalls: this.maxModelCalls,
     });
+  }
+
+  private throwIfCancelled(task: TaskNode): void {
+    if (!this.execution?.isCancelled()) {
+      return;
+    }
+
+    const reason = this.execution.cancelReason?.() ?? "execution cancelled";
+    this.metadata.executionStatus = "cancelled";
+    this.markExecutionNodeFailed(task.id, "cancelled");
+    this.emitExecution({
+      type: "execution",
+      status: "cancelled",
+      nodeId: task.id,
+      modelCallsUsed: this.modelCalls,
+      modelCallsRemaining: this.remainingModelCalls(),
+      toolCallsUsed: this.metadata.toolCalls.length,
+      message: reason,
+    });
+    throw new Error(reason);
+  }
+
+  private ensureExecutionNode(task: TaskNode, kind: "task", label: string): void {
+    if (!this.executionNodes.has(task.id)) {
+      const node: NonNullable<RecursivePromptMetadata["executionGraph"]>["nodes"][number] = {
+        id: task.id,
+        kind,
+        label: preview(label, 80),
+        prompt: task.prompt,
+        originalPrompt: task.prompt,
+        editableFields: ["prompt"],
+        depth: task.depth,
+        status: "ready",
+      };
+      if (task.parentId) {
+        node.parentId = task.parentId;
+      }
+      this.executionNodes.set(task.id, node);
+      if (task.parentId) {
+        this.executionEdges.push({
+          from: task.parentId,
+          to: task.id,
+        });
+      }
+      this.updateExecutionGraph();
+      this.execution?.registerNode?.(node);
+    }
+  }
+
+  private markExecutionNodeRunning(nodeId: string): void {
+    const node = this.executionNodes.get(nodeId);
+    if (!node) {
+      return;
+    }
+
+    node.status = "running";
+    node.startedAt = new Date().toISOString();
+    this.metadata.executionStatus = "running";
+    this.updateExecutionGraph();
+    this.execution?.updateNodeStatus?.(nodeId, "running");
+    this.emitExecution({
+      type: "execution",
+      status: "running",
+      nodeId,
+      modelCallsUsed: this.modelCalls,
+      modelCallsRemaining: this.remainingModelCalls(),
+      toolCallsUsed: this.metadata.toolCalls.length,
+    });
+  }
+
+  private markExecutionNodeCompleted(nodeId: string): void {
+    const node = this.executionNodes.get(nodeId);
+    if (!node) {
+      return;
+    }
+
+    node.status = "completed";
+    node.completedAt = new Date().toISOString();
+    this.updateExecutionGraph();
+    this.execution?.updateNodeStatus?.(nodeId, "completed");
+    this.emitExecution({
+      type: "execution",
+      status: "completed",
+      nodeId,
+      modelCallsUsed: this.modelCalls,
+      modelCallsRemaining: this.remainingModelCalls(),
+      toolCallsUsed: this.metadata.toolCalls.length,
+    });
+  }
+
+  private markExecutionNodeFailed(nodeId: string, status: "failed" | "cancelled"): void {
+    const node = this.executionNodes.get(nodeId);
+    if (!node) {
+      return;
+    }
+
+    node.status = status;
+    node.completedAt = new Date().toISOString();
+    this.metadata.executionStatus = status;
+    this.updateExecutionGraph();
+    this.execution?.updateNodeStatus?.(nodeId, status);
+  }
+
+  private async waitForNodeApproval(task: TaskNode): Promise<TaskNode | "skipped"> {
+    const node: NonNullable<RecursivePromptMetadata["executionGraph"]>["nodes"][number] = {
+      id: task.id,
+      kind: "task",
+      label: preview(task.prompt, 80),
+      prompt: task.prompt,
+      originalPrompt: task.prompt,
+      editableFields: ["prompt"],
+      depth: task.depth,
+      status: "awaiting_approval",
+    };
+    if (task.parentId) {
+      node.parentId = task.parentId;
+    }
+    const decision = await this.execution?.waitForNodeApproval?.(node);
+    this.throwIfCancelled(task);
+    if (!decision || decision.status === "approved") {
+      return {
+        ...task,
+        prompt: decision?.prompt ?? task.prompt,
+      };
+    }
+    if (decision.status === "skipped") {
+      const node = this.executionNodes.get(task.id);
+      if (node) {
+        node.status = "skipped";
+      }
+      this.updateExecutionGraph();
+      return "skipped";
+    }
+
+    this.markExecutionNodeFailed(task.id, "cancelled");
+    throw new Error(this.execution?.cancelReason?.() ?? "execution cancelled");
+  }
+
+  private updateExecutionGraph(): void {
+    this.metadata.executionGraph = {
+      nodes: [...this.executionNodes.values()],
+      edges: [...this.executionEdges],
+    };
+    this.metadata.budget = {
+      estimatedModelCalls: this.estimateModelCalls(undefined),
+      estimatedToolRounds: this.estimateToolRounds(undefined),
+      modelCallsUsed: this.modelCalls,
+      modelCallsRemaining: this.remainingModelCalls(),
+      toolCallsUsed: this.metadata.toolCalls.length,
+    };
+  }
+
+  private emitExecution(event: ExecutionEvent): void {
+    this.execution?.onEvent?.(event);
+  }
+
+  private estimateModelCalls(config: RecursiveModelConfig | undefined): number {
+    if (!config) {
+      return Math.max(this.modelCalls, 1);
+    }
+
+    const depth = config.maxDepth ?? config.maxDynamicDepth;
+    const branchFactor = Math.max(1, config.maxBranches);
+    const maxNodes = depth <= 0 ? 1 : Math.floor((Math.pow(branchFactor, depth + 1) - 1) / (branchFactor - 1 || 1));
+    return Math.min(config.maxModelCalls, 1 + maxNodes * 4);
+  }
+
+  private estimateToolRounds(config: RecursiveModelConfig | undefined): number {
+    const maxToolRounds = config?.maxToolRounds ?? this.toolRoundLimit;
+    return Math.max(0, maxToolRounds);
   }
 
   private limitPrompt(prompt: string, config: RecursiveModelConfig): string {

@@ -10,12 +10,16 @@ import { MemoryManager } from "./application/memory-manager.js";
 import { applyModelOverride, loadProjectConfig, resolveRuntimeConfig } from "./application/project-config.js";
 import { ResourceCleanup } from "./application/resource-cleanup.js";
 import { runWorkflow } from "./application/workflow-runner.js";
+import { CancellationController, createExecutionControl, createInteractiveExecutionSession } from "./application/execution-controller.js";
+import { startControlServer } from "./application/control-server.js";
 import { helpText, parseArgs } from "./cli/args.js";
 import { renderResult } from "./cli/render.js";
 import { createStderrRuntimeLogger } from "./cli/runtime-logger.js";
 import { installShutdownHandlers } from "./cli/shutdown.js";
 import type { LanguageModelPort } from "./ports/language-model-port.js";
 import type { ToolPort } from "./ports/tool-port.js";
+import type { ExecutionEvent } from "./domain/types.js";
+import { join } from "node:path";
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
@@ -43,10 +47,20 @@ async function main(): Promise<void> {
   const memoryManager = new MemoryManager({
     config: projectConfig.memory,
   });
+  const cancellation = new CancellationController();
+  const onExecutionEvent = options.jsonStream ? (event: ExecutionEvent) => {
+    process.stdout.write(`${JSON.stringify(event)}\n`);
+  } : undefined;
+  const execution = createExecutionControl({
+    planOnly: options.planOnly || options.requireApproval,
+    cancellation,
+    onEvent: onExecutionEvent,
+  });
   const shutdown = installShutdownHandlers({
     json: options.json,
     logger,
     cleanup: async (reason) => {
+      cancellation.cancel(reason);
       memoryManager.releaseAll();
       await cleanup.closeAll(reason);
     },
@@ -107,27 +121,107 @@ async function main(): Promise<void> {
     return created;
   };
   try {
-    const result = options.workflow
+    if (options.command === "ui") {
+      const session = createInteractiveExecutionSession();
+      const uiDistDir = join(process.cwd(), "ui", "dist");
+      const server = await startControlServer({
+        session,
+        port: options.uiPort,
+        uiDistDir,
+      });
+      cleanup.track({
+        close: () => server.close(),
+      });
+      console.error(`RLM UI listening at ${server.url}`);
+      const uiExecution = session.control;
+      const result = options.workflow
+        ? await runWorkflow({
+          workflowId: options.workflow,
+          prompt: options.prompt,
+          config: runtimeConfig,
+          projectConfig,
+          registry,
+          memoryManager,
+          createModel,
+          logger,
+          execution: uiExecution,
+        })
+        : await runConfiguredAgent({
+          prompt: options.prompt,
+          config: runtimeConfig,
+          projectConfig,
+          agent: selectAgent(registry, options.prompt, options.agent),
+          agentSource: options.agent ? "override" : "auto",
+          memoryManager,
+          createModel,
+          logger,
+          execution: uiExecution,
+        });
+      if (loadedConfig.path) {
+        result.metadata.configPath = loadedConfig.path;
+      }
+      console.log(renderResult(result, {
+        compact: options.compact,
+        json: options.json,
+        includeTrace: options.trace,
+        model: projectConfig.models.default,
+      }));
+      return;
+    }
+
+    const runInputBase = {
+      prompt: options.prompt,
+      config: runtimeConfig,
+      projectConfig,
+      registry,
+      memoryManager,
+      createModel,
+      logger,
+      execution,
+    } as const;
+    let result = options.workflow
       ? await runWorkflow({
+        ...runInputBase,
         workflowId: options.workflow,
-        prompt: options.prompt,
-        config: runtimeConfig,
-        projectConfig,
-        registry,
-        memoryManager,
-        createModel,
-        logger,
       })
       : await runConfiguredAgent({
-        prompt: options.prompt,
-        config: runtimeConfig,
-        projectConfig,
+        prompt: runInputBase.prompt,
+        config: runInputBase.config,
+        projectConfig: runInputBase.projectConfig,
         agent: selectAgent(registry, options.prompt, options.agent),
         agentSource: options.agent ? "override" : "auto",
-        memoryManager,
-        createModel,
-        logger,
+        memoryManager: runInputBase.memoryManager,
+        createModel: runInputBase.createModel,
+        logger: runInputBase.logger,
+        execution,
       });
+    if (options.requireApproval && !options.planOnly) {
+      if (!options.approve) {
+        await waitForApproval();
+      }
+      const executeControl = createExecutionControl({
+        planOnly: false,
+        cancellation,
+        onEvent: onExecutionEvent,
+      });
+      result = options.workflow
+        ? await runWorkflow({
+          ...runInputBase,
+          workflowId: options.workflow,
+          execution: executeControl,
+        })
+        : await runConfiguredAgent({
+          prompt: runInputBase.prompt,
+          config: runInputBase.config,
+          projectConfig: runInputBase.projectConfig,
+          agent: selectAgent(registry, options.prompt, options.agent),
+          agentSource: options.agent ? "override" : "auto",
+          memoryManager: runInputBase.memoryManager,
+          createModel: runInputBase.createModel,
+          logger: runInputBase.logger,
+          execution: executeControl,
+        });
+    }
     if (loadedConfig.path) {
       result.metadata.configPath = loadedConfig.path;
     }
@@ -156,3 +250,17 @@ main().catch((error: unknown) => {
   }
   process.exitCode = 1;
 });
+
+async function waitForApproval(): Promise<void> {
+  process.stderr.write("Plan generated. Type 'run' and press Enter to execute, or Ctrl+C to cancel.\n");
+  const chunks: string[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk.toString());
+    const text = chunks.join("").trim().toLowerCase();
+    if (text === "run" || text === "yes" || text === "y") {
+      return;
+    }
+    process.stderr.write("Waiting for approval: type 'run' to continue.\n");
+    chunks.length = 0;
+  }
+}

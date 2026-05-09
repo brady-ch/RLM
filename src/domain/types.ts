@@ -13,6 +13,7 @@ export interface RecursivePromptRequest {
   prompt: string;
   config: RecursiveModelConfig;
   logger?: RuntimeLogger | undefined;
+  execution?: ExecutionControl | undefined;
   agent?: {
     id: string;
     source: "auto" | "override";
@@ -73,6 +74,9 @@ export interface RecursivePromptMetadata {
     } | undefined;
   } | undefined;
   workflowQueues?: WorkflowTaskQueue[] | undefined;
+  executionGraph?: ExecutionGraph | undefined;
+  executionStatus?: ExecutionStatus | undefined;
+  budget?: ExecutionBudget | undefined;
   depth: {
     selected: number;
     source: "model" | "override" | "fallback";
@@ -83,6 +87,74 @@ export interface RecursivePromptMetadata {
   tokenUsage: TokenUsageTrace;
   toolCalls: ToolCallRecord[];
   errors: string[];
+}
+
+export type ExecutionStatus =
+  | "planned"
+  | "ready"
+  | "awaiting_approval"
+  | "approved"
+  | "running"
+  | "completed"
+  | "skipped"
+  | "failed"
+  | "cancelled";
+
+export interface ExecutionBudget {
+  estimatedModelCalls: number;
+  estimatedToolRounds: number;
+  modelCallsUsed: number;
+  modelCallsRemaining: number;
+  toolCallsUsed: number;
+}
+
+export interface ExecutionGraphNode {
+  id: string;
+  parentId?: string;
+  kind: "task" | "workflow-agent" | "workflow-qa";
+  label: string;
+  prompt?: string | undefined;
+  originalPrompt?: string | undefined;
+  editableFields?: Array<"prompt"> | undefined;
+  depth: number;
+  status: ExecutionStatus;
+  startedAt?: string | undefined;
+  completedAt?: string | undefined;
+}
+
+export interface ExecutionGraphEdge {
+  from: string;
+  to: string;
+}
+
+export interface ExecutionGraph {
+  nodes: ExecutionGraphNode[];
+  edges: ExecutionGraphEdge[];
+}
+
+export interface ExecutionEvent {
+  type: "execution";
+  status: ExecutionStatus;
+  nodeId?: string | undefined;
+  modelCallsUsed?: number | undefined;
+  modelCallsRemaining?: number | undefined;
+  toolCallsUsed?: number | undefined;
+  message?: string | undefined;
+}
+
+export interface ExecutionControl {
+  planOnly?: boolean | undefined;
+  isCancelled: () => boolean;
+  cancelReason?: () => string | undefined;
+  onEvent?: ((event: ExecutionEvent) => void) | undefined;
+  registerNode?: ((node: ExecutionGraphNode) => void) | undefined;
+  updateNodeStatus?: ((nodeId: string, status: ExecutionStatus) => void) | undefined;
+  waitForNodeApproval?: ((node: ExecutionGraphNode) => Promise<NodeApprovalDecision>) | undefined;
+}
+
+export interface NodeApprovalDecision {
+  status: "approved" | "skipped" | "cancelled";
+  prompt: string;
 }
 
 export interface TokenUsageTrace {

@@ -30,6 +30,7 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
     `agent: ${result.metadata.agent.id} (${result.metadata.agent.source})`,
     `depth: ${result.metadata.depth.selected} (${result.metadata.depth.source})`,
     `modelCalls: ${result.metadata.modelCalls}`,
+    `executionStatus: ${result.metadata.executionStatus ?? "completed"}`,
     `tokens: input=${result.metadata.tokenUsage.inputTokens} output=${result.metadata.tokenUsage.outputTokens} total=${result.metadata.tokenUsage.totalTokens} unknown=${result.metadata.tokenUsage.unknownCompletions}`,
     `answer: ${singleLine(result.answer)}`,
   ];

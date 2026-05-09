@@ -25,6 +25,7 @@ import { MemoryManager } from "../src/application/memory-manager.js";
 import { PurposeRoutingLanguageModel, selectDynamicTier } from "../src/application/model-provider.js";
 import { createYamlModelScoreStore } from "../src/application/model-score-store.js";
 import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
+import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
 import type { RuntimeLogEvent, RuntimeLogger } from "../src/ports/runtime-logger-port.js";
@@ -265,6 +266,41 @@ test("parses direct prompt command shape and json output flag", () => {
   assert.equal(options.configPath, "custom.yaml");
   assert.equal(options.config.maxDepth, undefined);
   assert.equal(options.config.maxDynamicDepth, 4);
+});
+
+test("parses ui command and ui port", () => {
+  const options = parseArgs(["ui", "review", "the", "plan", "--ui-port", "4545"], {});
+
+  assert.equal(options.command, "ui");
+  assert.equal(options.prompt, "review the plan");
+  assert.equal(options.uiPort, 4545);
+});
+
+test("interactive execution waits for node approval and uses edited prompt", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel(["edited answer"]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession();
+
+  const run = engine.run({
+    prompt: "original prompt",
+    config: {
+      ...config,
+      maxDepth: 0,
+    },
+    execution: session.control,
+  });
+
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  assert.equal(model.calls.length, 0);
+
+  session.editNodePrompt("task-1", "edited prompt");
+  session.approveNode("task-1");
+
+  const result = await run;
+  assert.equal(result.answer, "edited answer");
+  assert.equal(model.calls[0]?.messages.at(-1)?.content, "edited prompt");
+  assert.equal(session.snapshot().graph.nodes.find((node) => node.id === "task-1")?.status, "completed");
 });
 
 test("stops recursive expansion when model call budget is nearly exhausted", async () => {

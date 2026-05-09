@@ -1,7 +1,7 @@
 import type { RecursiveModelConfig } from "../domain/types.js";
 
 export interface CliOptions {
-  command: "ask" | "help";
+  command: "ask" | "help" | "ui";
   prompt: string;
   config: RecursiveModelConfig;
   configOverrides: Partial<RecursiveModelConfig>;
@@ -9,12 +9,17 @@ export interface CliOptions {
   json: boolean;
   trace: boolean;
   verbose: boolean;
+  jsonStream: boolean;
+  planOnly: boolean;
+  requireApproval: boolean;
+  approve: boolean;
   model: string;
   modelOverride?: string;
   agent?: string;
   workflow?: string;
   configPath?: string;
   baseUrl?: string;
+  uiPort?: number;
 }
 
 const DEFAULT_CONFIG: RecursiveModelConfig = {
@@ -31,7 +36,8 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     return helpOptions(env);
   }
 
-  const args = commandCandidate === "ask" ? rest : argv;
+  const command: CliOptions["command"] = commandCandidate === "ui" ? "ui" : "ask";
+  const args = commandCandidate === "ask" || commandCandidate === "ui" ? rest : argv;
 
   const config = { ...DEFAULT_CONFIG };
   const configOverrides: Partial<RecursiveModelConfig> = {};
@@ -39,12 +45,17 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   let json = false;
   let trace = false;
   let verbose = env.RLM_VERBOSE === "1" || env.RLM_VERBOSE === "true";
+  let jsonStream = false;
+  let planOnly = false;
+  let requireApproval = false;
+  let approve = false;
   let model = env.RLM_MODEL ?? "granite4.1:3b";
   let modelOverride = env.RLM_MODEL;
   let agent: string | undefined;
   let workflow: string | undefined;
   let configPath: string | undefined;
   let baseUrl = env.OLLAMA_HOST;
+  let uiPort: number | undefined;
   const promptParts: string[] = [];
 
   for (let index = 0; index < args.length; index += 1) {
@@ -70,6 +81,22 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
 
     if (arg === "--verbose") {
       verbose = true;
+      continue;
+    }
+    if (arg === "--json-stream") {
+      jsonStream = true;
+      continue;
+    }
+    if (arg === "--plan-only") {
+      planOnly = true;
+      continue;
+    }
+    if (arg === "--require-approval") {
+      requireApproval = true;
+      continue;
+    }
+    if (arg === "--approve") {
+      approve = true;
       continue;
     }
 
@@ -151,6 +178,11 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
       index += 1;
       continue;
     }
+    if (arg === "--ui-port") {
+      uiPort = parsePositiveInteger(readValue(args, index, arg), arg);
+      index += 1;
+      continue;
+    }
 
     promptParts.push(arg);
   }
@@ -161,7 +193,7 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   }
 
   const options: CliOptions = {
-    command: "ask",
+    command,
     prompt,
     config,
     configOverrides,
@@ -169,6 +201,10 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     json,
     trace,
     verbose,
+    jsonStream,
+    planOnly,
+    requireApproval,
+    approve,
     model,
   };
   if (agent) {
@@ -182,6 +218,9 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   }
   if (baseUrl) {
     options.baseUrl = baseUrl;
+  }
+  if (uiPort !== undefined) {
+    options.uiPort = uiPort;
   }
   if (modelOverride) {
     options.modelOverride = modelOverride;
@@ -197,6 +236,7 @@ export function helpText(): string {
     "Usage:",
     "  rlm \"your prompt\" [--agent coding] [--workflow default] [--json] [--trace]",
     "  rlm ask \"your prompt\" [--depth 2] [--branches 3]",
+    "  rlm ui \"your prompt\" [--ui-port 4545]",
     "",
     "Options:",
     "  --depth <n>             Override YAML runtime recursion depth. Default: model-selected",
@@ -214,6 +254,11 @@ export function helpText(): string {
     "  --compact              Print compact output for compatibility",
     "  --trace                Print recursion trace",
     "  --verbose              Log workflow progress, model calls, completions, and token usage to stderr",
+    "  --json-stream          Emit JSON execution events while running",
+    "  --plan-only            Build and print execution plan, but do not execute",
+    "  --require-approval     Print plan first, then wait for explicit approval before executing",
+    "  --approve              Auto-approve a require-approval run (non-interactive)",
+    "  --ui-port <n>          Port for local React Flow UI. Default: available port",
   ].join("\n");
 }
 
@@ -227,6 +272,10 @@ function helpOptions(env: NodeJS.ProcessEnv): CliOptions {
     json: false,
     trace: false,
     verbose: env.RLM_VERBOSE === "1" || env.RLM_VERBOSE === "true",
+    jsonStream: false,
+    planOnly: false,
+    requireApproval: false,
+    approve: false,
     model: env.RLM_MODEL ?? "granite4.1:3b",
   };
   if (env.RLM_MODEL) {

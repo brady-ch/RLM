@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import type { AgentRegistry } from "./agent-registry.js";
 import type { ProjectConfig } from "./project-config.js";
 import type {
+  ExecutionControl,
   RecursiveModelConfig,
   RecursivePromptResult,
   TraceEvent,
@@ -29,6 +30,7 @@ export interface RunWorkflowInput {
   createModel: (model: string) => LanguageModelPort;
   runValidationCommand?: ((command: string) => Promise<ValidationCommandResult>) | undefined;
   logger?: RuntimeLogger | undefined;
+  execution?: ExecutionControl | undefined;
 }
 
 export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePromptResult> {
@@ -57,6 +59,33 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
       qaAgent: dispatch.qa?.agent,
     },
   });
+  input.execution?.onEvent?.({
+    type: "execution",
+    status: input.execution.planOnly ? "planned" : "running",
+    message: `workflow ${input.workflowId} ${input.execution.planOnly ? "planned" : "started"}`,
+  });
+
+  if (input.execution?.planOnly) {
+    return combineWorkflowResults(
+      input.workflowId,
+      [
+        ...agents.map((agent) => agent.id),
+        ...(dispatch.qa ? [dispatch.qa.agent] : []),
+      ],
+      [],
+      [],
+      dispatch.qa
+        ? {
+          agent: dispatch.qa.agent,
+          validationCommands: [],
+        }
+        : undefined,
+      [],
+      "planned",
+      input.config.maxModelCalls,
+      input.config.maxToolRounds,
+    );
+  }
 
   const settled = await Promise.allSettled(
     agents.map((agent) => {
@@ -79,6 +108,7 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
         memoryManager: input.memoryManager,
         createModel: input.createModel,
         logger: input.logger,
+        execution: input.execution,
       });
     }),
   );
@@ -140,6 +170,7 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
         memoryManager: input.memoryManager,
         createModel: input.createModel,
         logger: input.logger,
+        execution: input.execution,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -172,6 +203,9 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
       }
       : undefined,
     queues,
+    "completed",
+    input.config.maxModelCalls,
+    input.config.maxToolRounds,
   );
   input.logger?.log({
     stage: "workflow",
@@ -234,6 +268,9 @@ function combineWorkflowResults(
   errors: string[],
   qa: { agent: string; validationCommands: ValidationCommandResult[] } | undefined,
   queues: WorkflowTaskQueue[],
+  executionStatus: "planned" | "completed",
+  maxModelCalls: number,
+  maxToolRounds: number,
 ): RecursivePromptResult {
   const trace: TraceEvent[] = results.flatMap((result) => result.trace);
   const answer = results.map((result) => `## ${result.metadata.agent.id}\n${result.answer}`).join("\n\n");
@@ -250,6 +287,27 @@ function combineWorkflowResults(
       qa,
     },
     workflowQueues: queues,
+    executionStatus,
+    executionGraph: {
+      nodes: agents.map((agentId, index) => ({
+        id: `workflow-agent-${index + 1}`,
+        kind: qa?.agent === agentId ? "workflow-qa" : "workflow-agent",
+        label: agentId,
+        depth: 0,
+        status: executionStatus === "planned" ? "ready" : "completed",
+      })),
+      edges: [],
+    },
+    budget: {
+      estimatedModelCalls: maxModelCalls * Math.max(1, agents.length),
+      estimatedToolRounds: maxToolRounds,
+      modelCallsUsed: results.reduce((total, result) => total + result.metadata.modelCalls, 0),
+      modelCallsRemaining: Math.max(
+        0,
+        maxModelCalls * Math.max(1, agents.length) - results.reduce((total, result) => total + result.metadata.modelCalls, 0),
+      ),
+      toolCallsUsed: results.flatMap((result) => result.metadata.toolCalls).length,
+    },
     depth: first?.metadata.depth ?? {
       selected: 0,
       source: "fallback",
