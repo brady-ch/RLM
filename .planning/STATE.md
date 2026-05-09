@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-08)
 
 ## Session
 - Stopped at: Phase 3 execution complete
-- Resume file: .planning/phases/04-recursive-spawning-with-run-mode-controls/04-CONTEXT.md
+- Resume file: .planning/ROADMAP.md
 
 ## Notes
 - Phase 3 shipped: model-aware node planning and per-node override with strict-fail semantics.
