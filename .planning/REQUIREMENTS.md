@@ -7,15 +7,15 @@
 
 ### Planning
 
-- [ ] **PLAN-01**: User can submit a prompt and receive an execution node graph plan before child-node execution starts.
+- [x] **PLAN-01**: User can submit a prompt and receive an execution node graph plan before child-node execution starts.
 - [x] **PLAN-02**: Planned nodes include intended model assignment metadata.
 
 ### Approval and Graph Editing
 
-- [ ] **APRV-01**: Execution pauses at every approval checkpoint until explicit user action.
-- [ ] **APRV-02**: User can edit node prompt/details at a paused checkpoint and resume execution with updated node data.
-- [ ] **APRV-03**: User can delete a planned node at a paused checkpoint with graph integrity validation.
-- [ ] **APRV-04**: User can add a new node at a paused checkpoint and connect it into execution flow with validation.
+- [x] **APRV-01**: Execution pauses at every approval checkpoint until explicit user action.
+- [x] **APRV-02**: User can edit node prompt/details at a paused checkpoint and resume execution with updated node data.
+- [x] **APRV-03**: User can delete a planned node at a paused checkpoint with graph integrity validation.
+- [x] **APRV-04**: User can add a new node at a paused checkpoint and connect it into execution flow with validation.
 - [x] **APRV-05**: User can choose an override mode that requires approval only for the initial plan and then auto-runs remaining checkpoints.
 
 ### Model Routing
@@ -32,7 +32,7 @@
 ### Error Visibility and Reliability
 
 - [x] **ERRO-01**: Runtime failures surface explicitly in UI node status and CLI output.
-- [ ] **ERRO-02**: Graph mutation validation errors surface immediately and prevent invalid execution.
+- [x] **ERRO-02**: Graph mutation validation errors surface immediately and prevent invalid execution.
 - [x] **ERRO-03**: System does not fail silently on model/tool/workflow errors.
 
 ## v2 Requirements
@@ -78,4 +78,4 @@
 
 ---
 *Requirements defined: 2026-05-08*
-*Last updated: 2026-05-08 after Phase 3 completion*
+*Last updated: 2026-05-08 after Phase 5 completion*
