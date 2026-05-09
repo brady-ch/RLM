@@ -1,12 +1,15 @@
 import type {
+  ApprovalMode,
   ExecutionControl,
   ExecutionEvent,
   ExecutionGraph,
   ExecutionGraphNode,
+  ExecutionStatusUpdateDetail,
   GraphMutationError,
   ExecutionStatus,
   NodeApprovalDecision,
 } from "../domain/types.js";
+import { EXECUTION_FAILURE_CODES, summarizeRunFromNodes } from "../domain/execution-failure.js";
 
 export class CancellationController {
   private cancelled = false;
@@ -52,31 +55,76 @@ export class InteractiveExecutionSession {
   private readonly statusWaiters = new Map<string, Array<(node: ExecutionGraphNode) => void>>();
   private readonly subscribers = new Set<(event: ExecutionEvent) => void>();
   private readonly cancellation = new CancellationController();
+  private approvalMode: ApprovalMode = "full";
+  private initialPlanAccepted = false;
+  private futureAutoApprovalsPaused = false;
   private approvalVersion = 0;
 
+  constructor(input: { approvalMode?: ApprovalMode } = {}) {
+    this.approvalMode = input.approvalMode ?? "full";
+  }
+
   readonly control: ExecutionControl = {
+    approvalMode: this.approvalMode,
     isCancelled: () => this.cancellation.isCancelled(),
     cancelReason: () => this.cancellation.cancelReason(),
     onEvent: (event) => this.publish(event),
     registerNode: (node) => this.registerNode(node),
-    updateNodeStatus: (nodeId, status) => this.updateNodeStatus(nodeId, status),
+    updateNodeStatus: (nodeId, status, detail) => this.updateNodeStatus(nodeId, status, detail),
     waitForNodeApproval: (node) => this.waitForNodeApprovalInternal(node),
+    pauseFutureAutoApprovals: () => this.pauseFutureAutoApprovals(),
+    autoApprovalPaused: () => this.autoApprovalPaused(),
   };
 
-  snapshot(): { graph: ExecutionGraph; status: ExecutionStatus; activeNodeId?: string | undefined } {
+  snapshot(): {
+    graph: ExecutionGraph;
+    status: ExecutionStatus;
+    activeNodeId?: string | undefined;
+    approvalMode: ApprovalMode;
+    autoApprovalPaused: boolean;
+    runSummary?: { message?: string };
+  } {
     const nodes = [...this.nodes.values()];
     const activeNode = nodes.find((node) => node.status === "awaiting_approval" || node.status === "running");
     const terminal = nodes.length > 0 && nodes.every((node) =>
       node.status === "completed" || node.status === "skipped" || node.status === "failed" || node.status === "cancelled"
     );
-    return {
+    // Cancelled session wins over per-node failed when both apply (user stop after partial failure).
+    const status: ExecutionStatus = !terminal
+      ? activeNode?.status ?? "planned"
+      : this.cancellation.isCancelled()
+        ? "cancelled"
+        : nodes.some((node) => node.status === "failed")
+          ? "failed"
+          : "completed";
+    let runSummary: { message?: string } | undefined;
+    if (terminal && (status === "failed" || status === "cancelled")) {
+      const message = status === "cancelled"
+        ? (this.cancellation.cancelReason() ?? "Run was cancelled.")
+        : summarizeRunFromNodes(nodes).primaryMessage;
+      runSummary = message ? { message } : {};
+    }
+    const snapshotPayload: {
+      graph: ExecutionGraph;
+      status: ExecutionStatus;
+      activeNodeId?: string | undefined;
+      approvalMode: ApprovalMode;
+      autoApprovalPaused: boolean;
+      runSummary?: { message?: string };
+    } = {
       graph: {
         nodes,
         edges: [...this.edges],
       },
-      status: this.cancellation.isCancelled() ? "cancelled" : terminal ? "completed" : activeNode?.status ?? "planned",
+      status,
       activeNodeId: activeNode?.id,
+      approvalMode: this.approvalMode,
+      autoApprovalPaused: this.futureAutoApprovalsPaused,
     };
+    if (runSummary !== undefined) {
+      snapshotPayload.runSummary = runSummary;
+    }
+    return snapshotPayload;
   }
 
   subscribe(subscriber: (event: ExecutionEvent) => void): () => void {
@@ -220,11 +268,16 @@ export class InteractiveExecutionSession {
     this.pending.delete(nodeId);
     this.resolvedApprovalTokens.add(pending.token);
     node.approvalToken = undefined;
+    node.approvalSource = "manual";
+    node.approvalReason = "manually approved";
+    this.initialPlanAccepted = true;
     this.updateNodeStatus(nodeId, "approved");
     pending.resolve({
       status: "approved",
       prompt: node.prompt ?? node.label,
       modelOverride: node.modelOverride,
+      approvalSource: "manual",
+      approvalReason: node.approvalReason,
     });
     return { duplicate: false };
   }
@@ -272,7 +325,27 @@ export class InteractiveExecutionSession {
       });
     }
     this.pending.clear();
-    this.publish({ type: "execution", status: "cancelled", message: reason });
+    this.publish({
+      type: "execution",
+      status: "cancelled",
+      message: reason,
+      failureCategory: "cancelled",
+      code: EXECUTION_FAILURE_CODES.cancelled,
+    });
+  }
+
+  pauseFutureAutoApprovals(): void {
+    this.futureAutoApprovalsPaused = true;
+    this.publish({
+      type: "execution",
+      status: "ready",
+      message: "future auto-approvals paused",
+      approvalMode: this.approvalMode,
+    });
+  }
+
+  autoApprovalPaused(): boolean {
+    return this.futureAutoApprovalsPaused;
   }
 
   private registerNode(input: ExecutionGraphNode): void {
@@ -289,6 +362,9 @@ export class InteractiveExecutionSession {
       plannedModel: input.plannedModel ?? "resolved-at-runtime",
       modelOverrideSource: input.modelOverrideSource ?? "none",
       editableFields: input.editableFields ?? ["prompt"],
+      approvalMode: input.approvalMode ?? this.approvalMode,
+      approvalSource: input.approvalSource ?? "none",
+      autoApprovalPaused: this.futureAutoApprovalsPaused,
     };
     this.nodes.set(node.id, node);
     if (node.parentId && !this.edges.some((edge) => edge.from === node.parentId && edge.to === node.id)) {
@@ -298,7 +374,7 @@ export class InteractiveExecutionSession {
     this.notifyStatusWaiters(node);
   }
 
-  private updateNodeStatus(nodeId: string, status: ExecutionStatus): void {
+  private updateNodeStatus(nodeId: string, status: ExecutionStatus, detail?: ExecutionStatusUpdateDetail): void {
     const node = this.nodes.get(nodeId);
     if (!node) {
       return;
@@ -311,7 +387,15 @@ export class InteractiveExecutionSession {
     if (status === "completed" || status === "skipped" || status === "failed" || status === "cancelled") {
       node.completedAt = new Date().toISOString();
     }
-    this.publish({ type: "execution", status, nodeId });
+    const event: ExecutionEvent = {
+      type: "execution",
+      status,
+      nodeId,
+      message: detail?.message,
+      failureCategory: detail?.failureCategory,
+      code: detail?.code,
+    };
+    this.publish(event);
     this.notifyStatusWaiters(node);
   }
 
@@ -321,13 +405,71 @@ export class InteractiveExecutionSession {
     if (!node) {
       throw new Error(`Node "${input.id}" was not registered.`);
     }
+    node.autoApprovalPaused = this.futureAutoApprovalsPaused;
+    const autoDecision = this.shouldAutoApprove(node);
+    if (autoDecision.auto) {
+      node.approvalToken = undefined;
+      node.approvalSource = "auto";
+      node.approvalReason = autoDecision.reason;
+      this.updateNodeStatus(input.id, "approved");
+      this.publish({
+        type: "execution",
+        status: "approved",
+        nodeId: input.id,
+        message: "node auto-approved",
+        approvalMode: this.approvalMode,
+        approvalSource: "auto",
+      });
+      return Promise.resolve({
+        status: "approved",
+        prompt: node.prompt ?? node.label,
+        modelOverride: node.modelOverride,
+        approvalSource: "auto",
+        approvalReason: node.approvalReason,
+      });
+    }
     const token = `${input.id}:${++this.approvalVersion}`;
     node.approvalToken = token;
+    node.approvalReason = autoDecision.reason;
     this.updateNodeStatus(input.id, "awaiting_approval");
 
     return new Promise((resolve) => {
       this.pending.set(input.id, { resolve, token });
     });
+  }
+
+  private shouldAutoApprove(node: ExecutionGraphNode): { auto: boolean; reason: string } {
+    if (this.approvalMode === "full" || this.futureAutoApprovalsPaused) {
+      return {
+        auto: false,
+        reason: "full checkpoint approval required",
+      };
+    }
+
+    if (!this.initialPlanAccepted) {
+      return {
+        auto: false,
+        reason: "initial checkpoint approval required",
+      };
+    }
+
+    if (this.approvalMode === "initial-plan") {
+      if (node.spawnedAfterInitialApproval === true) {
+        return {
+          auto: false,
+          reason: "new recursive branch requires approval",
+        };
+      }
+      return {
+        auto: true,
+        reason: "initial plan approved",
+      };
+    }
+
+    return {
+      auto: true,
+      reason: node.spawnedAfterInitialApproval ? "recursive branch auto-approved" : "initial plan approved",
+    };
   }
 
   toMutationError(error: unknown): GraphMutationError | undefined {
@@ -390,14 +532,17 @@ export class InteractiveExecutionSession {
       node.id,
       waiters.filter((waiter) => {
         waiter(node);
+        if (node.status === "failed" || node.status === "cancelled") {
+          return false;
+        }
         return node.status !== "awaiting_approval" && node.status !== "completed" && node.status !== "skipped";
       }),
     );
   }
 }
 
-export function createInteractiveExecutionSession(): InteractiveExecutionSession {
-  return new InteractiveExecutionSession();
+export function createInteractiveExecutionSession(input: { approvalMode?: ApprovalMode } = {}): InteractiveExecutionSession {
+  return new InteractiveExecutionSession(input);
 }
 
 export function createExecutionControl(input: {

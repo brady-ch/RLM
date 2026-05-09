@@ -1,4 +1,5 @@
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
+import type { ExecutionFailureCategory } from "./execution-failure.js";
 
 export interface RecursiveModelConfig {
   maxDepth?: number;
@@ -101,6 +102,8 @@ export type ExecutionStatus =
   | "failed"
   | "cancelled";
 
+export type ApprovalMode = "full" | "initial-plan" | "initial-plan-recursive";
+
 export interface ExecutionBudget {
   estimatedModelCalls: number;
   estimatedToolRounds: number;
@@ -126,6 +129,11 @@ export interface ExecutionGraphNode {
   status: ExecutionStatus;
   startedAt?: string | undefined;
   completedAt?: string | undefined;
+  approvalMode?: ApprovalMode | undefined;
+  approvalSource?: "manual" | "auto" | "none" | undefined;
+  approvalReason?: string | undefined;
+  spawnedAfterInitialApproval?: boolean | undefined;
+  autoApprovalPaused?: boolean | undefined;
 }
 
 export interface ExecutionGraphEdge {
@@ -146,22 +154,37 @@ export interface ExecutionEvent {
   modelCallsRemaining?: number | undefined;
   toolCallsUsed?: number | undefined;
   message?: string | undefined;
+  approvalMode?: ApprovalMode | undefined;
+  approvalSource?: "manual" | "auto" | "none" | undefined;
+  failureCategory?: ExecutionFailureCategory | undefined;
+  code?: string | undefined;
+}
+
+export interface ExecutionStatusUpdateDetail {
+  failureCategory?: ExecutionFailureCategory | undefined;
+  code?: string | undefined;
+  message?: string | undefined;
 }
 
 export interface ExecutionControl {
   planOnly?: boolean | undefined;
+  approvalMode?: ApprovalMode | undefined;
   isCancelled: () => boolean;
   cancelReason?: () => string | undefined;
   onEvent?: ((event: ExecutionEvent) => void) | undefined;
   registerNode?: ((node: ExecutionGraphNode) => void) | undefined;
-  updateNodeStatus?: ((nodeId: string, status: ExecutionStatus) => void) | undefined;
+  updateNodeStatus?: ((nodeId: string, status: ExecutionStatus, detail?: ExecutionStatusUpdateDetail) => void) | undefined;
   waitForNodeApproval?: ((node: ExecutionGraphNode) => Promise<NodeApprovalDecision>) | undefined;
+  pauseFutureAutoApprovals?: (() => void) | undefined;
+  autoApprovalPaused?: (() => boolean) | undefined;
 }
 
 export interface NodeApprovalDecision {
   status: "approved" | "skipped" | "cancelled";
   prompt: string;
   modelOverride?: string | undefined;
+  approvalSource?: "manual" | "auto" | "none" | undefined;
+  approvalReason?: string | undefined;
 }
 
 export interface GraphMutationError {

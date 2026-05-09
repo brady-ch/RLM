@@ -7,6 +7,7 @@ import type { ToolPort } from "../ports/tool-port.js";
 import type { TracePort } from "../ports/trace-port.js";
 import type {
   ExecutionEvent,
+  ExecutionStatusUpdateDetail,
   RecursiveModelConfig,
   RecursivePromptMetadata,
   RecursivePromptRequest,
@@ -15,6 +16,7 @@ import type {
   TaskNode,
   ToolCallRecord,
 } from "./types.js";
+import { EXECUTION_FAILURE_CODES } from "./execution-failure.js";
 
 const DIRECT = "DIRECT";
 const RECURSIVE = "RECURSIVE";
@@ -28,6 +30,7 @@ export class RecursiveLanguageModel {
   private metadata: RecursivePromptMetadata = createEmptyMetadata();
   private logger: RuntimeLogger | undefined;
   private execution: RecursivePromptRequest["execution"] | undefined;
+  private initialApprovalBoundaryPassed = false;
   private executionNodes = new Map<string, NonNullable<RecursivePromptMetadata["executionGraph"]>["nodes"][number]>();
   private executionEdges: NonNullable<RecursivePromptMetadata["executionGraph"]>["edges"] = [];
   private readonly toolsByName: Map<string, ToolPort>;
@@ -48,6 +51,7 @@ export class RecursiveLanguageModel {
     this.metadata = createEmptyMetadata();
     this.logger = request.logger;
     this.execution = request.execution;
+    this.initialApprovalBoundaryPassed = false;
     if (request.agent) {
       this.agentSystemPrompt = request.agent.systemPrompt;
       this.metadata.agent = {
@@ -97,7 +101,8 @@ export class RecursiveLanguageModel {
 
     try {
       const answer = await this.solve(root, config);
-      this.metadata.executionStatus = "completed";
+      // Do not report completed when errors or failed nodes indicate a degraded/failed run (D-01 / D-09).
+      this.syncExecutionStatusWithOutcome();
       this.metadata.modelCalls = this.modelCalls;
       this.log("run", "completed recursive run", {
         modelCalls: this.metadata.modelCalls,
@@ -105,6 +110,7 @@ export class RecursiveLanguageModel {
         outputTokens: this.metadata.tokenUsage.outputTokens,
         totalTokens: this.metadata.tokenUsage.totalTokens,
         unknownCompletions: this.metadata.tokenUsage.unknownCompletions,
+        executionStatus: this.metadata.executionStatus,
       });
       this.updateExecutionGraph();
       return {
@@ -115,6 +121,16 @@ export class RecursiveLanguageModel {
     } catch (error: unknown) {
       if (!this.execution?.isCancelled()) {
         this.metadata.executionStatus = "failed";
+        const detail: ExecutionStatusUpdateDetail = {
+          failureCategory: "internal",
+          code: EXECUTION_FAILURE_CODES.internal,
+          message: error instanceof Error ? error.message : String(error),
+        };
+        for (const node of this.executionNodes.values()) {
+          if (node.status === "running") {
+            this.markExecutionNodeFailed(node.id, "failed", detail);
+          }
+        }
       }
 
       this.updateExecutionGraph();
@@ -210,14 +226,23 @@ export class RecursiveLanguageModel {
         break;
       }
 
-      const answer = await this.solve(child, config);
-      const summary = this.remainingModelCalls() > 1 ? await this.summarize(child, answer) : answer;
-      solvedChildren.push({
-        id: child.id,
-        prompt: child.prompt,
-        answer,
-        summary,
-      });
+      try {
+        const answer = await this.solve(child, config);
+        const summary = this.remainingModelCalls() > 1 ? await this.summarize(child, answer) : answer;
+        solvedChildren.push({
+          id: child.id,
+          prompt: child.prompt,
+          answer,
+          summary,
+        });
+      } catch (error: unknown) {
+        this.markExecutionNodeFailed(child.id, "failed", {
+          failureCategory: "internal",
+          code: EXECUTION_FAILURE_CODES.nodeFailed,
+          message: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
     }
 
     const answer = await (this.canSpendAnyModelCall()
@@ -428,6 +453,11 @@ export class RecursiveLanguageModel {
         const output = `Model requested tools during ${kind}, but tools are disabled for this step.`;
         this.record(task, "error", task.prompt, output);
         this.metadata.errors.push(output);
+        this.markExecutionNodeFailed(task.id, "failed", {
+          failureCategory: "model",
+          code: EXECUTION_FAILURE_CODES.model,
+          message: output,
+        });
         return response.content || fallbackFromMessages(conversation);
       }
 
@@ -495,6 +525,11 @@ export class RecursiveLanguageModel {
         this.metadata.toolCalls.push(record);
         if (result.status === "error") {
           this.metadata.errors.push(result.output);
+          this.markExecutionNodeFailed(task.id, "failed", {
+            failureCategory: "tool",
+            code: EXECUTION_FAILURE_CODES.tool,
+            message: result.output,
+          });
         }
         this.log("tool", result.status === "success" ? "completed tool call" : "failed tool call", {
           task: task.id,
@@ -702,6 +737,11 @@ export class RecursiveLanguageModel {
   private recordLimit(task: TaskNode, message: string): void {
     this.record(task, "error", task.prompt, message);
     this.metadata.errors.push(message);
+    this.markExecutionNodeFailed(task.id, "failed", {
+      failureCategory: "model",
+      code: EXECUTION_FAILURE_CODES.model,
+      message,
+    });
     this.log("limit", message, {
       task: task.id,
       depth: task.depth,
@@ -717,7 +757,11 @@ export class RecursiveLanguageModel {
 
     const reason = this.execution.cancelReason?.() ?? "execution cancelled";
     this.metadata.executionStatus = "cancelled";
-    this.markExecutionNodeFailed(task.id, "cancelled");
+    this.markExecutionNodeFailed(task.id, "cancelled", {
+      failureCategory: "cancelled",
+      code: EXECUTION_FAILURE_CODES.cancelled,
+      message: reason,
+    });
     this.emitExecution({
       type: "execution",
       status: "cancelled",
@@ -744,6 +788,10 @@ export class RecursiveLanguageModel {
         editableFields: ["prompt"],
         depth: task.depth,
         status: "ready",
+        approvalMode: this.execution?.approvalMode,
+        approvalSource: "none",
+        spawnedAfterInitialApproval: this.initialApprovalBoundaryPassed && task.parentId !== undefined,
+        autoApprovalPaused: this.execution?.autoApprovalPaused?.() ?? false,
       };
       if (task.parentId) {
         node.parentId = task.parentId;
@@ -786,6 +834,9 @@ export class RecursiveLanguageModel {
     if (!node) {
       return;
     }
+    if (node.status === "failed" || node.status === "cancelled") {
+      return;
+    }
 
     node.status = "completed";
     node.completedAt = new Date().toISOString();
@@ -801,7 +852,11 @@ export class RecursiveLanguageModel {
     });
   }
 
-  private markExecutionNodeFailed(nodeId: string, status: "failed" | "cancelled"): void {
+  private markExecutionNodeFailed(
+    nodeId: string,
+    status: "failed" | "cancelled",
+    detail?: ExecutionStatusUpdateDetail,
+  ): void {
     const node = this.executionNodes.get(nodeId);
     if (!node) {
       return;
@@ -811,7 +866,31 @@ export class RecursiveLanguageModel {
     node.completedAt = new Date().toISOString();
     this.metadata.executionStatus = status;
     this.updateExecutionGraph();
-    this.execution?.updateNodeStatus?.(nodeId, status);
+    const resolvedDetail: ExecutionStatusUpdateDetail | undefined = status === "cancelled"
+      ? {
+        failureCategory: "cancelled",
+        code: EXECUTION_FAILURE_CODES.cancelled,
+        message: detail?.message ?? this.execution?.cancelReason?.(),
+      }
+      : detail;
+    this.execution?.updateNodeStatus?.(nodeId, status, resolvedDetail);
+  }
+
+  /** Align top-level executionStatus with errors and graph so we never emit completed for a failed run. */
+  private syncExecutionStatusWithOutcome(): void {
+    if (this.metadata.executionStatus === "cancelled") {
+      return;
+    }
+    if (this.metadata.errors.length > 0) {
+      this.metadata.executionStatus = "failed";
+      return;
+    }
+    const graph = this.metadata.executionGraph;
+    if (graph?.nodes.some((n) => n.status === "failed")) {
+      this.metadata.executionStatus = "failed";
+      return;
+    }
+    this.metadata.executionStatus = "completed";
   }
 
   private async waitForNodeApproval(task: TaskNode): Promise<TaskNode | "skipped"> {
@@ -827,6 +906,10 @@ export class RecursiveLanguageModel {
       editableFields: ["prompt"],
       depth: task.depth,
       status: "awaiting_approval",
+      approvalMode: this.execution?.approvalMode,
+      approvalSource: "none",
+      spawnedAfterInitialApproval: this.initialApprovalBoundaryPassed && task.parentId !== undefined,
+      autoApprovalPaused: this.execution?.autoApprovalPaused?.() ?? false,
     };
     if (task.parentId) {
       node.parentId = task.parentId;
@@ -834,12 +917,19 @@ export class RecursiveLanguageModel {
     const decision = await this.execution?.waitForNodeApproval?.(node);
     this.throwIfCancelled(task);
     if (!decision || decision.status === "approved") {
+      this.initialApprovalBoundaryPassed = true;
+      const executionNode = this.executionNodes.get(task.id);
+      if (executionNode && decision) {
+        executionNode.approvalSource = decision.approvalSource ?? executionNode.approvalSource;
+        executionNode.approvalReason = decision.approvalReason ?? executionNode.approvalReason;
+        this.updateExecutionGraph();
+      }
       if (decision?.modelOverride) {
-        const executionNode = this.executionNodes.get(task.id);
-        if (executionNode) {
-          executionNode.modelOverride = decision.modelOverride;
-          executionNode.modelOverrideSource = "user";
-          executionNode.plannedModel = decision.modelOverride;
+        const overrideNode = this.executionNodes.get(task.id);
+        if (overrideNode) {
+          overrideNode.modelOverride = decision.modelOverride;
+          overrideNode.modelOverrideSource = "user";
+          overrideNode.plannedModel = decision.modelOverride;
           this.updateExecutionGraph();
         }
       }
@@ -858,7 +948,11 @@ export class RecursiveLanguageModel {
       return "skipped";
     }
 
-    this.markExecutionNodeFailed(task.id, "cancelled");
+    this.markExecutionNodeFailed(task.id, "cancelled", {
+      failureCategory: "cancelled",
+      code: EXECUTION_FAILURE_CODES.cancelled,
+      message: this.execution?.cancelReason?.(),
+    });
     throw new Error(this.execution?.cancelReason?.() ?? "execution cancelled");
   }
 
