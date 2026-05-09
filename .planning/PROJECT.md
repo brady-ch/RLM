@@ -1,5 +1,17 @@
 # Recursive Language Model CLI
 
+## Current Milestone: v1.1 — Interop, chat-first, plugins, constrained tools
+
+**Goal:** Make the product interoperable with common **skills** and **MCP** setups, support **chat-first** graph authoring in the UI, add a **simple plugin/extension** path for skills, tools, and model hosts, treat **local and remote** models as first-class, pause with explicit **user prompts when clarification** is needed, and ship **schema-constrained tool calling** per `.planning/research/TOOL-CALLING-CONSTRAINED-DECODING.md`.
+
+**Target features:**
+- MCP and skill layouts usable alongside other MCP-capable agents (documented parity / import path).
+- Start app → **conversational UI** drives **node graph creation and refinement** (not only single-shot prompt).
+- **Plugin-style extension** for tools, skills, and additional AI server hosts without rewriting core.
+- **Local and remote** model endpoints supported in configuration and routing.
+- **Question stops:** execution halts with a clear prompt when human answers are required; resumes per policy.
+- **Constrained tool calling:** decode-time / schema-enforced tool selection and arguments where the stack allows (Ollama envelope path per research doc), wired through ports and the recursive tool loop.
+
 ## What This Is
 
 A local recursive language model CLI and UI workflow system for developers in this repo. It accepts a prompt, plans a node graph for recursive execution, lets users review and modify that graph at approval checkpoints, and then runs the AI workflow through to completion with visible execution state. It is intended to support model-aware orchestration where different nodes can run on different models, including final-format handoff nodes.
@@ -28,14 +40,12 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-- [x] User can submit a prompt and receive a planning node graph before execution.
-- [x] Execution pauses at every approval checkpoint and allows node edit/delete/add before continuing.
-- [x] Each node card displays the model planned for that node.
-- [x] Planning can assign model per downstream node, including final-node handoff to a different model.
-- [x] User can override node model assignments before execution resumes.
-- [x] User can enable an override mode that requires only initial-plan approval and then runs without further approvals.
-- [x] Recursive execution can spawn additional agents/nodes when needed while respecting approval/override behavior.
-- [x] Failures are always surfaced to the user (UI and/or CLI) with no silent failure paths.
+- [ ] MCP and skill interoperability path documented and implemented for at least one reference layout each.
+- [ ] Chat-first UI session can create and refine the execution graph through conversation.
+- [ ] Extension/plugin path exists for registering tools, skills, and model host adapters (reference plugin or loader).
+- [ ] Configuration supports local and remote model endpoints with consistent routing semantics.
+- [ ] Runtime supports explicit clarification prompts: pause, collect user answer, resume without silent continuation.
+- [ ] Tool rounds support constrained decoding for tool choice and arguments per `TOOL-CALLING-CONSTRAINED-DECODING.md`, integrated with `LanguageModelPort` and recursion.
 
 ### Out of Scope
 
@@ -62,6 +72,7 @@ The repository already has a layered architecture (`src/application`, `src/domai
 | Show planned model directly on each node card | Model choice is a first-class execution concern, including cross-model handoff | Shipped in v1.0 |
 | v1 graph edits remain in-memory | Faster path to stable approval flow; avoids persistence/versioning complexity initially | Shipped in v1.0 |
 | Add override mode: approve initial plan only, then auto-run | Maintains safety at planning boundary while reducing interaction overhead | Shipped in v1.0 |
+| v1.1 focuses on MCP/skill interop, chat-first graph UX, plugin extensibility, local+remote hosts, clarification stops, constrained tool calling | User direction + research doc for decode-time tool envelopes | — Pending |
 
 ## Evolution
 
@@ -81,4 +92,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-08 after v1.0 milestone completion*
+*Last updated: 2026-05-09 — milestone v1.1 started (interop, chat-first, plugins, constrained tools, clarification stops)*

@@ -76,6 +76,50 @@
 - Mapped to phases: 15
 - Unmapped: 0 ✓
 
+## Milestone v1.1 Requirements (active)
+
+**Defined:** 2026-05-09  
+**Research:** Tool-calling constraints — `.planning/research/TOOL-CALLING-CONSTRAINED-DECODING.md` (parallel domain research skipped; plan-phase may add MCP/skills ecosystem notes).
+
+### Interoperability
+
+- [ ] **INT-01**: User can configure MCP servers using a documented import or parity path with at least one common MCP agent client layout (exact matrix TBD in plan).
+- [ ] **INT-02**: User can load or reference skills using a documented compatibility path with at least one common on-disk skill layout used by target agent hosts (exact layout TBD in plan).
+
+### Chat-first planning
+
+- [ ] **CHAT-01**: User can create and refine the execution node graph through a conversational UI session (not only a single-shot prompt submission).
+
+### Extensibility
+
+- [ ] **PLUG-01**: System exposes a documented extension mechanism to register additional tools, skills, and model host adapters without forking core, including at least one reference registration path.
+
+### Model hosts
+
+- [ ] **HOST-01**: User can configure **local and remote** model endpoints with consistent selection and tier/routing semantics across CLI and UI.
+
+### Human clarification
+
+- [ ] **QUES-01**: Execution pauses with an explicit user-facing prompt when the runtime requires human answers; the run does not continue until the user responds or an explicit documented dismiss/skip policy applies (no silent continuation).
+
+### Constrained tool calling
+
+- [ ] **TCON-01**: Tool-calling rounds support constrained decoding for tool selection and arguments per `.planning/research/TOOL-CALLING-CONSTRAINED-DECODING.md` (JSON Schema / envelope approach appropriate to each host), integrated through `LanguageModelPort` and the recursive execution loop, without violating host constraints (e.g. Ollama `tools` + `format` mutual exclusion).
+
+### Traceability (v1.1)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| INT-01 | — | Pending roadmap |
+| INT-02 | — | Pending roadmap |
+| CHAT-01 | — | Pending roadmap |
+| PLUG-01 | — | Pending roadmap |
+| HOST-01 | — | Pending roadmap |
+| QUES-01 | — | Pending roadmap |
+| TCON-01 | — | Pending roadmap |
+
+**Coverage (v1.1):** 7 requirements — pending roadmap mapping
+
 ---
-*Requirements defined: 2026-05-08*
-*Last updated: 2026-05-08 after Phase 5 completion*
+*Requirements defined: 2026-05-08 (v1); 2026-05-09 (v1.1)*
+*Last updated: 2026-05-09 — milestone v1.1 requirements added*
