@@ -75,6 +75,25 @@ async function routeRequest(
       const result = session.skipNode(nodeId, token);
       return sendJson(response, { ...session.snapshot(), duplicate: result.duplicate });
     }
+    if (request.method === "POST" && url.pathname === "/api/nodes/add") {
+      const body = await readJsonBody(request);
+      const parentId = String(body["parentId"] ?? "");
+      const prompt = String(body["prompt"] ?? "");
+      const kind = body["kind"] === "workflow-agent" || body["kind"] === "workflow-qa" ? body["kind"] : "task";
+      const node = session.addNode({ parentId, prompt, kind });
+      return sendJson(response, { ...session.snapshot(), addedNodeId: node.id });
+    }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/connect$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const body = await readJsonBody(request);
+      session.connectNode({ nodeId, parentId: String(body["parentId"] ?? "") });
+      return sendJson(response, session.snapshot());
+    }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/delete$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const result = session.deleteNode(nodeId);
+      return sendJson(response, { ...session.snapshot(), deletedNodeIds: result.deleted });
+    }
     if (request.method === "POST" && url.pathname === "/api/stop") {
       const body = await readJsonBody(request);
       session.stop(typeof body["reason"] === "string" ? body["reason"] : undefined);
@@ -83,6 +102,10 @@ async function routeRequest(
 
     return serveUiAsset(request, response, uiDistDir);
   } catch (error: unknown) {
+    const mutationError = session.toMutationError(error);
+    if (mutationError) {
+      return sendJson(response, mutationError, 409);
+    }
     const message = error instanceof Error ? error.message : String(error);
     const status = message.includes("Unknown node")
       ? 404

@@ -145,6 +145,15 @@ textarea {
   width: 100%;
 }
 
+input {
+  border: 1px solid #c9d2cc;
+  border-radius: 8px;
+  font: inherit;
+  min-height: 40px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

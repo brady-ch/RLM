@@ -153,6 +153,8 @@ function NodeInspector(
   { node, refresh, setErrorMessage }: { node: ExecutionNode; refresh: () => Promise<void>; setErrorMessage: (message: string | undefined) => void },
 ) {
   const [prompt, setPrompt] = useState(node.prompt ?? node.label);
+  const [newChildPrompt, setNewChildPrompt] = useState("");
+  const [connectParentId, setConnectParentId] = useState("");
 
   useEffect(() => {
     setPrompt(node.prompt ?? node.label);
@@ -187,6 +189,46 @@ function NodeInspector(
         >
           <X size={16} /> Skip
         </button>
+      </div>
+      <div>
+        <label>Add Child</label>
+        <textarea
+          value={newChildPrompt}
+          disabled={!waiting}
+          onChange={(event) => setNewChildPrompt(event.target.value)}
+          placeholder="New child prompt"
+        />
+        <div className="actions">
+          <button
+            disabled={!waiting || newChildPrompt.trim().length === 0}
+            onClick={() => runAction(setErrorMessage, () => post("/api/nodes/add", { parentId: node.id, prompt: newChildPrompt }), refresh)}
+          >
+            Add child
+          </button>
+        </div>
+      </div>
+      <div>
+        <label>Connect Parent ID</label>
+        <input
+          value={connectParentId}
+          disabled={!waiting}
+          onChange={(event) => setConnectParentId(event.target.value)}
+          placeholder="task-1"
+        />
+        <div className="actions">
+          <button
+            disabled={!waiting || connectParentId.trim().length === 0}
+            onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/connect`, { parentId: connectParentId }), refresh)}
+          >
+            Connect
+          </button>
+          <button
+            disabled={!waiting}
+            onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/delete`, {}), refresh)}
+          >
+            Delete subtree
+          </button>
+        </div>
       </div>
     </div>
   );
