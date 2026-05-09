@@ -18,7 +18,7 @@ import { createStderrRuntimeLogger } from "./cli/runtime-logger.js";
 import { installShutdownHandlers } from "./cli/shutdown.js";
 import type { LanguageModelPort } from "./ports/language-model-port.js";
 import type { ToolPort } from "./ports/tool-port.js";
-import type { ExecutionEvent } from "./domain/types.js";
+import type { ExecutionEvent, RecursivePromptResult } from "./domain/types.js";
 import { join } from "node:path";
 
 async function main(): Promise<void> {
@@ -166,6 +166,7 @@ async function main(): Promise<void> {
         includeTrace: options.trace,
         model: projectConfig.models.default,
       }));
+      setExitCodeIfRunFailed(result);
       return;
     }
 
@@ -234,6 +235,7 @@ async function main(): Promise<void> {
         model: projectConfig.models.default,
       }),
     );
+    setExitCodeIfRunFailed(result);
   } finally {
     shutdown.markCompleted();
     memoryManager.releaseAll();
@@ -250,6 +252,12 @@ main().catch((error: unknown) => {
   }
   process.exitCode = 1;
 });
+
+function setExitCodeIfRunFailed(result: RecursivePromptResult): void {
+  if (result.metadata.executionStatus === "failed" || (result.metadata.errors?.length ?? 0) > 0) {
+    process.exitCode = 1;
+  }
+}
 
 async function waitForApproval(): Promise<void> {
   process.stderr.write("Plan generated. Type 'run' and press Enter to execute, or Ctrl+C to cancel.\n");

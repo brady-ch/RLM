@@ -1,4 +1,4 @@
-import type { RecursiveModelConfig } from "../domain/types.js";
+import type { ApprovalMode, RecursiveModelConfig } from "../domain/types.js";
 
 export interface CliOptions {
   command: "ask" | "help" | "ui";
@@ -12,6 +12,7 @@ export interface CliOptions {
   jsonStream: boolean;
   planOnly: boolean;
   requireApproval: boolean;
+  approvalMode: ApprovalMode;
   approve: boolean;
   model: string;
   modelOverride?: string;
@@ -48,6 +49,7 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   let jsonStream = false;
   let planOnly = false;
   let requireApproval = false;
+  let approvalMode: ApprovalMode = "full";
   let approve = false;
   let model = env.RLM_MODEL ?? "granite4.1:3b";
   let modelOverride = env.RLM_MODEL;
@@ -93,6 +95,17 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     }
     if (arg === "--require-approval") {
       requireApproval = true;
+      approvalMode = "full";
+      continue;
+    }
+    if (arg === "--approval-mode") {
+      const value = readValue(args, index, arg);
+      if (value !== "full" && value !== "initial-plan" && value !== "initial-plan-recursive") {
+        throw new Error("--approval-mode must be one of: full, initial-plan, initial-plan-recursive.");
+      }
+      approvalMode = value;
+      requireApproval = true;
+      index += 1;
       continue;
     }
     if (arg === "--approve") {
@@ -204,6 +217,7 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     jsonStream,
     planOnly,
     requireApproval,
+    approvalMode,
     approve,
     model,
   };
@@ -251,12 +265,14 @@ export function helpText(): string {
     "  --config <path>         YAML config path. Default: ./rlm.config.yaml when present",
     "  --base-url <url>        Ollama base URL. Default: OLLAMA_HOST or LangChain default",
     "  --json                 Print stable JSON output for tool consumption",
+    "                        Exit code 1 when executionStatus is failed or errors are present.",
     "  --compact              Print compact output for compatibility",
     "  --trace                Print recursion trace",
     "  --verbose              Log workflow progress, model calls, completions, and token usage to stderr",
     "  --json-stream          Emit JSON execution events while running",
     "  --plan-only            Build and print execution plan, but do not execute",
     "  --require-approval     Print plan first, then wait for explicit approval before executing",
+    "  --approval-mode <mode> Approval behavior: full | initial-plan | initial-plan-recursive",
     "  --approve              Auto-approve a require-approval run (non-interactive)",
     "  --ui-port <n>          Port for local React Flow UI. Default: available port",
   ].join("\n");
@@ -275,6 +291,7 @@ function helpOptions(env: NodeJS.ProcessEnv): CliOptions {
     jsonStream: false,
     planOnly: false,
     requireApproval: false,
+    approvalMode: "full",
     approve: false,
     model: env.RLM_MODEL ?? "granite4.1:3b",
   };

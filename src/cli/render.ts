@@ -1,4 +1,6 @@
 import type { RecursivePromptResult, TraceEvent } from "../domain/types.js";
+import { labelForCategory } from "../domain/execution-failure.js";
+import type { ExecutionFailureCategory } from "../domain/execution-failure.js";
 
 export interface RenderOptions {
   compact: boolean;
@@ -16,7 +18,11 @@ export function renderResult(result: RecursivePromptResult, options: RenderOptio
     return renderCompact(result, options);
   }
 
-  const sections = [`Answer:\n${result.answer}`];
+  const sections: string[] = [];
+  if (isRunFailure(result)) {
+    sections.push(formatFailureBanner(result));
+  }
+  sections.push(`Answer:\n${result.answer}`);
   if (options.includeTrace) {
     sections.push(`Trace:\n${renderTrace(result.trace)}`);
   }
@@ -25,20 +31,24 @@ export function renderResult(result: RecursivePromptResult, options: RenderOptio
 }
 
 function renderCompact(result: RecursivePromptResult, options: RenderOptions): string {
+  const errCount = result.metadata.errors.length;
   const lines = [
     `model: ${options.model}`,
     `agent: ${result.metadata.agent.id} (${result.metadata.agent.source})`,
     `depth: ${result.metadata.depth.selected} (${result.metadata.depth.source})`,
     `modelCalls: ${result.metadata.modelCalls}`,
     `executionStatus: ${result.metadata.executionStatus ?? "completed"}`,
+    ...(isRunFailure(result) ? [`errors: ${errCount}`, `errorPreview: ${singleLine(result.metadata.errors[0] ?? "")}`] : []),
     `tokens: input=${result.metadata.tokenUsage.inputTokens} output=${result.metadata.tokenUsage.outputTokens} total=${result.metadata.tokenUsage.totalTokens} unknown=${result.metadata.tokenUsage.unknownCompletions}`,
     `answer: ${singleLine(result.answer)}`,
   ];
   if (result.metadata.executionGraph?.nodes.length) {
+    const autoApprovedNodes = result.metadata.executionGraph.nodes.filter((node) => node.approvalSource === "auto").length;
+    lines.push(`autoApprovedNodes=${autoApprovedNodes}`);
     lines.push("nodeModels:");
     for (const node of result.metadata.executionGraph.nodes) {
       lines.push(
-        `- ${node.id} planned=${node.plannedModel ?? "resolved-at-runtime"} override=${node.modelOverride ?? "none"} source=${node.modelOverrideSource ?? "none"} effective=${node.effectiveModel ?? "pending"}`,
+        `- ${node.id} planned=${node.plannedModel ?? "resolved-at-runtime"} override=${node.modelOverride ?? "none"} source=${node.modelOverrideSource ?? "none"} effective=${node.effectiveModel ?? "pending"} approvalMode=${node.approvalMode ?? "full"} approvalSource=${node.approvalSource ?? "none"} spawnedAfterInitialApproval=${String(node.spawnedAfterInitialApproval ?? false)}`,
       );
     }
   }
@@ -54,6 +64,7 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
 }
 
 function renderJson(result: RecursivePromptResult, options: RenderOptions): string {
+  const failure = isRunFailure(result) ? inferFailureSummary(result) : undefined;
   return JSON.stringify({
     answer: result.answer,
     model: options.model,
@@ -63,6 +74,8 @@ function renderJson(result: RecursivePromptResult, options: RenderOptions): stri
     workflowQueues: result.metadata.workflowQueues,
     executionGraph: result.metadata.executionGraph,
     executionStatus: result.metadata.executionStatus,
+    failureCategory: failure?.category,
+    failureLabel: failure?.label,
     depth: result.metadata.depth,
     modelSelections: result.metadata.modelSelections,
     memoryReservations: result.metadata.memoryReservations,
@@ -72,6 +85,33 @@ function renderJson(result: RecursivePromptResult, options: RenderOptions): stri
     toolCalls: result.metadata.toolCalls,
     errors: result.metadata.errors,
   });
+}
+
+function isRunFailure(result: RecursivePromptResult): boolean {
+  return result.metadata.executionStatus === "failed"
+    || (result.metadata.errors?.length ?? 0) > 0;
+}
+
+function inferFailureSummary(result: RecursivePromptResult): { category: ExecutionFailureCategory; label: string } {
+  const toolErr = result.metadata.toolCalls.some((call) => call.status === "error");
+  if (toolErr) {
+    return { category: "tool", label: labelForCategory("tool") };
+  }
+  if (result.metadata.workflow) {
+    return { category: "workflow", label: labelForCategory("workflow") };
+  }
+  return { category: "model", label: labelForCategory("model") };
+}
+
+function formatFailureBanner(result: RecursivePromptResult): string {
+  const { label } = inferFailureSummary(result);
+  const status = result.metadata.executionStatus ?? "failed";
+  const lines = [
+    `Run status: ${status} (${label})`,
+    "Errors:",
+    ...result.metadata.errors.map((line) => `- ${line}`),
+  ];
+  return lines.join("\n");
 }
 
 function renderTrace(events: TraceEvent[]): string {
