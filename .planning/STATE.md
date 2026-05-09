@@ -3,7 +3,7 @@
 ## Snapshot
 - Date: 2026-05-08
 - Current phase: Phase 3
-- Current status: phase_2_complete
+- Current status: context_captured
 
 ## Project Reference
 See: .planning/PROJECT.md (updated 2026-05-08)
@@ -14,12 +14,13 @@ See: .planning/PROJECT.md (updated 2026-05-08)
 ## Artifacts
 - ROADMAP.md: phases 1-2 complete
 - REQUIREMENTS.md: phase-2 traceability updated
-- 02-CONTEXT/PLAN/SUMMARY/VERIFICATION: complete
+- 03-CONTEXT.md: captured
+- 03-DISCUSSION-LOG.md: captured
 
 ## Session
-- Stopped at: Phase 2 execution complete
-- Resume file: .planning/phases/02-interactive-graph-mutation-at-checkpoints/02-VERIFICATION.md
+- Stopped at: Phase 3 context gathered
+- Resume file: .planning/phases/03-model-aware-node-planning-and-overrides/03-CONTEXT.md
 
 ## Notes
-- Deferred idea persists: optional no-max-depth mode with stronger stopping guardrails.
-- Next recommended command: $gsd-discuss-phase 3
+- Phase 3 decisions locked for planning (persisted node model, single-node override, strict fail, planned+effective display, full audit trail)
+- Next recommended command: $gsd-plan-phase 3
