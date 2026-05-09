@@ -55,9 +55,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLAN-01 | Phase 1 | Pending |
+| PLAN-01 | Phase 1 | Complete |
 | PLAN-02 | Phase 3 | Pending |
-| APRV-01 | Phase 1 | Pending |
+| APRV-01 | Phase 1 | Complete |
 | APRV-02 | Phase 2 | Pending |
 | APRV-03 | Phase 2 | Pending |
 | APRV-04 | Phase 2 | Pending |

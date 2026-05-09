@@ -6,7 +6,7 @@
 - Roadmap phases: 5
 - Coverage target: 100% of v1 requirements mapped exactly once
 
-### Phase 1: Planned Graph and Approval Foundation
+### Phase 1: Planned Graph and Approval Foundation ✅ (Completed 2026-05-08)
 **Goal:** Produce a reliable prompt-to-plan graph and enforce approval pause semantics as a hard gate before child execution.
 **Mode:** mvp
 **Success Criteria**:
@@ -65,9 +65,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLAN-01 | Phase 1 | Pending |
+| PLAN-01 | Phase 1 | Complete |
 | PLAN-02 | Phase 3 | Pending |
-| APRV-01 | Phase 1 | Pending |
+| APRV-01 | Phase 1 | Complete |
 | APRV-02 | Phase 2 | Pending |
 | APRV-03 | Phase 2 | Pending |
 | APRV-04 | Phase 2 | Pending |

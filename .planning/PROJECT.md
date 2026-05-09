@@ -16,6 +16,8 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Interactive execution graph and node inspection UI plumbing exist — existing
 - ✓ Config-driven model tier routing and agent/workflow configuration exist — existing
 - ✓ Tool adapters for shell, file write, web search, and web fetch exist — existing
+- ✓ User can submit a prompt and receive a planning node graph before execution — Phase 1
+- ✓ Approval checkpoints are backend-authoritative with explicit stale/duplicate handling — Phase 1
 
 ### Active
 
@@ -72,4 +74,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-08 after initialization*
+*Last updated: 2026-05-08 after Phase 1 completion*
