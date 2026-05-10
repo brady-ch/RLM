@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Interop, chat-first, plugins, constrained tools
-status: context_ready
-last_updated: "2026-05-09T23:59:00.000Z"
-last_activity: 2026-05-09 — Phase 6 discuss complete; 06-CONTEXT.md written
+status: planned
+last_updated: "2026-05-10T00:15:00.000Z"
+last_activity: 2026-05-09 — Phase 6 plan: 06-RESEARCH, 06-01 + 06-02 PLAN, 06-VALIDATION
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
+  total_plans: 2
   completed_plans: 0
 ---
 
@@ -19,7 +19,7 @@ progress:
 - Date: 2026-05-09
 - Milestone: v1.1 — Interop, chat-first, plugins, constrained tools
 - Current phase: Phase 6 — Extension and Plugin Foundation
-- Current status: Context gathered — ready for `/gsd-plan-phase 6`
+- Current status: Plans ready — execute wave 1 then wave 2 (`/gsd-execute-phase 6`)
 
 ## Project Reference
 
@@ -31,12 +31,12 @@ See: .planning/PROJECT.md (updated 2026-05-09)
 ## Artifacts
 
 - v1.0 archive: `.planning/milestones/v1.0-phases/`, snapshot `milestones/v1.0-ROADMAP.md`
-- v1.1: `REQUIREMENTS.md`, `ROADMAP.md`, `phases/06-extension-and-plugin-foundation/06-CONTEXT.md`
+- v1.1: `REQUIREMENTS.md`, `ROADMAP.md`, `phases/06-extension-and-plugin-foundation/` (06-CONTEXT, 06-RESEARCH, 06-VALIDATION, 06-01-PLAN, 06-02-PLAN)
 
 ## Session
 
-- Stopped at: Phase 6 context gathered — ready for `/gsd-plan-phase 6`
-- Resume file: `.planning/phases/06-extension-and-plugin-foundation/06-CONTEXT.md`
+- Stopped at: Phase 6 planned — ready for `/gsd-execute-phase 6`
+- Resume file: `.planning/phases/06-extension-and-plugin-foundation/06-01-PLAN.md`
 
 ## Notes
 
@@ -45,6 +45,6 @@ See: .planning/PROJECT.md (updated 2026-05-09)
 ## Current Position
 
 Phase: Phase 6 — Extension and Plugin Foundation
-Plan: —
-Status: Discuss complete; planning next
-Last activity: 2026-05-09 — `/gsd-progress --next` routed to discuss-phase; decisions captured in 06-CONTEXT.md
+Plan: 06-01 (wave 1) then 06-02 (wave 2); 0/2 summaries
+Status: Plan-phase complete (checker revisions: split plan + VALIDATION)
+Last activity: 2026-05-09 — `/gsd-progress --next` ran plan-phase (research → planner → checker fixes)
