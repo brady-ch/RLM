@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Interop, chat-first, plugins, constrained tools
-status: ready_to_discuss
+status: ready_to_plan
 last_updated: "2026-05-10T02:31:42.568Z"
 last_activity: 2026-05-10 — Phase 6 complete; ready to discuss Phase 7
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 2
   completed_plans: 2
 ---
@@ -44,7 +44,7 @@ See: .planning/PROJECT.md (updated 2026-05-09)
 
 ## Current Position
 
-Phase: Phase 7 — MCP and Skills Interoperability
+Phase: 8
 Plan: Not started
-Status: Ready to discuss
-Last activity: 2026-05-10 — Phase 6 complete
+Status: Ready to plan
+Last activity: 2026-05-10

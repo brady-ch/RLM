@@ -14,7 +14,7 @@
 ## Phases
 
 - [x] **Phase 6: Extension and Plugin Foundation** — Establish a documented extension mechanism for tools, skills, and model host adapters without forking core. (completed 2026-05-10)
-- [ ] **Phase 7: MCP and Skills Interoperability** — Wire MCP server connectivity and on-disk skill loading through the extension layer from Phase 6.
+- [x] **Phase 7: MCP and Skills Interoperability** — Wire MCP server connectivity and on-disk skill loading through the extension layer from Phase 6. (completed 2026-05-10)
 - [ ] **Phase 8: Model Host Extensibility and Constrained Tool Calling** — Make local/remote model endpoints configurable and tool rounds schema-constrained per host.
 - [ ] **Phase 8.5: Typed Artifact + Stateful Workflow Runtime** — Add typed artifact contracts and guarded external run-state continuity for long-running, model-chained node workflows.
 - [ ] **Phase 9: Chat-First Graph UX and Clarification Stops** — Replace single-shot prompt submission with conversational graph authoring and add explicit human-clarification pause semantics.
@@ -47,7 +47,7 @@
 4. Existing non-MCP tool adapters remain functional after MCP integration.
 5. Skill resolution supports configurable ordered search paths with first-match precedence, and optional skill caching controlled by config.
 6. Skill loading strictness is configurable per skill path (`strict`/`lenient`), and lenient validation failures emit CLI warnings, structured run-trace events, and persisted audit records.
-**Plans:** TBD
+**Plans:** 2/2 plans complete
 
 ### Phase 8: Model Host Extensibility and Constrained Tool Calling
 **Goal:** Model endpoints are configurable as local or remote with consistent routing semantics, and tool-calling rounds apply schema-constrained decoding appropriate to the active host.
@@ -130,7 +130,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 6. Extension and Plugin Foundation | 2/2 | Complete    | 2026-05-10 |
-| 7. MCP and Skills Interoperability | 0/? | Not started | — |
+| 7. MCP and Skills Interoperability | 2/2 | Complete    | 2026-05-10 |
 | 8. Model Host Extensibility and Constrained Tool Calling | 0/? | Not started | — |
 | 8.5 Typed Artifact + Stateful Workflow Runtime | 0/? | Not started | — |
 | 9. Chat-First Graph UX and Clarification Stops | 0/? | Not started | — |

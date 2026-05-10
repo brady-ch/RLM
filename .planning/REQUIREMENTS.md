@@ -83,8 +83,8 @@
 
 ### Interoperability
 
-- [ ] **INT-01**: User can configure MCP servers using a documented import or parity path with at least one common MCP agent client layout (exact matrix TBD in plan).
-- [ ] **INT-02**: User can load or reference skills using a documented compatibility path with at least one common on-disk skill layout used by target agent hosts (exact layout TBD in plan).
+- [x] **INT-01**: User can configure MCP servers using a documented import or parity path with at least one common MCP agent client layout (exact matrix TBD in plan).
+- [x] **INT-02**: User can load or reference skills using a documented compatibility path with at least one common on-disk skill layout used by target agent hosts (exact layout TBD in plan).
 
 ### Chat-first planning
 
@@ -114,8 +114,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INT-01 | Phase 7 | Pending |
-| INT-02 | Phase 7 | Pending |
+| INT-01 | Phase 7 | Complete |
+| INT-02 | Phase 7 | Complete |
 | CHAT-01 | Phase 9 | Pending |
 | PLUG-01 | Phase 6 | Complete |
 | HOST-01 | Phase 8 | Pending |
