@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 import type { RecursiveModelConfig } from "../domain/types.js";
+import type { ExtensionRegistryEntry } from "../ports/extension-port.js";
 import type { LanguageModelPurpose } from "../ports/language-model-port.js";
 
 export const MODEL_PURPOSES = ["depth", "classify", "decompose", "answer", "summarize", "synthesize"] as const satisfies readonly LanguageModelPurpose[];
@@ -80,6 +81,10 @@ export interface ProjectConfig {
   runtime: RecursiveModelConfig;
   agents: Record<string, AgentConfig>;
   workflows: Record<string, WorkflowConfig>;
+  extensions?: {
+    allowlist?: string | undefined;
+    load?: ExtensionRegistryEntry[] | undefined;
+  } | undefined;
 }
 
 export interface LoadedProjectConfig {
@@ -172,6 +177,13 @@ const configSchema = z.object({
       })).min(1),
     }).optional(),
   })),
+  extensions: z.object({
+    allowlist: z.string().optional(),
+    load: z.array(z.object({
+      path: z.string().min(1),
+      agents: z.array(z.string().min(1)).default([]),
+    })).default([]),
+  }).optional(),
 });
 
 export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
