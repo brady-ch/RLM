@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 import { OllamaLanguageModelAdapter } from "./adapters/ollama-language-model.js";
-import { GuardedShellTool } from "./adapters/guarded-shell-tool.js";
-import { WebSearchTool } from "./adapters/web-search-tool.js";
-import { WebFetchTool } from "./adapters/web-fetch-tool.js";
-import { WorkspaceFileWriteTool } from "./adapters/workspace-file-write-tool.js";
 import { runConfiguredAgent } from "./application/agent-runner.js";
 import { createAgentRegistry, selectAgent } from "./application/agent-registry.js";
+import { ExtensionHost } from "./application/extension-host.js";
 import { MemoryManager } from "./application/memory-manager.js";
 import { applyModelOverride, loadProjectConfig, resolveRuntimeConfig } from "./application/project-config.js";
 import { ResourceCleanup } from "./application/resource-cleanup.js";
 import { runWorkflow } from "./application/workflow-runner.js";
+import * as guardedShellExtension from "./extensions/tools/guarded-shell.extension.js";
+import * as webFetchExtension from "./extensions/tools/web-fetch.extension.js";
+import * as webSearchExtension from "./extensions/tools/web-search.extension.js";
+import * as workspaceFileWriteExtension from "./extensions/tools/workspace-file-write.extension.js";
 import { CancellationController, createExecutionControl, createInteractiveExecutionSession } from "./application/execution-controller.js";
 import { startControlServer } from "./application/control-server.js";
 import { helpText, parseArgs } from "./cli/args.js";
@@ -17,9 +18,8 @@ import { renderResult } from "./cli/render.js";
 import { createStderrRuntimeLogger } from "./cli/runtime-logger.js";
 import { installShutdownHandlers } from "./cli/shutdown.js";
 import type { LanguageModelPort } from "./ports/language-model-port.js";
-import type { ToolPort } from "./ports/tool-port.js";
 import type { ExecutionEvent, RecursivePromptResult } from "./domain/types.js";
-import { join } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
@@ -65,20 +65,33 @@ async function main(): Promise<void> {
       await cleanup.closeAll(reason);
     },
   });
-  const shellTool = new GuardedShellTool({
-    workspaceRoot: process.cwd(),
-  });
-  const writeFileTool = new WorkspaceFileWriteTool({
-    workspaceRoot: process.cwd(),
-  });
-  const webSearchTool = new WebSearchTool();
-  const webFetchTool = new WebFetchTool();
-  const toolsByName = new Map<string, ToolPort>([
-    [shellTool.name, shellTool],
-    [writeFileTool.name, writeFileTool],
-    [webSearchTool.name, webSearchTool],
-    [webFetchTool.name, webFetchTool],
+  const extensionHost = new ExtensionHost();
+  extensionHost.loadBuiltins([
+    { path: "src/extensions/tools/guarded-shell.extension.ts", register: guardedShellExtension.register },
+    { path: "src/extensions/tools/workspace-file-write.extension.ts", register: workspaceFileWriteExtension.register },
+    { path: "src/extensions/tools/web-search.extension.ts", register: webSearchExtension.register },
+    { path: "src/extensions/tools/web-fetch.extension.ts", register: webFetchExtension.register },
   ]);
+  const configFilePath = loadedConfig.path ?? join(process.cwd(), "rlm.config.yaml");
+  const configuredExtensions = projectConfig.extensions?.load ?? [];
+  if (configuredExtensions.length > 0) {
+    const configuredAllowlist = projectConfig.extensions?.allowlist;
+    const extensionOptions: {
+      configFilePath: string;
+      allowlistPath?: string;
+      interactive: boolean;
+    } = {
+      configFilePath,
+      interactive: process.stdin.isTTY && process.stdout.isTTY,
+    };
+    if (configuredAllowlist) {
+      extensionOptions.allowlistPath = isAbsolute(configuredAllowlist)
+        ? configuredAllowlist
+        : resolve(dirname(configFilePath), configuredAllowlist);
+    }
+
+    await extensionHost.loadExternal(configuredExtensions, extensionOptions);
+  }
   const toolsFor = (agentId: string) => {
     const agentConfig = projectConfig.agents[agentId];
     if (!agentConfig) {
@@ -86,7 +99,7 @@ async function main(): Promise<void> {
     }
 
     return agentConfig.tools.map((toolName) => {
-      const tool = toolsByName.get(toolName);
+      const tool = extensionHost.tools.get(toolName);
       if (!tool) {
         throw new Error(`Agent "${agentId}" references unknown tool "${toolName}".`);
       }
