@@ -1,7 +1,7 @@
 # Phase 6 — Nyquist validation map
 
 **Derived from:** `06-RESEARCH.md` § Validation Architecture, `06-01-PLAN.md`, `06-02-PLAN.md`  
-**Status:** Pre-execution — execute checks after corresponding plan waves complete.
+**Status:** Executed — Phase 6 checks passed 2026-05-10.
 
 ## Requirement coverage (PLUG-01)
 
@@ -30,5 +30,5 @@
 
 ## Open gaps (fill during execution)
 
-- [ ] Record actual test file names if renamed.
-- [ ] Note any CLI flag added for `interactive: false` in CI (if applicable).
+- [x] Actual test file: `tests/extension-host.test.ts`.
+- [x] No CLI flag added. `src/index.ts` passes `interactive: process.stdin.isTTY && process.stdout.isTTY`; CI/non-TTY extension loading requires a pre-approved allowlist.
