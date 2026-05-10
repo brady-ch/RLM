@@ -92,7 +92,7 @@
 
 ### Extensibility
 
-- [ ] **PLUG-01**: System exposes a documented extension mechanism to register additional tools, skills, and model host adapters without forking core, including at least one reference registration path.
+- [x] **PLUG-01**: System exposes a documented extension mechanism to register additional tools, skills, and model host adapters without forking core, including at least one reference registration path.
 
 ### Model hosts
 
@@ -113,7 +113,7 @@
 | INT-01 | Phase 7 | Pending |
 | INT-02 | Phase 7 | Pending |
 | CHAT-01 | Phase 9 | Pending |
-| PLUG-01 | Phase 6 | Pending |
+| PLUG-01 | Phase 6 | Complete |
 | HOST-01 | Phase 8 | Pending |
 | QUES-01 | Phase 9 | Pending |
 | TCON-01 | Phase 8 | Pending |

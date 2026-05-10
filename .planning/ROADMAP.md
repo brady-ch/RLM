@@ -13,7 +13,7 @@
 
 ## Phases
 
-- [ ] **Phase 6: Extension and Plugin Foundation** — Establish a documented extension mechanism for tools, skills, and model host adapters without forking core.
+- [x] **Phase 6: Extension and Plugin Foundation** — Establish a documented extension mechanism for tools, skills, and model host adapters without forking core. (completed 2026-05-10)
 - [ ] **Phase 7: MCP and Skills Interoperability** — Wire MCP server connectivity and on-disk skill loading through the extension layer from Phase 6.
 - [ ] **Phase 8: Model Host Extensibility and Constrained Tool Calling** — Make local/remote model endpoints configurable and tool rounds schema-constrained per host.
 - [ ] **Phase 9: Chat-First Graph UX and Clarification Stops** — Replace single-shot prompt submission with conversational graph authoring and add explicit human-clarification pause semantics.
@@ -32,7 +32,7 @@
 2. At least one reference registration (tool or skill loader) is loadable and exercised in an integration test or documented runnable example.
 3. Existing CLI behavior, tool adapters, and approval flows are unchanged after the extension layer is introduced.
 4. The extension interface is documented with types, registration steps, and at least one worked example.
-**Plans:** TBD
+**Plans:** 2/2 plans complete
 
 ### Phase 7: MCP and Skills Interoperability
 **Goal:** Users can configure MCP servers and load skills from common on-disk layouts used by target agent hosts.
@@ -112,7 +112,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 6. Extension and Plugin Foundation | 0/? | Not started | — |
+| 6. Extension and Plugin Foundation | 2/2 | Complete    | 2026-05-10 |
 | 7. MCP and Skills Interoperability | 0/? | Not started | — |
 | 8. Model Host Extensibility and Constrained Tool Calling | 0/? | Not started | — |
 | 9. Chat-First Graph UX and Clarification Stops | 0/? | Not started | — |
