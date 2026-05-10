@@ -45,6 +45,8 @@
 2. User can reference skills from at least one common on-disk layout (compatible with a named target agent host) and they load and execute correctly.
 3. The import or parity path is documented with at least one concrete configuration example per mechanism (MCP config, skill layout).
 4. Existing non-MCP tool adapters remain functional after MCP integration.
+5. Skill resolution supports configurable ordered search paths with first-match precedence, and optional skill caching controlled by config.
+6. Skill loading strictness is configurable per skill path (`strict`/`lenient`), and lenient validation failures emit CLI warnings, structured run-trace events, and persisted audit records.
 **Plans:** TBD
 
 ### Phase 8: Model Host Extensibility and Constrained Tool Calling
