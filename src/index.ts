@@ -3,6 +3,14 @@ import { OllamaLanguageModelAdapter } from "./adapters/ollama-language-model.js"
 import { runConfiguredAgent } from "./application/agent-runner.js";
 import { createAgentRegistry, selectAgent } from "./application/agent-registry.js";
 import { ExtensionHost } from "./application/extension-host.js";
+import {
+  CentralAtomicSequenceAllocator,
+  CompositeEventSink,
+  EventStoreSink,
+  FileEventExportSink,
+  InMemoryEventStore,
+  McpSkillRuntime,
+} from "./application/mcp-skill-runtime.js";
 import { MemoryManager } from "./application/memory-manager.js";
 import { applyModelOverride, loadProjectConfig, resolveRuntimeConfig } from "./application/project-config.js";
 import { ResourceCleanup } from "./application/resource-cleanup.js";
@@ -66,6 +74,24 @@ async function main(): Promise<void> {
     },
   });
   const extensionHost = new ExtensionHost();
+  const runtimeEventsStore = new InMemoryEventStore();
+  const runtimeEvents = new McpSkillRuntime(
+    projectConfig.interop ?? {
+      mcp: { servers: [] },
+      skills: {
+        searchPaths: [".codex/skills", ".agents/skills"],
+        duplicateStrategy: "first_match",
+        cache: false,
+        pathPolicies: [],
+      },
+    },
+    `run-${Date.now()}`,
+    new CentralAtomicSequenceAllocator(),
+    new CompositeEventSink([
+      new EventStoreSink(runtimeEventsStore),
+      new FileEventExportSink(join(process.cwd(), ".planning", "runs", "latest", "warnings.jsonl")),
+    ]),
+  );
   extensionHost.loadBuiltins([
     { path: "src/extensions/tools/guarded-shell.extension.ts", register: guardedShellExtension.register },
     { path: "src/extensions/tools/workspace-file-write.extension.ts", register: workspaceFileWriteExtension.register },
@@ -107,6 +133,15 @@ async function main(): Promise<void> {
       return tool;
     });
   };
+  logger?.log({
+    stage: "interop",
+    message: "mcp+skill runtime initialized",
+    data: {
+      mcpServers: (projectConfig.interop?.mcp.servers.length ?? 0),
+      skillSearchPaths: runtimeEvents.getSkillSearchPaths(),
+      skillCache: runtimeEvents.isSkillCacheEnabled(),
+    },
+  });
   const registry = createAgentRegistry({
     defaultTools: toolsFor("default"),
     researchTools: toolsFor("research"),

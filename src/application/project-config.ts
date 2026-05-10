@@ -66,6 +66,32 @@ export interface WorkflowQaConfig {
   };
 }
 
+export interface McpServerConfig {
+  id: string;
+  command: string;
+  args?: string[] | undefined;
+  required: boolean;
+}
+
+export interface SkillPathPolicyConfig {
+  path: string;
+  strictness: "strict" | "lenient";
+}
+
+export interface SkillInteropConfig {
+  searchPaths: string[];
+  duplicateStrategy: "first_match";
+  cache: boolean;
+  pathPolicies: SkillPathPolicyConfig[];
+}
+
+export interface InteropConfig {
+  mcp: {
+    servers: McpServerConfig[];
+  };
+  skills: SkillInteropConfig;
+}
+
 export interface ProjectConfig {
   models: {
     default: string;
@@ -85,6 +111,7 @@ export interface ProjectConfig {
     allowlist?: string | undefined;
     load?: ExtensionRegistryEntry[] | undefined;
   } | undefined;
+  interop?: InteropConfig | undefined;
 }
 
 export interface LoadedProjectConfig {
@@ -183,6 +210,32 @@ const configSchema = z.object({
       path: z.string().min(1),
       agents: z.array(z.string().min(1)).default([]),
     })).default([]),
+  }).optional(),
+  interop: z.object({
+    mcp: z.object({
+      servers: z.array(z.object({
+        id: z.string().min(1),
+        command: z.string().min(1),
+        args: z.array(z.string().min(1)).default([]),
+        required: z.boolean().default(false),
+      })).default([]),
+    }).default({
+      servers: [],
+    }),
+    skills: z.object({
+      searchPaths: z.array(z.string().min(1)).default([".codex/skills", ".agents/skills"]),
+      duplicateStrategy: z.literal("first_match").default("first_match"),
+      cache: z.boolean().default(false),
+      pathPolicies: z.array(z.object({
+        path: z.string().min(1),
+        strictness: z.enum(["strict", "lenient"]).default("strict"),
+      })).default([]),
+    }).default({
+      searchPaths: [".codex/skills", ".agents/skills"],
+      duplicateStrategy: "first_match",
+      cache: false,
+      pathPolicies: [],
+    }),
   }).optional(),
 });
 
@@ -283,6 +336,17 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
           highestPriorityKeywords: ["fail", "error", "regression", "broken", "crash"],
         },
       },
+    },
+  },
+  interop: {
+    mcp: {
+      servers: [],
+    },
+    skills: {
+      searchPaths: [".codex/skills", ".agents/skills"],
+      duplicateStrategy: "first_match",
+      cache: false,
+      pathPolicies: [],
     },
   },
 };
