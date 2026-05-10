@@ -5,8 +5,8 @@
 - **Active milestone:** v1.1 — Interop, chat-first, plugins, constrained tools
 - **Project mode:** mvp
 - **v1.0 history:** Phases 1–5 completed 2026-05-08 — see `.planning/milestones/v1.0-ROADMAP.md`
-- **v1.1 requirements:** 7
-- **v1.1 phases:** 4 (Phase 6–9)
+- **v1.1 requirements:** 8
+- **v1.1 phases:** 5 (Phase 6–9 plus Phase 8.5)
 - **Coverage target:** 100% of v1.1 requirements mapped exactly once
 
 ---
@@ -16,6 +16,7 @@
 - [x] **Phase 6: Extension and Plugin Foundation** — Establish a documented extension mechanism for tools, skills, and model host adapters without forking core. (completed 2026-05-10)
 - [ ] **Phase 7: MCP and Skills Interoperability** — Wire MCP server connectivity and on-disk skill loading through the extension layer from Phase 6.
 - [ ] **Phase 8: Model Host Extensibility and Constrained Tool Calling** — Make local/remote model endpoints configurable and tool rounds schema-constrained per host.
+- [ ] **Phase 8.5: Typed Artifact + Stateful Workflow Runtime** — Add typed artifact contracts and guarded external run-state continuity for long-running, model-chained node workflows.
 - [ ] **Phase 9: Chat-First Graph UX and Clarification Stops** — Replace single-shot prompt submission with conversational graph authoring and add explicit human-clarification pause semantics.
 
 ---
@@ -59,6 +60,19 @@
 5. CLI `--json-stream` output and the UI both show the host/endpoint used per node.
 **Plans:** TBD
 
+### Phase 8.5: Typed Artifact + Stateful Workflow Runtime
+**Goal:** Support deterministic multi-model node pipelines (including code-only nodes) using typed artifact contracts and a guarded external run-state store suitable for whole-book scale processing.
+**Mode:** mvp
+**Depends on:** Phase 8
+**Requirements:** ARTF-01
+**Success Criteria** (what must be TRUE):
+1. Runtime supports typed artifact schema handoff between nodes and validates artifacts at node boundaries.
+2. Runtime supports code-only nodes that consume/emit typed artifacts and participate in the same graph execution model.
+3. External run-state store is mutable and queryable with optimistic concurrency (`version`/`etag`) and path-level mutation ACL.
+4. Every state mutation attempt is audit-logged (accepted or rejected), with enough metadata to replay and diagnose full-book workflows.
+5. Text-to-audio model type can be configured as a node target and chained with parsing/reassembly nodes without breaking existing agent skill compatibility.
+**Plans:** TBD
+
 ### Phase 9: Chat-First Graph UX and Clarification Stops
 **Goal:** Users build and refine execution graphs through conversation, and the runtime pauses with an explicit human prompt when clarification is required — no silent continuation.
 **Mode:** mvp
@@ -98,12 +112,13 @@
 | INT-02 | Phase 7 | Pending |
 | HOST-01 | Phase 8 | Pending |
 | TCON-01 | Phase 8 | Pending |
+| ARTF-01 | Phase 8.5 | Pending |
 | CHAT-01 | Phase 9 | Pending |
 | QUES-01 | Phase 9 | Pending |
 
 **Coverage:**
 - v1 requirements: 15 total — all Complete ✓
-- v1.1 requirements: 7 total — all mapped ✓
+- v1.1 requirements: 8 total — all mapped ✓
 - Unmapped: 0 ✓
 
 ---
@@ -115,4 +130,5 @@
 | 6. Extension and Plugin Foundation | 2/2 | Complete    | 2026-05-10 |
 | 7. MCP and Skills Interoperability | 0/? | Not started | — |
 | 8. Model Host Extensibility and Constrained Tool Calling | 0/? | Not started | — |
+| 8.5 Typed Artifact + Stateful Workflow Runtime | 0/? | Not started | — |
 | 9. Chat-First Graph UX and Clarification Stops | 0/? | Not started | — |

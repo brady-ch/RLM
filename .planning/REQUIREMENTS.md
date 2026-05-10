@@ -106,6 +106,10 @@
 
 - [ ] **TCON-01**: Tool-calling rounds support constrained decoding for tool selection and arguments per `.planning/research/TOOL-CALLING-CONSTRAINED-DECODING.md` (JSON Schema / envelope approach appropriate to each host), integrated through `LanguageModelPort` and the recursive execution loop, without violating host constraints (e.g. Ollama `tools` + `format` mutual exclusion).
 
+### Typed workflow continuity
+
+- [ ] **ARTF-01**: Node workflows support a typed artifact schema plus external run-state continuity for long-running pipelines (e.g. full-book processing), with code-only nodes allowed and state mutation guarded by optimistic concurrency, path-level ACL, and append-only audit events.
+
 ### Traceability (v1.1)
 
 | Requirement | Phase | Status |
@@ -117,9 +121,10 @@
 | HOST-01 | Phase 8 | Pending |
 | QUES-01 | Phase 9 | Pending |
 | TCON-01 | Phase 8 | Pending |
+| ARTF-01 | Phase 8.5 | Pending |
 
-**Coverage (v1.1):** 7/7 requirements mapped ✓
+**Coverage (v1.1):** 8/8 requirements mapped ✓
 
 ---
 *Requirements defined: 2026-05-08 (v1); 2026-05-09 (v1.1)*
-*Last updated: 2026-05-09 — milestone v1.1 requirements added*
+*Last updated: 2026-05-10 — added ARTF-01 and Phase 8.5 mapping*
