@@ -319,7 +319,7 @@ function App() {
                 ? "No clarification history yet."
                 : clarificationHistory.map((record) => (
                   <div key={record.resume_event_id}>
-                    Q[{record.question_id}] {record.prompt_text} -> A: {record.user_answer}
+                    Q[{record.question_id}] {record.prompt_text} {"->"} A: {record.user_answer}
                   </div>
                 ))}
             </div>
