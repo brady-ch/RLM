@@ -16,7 +16,7 @@
 - [x] **Phase 6: Extension and Plugin Foundation** — Establish a documented extension mechanism for tools, skills, and model host adapters without forking core. (completed 2026-05-10)
 - [x] **Phase 7: MCP and Skills Interoperability** — Wire MCP server connectivity and on-disk skill loading through the extension layer from Phase 6. (completed 2026-05-10)
 - [ ] **Phase 8: Model Host Extensibility and Constrained Tool Calling** — Make local/remote model endpoints configurable and tool rounds schema-constrained per host.
-- [ ] **Phase 8.5: Typed Artifact + Stateful Workflow Runtime** — Add typed artifact contracts and guarded external run-state continuity for long-running, model-chained node workflows.
+- [x] **Phase 8.5: Typed Artifact + Stateful Workflow Runtime** — Add typed artifact contracts and guarded external run-state continuity for long-running, model-chained node workflows. (completed 2026-05-11)
 - [ ] **Phase 9: Chat-First Graph UX and Clarification Stops** — Replace single-shot prompt submission with conversational graph authoring and add explicit human-clarification pause semantics.
 
 ---
@@ -73,7 +73,7 @@
 3. External run-state store is mutable and queryable with optimistic concurrency (`version`/`etag`) and path-level mutation ACL.
 4. Every state mutation attempt is audit-logged (accepted or rejected), with enough metadata to replay and diagnose full-book workflows.
 5. Text-to-audio model type can be configured as a node target and chained with parsing/reassembly nodes without breaking existing agent skill compatibility.
-**Plans:** TBD
+**Plans:** 2/2 plans complete
 
 ### Phase 9: Chat-First Graph UX and Clarification Stops
 **Goal:** Users build and refine execution graphs through conversation, and the runtime pauses with an explicit human prompt when clarification is required — no silent continuation.
@@ -114,7 +114,7 @@
 | INT-02 | Phase 7 | Pending |
 | HOST-01 | Phase 8 | Pending |
 | TCON-01 | Phase 8 | Pending |
-| ARTF-01 | Phase 8.5 | Pending |
+| ARTF-01 | Phase 8.5 | Complete |
 | CHAT-01 | Phase 9 | Pending |
 | QUES-01 | Phase 9 | Pending |
 
@@ -132,5 +132,5 @@
 | 6. Extension and Plugin Foundation | 2/2 | Complete    | 2026-05-10 |
 | 7. MCP and Skills Interoperability | 2/2 | Complete    | 2026-05-10 |
 | 8. Model Host Extensibility and Constrained Tool Calling | 0/? | Not started | — |
-| 8.5 Typed Artifact + Stateful Workflow Runtime | 0/? | Not started | — |
+| 8.5 Typed Artifact + Stateful Workflow Runtime | 2/2 | Complete | 2026-05-11 |
 | 9. Chat-First Graph UX and Clarification Stops | 0/? | Not started | — |

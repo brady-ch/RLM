@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Interop, chat-first, plugins, constrained tools
-status: planning
-last_updated: "2026-05-11T01:39:06.524Z"
+status: execution
+last_updated: "2026-05-11T02:15:00.000Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  completed_phases: 4
+  total_plans: 8
+  completed_plans: 8
   percent: 100
 ---
 
@@ -27,7 +27,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-09)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.
-**Current focus:** Phase 08 — model-host-extensibility-and-constrained-tool-calling
+**Current focus:** Phase 09 — chat-first-graph-ux-and-clarification-stops
 
 ## Artifacts
 
@@ -45,7 +45,7 @@ See: .planning/PROJECT.md (updated 2026-05-09)
 
 ## Current Position
 
-Phase: 8.5
+Phase: 9
 Plan: Not started
-Status: Ready to plan
+Status: Ready to discuss
 Last activity: 2026-05-11

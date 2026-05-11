@@ -108,7 +108,7 @@
 
 ### Typed workflow continuity
 
-- [ ] **ARTF-01**: Node workflows support a typed artifact schema plus external run-state continuity for long-running pipelines (e.g. full-book processing), with code-only nodes allowed and state mutation guarded by optimistic concurrency, path-level ACL, and append-only audit events.
+- [x] **ARTF-01**: Node workflows support a typed artifact schema plus external run-state continuity for long-running pipelines (e.g. full-book processing), with code-only nodes allowed and state mutation guarded by optimistic concurrency, path-level ACL, and append-only audit events.
 
 ### Traceability (v1.1)
 
@@ -121,10 +121,10 @@
 | HOST-01 | Phase 8 | Pending |
 | QUES-01 | Phase 9 | Pending |
 | TCON-01 | Phase 8 | Pending |
-| ARTF-01 | Phase 8.5 | Pending |
+| ARTF-01 | Phase 8.5 | Complete |
 
 **Coverage (v1.1):** 8/8 requirements mapped ✓
 
 ---
 *Requirements defined: 2026-05-08 (v1); 2026-05-09 (v1.1)*
-*Last updated: 2026-05-10 — added ARTF-01 and Phase 8.5 mapping*
+*Last updated: 2026-05-11 — completed ARTF-01 via Phase 8.5 execution*
