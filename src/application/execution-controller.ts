@@ -1,5 +1,8 @@
 import type {
   ApprovalMode,
+  ChatMutationProposal,
+  ChatRunReadiness,
+  DeleteStrategy,
   ExecutionControl,
   ExecutionEvent,
   ExecutionGraph,
@@ -34,6 +37,10 @@ type PendingApproval = {
   token: string;
 };
 
+type PendingMutation =
+  | { kind: "edit"; nodeId: string; prompt: string }
+  | { kind: "delete"; nodeId: string; strategy?: DeleteStrategy };
+
 class MutationError extends Error implements GraphMutationError {
   constructor(
     public readonly code: string,
@@ -59,6 +66,12 @@ export class InteractiveExecutionSession {
   private initialPlanAccepted = false;
   private futureAutoApprovalsPaused = false;
   private approvalVersion = 0;
+  private chatReadiness: ChatRunReadiness = {
+    state: "draft",
+    reason: "Draft graph: confirm graph and run to start execution.",
+  };
+  private pendingMutation: { id: string; mutation: PendingMutation; proposal: ChatMutationProposal } | undefined;
+  private mutationVersion = 0;
 
   constructor(input: { approvalMode?: ApprovalMode } = {}) {
     this.approvalMode = input.approvalMode ?? "full";
@@ -83,6 +96,10 @@ export class InteractiveExecutionSession {
     approvalMode: ApprovalMode;
     autoApprovalPaused: boolean;
     runSummary?: { message?: string };
+    chat: {
+      readiness: ChatRunReadiness;
+      pendingMutation?: ChatMutationProposal | undefined;
+    };
   } {
     const nodes = [...this.nodes.values()];
     const activeNode = nodes.find((node) => node.status === "awaiting_approval" || node.status === "running");
@@ -111,6 +128,10 @@ export class InteractiveExecutionSession {
       approvalMode: ApprovalMode;
       autoApprovalPaused: boolean;
       runSummary?: { message?: string };
+      chat: {
+        readiness: ChatRunReadiness;
+        pendingMutation?: ChatMutationProposal | undefined;
+      };
     } = {
       graph: {
         nodes,
@@ -120,6 +141,10 @@ export class InteractiveExecutionSession {
       activeNodeId: activeNode?.id,
       approvalMode: this.approvalMode,
       autoApprovalPaused: this.futureAutoApprovalsPaused,
+      chat: {
+        readiness: this.chatReadiness,
+        pendingMutation: this.pendingMutation?.proposal,
+      },
     };
     if (runSummary !== undefined) {
       snapshotPayload.runSummary = runSummary;
@@ -226,8 +251,25 @@ export class InteractiveExecutionSession {
   }
 
   deleteNode(nodeId: string): { deleted: string[] } {
+    return this.deleteNodeWithStrategy(nodeId);
+  }
+
+  deleteNodeWithStrategy(nodeId: string, strategy?: DeleteStrategy): { deleted: string[] } {
     if (!this.nodes.has(nodeId)) {
       throw new MutationError("unknown_node", `Unknown node "${nodeId}".`, [nodeId], undefined, "Select an existing node.");
+    }
+    const dependents = this.directDependents(nodeId);
+    if (dependents.length > 0 && !strategy) {
+      throw new MutationError(
+        "delete_requires_choice",
+        "Delete requires explicit choice for dependent nodes.",
+        [nodeId, ...dependents.map((node) => node.id)],
+        `dependents=${dependents.map((node) => node.id).join(",")}`,
+        "Choose delete_subtree or rewire_dependents.",
+      );
+    }
+    if (strategy === "rewire_dependents") {
+      return this.rewireAndDeleteNode(nodeId, dependents.map((node) => node.id));
     }
     const deleted = this.collectDescendants(nodeId);
     for (const id of deleted) {
@@ -246,6 +288,97 @@ export class InteractiveExecutionSession {
     }
     this.publish({ type: "execution", status: "ready", message: `deleted ${deleted.length} node(s)` });
     return { deleted };
+  }
+
+  previewMutationFromChat(message: string): ChatMutationProposal {
+    const normalized = message.trim();
+    if (!normalized) {
+      throw new MutationError("invalid_prompt", "Chat message cannot be empty.", [], undefined, "Describe the graph change.");
+    }
+    const lower = normalized.toLowerCase();
+    if (lower.startsWith("edit ")) {
+      const parsed = normalized.match(/^edit\s+(.+?)\s*:\s*(.+)$/i);
+      if (!parsed) {
+        throw new MutationError("invalid_prompt", "Edit format must be: edit <node> : <new prompt>.", [], undefined, "Use a node label or id.");
+      }
+      const nodeId = this.resolveNodeTarget(parsed[1] ?? "", "edit");
+      const prompt = (parsed[2] ?? "").trim();
+      if (!prompt) {
+        throw new MutationError("invalid_prompt", "Edited prompt cannot be empty.", [nodeId], undefined, "Provide replacement text.");
+      }
+      return this.setPendingMutation({ kind: "edit", nodeId, prompt }, `Edit ${nodeId} prompt`);
+    }
+    if (lower.startsWith("delete ")) {
+      const parsed = normalized.match(/^delete\s+(.+)$/i);
+      const nodeId = this.resolveNodeTarget(parsed?.[1] ?? "", "delete");
+      const dependents = this.directDependents(nodeId);
+      if (dependents.length > 0) {
+        return this.setPendingMutation(
+          { kind: "delete", nodeId },
+          `Delete ${nodeId} requires dependency choice`,
+          {
+            requiresDeleteChoice: true,
+            pendingDeleteChoice: { nodeId, options: ["delete_subtree", "rewire_dependents"] },
+          },
+        );
+      }
+      return this.setPendingMutation({ kind: "delete", nodeId, strategy: "delete_subtree" }, `Delete subtree for ${nodeId}`);
+    }
+
+    throw new MutationError("unsupported_mutation", "Unsupported chat mutation command.", [], undefined, "Use edit <node>:<prompt> or delete <node>.");
+  }
+
+  applyPendingMutation(input?: { proposalId?: string; deleteStrategy?: DeleteStrategy }): {
+    applied: true;
+    summary: string;
+    deletedNodeIds?: string[] | undefined;
+  } {
+    const pending = this.pendingMutation;
+    if (!pending) {
+      throw new MutationError("missing_pending_mutation", "No pending mutation to apply.", [], undefined, "Preview a mutation in chat first.");
+    }
+    if (input?.proposalId && input.proposalId !== pending.id) {
+      throw new MutationError("stale_mutation", "Pending mutation id does not match.", [], undefined, "Refresh and apply latest preview.");
+    }
+    let summary = pending.proposal.summary;
+    let deletedNodeIds: string[] | undefined;
+    if (pending.mutation.kind === "edit") {
+      this.editNodePrompt(pending.mutation.nodeId, pending.mutation.prompt);
+    } else {
+      const strategy = input?.deleteStrategy ?? pending.mutation.strategy;
+      const deleted = this.deleteNodeWithStrategy(pending.mutation.nodeId, strategy);
+      deletedNodeIds = deleted.deleted;
+      summary = `Deleted ${deleted.deleted.length} node(s) using ${strategy ?? "delete_subtree"}`;
+    }
+    this.pendingMutation = undefined;
+    this.chatReadiness = {
+      state: "draft",
+      reason: "Draft graph: confirm graph and run to start execution.",
+    };
+    return { applied: true, summary, deletedNodeIds };
+  }
+
+  clearPendingMutation(): void {
+    this.pendingMutation = undefined;
+  }
+
+  confirmGraphAndRun(): ChatRunReadiness {
+    const reasons: string[] = [];
+    if (this.nodes.size === 0) {
+      reasons.push("No graph nodes are available.");
+    }
+    if (this.pendingMutation) {
+      reasons.push("Resolve the pending mutation preview first.");
+    }
+    if (reasons.length > 0) {
+      this.chatReadiness = { state: "draft", reason: `Draft graph: ${reasons.join(" ")}` };
+      return this.chatReadiness;
+    }
+    this.chatReadiness = {
+      state: "ready_to_run",
+      reason: "Graph confirmed. Run can start.",
+    };
+    return this.chatReadiness;
   }
 
   approveNode(nodeId: string, token?: string): { duplicate: boolean } {
@@ -513,6 +646,86 @@ export class InteractiveExecutionSession {
       }
     }
     return result;
+  }
+
+  private resolveNodeTarget(target: string, action: string): string {
+    const normalized = target.trim().toLowerCase();
+    const matches = [...this.nodes.values()].filter((node) =>
+      node.id.toLowerCase() === normalized || node.label.toLowerCase().includes(normalized)
+    );
+    if (matches.length === 0) {
+      throw new MutationError("unknown_node", `No node matches "${target}".`, [], undefined, "Use a known node id or label.");
+    }
+    if (matches.length > 1) {
+      throw new MutationError(
+        "ambiguous_node_target",
+        `Ambiguous ${action} target "${target}".`,
+        matches.map((node) => node.id),
+        `matches=${matches.map((node) => node.id).join(",")}`,
+        "Choose a unique node id.",
+      );
+    }
+    return matches[0]!.id;
+  }
+
+  private setPendingMutation(
+    mutation: PendingMutation,
+    summary: string,
+    overrides?: Partial<ChatMutationProposal>,
+  ): ChatMutationProposal {
+    const id = `mutation-${++this.mutationVersion}`;
+    const proposal: ChatMutationProposal = {
+      id,
+      summary,
+      requiresClarification: false,
+      requiresDeleteChoice: false,
+      ...overrides,
+    };
+    this.pendingMutation = { id, mutation, proposal };
+    return proposal;
+  }
+
+  private directDependents(nodeId: string): ExecutionGraphNode[] {
+    return [...this.nodes.values()].filter((node) => node.parentId === nodeId);
+  }
+
+  private rewireAndDeleteNode(nodeId: string, dependentIds: string[]): { deleted: string[] } {
+    const node = this.nodes.get(nodeId);
+    if (!node) {
+      throw new MutationError("unknown_node", `Unknown node "${nodeId}".`, [nodeId], undefined, "Select an existing node.");
+    }
+    if (!node.parentId) {
+      throw new MutationError(
+        "rewire_requires_parent",
+        "Cannot rewire dependents when deleting a root node.",
+        [nodeId, ...dependentIds],
+        undefined,
+        "Use delete_subtree for root deletes.",
+      );
+    }
+    for (const dependentId of dependentIds) {
+      const dependent = this.nodes.get(dependentId);
+      if (!dependent) {
+        continue;
+      }
+      dependent.parentId = node.parentId;
+      dependent.depth = Math.max(0, node.depth);
+      this.edges.push({ from: node.parentId, to: dependent.id });
+    }
+    this.nodes.delete(nodeId);
+    this.pending.delete(nodeId);
+    this.statusWaiters.delete(nodeId);
+    for (let i = this.edges.length - 1; i >= 0; i -= 1) {
+      const edge = this.edges[i];
+      if (!edge) {
+        continue;
+      }
+      if (edge.to === nodeId || edge.from === nodeId) {
+        this.edges.splice(i, 1);
+      }
+    }
+    this.publish({ type: "execution", status: "ready", message: `rewired and deleted ${nodeId}` });
+    return { deleted: [nodeId] };
   }
 
   private reevaluateSubtreeFrom(nodeId: string): void {

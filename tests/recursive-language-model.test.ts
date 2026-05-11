@@ -417,6 +417,36 @@ test("interactive execution session supports add/connect/delete mutations at che
   assert.equal(result.answer, "approved answer");
 });
 
+test("interactive delete with dependents requires explicit strategy choice", () => {
+  const session = createInteractiveExecutionSession();
+  // Seed nodes directly via control registration to model a dependency chain.
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
+  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
+  assert.throws(() => session.deleteNode("task-2"), /explicit choice/);
+});
+
+test("interactive delete_subtree removes target and descendants", () => {
+  const session = createInteractiveExecutionSession();
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
+  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
+  const result = session.deleteNodeWithStrategy("task-2", "delete_subtree");
+  assert.deepEqual(result.deleted.sort(), ["task-2", "task-3"]);
+});
+
+test("interactive rewire_dependents preserves downstream nodes and only deletes target", () => {
+  const session = createInteractiveExecutionSession();
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
+  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
+  const result = session.deleteNodeWithStrategy("task-2", "rewire_dependents");
+  assert.deepEqual(result.deleted, ["task-2"]);
+  const graph = session.snapshot().graph;
+  const grandchild = graph.nodes.find((node) => node.id === "task-3");
+  assert.equal(grandchild?.parentId, "task-1");
+});
+
 test("interactive execution session returns structured mutation errors", () => {
   const session = createInteractiveExecutionSession();
   const err = (() => {
