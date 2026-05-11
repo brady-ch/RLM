@@ -87,6 +87,7 @@ function renderJson(result: RecursivePromptResult, options: RenderOptions): stri
     memoryReservations: result.metadata.memoryReservations,
     modelCalls: result.metadata.modelCalls,
     tokenUsage: result.metadata.tokenUsage,
+    clarificationHistory: result.metadata.clarificationHistory ?? [],
     trace: options.includeTrace ? result.trace : [],
     toolCalls: result.metadata.toolCalls,
     errors: result.metadata.errors,

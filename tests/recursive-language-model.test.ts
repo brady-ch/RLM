@@ -426,6 +426,63 @@ test("interactive delete with dependents requires explicit strategy choice", () 
   assert.throws(() => session.deleteNode("task-2"), /explicit choice/);
 });
 
+test("clarification checkpoints are hard-blocking and skip is rejected", () => {
+  const session = createInteractiveExecutionSession();
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  const question = session.raiseClarificationCheckpoint({
+    nodeId: "task-1",
+    promptText: "Need environment details?",
+  });
+  assert.equal(session.snapshot().chat.pendingClarification?.questionId, question.questionId);
+  assert.throws(
+    () => session.skipNode("task-1"),
+    /answer and continue or abort/,
+  );
+});
+
+test("clarification answer emits canonical record fields and clears pending state", () => {
+  const session = createInteractiveExecutionSession();
+  const events: Array<{ record?: Record<string, string> }> = [];
+  session.subscribe((event) => {
+    if (event.clarificationRecord) {
+      events.push({ record: event.clarificationRecord as unknown as Record<string, string> });
+    }
+  });
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  const question = session.raiseClarificationCheckpoint({
+    nodeId: "task-1",
+    promptText: "Need environment details?",
+  });
+  const record = session.answerClarificationAndContinue({
+    questionId: question.questionId,
+    userAnswer: "Use staging credentials.",
+  });
+  assert.equal(record.question_id, question.questionId);
+  assert.equal(record.node_id, "task-1");
+  assert.equal(record.prompt_text, "Need environment details?");
+  assert.equal(record.user_answer, "Use staging credentials.");
+  assert.ok(record.asked_at.length > 0);
+  assert.ok(record.answered_at.length > 0);
+  assert.ok(record.resume_event_id.length > 0);
+  assert.equal(session.snapshot().chat.pendingClarification, undefined);
+  assert.equal(session.snapshot().chat.clarificationHistory.length, 1);
+  assert.equal(events.length, 1);
+});
+
+test("clarification abort persists pending question snapshot", () => {
+  const session = createInteractiveExecutionSession();
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  const question = session.raiseClarificationCheckpoint({
+    nodeId: "task-1",
+    promptText: "Need environment details?",
+  });
+  session.abortRunFromClarification({ questionId: question.questionId });
+  const snapshot = session.snapshot();
+  assert.equal(snapshot.status, "cancelled");
+  assert.equal(snapshot.chat.abortSnapshot?.pendingQuestion.questionId, question.questionId);
+  assert.equal(snapshot.chat.abortSnapshot?.pendingQuestion.promptText, "Need environment details?");
+});
+
 test("interactive delete_subtree removes target and descendants", () => {
   const session = createInteractiveExecutionSession();
   session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
@@ -2009,6 +2066,7 @@ test("renders json output for tool use", () => {
       totalTokens: 0,
       unknownCompletions: 0,
     },
+    clarificationHistory: [],
     trace: [],
     toolCalls: [],
     errors: [],

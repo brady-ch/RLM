@@ -74,6 +74,21 @@ type SessionSnapshot = {
         options: Array<"delete_subtree" | "rewire_dependents">;
       };
     };
+    pendingClarification?: {
+      questionId: string;
+      nodeId: string;
+      promptText: string;
+      askedAt: string;
+    };
+    clarificationHistory: Array<{
+      question_id: string;
+      node_id: string;
+      prompt_text: string;
+      user_answer: string;
+      asked_at: string;
+      answered_at: string;
+      resume_event_id: string;
+    }>;
   };
 };
 
@@ -109,6 +124,7 @@ function App() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const [chatMessage, setChatMessage] = useState("");
   const [deleteStrategy, setDeleteStrategy] = useState<"delete_subtree" | "rewire_dependents">("delete_subtree");
+  const [clarificationAnswer, setClarificationAnswer] = useState("");
   const selectedNode = snapshot.graph.nodes.find((node) => node.id === selectedNodeId) ?? snapshot.graph.nodes[0];
   const readiness = snapshot.chat?.readiness ?? {
     state: "draft" as const,
@@ -116,6 +132,8 @@ function App() {
   };
   const runDisabled = readiness.state !== "ready_to_run";
   const pendingMutation = snapshot.chat?.pendingMutation;
+  const pendingClarification = snapshot.chat?.pendingClarification;
+  const clarificationHistory = snapshot.chat?.clarificationHistory ?? [];
 
   const refresh = useCallback(async () => {
     const response = await fetch("/api/session");
@@ -252,6 +270,59 @@ function App() {
                 </div>
               )
               : <div className="meta-row">No pending mutation preview.</div>}
+          </div>
+          <div>
+            <label>Clarification timeline</label>
+            {pendingClarification
+              ? (
+                <div className="meta-row">
+                  <div><b>Pending:</b> {pendingClarification.promptText}</div>
+                  <div className="meta-row">node={pendingClarification.nodeId} asked={pendingClarification.askedAt}</div>
+                  <textarea
+                    value={clarificationAnswer}
+                    onChange={(event) => setClarificationAnswer(event.target.value)}
+                    placeholder="Type clarification answer"
+                  />
+                  <div className="actions">
+                    <button
+                      disabled={clarificationAnswer.trim().length === 0}
+                      onClick={() => runAction(
+                        setErrorMessage,
+                        () => post("/api/clarifications/answer", {
+                          questionId: pendingClarification.questionId,
+                          userAnswer: clarificationAnswer,
+                        }),
+                        async () => {
+                          setClarificationAnswer("");
+                          await refresh();
+                        },
+                      )}
+                    >
+                      Answer and continue
+                    </button>
+                    <button
+                      className="danger"
+                      onClick={() => runAction(
+                        setErrorMessage,
+                        () => post("/api/clarifications/abort", { questionId: pendingClarification.questionId }),
+                        refresh,
+                      )}
+                    >
+                      Abort run
+                    </button>
+                  </div>
+                </div>
+              )
+              : <div className="meta-row">No pending clarification.</div>}
+            <div className="meta-row">
+              {clarificationHistory.length === 0
+                ? "No clarification history yet."
+                : clarificationHistory.map((record) => (
+                  <div key={record.resume_event_id}>
+                    Q[{record.question_id}] {record.prompt_text} -> A: {record.user_answer}
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
         {selectedNode
