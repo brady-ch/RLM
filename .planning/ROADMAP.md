@@ -5,8 +5,8 @@
 - **Active milestone:** v1.1 — Interop, chat-first, plugins, constrained tools
 - **Project mode:** mvp
 - **v1.0 history:** Phases 1–5 completed 2026-05-08 — see `.planning/milestones/v1.0-ROADMAP.md`
-- **v1.1 requirements:** 8
-- **v1.1 phases:** 5 (Phase 6–9 plus Phase 8.5)
+- **v1.1 requirements:** 15
+- **v1.1 phases:** 7 (Phase 6–11 with Phase 8.5)
 - **Coverage target:** 100% of v1.1 requirements mapped exactly once
 
 ---
@@ -18,6 +18,8 @@
 - [ ] **Phase 8: Model Host Extensibility and Constrained Tool Calling** — Make local/remote model endpoints configurable and tool rounds schema-constrained per host.
 - [x] **Phase 8.5: Typed Artifact + Stateful Workflow Runtime** — Add typed artifact contracts and guarded external run-state continuity for long-running, model-chained node workflows. (completed 2026-05-11)
 - [ ] **Phase 9: Chat-First Graph UX and Clarification Stops** — Replace single-shot prompt submission with conversational graph authoring and add explicit human-clarification pause semantics.
+- [ ] **Phase 10: Cross-Platform Executable Packaging and Install UX** — Ship single-executable distribution plus global-install path with zero-doc first-run behavior across macOS/Linux/Windows.
+- [ ] **Phase 11: Node-Embedded Chat and Intuitive Graph Editing UX** — Make node-local chat authoring the default editing path with intuitive spawn/delete/drag interactions.
 
 ---
 
@@ -88,6 +90,32 @@
 5. Dismiss/skip policy for clarification prompts is documented and explicit; no undocumented silent default exists.
 **Plans:** TBD
 
+### Phase 10: Cross-Platform Executable Packaging and Install UX
+**Goal:** As a new user, I want to install one executable (or global CLI) and run the tool in any folder with one command, so that I can open the UI and complete an edit-and-run workflow without reading setup docs.
+**Mode:** mvp
+**Depends on:** Phase 9
+**Requirements:** DIST-01, DIST-02, DIST-03
+**Success Criteria** (what must be TRUE):
+1. Build pipeline produces signed/reproducible single executable artifacts for macOS, Linux, and Windows.
+2. Global-install path (`rlm`) works and executes against the caller's current working directory.
+3. First-run path requires one command to launch UI session with actionable defaults (no required manual config edits).
+4. Installer/runtime messaging clearly explains next action (UI URL, prompt expectations, stop/restart).
+5. Packaging verification covers platform-specific startup checks and folder-local operation semantics.
+**Plans:** TBD
+
+### Phase 11: Node-Embedded Chat and Intuitive Graph Editing UX
+**Goal:** As a workflow author, I want chat input directly inside nodes and direct graph controls (spawn/delete/drag), so that I can author and refine recursive workflows quickly without context switching.
+**Mode:** mvp
+**Depends on:** Phase 10
+**Requirements:** UXND-01, UXND-02, UXND-03, UXND-04
+**Success Criteria** (what must be TRUE):
+1. Each editable node exposes embedded chat input and mutation preview/apply controls in-node.
+2. UI provides explicit spawn-child and delete controls with safe dependency validation and clear error recovery.
+3. Node dragging and layout interactions are intuitive and stable during authoring and paused execution states.
+4. Recursive runtime can expand to N downstream nodes as needed, with UI remaining responsive and legible.
+5. New-user usability check passes: install, launch, spawn/edit/delete/drag, confirm run, and observe recursive expansion.
+**Plans:** TBD
+
 ---
 
 ## Requirement Mapping Table
@@ -117,10 +145,17 @@
 | ARTF-01 | Phase 8.5 | Complete |
 | CHAT-01 | Phase 9 | Pending |
 | QUES-01 | Phase 9 | Pending |
+| DIST-01 | Phase 10 | Pending |
+| DIST-02 | Phase 10 | Pending |
+| DIST-03 | Phase 10 | Pending |
+| UXND-01 | Phase 11 | Pending |
+| UXND-02 | Phase 11 | Pending |
+| UXND-03 | Phase 11 | Pending |
+| UXND-04 | Phase 11 | Pending |
 
 **Coverage:**
 - v1 requirements: 15 total — all Complete ✓
-- v1.1 requirements: 8 total — all mapped ✓
+- v1.1 requirements: 15 total — all mapped ✓
 - Unmapped: 0 ✓
 
 ---
@@ -134,3 +169,5 @@
 | 8. Model Host Extensibility and Constrained Tool Calling | 0/? | Not started | — |
 | 8.5 Typed Artifact + Stateful Workflow Runtime | 2/2 | Complete | 2026-05-11 |
 | 9. Chat-First Graph UX and Clarification Stops | 0/? | Not started | — |
+| 10. Cross-Platform Executable Packaging and Install UX | 0/? | Not started | — |
+| 11. Node-Embedded Chat and Intuitive Graph Editing UX | 0/? | Not started | — |

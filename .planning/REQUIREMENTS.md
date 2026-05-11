@@ -110,6 +110,19 @@
 
 - [x] **ARTF-01**: Node workflows support a typed artifact schema plus external run-state continuity for long-running pipelines (e.g. full-book processing), with code-only nodes allowed and state mutation guarded by optimistic concurrency, path-level ACL, and append-only audit events.
 
+### Distribution and install UX
+
+- [ ] **DIST-01**: System can be distributed as a single executable artifact for macOS, Linux, and Windows.
+- [ ] **DIST-02**: System supports global install usage (`rlm`) and executes in the caller's current folder context.
+- [ ] **DIST-03**: First-run UX is zero-doc: a new user can install, run one command, open UI, edit graph, and start execution without manual config editing.
+
+### Graph editing UX
+
+- [ ] **UXND-01**: UI supports direct node dragging and graph layout manipulation for planned/executing workflows.
+- [ ] **UXND-02**: Each node includes embedded chat input for node-local authoring/refinement workflows.
+- [ ] **UXND-03**: UI provides explicit controls to spawn a connected child node from any editable node and delete a node/subtree with safe validation.
+- [ ] **UXND-04**: Recursive runtime can expand to N downstream nodes as determined by recursive planning logic without fixed node-count caps in normal operation.
+
 ### Traceability (v1.1)
 
 | Requirement | Phase | Status |
@@ -122,9 +135,16 @@
 | QUES-01 | Phase 9 | Pending |
 | TCON-01 | Phase 8 | Pending |
 | ARTF-01 | Phase 8.5 | Complete |
+| DIST-01 | Phase 10 | Pending |
+| DIST-02 | Phase 10 | Pending |
+| DIST-03 | Phase 10 | Pending |
+| UXND-01 | Phase 11 | Pending |
+| UXND-02 | Phase 11 | Pending |
+| UXND-03 | Phase 11 | Pending |
+| UXND-04 | Phase 11 | Pending |
 
-**Coverage (v1.1):** 8/8 requirements mapped ✓
+**Coverage (v1.1):** 15/15 requirements mapped ✓
 
 ---
 *Requirements defined: 2026-05-08 (v1); 2026-05-09 (v1.1)*
-*Last updated: 2026-05-11 — completed ARTF-01 via Phase 8.5 execution*
+*Last updated: 2026-05-11 — added distribution and node-embedded UX MVP requirements*
