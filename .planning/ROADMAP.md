@@ -76,7 +76,7 @@
 **Plans:** 2/2 plans complete
 
 ### Phase 9: Chat-First Graph UX and Clarification Stops
-**Goal:** Users build and refine execution graphs through conversation, and the runtime pauses with an explicit human prompt when clarification is required — no silent continuation.
+**Goal:** As a workflow author, I want to build and refine execution graphs through conversation and receive explicit clarification stops during runs, so that no execution continues silently without my input.
 **Mode:** mvp
 **Depends on:** Phase 5 (control-server and checkpoint infrastructure)
 **Requirements:** CHAT-01, QUES-01
