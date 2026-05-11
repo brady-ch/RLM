@@ -41,6 +41,7 @@ export interface TraceEvent {
     | "synthesize"
     | "tool-call"
     | "tool-result"
+    | "code_execution"
     | "error";
   prompt: string;
   output: string;
@@ -51,7 +52,16 @@ export interface TaskNode {
   parentId?: string;
   prompt: string;
   depth: number;
+  kind?: "task" | "code" | undefined;
+  artifactContract?: ArtifactContract | undefined;
   modelOverride?: string | undefined;
+}
+
+export interface ArtifactContract {
+  inputSchema?: string | undefined;
+  outputSchema?: string | undefined;
+  edgeNarrowingSchema?: string | undefined;
+  validationPolicy?: "strict" | "lenient" | undefined;
 }
 
 export interface SolvedTask {
@@ -150,6 +160,12 @@ export interface ExecutionEvent {
   type: "execution";
   status: ExecutionStatus;
   nodeId?: string | undefined;
+  subtype?: "code_execution" | undefined;
+  artifactValidation?: {
+    accepted: boolean;
+    policy: "strict" | "lenient";
+    reason: string;
+  } | undefined;
   modelCallsUsed?: number | undefined;
   modelCallsRemaining?: number | undefined;
   toolCallsUsed?: number | undefined;

@@ -48,3 +48,35 @@ export function createRuntimeEventFingerprint(input: Omit<RuntimeEventInput, "me
   const base = `${input.runId}|${input.occurredAt}|${input.code}|${input.source}|${input.subject}|${input.seq}`;
   return createHash("sha256").update(base).digest("hex");
 }
+
+export interface MutationAuditInput {
+  runId: string;
+  seq: number;
+  actor: string;
+  path: string;
+  action: "set" | "delete";
+  accepted: boolean;
+  reason: string;
+  occurredAt: string;
+}
+
+export function createMutationAuditEvent(input: MutationAuditInput): RuntimeEvent {
+  const decision = input.accepted ? "accepted" : "rejected";
+  return createRuntimeEvent({
+    runId: input.runId,
+    code: "RUN_STATE_MUTATION",
+    severity: input.accepted ? "info" : "warn",
+    source: "run-state",
+    subject: `${input.actor}:${input.path}`,
+    occurredAt: input.occurredAt,
+    seq: input.seq,
+    message: `${decision} ${input.action} on ${input.path}: ${input.reason}`,
+    metrics: {
+      actor: input.actor,
+      path: input.path,
+      action: input.action,
+      accepted: input.accepted,
+      reason: input.reason,
+    },
+  });
+}

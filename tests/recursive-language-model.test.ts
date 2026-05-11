@@ -117,6 +117,28 @@ test("answers directly when max depth is zero", async () => {
   );
 });
 
+test("emits code_execution trace/event for code-only tasks", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(new QueueModel(["DIRECT", "done"]), trace);
+  const events: Array<{ subtype?: string | undefined; status: string }> = [];
+
+  const result = await engine.run({
+    prompt: "code: print('hello')",
+    config: {
+      ...config,
+      maxDepth: 1,
+    },
+    execution: {
+      isCancelled: () => false,
+      onEvent: (event) => events.push({ subtype: event.subtype, status: event.status }),
+    },
+  });
+
+  assert.equal(result.answer, "done");
+  assert.ok(result.trace.some((event) => event.kind === "code_execution"));
+  assert.ok(events.some((event) => event.subtype === "code_execution" && event.status === "running"));
+});
+
 test("decomposes, solves children, summarizes, and synthesizes", async () => {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(

@@ -152,6 +152,33 @@ export class RecursiveLanguageModel {
       maxDepth: config.maxDepth ?? 0,
       prompt: preview(task.prompt),
     });
+    if (isCodeTask(task)) {
+      const codeTrace: {
+        id: string;
+        parentId?: string;
+        depth: number;
+        kind: "code_execution";
+        prompt: string;
+        output: string;
+      } = {
+        id: task.id,
+        depth: task.depth,
+        kind: "code_execution",
+        prompt: task.prompt,
+        output: "executing code-only node",
+      };
+      if (task.parentId) {
+        codeTrace.parentId = task.parentId;
+      }
+      this.trace.record(codeTrace);
+      this.emitExecution({
+        type: "execution",
+        status: "running",
+        nodeId: task.id,
+        subtype: "code_execution",
+        message: "executing code-only node",
+      });
+    }
     const maxDepth = config.maxDepth ?? 0;
     if (task.depth >= maxDepth) {
       const answer = await this.answerDirectly(task, "Depth limit reached; answer directly.");
@@ -1061,6 +1088,14 @@ function parseFirstInteger(value: string): number | undefined {
   }
 
   return Number.parseInt(match[0], 10);
+}
+
+function isCodeTask(task: TaskNode): boolean {
+  if (task.kind === "code") {
+    return true;
+  }
+  const normalized = task.prompt.trim().toLowerCase();
+  return normalized.startsWith("code:") || normalized.startsWith("run code:");
 }
 
 function clamp(value: number, min: number, max: number): number {
