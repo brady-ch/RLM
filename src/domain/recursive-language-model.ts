@@ -430,6 +430,7 @@ export class RecursiveLanguageModel {
         purpose: toModelPurpose(kind),
         complexityDepth: this.metadata.depth.selected,
         overrideModel: task.modelOverride,
+        constrainedToolCalling: allowTools && this.toolsByName.size > 0,
       });
       this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
       this.recordUsage(response.usage);
@@ -583,6 +584,7 @@ export class RecursiveLanguageModel {
       purpose: toModelPurpose(kind),
       complexityDepth: this.metadata.depth.selected,
       overrideModel: task.modelOverride,
+      constrainedToolCalling: false,
     });
     this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
     this.recordUsage(response.usage);

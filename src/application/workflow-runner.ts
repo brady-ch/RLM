@@ -15,6 +15,7 @@ import type {
   WorkflowTaskQueueItem,
 } from "../domain/types.js";
 import type { LanguageModelPort } from "../ports/language-model-port.js";
+import type { ModelRuntimeSelection } from "./model-provider.js";
 import { MemoryManager } from "./memory-manager.js";
 import { estimatePromptDepth, runConfiguredAgent } from "./agent-runner.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
@@ -30,7 +31,8 @@ export interface RunWorkflowInput {
   registry: AgentRegistry;
   memoryManager: MemoryManager;
   baseUrl?: string | undefined;
-  createModel: (model: string) => LanguageModelPort;
+  hostId?: string | undefined;
+  createModel: (model: string, runtime: ModelRuntimeSelection) => LanguageModelPort;
   runValidationCommand?: ((command: string) => Promise<ValidationCommandResult>) | undefined;
   logger?: RuntimeLogger | undefined;
   execution?: ExecutionControl | undefined;
@@ -106,6 +108,7 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
         agent,
         agentSource: "auto",
         baseUrl: input.baseUrl,
+        hostId: input.hostId,
         memoryManager: input.memoryManager,
         createModel: input.createModel,
         logger: input.logger,
@@ -183,6 +186,7 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
         agent: findWorkflowAgent(input.registry, input.workflowId, dispatch.qa.agent),
         agentSource: "auto",
         baseUrl: input.baseUrl,
+        hostId: input.hostId,
         memoryManager: input.memoryManager,
         createModel: input.createModel,
         logger: input.logger,

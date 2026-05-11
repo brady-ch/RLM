@@ -210,6 +210,9 @@ export interface ModelSelectionTrace {
   estimatedRamMb: number;
   source?: "configured" | "rotation" | undefined;
   evaluatorModel?: string | undefined;
+  hostId?: string | undefined;
+  hostKind?: "ollama" | "http" | undefined;
+  hostEndpoint?: string | undefined;
 }
 
 export interface MemoryReservationTrace {

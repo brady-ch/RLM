@@ -35,8 +35,34 @@ export class OllamaLanguageModelAdapter implements LanguageModelPort {
   }
 
   async complete(messages: LanguageModelMessage[], options: LanguageModelCompleteOptions = {}): Promise<LanguageModelResponse> {
-    const runnable = options.tools && options.tools.length > 0 ? this.client.bindTools(options.tools) : this.client;
-    const response = await runnable.invoke(messages.map(toLangChainMessage));
+    let response: Awaited<ReturnType<typeof this.client.invoke>>;
+    if (options.tools && options.tools.length > 0 && options.constrainedToolCalling) {
+      // Ollama cannot combine strict format constraints and executable tool-calls in a single pass.
+      // Run an explicit two-step protocol: constrained selection, then executable tool call.
+      const selectionPass = await this.client.invoke(messages.map(toLangChainMessage));
+      const selectedToolCalls = (selectionPass.tool_calls ?? []).map((toolCall, index) => ({
+        id: toolCall.id ?? `tool-call-${index + 1}`,
+        name: toolCall.name,
+        args: toolCall.args,
+      }));
+      if (selectedToolCalls.length > 0) {
+        const toolRunnable = this.client.bindTools(options.tools);
+        const toolMessages: LanguageModelMessage[] = [
+          ...messages,
+          {
+            role: "assistant",
+            content: typeof selectionPass.content === "string" ? selectionPass.content : "",
+            toolCalls: selectedToolCalls,
+          },
+        ];
+        response = await toolRunnable.invoke(toolMessages.map(toLangChainMessage));
+      } else {
+        response = selectionPass;
+      }
+    } else {
+      const runnable = options.tools && options.tools.length > 0 ? this.client.bindTools(options.tools) : this.client;
+      response = await runnable.invoke(messages.map(toLangChainMessage));
+    }
     const content = typeof response.content === "string"
       ? response.content
       : response.content.map((part) => (typeof part === "string" ? part : JSON.stringify(part))).join("");
@@ -50,6 +76,12 @@ export class OllamaLanguageModelAdapter implements LanguageModelPort {
       })),
       usage: extractUsage(response),
       model: this.modelName,
+      host: {
+        id: "local_ollama",
+        kind: "ollama",
+        endpoint: this.baseUrl,
+        constrainedToolCalling: options.constrainedToolCalling,
+      },
     };
   }
 

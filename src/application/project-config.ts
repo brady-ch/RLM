@@ -92,6 +92,20 @@ export interface InteropConfig {
   skills: SkillInteropConfig;
 }
 
+export type ModelHostKind = "ollama" | "http";
+
+export interface ModelHostConfig {
+  kind: ModelHostKind;
+  baseUrl: string;
+  available?: boolean | undefined;
+  allowUnconstrainedToolCalls?: boolean | undefined;
+}
+
+export interface RuntimeHostSelection {
+  hostId: string;
+  source: "env" | "cli" | "config" | "default";
+}
+
 export interface ProjectConfig {
   models: {
     default: string;
@@ -112,6 +126,8 @@ export interface ProjectConfig {
     load?: ExtensionRegistryEntry[] | undefined;
   } | undefined;
   interop?: InteropConfig | undefined;
+  hosts?: Record<string, ModelHostConfig> | undefined;
+  runtimeHost?: string | undefined;
 }
 
 export interface LoadedProjectConfig {
@@ -237,6 +253,13 @@ const configSchema = z.object({
       pathPolicies: [],
     }),
   }).optional(),
+  hosts: z.record(z.string().min(1), z.object({
+    kind: z.enum(["ollama", "http"]),
+    baseUrl: z.string().min(1),
+    available: z.boolean().optional(),
+    allowUnconstrainedToolCalls: z.boolean().optional(),
+  })).optional(),
+  runtimeHost: z.string().min(1).optional(),
 });
 
 export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
@@ -349,6 +372,15 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
       pathPolicies: [],
     },
   },
+  hosts: {
+    local_ollama: {
+      kind: "ollama",
+      baseUrl: "http://127.0.0.1:11434",
+      available: true,
+      allowUnconstrainedToolCalls: false,
+    },
+  },
+  runtimeHost: "local_ollama",
 };
 
 export async function loadProjectConfig(path?: string): Promise<LoadedProjectConfig> {
@@ -406,6 +438,45 @@ export function resolveRuntimeConfig(config: ProjectConfig, overrides: Partial<R
   }
 
   return runtime;
+}
+
+export function resolveRuntimeHostSelection(
+  config: ProjectConfig,
+  input: {
+    cliHostId?: string | undefined;
+    env?: NodeJS.ProcessEnv | undefined;
+  } = {},
+): RuntimeHostSelection {
+  const envHost = input.env?.RLM_HOST?.trim();
+  if (envHost) {
+    return { hostId: envHost, source: "env" };
+  }
+
+  const cliHost = input.cliHostId?.trim();
+  if (cliHost) {
+    return { hostId: cliHost, source: "cli" };
+  }
+
+  const configHost = config.runtimeHost?.trim();
+  if (configHost) {
+    return { hostId: configHost, source: "config" };
+  }
+
+  const defaultHost = Object.keys(config.hosts ?? {})[0];
+  if (defaultHost) {
+    return { hostId: defaultHost, source: "default" };
+  }
+
+  return { hostId: "local_ollama", source: "default" };
+}
+
+export function resolveHostConfig(config: ProjectConfig, hostId: string): ModelHostConfig {
+  const host = config.hosts?.[hostId];
+  if (!host) {
+    throw new Error(`Unknown runtime host "${hostId}".`);
+  }
+
+  return host;
 }
 
 export function resolveModelTier(config: ProjectConfig, selection: string): ModelTierConfig {

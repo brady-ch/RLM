@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { OllamaLanguageModelAdapter } from "./adapters/ollama-language-model.js";
+import { HttpLanguageModelAdapter } from "./adapters/http-language-model.js";
 import { runConfiguredAgent } from "./application/agent-runner.js";
 import { createAgentRegistry, selectAgent } from "./application/agent-registry.js";
 import { ExtensionHost } from "./application/extension-host.js";
@@ -26,6 +27,7 @@ import { renderResult } from "./cli/render.js";
 import { createStderrRuntimeLogger } from "./cli/runtime-logger.js";
 import { installShutdownHandlers } from "./cli/shutdown.js";
 import type { LanguageModelPort } from "./ports/language-model-port.js";
+import type { ModelRuntimeSelection } from "./application/model-provider.js";
 import type { ExecutionEvent, RecursivePromptResult } from "./domain/types.js";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 
@@ -151,21 +153,19 @@ async function main(): Promise<void> {
     agentConfigs: projectConfig.agents,
   });
   const createdModels = new Map<string, LanguageModelPort>();
-  const createModel = (model: string) => {
-    const existing = createdModels.get(model);
+  const createModel = (model: string, runtime: ModelRuntimeSelection) => {
+    const modelKey = `${runtime.hostId}:${model}`;
+    const existing = createdModels.get(modelKey);
     if (existing) {
       return existing;
     }
 
-    const modelOptions: ConstructorParameters<typeof OllamaLanguageModelAdapter>[0] = {
-      model,
-    };
-    if (options.baseUrl) {
-      modelOptions.baseUrl = options.baseUrl;
-    }
-
-    const created = new OllamaLanguageModelAdapter(modelOptions);
-    createdModels.set(model, cleanup.track(created));
+    const effectiveBaseUrl = options.baseUrl ?? runtime.baseUrl;
+    const created = runtime.hostKind === "http"
+      ? new HttpLanguageModelAdapter({ model, baseUrl: effectiveBaseUrl })
+      : new OllamaLanguageModelAdapter({ model, baseUrl: effectiveBaseUrl });
+    cleanup.track(created);
+    createdModels.set(modelKey, created);
     return created;
   };
   try {
@@ -190,6 +190,7 @@ async function main(): Promise<void> {
           projectConfig,
           registry,
           memoryManager,
+          hostId: options.host,
           createModel,
           logger,
           execution: uiExecution,
@@ -201,6 +202,7 @@ async function main(): Promise<void> {
           agent: selectAgent(registry, options.prompt, options.agent),
           agentSource: options.agent ? "override" : "auto",
           memoryManager,
+          hostId: options.host,
           createModel,
           logger,
           execution: uiExecution,
@@ -232,6 +234,7 @@ async function main(): Promise<void> {
       ? await runWorkflow({
         ...runInputBase,
         workflowId: options.workflow,
+        hostId: options.host,
       })
       : await runConfiguredAgent({
         prompt: runInputBase.prompt,
@@ -240,6 +243,7 @@ async function main(): Promise<void> {
         agent: selectAgent(registry, options.prompt, options.agent),
         agentSource: options.agent ? "override" : "auto",
         memoryManager: runInputBase.memoryManager,
+        hostId: options.host,
         createModel: runInputBase.createModel,
         logger: runInputBase.logger,
         execution,
@@ -257,6 +261,7 @@ async function main(): Promise<void> {
         ? await runWorkflow({
           ...runInputBase,
           workflowId: options.workflow,
+          hostId: options.host,
           execution: executeControl,
         })
         : await runConfiguredAgent({
@@ -266,6 +271,7 @@ async function main(): Promise<void> {
           agent: selectAgent(registry, options.prompt, options.agent),
           agentSource: options.agent ? "override" : "auto",
           memoryManager: runInputBase.memoryManager,
+          hostId: options.host,
           createModel: runInputBase.createModel,
           logger: runInputBase.logger,
           execution: executeControl,

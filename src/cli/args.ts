@@ -20,6 +20,7 @@ export interface CliOptions {
   workflow?: string;
   configPath?: string;
   baseUrl?: string;
+  host?: string;
   uiPort?: number;
 }
 
@@ -57,6 +58,7 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   let workflow: string | undefined;
   let configPath: string | undefined;
   let baseUrl = env.OLLAMA_HOST;
+  let host = env.RLM_HOST;
   let uiPort: number | undefined;
   const promptParts: string[] = [];
 
@@ -191,6 +193,11 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
       index += 1;
       continue;
     }
+    if (arg === "--host") {
+      host = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
     if (arg === "--ui-port") {
       uiPort = parsePositiveInteger(readValue(args, index, arg), arg);
       index += 1;
@@ -233,6 +240,9 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   if (baseUrl) {
     options.baseUrl = baseUrl;
   }
+  if (host) {
+    options.host = host;
+  }
   if (uiPort !== undefined) {
     options.uiPort = uiPort;
   }
@@ -264,6 +274,7 @@ export function helpText(): string {
     "  --workflow <id>         Run configured agent workflow. Default workflow id: default",
     "  --config <path>         YAML config path. Default: ./rlm.config.yaml when present",
     "  --base-url <url>        Ollama base URL. Default: OLLAMA_HOST or LangChain default",
+    "  --host <id>             Runtime host id. Precedence: RLM_HOST > --host > YAML runtimeHost > first host",
     "  --json                 Print stable JSON output for tool consumption",
     "                        Exit code 1 when executionStatus is failed or errors are present.",
     "  --compact              Print compact output for compatibility",
@@ -300,6 +311,9 @@ function helpOptions(env: NodeJS.ProcessEnv): CliOptions {
   }
   if (env.OLLAMA_HOST) {
     options.baseUrl = env.OLLAMA_HOST;
+  }
+  if (env.RLM_HOST) {
+    options.host = env.RLM_HOST;
   }
 
   return options;

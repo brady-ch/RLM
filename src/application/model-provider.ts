@@ -5,16 +5,26 @@ import type {
   LanguageModelPurpose,
   LanguageModelResponse,
 } from "../ports/language-model-port.js";
-import type { AgentConfig, ModelCandidateConfig, ModelTierConfig, ProjectConfig } from "./project-config.js";
-import { resolveModelTier } from "./project-config.js";
+import type {
+  AgentConfig,
+  ModelCandidateConfig,
+  ModelTierConfig,
+  ProjectConfig,
+  RuntimeHostSelection,
+} from "./project-config.js";
+import { resolveHostConfig, resolveModelTier } from "./project-config.js";
 import type { ModelScoreStore } from "./model-score-store.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 
 export interface ModelProviderOptions {
   config: ProjectConfig;
   agent: AgentConfig;
-  baseUrl?: string | undefined;
-  createModel: (model: string) => LanguageModelPort;
+  hostSelection?: RuntimeHostSelection | undefined;
+  createModel: (model: string, runtime: ModelRuntimeSelection) => LanguageModelPort;
+  resolveUnavailableHostDecision?: ((input: {
+    requestedHostId: string;
+    availableHostIds: string[];
+  }) => Promise<{ action: "retry" | "switch" | "abort"; hostId?: string }>) | undefined;
   recordSelection?: (selection: ModelSelectionRecord) => void;
   scoreStore?: ModelScoreStore | undefined;
   random?: (() => number) | undefined;
@@ -28,6 +38,16 @@ export interface ModelSelectionRecord {
   estimatedRamMb: number;
   source: "configured" | "rotation";
   evaluatorModel?: string | undefined;
+  hostId: string;
+  hostKind: "ollama" | "http";
+  hostEndpoint: string;
+}
+
+export interface ModelRuntimeSelection {
+  hostId: string;
+  hostKind: "ollama" | "http";
+  baseUrl: string;
+  allowUnconstrainedToolCalls: boolean;
 }
 
 export class PurposeRoutingLanguageModel implements LanguageModelPort {
@@ -41,14 +61,23 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
   ): Promise<LanguageModelResponse> {
     if (completeOptions.overrideModel) {
       const model = completeOptions.overrideModel;
-      const response = await this.getModel(model).complete(messages, completeOptions);
+      const runtime = await this.resolveRuntimeSelection();
+      const response = await this.getModel(model, runtime).complete(messages, completeOptions);
       response.model ??= model;
+      response.host ??= {
+        id: runtime.hostId,
+        kind: runtime.hostKind,
+        endpoint: runtime.baseUrl,
+      };
       this.options.recordSelection?.({
         purpose: completeOptions.purpose ?? "default",
         model,
         tier: "override",
         estimatedRamMb: 0,
         source: "configured",
+        hostId: runtime.hostId,
+        hostKind: runtime.hostKind,
+        hostEndpoint: runtime.baseUrl,
       });
       this.options.logger?.log({
         stage: "model",
@@ -59,6 +88,9 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
           tier: "override",
           estimatedRamMb: 0,
           source: "configured",
+          hostId: runtime.hostId,
+          hostKind: runtime.hostKind,
+          hostEndpoint: runtime.baseUrl,
         },
       });
       return response;
@@ -77,8 +109,18 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
         source: selection.source,
       },
     });
-    const response = await this.getModel(selection.model).complete(messages, completeOptions);
+    const response = await this.getModel(selection.model, {
+      hostId: selection.hostId,
+      hostKind: selection.hostKind,
+      baseUrl: selection.hostEndpoint,
+      allowUnconstrainedToolCalls: false,
+    }).complete(messages, completeOptions);
     response.model ??= selection.model;
+    response.host ??= {
+      id: selection.hostId,
+      kind: selection.hostKind,
+      endpoint: selection.hostEndpoint,
+    };
     if (selection.source === "rotation") {
       try {
         await this.rateRotatedResponse(selection, messages, response, completeOptions);
@@ -102,6 +144,8 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       ? await this.selectRotatedModel(tierName, tier, purpose)
       : undefined;
 
+    const runtime = await this.resolveRuntimeSelection();
+
     return {
       purpose: normalizedPurpose,
       model: rotatedModel?.name ?? tier.name,
@@ -109,18 +153,71 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       estimatedRamMb: tier.estimatedRamMb,
       source: rotatedModel ? "rotation" : "configured",
       evaluatorModel: rotatedModel ? evaluatorModel : undefined,
+      hostId: runtime.hostId,
+      hostKind: runtime.hostKind,
+      hostEndpoint: runtime.baseUrl,
     };
   }
 
-  private getModel(model: string): LanguageModelPort {
-    const existing = this.cache.get(model);
+  private getModel(model: string, runtime?: ModelRuntimeSelection): LanguageModelPort {
+    const cacheKey = runtime ? `${runtime.hostId}:${model}` : model;
+    const existing = this.cache.get(cacheKey);
     if (existing) {
       return existing;
     }
 
-    const created = this.options.createModel(model);
-    this.cache.set(model, created);
+    if (!runtime) {
+      throw new Error(`Runtime host selection is required for model "${model}".`);
+    }
+    const created = this.options.createModel(model, runtime);
+    this.cache.set(cacheKey, created);
     return created;
+  }
+
+  private async resolveRuntimeSelection(): Promise<ModelRuntimeSelection> {
+    const hosts = this.options.config.hosts ?? {
+      local_ollama: {
+        kind: "ollama" as const,
+        baseUrl: "http://127.0.0.1:11434",
+        available: true,
+        allowUnconstrainedToolCalls: false,
+      },
+    };
+    const requested = this.options.hostSelection ?? { hostId: "local_ollama", source: "default" as const };
+    let requestedHostId = requested.hostId;
+    let host = hosts[requestedHostId];
+
+    while (!host || host.available === false) {
+      const availableHostIds = Object.entries(hosts)
+        .filter(([, value]) => value.available !== false)
+        .map(([id]) => id);
+      const decision = await this.options.resolveUnavailableHostDecision?.({
+        requestedHostId,
+        availableHostIds,
+      });
+      if (!decision || decision.action === "abort") {
+        throw new Error(`selected model unavailable: requested host "${requestedHostId}" is unavailable`);
+      }
+      if (decision.action === "retry") {
+        host = hosts[requestedHostId];
+        continue;
+      }
+      if (decision.action === "switch") {
+        const nextHostId = decision.hostId?.trim();
+        if (!nextHostId || !hosts[nextHostId]) {
+          throw new Error(`Requested host switch target "${decision.hostId ?? ""}" is invalid.`);
+        }
+        requestedHostId = nextHostId;
+        host = hosts[requestedHostId];
+      }
+    }
+
+    return {
+      hostId: requestedHostId,
+      hostKind: host.kind,
+      baseUrl: host.baseUrl,
+      allowUnconstrainedToolCalls: host.allowUnconstrainedToolCalls ?? false,
+    };
   }
 
   private shouldRotate(): boolean {
@@ -187,7 +284,13 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       ratingOptions.complexityDepth = completeOptions.complexityDepth;
     }
 
-    const ratingResponse = await this.getModel(selection.evaluatorModel).complete([
+    const ratingRuntime: ModelRuntimeSelection = {
+      hostId: selection.hostId,
+      hostKind: selection.hostKind,
+      baseUrl: selection.hostEndpoint,
+      allowUnconstrainedToolCalls: false,
+    };
+    const ratingResponse = await this.getModel(selection.evaluatorModel, ratingRuntime).complete([
       {
         role: "system",
         content:

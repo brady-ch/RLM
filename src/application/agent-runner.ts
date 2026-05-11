@@ -6,10 +6,12 @@ import { runRecursivePrompt } from "./run-recursive-prompt.js";
 import type { ProjectConfig } from "./project-config.js";
 import { MemoryManager } from "./memory-manager.js";
 import { estimateAgentRamMb, PurposeRoutingLanguageModel } from "./model-provider.js";
+import type { ModelRuntimeSelection } from "./model-provider.js";
 import { selectedAgentMetadata } from "./agent-registry.js";
 import { createYamlModelScoreStore } from "./model-score-store.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 import type { ExecutionControl } from "../domain/types.js";
+import { resolveRuntimeHostSelection } from "./project-config.js";
 
 export interface RunConfiguredAgentInput {
   prompt: string;
@@ -19,8 +21,9 @@ export interface RunConfiguredAgentInput {
   agent: AgentProfile;
   agentSource: "auto" | "override";
   baseUrl?: string | undefined;
+  hostId?: string | undefined;
   memoryManager: MemoryManager;
-  createModel: (model: string) => LanguageModelPort;
+  createModel: (model: string, runtime: ModelRuntimeSelection) => LanguageModelPort;
   logger?: RuntimeLogger | undefined;
   execution?: ExecutionControl | undefined;
 }
@@ -56,6 +59,9 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
     const model = new PurposeRoutingLanguageModel({
       config: input.projectConfig,
       agent: input.agent.config,
+      hostSelection: resolveRuntimeHostSelection(input.projectConfig, {
+        cliHostId: input.hostId,
+      }),
       createModel: input.createModel,
       scoreStore: input.projectConfig.models.rotation.enabled
         ? createYamlModelScoreStore(process.cwd(), input.projectConfig.models.rotation.scorePath)
@@ -70,6 +76,9 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
           estimatedRamMb: selection.estimatedRamMb,
           source: selection.source,
           evaluatorModel: selection.evaluatorModel,
+          hostId: selection.hostId,
+          hostKind: selection.hostKind,
+          hostEndpoint: selection.hostEndpoint,
         });
       },
     });

@@ -15,6 +15,7 @@ export interface LanguageModelCompleteOptions {
   purpose?: LanguageModelPurpose | undefined;
   complexityDepth?: number;
   overrideModel?: string | undefined;
+  constrainedToolCalling?: boolean | undefined;
 }
 
 export type LanguageModelPurpose = "depth" | "classify" | "decompose" | "answer" | "summarize" | "synthesize";
@@ -24,6 +25,13 @@ export interface LanguageModelResponse {
   toolCalls: LanguageModelToolCall[];
   usage?: LanguageModelUsage | undefined;
   model?: string | undefined;
+  host?: {
+    id: string;
+    kind: "ollama" | "http";
+    endpoint: string;
+    constrainedToolCalling?: boolean | undefined;
+    degradedToolCalling?: boolean | undefined;
+  } | undefined;
 }
 
 export interface LanguageModelUsage {
