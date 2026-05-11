@@ -2,6 +2,8 @@ import type {
   ApprovalMode,
   ChatMutationProposal,
   ChatRunReadiness,
+  ClarificationQuestion,
+  ClarificationRecord,
   DeleteStrategy,
   ExecutionControl,
   ExecutionEvent,
@@ -13,6 +15,7 @@ import type {
   NodeApprovalDecision,
 } from "../domain/types.js";
 import { EXECUTION_FAILURE_CODES, summarizeRunFromNodes } from "../domain/execution-failure.js";
+import { createClarificationQuestion, createClarificationRecord } from "./runtime-events.js";
 
 export class CancellationController {
   private cancelled = false;
@@ -72,6 +75,14 @@ export class InteractiveExecutionSession {
   };
   private pendingMutation: { id: string; mutation: PendingMutation; proposal: ChatMutationProposal } | undefined;
   private mutationVersion = 0;
+  private pendingClarification: ClarificationQuestion | undefined;
+  private clarificationHistory: ClarificationRecord[] = [];
+  private abortSnapshot:
+    | {
+      graph: ExecutionGraph;
+      pendingQuestion: ClarificationQuestion;
+    }
+    | undefined;
 
   constructor(input: { approvalMode?: ApprovalMode } = {}) {
     this.approvalMode = input.approvalMode ?? "full";
@@ -99,6 +110,12 @@ export class InteractiveExecutionSession {
     chat: {
       readiness: ChatRunReadiness;
       pendingMutation?: ChatMutationProposal | undefined;
+      pendingClarification?: ClarificationQuestion | undefined;
+      clarificationHistory: ClarificationRecord[];
+      abortSnapshot?: {
+        graph: ExecutionGraph;
+        pendingQuestion: ClarificationQuestion;
+      } | undefined;
     };
   } {
     const nodes = [...this.nodes.values()];
@@ -131,6 +148,12 @@ export class InteractiveExecutionSession {
       chat: {
         readiness: ChatRunReadiness;
         pendingMutation?: ChatMutationProposal | undefined;
+        pendingClarification?: ClarificationQuestion | undefined;
+        clarificationHistory: ClarificationRecord[];
+        abortSnapshot?: {
+          graph: ExecutionGraph;
+          pendingQuestion: ClarificationQuestion;
+        } | undefined;
       };
     } = {
       graph: {
@@ -144,6 +167,9 @@ export class InteractiveExecutionSession {
       chat: {
         readiness: this.chatReadiness,
         pendingMutation: this.pendingMutation?.proposal,
+        pendingClarification: this.pendingClarification,
+        clarificationHistory: [...this.clarificationHistory],
+        abortSnapshot: this.abortSnapshot,
       },
     };
     if (runSummary !== undefined) {
@@ -416,6 +442,13 @@ export class InteractiveExecutionSession {
   }
 
   skipNode(nodeId: string, token?: string): { duplicate: boolean } {
+    if (this.pendingClarification?.nodeId === nodeId) {
+      throw new MutationError(
+        "clarification_requires_answer_or_abort",
+        "Clarification checkpoints do not allow skip/dismiss; answer and continue or abort.",
+        [nodeId],
+      );
+    }
     const node = this.nodes.get(nodeId);
     const pending = this.pending.get(nodeId);
     if (!node) {
@@ -444,8 +477,91 @@ export class InteractiveExecutionSession {
     return { duplicate: false };
   }
 
+  raiseClarificationCheckpoint(input: { nodeId: string; promptText: string }): ClarificationQuestion {
+    const node = this.nodes.get(input.nodeId);
+    if (!node) {
+      throw new Error(`Unknown node "${input.nodeId}".`);
+    }
+    if (this.pendingClarification) {
+      throw new MutationError(
+        "clarification_already_pending",
+        "A clarification question is already pending.",
+        [this.pendingClarification.nodeId],
+      );
+    }
+    const question = createClarificationQuestion({
+      nodeId: input.nodeId,
+      promptText: input.promptText,
+    });
+    this.pendingClarification = question;
+    this.updateNodeStatus(input.nodeId, "awaiting_approval", {
+      message: "clarification required",
+    });
+    this.publish({
+      type: "execution",
+      status: "awaiting_approval",
+      nodeId: input.nodeId,
+      message: "clarification required",
+      pendingClarification: question,
+    });
+    return question;
+  }
+
+  answerClarificationAndContinue(input: { questionId: string; userAnswer: string }): ClarificationRecord {
+    const pending = this.pendingClarification;
+    if (!pending || pending.questionId !== input.questionId) {
+      throw new MutationError("unknown_question", "Unknown or resolved clarification question.", []);
+    }
+    const normalizedAnswer = input.userAnswer.trim();
+    if (!normalizedAnswer) {
+      throw new MutationError("invalid_answer", "Clarification answer cannot be empty.", [pending.nodeId]);
+    }
+    const resumeEventId = `${pending.nodeId}:resume:${Date.now()}`;
+    const record = createClarificationRecord({
+      question: pending,
+      userAnswer: normalizedAnswer,
+      resumeEventId,
+    });
+    this.clarificationHistory.push(record);
+    this.pendingClarification = undefined;
+    this.updateNodeStatus(pending.nodeId, "approved", {
+      message: "clarification answered; resuming",
+    });
+    this.publish({
+      type: "execution",
+      status: "approved",
+      nodeId: pending.nodeId,
+      message: "clarification answered; resuming",
+      clarificationRecord: record,
+    });
+    return record;
+  }
+
+  abortRunFromClarification(input: { questionId: string }): void {
+    const pending = this.pendingClarification;
+    if (!pending || pending.questionId !== input.questionId) {
+      throw new MutationError("unknown_question", "Unknown or resolved clarification question.", []);
+    }
+    this.abortSnapshot = {
+      graph: {
+        nodes: [...this.nodes.values()].map((node) => ({ ...node })),
+        edges: [...this.edges],
+      },
+      pendingQuestion: pending,
+    };
+    this.stop("aborted at clarification checkpoint");
+  }
+
   stop(reason = "stopped by user"): void {
     this.cancellation.cancel(reason);
+    if (this.pendingClarification) {
+      const blockingNode = this.nodes.get(this.pendingClarification.nodeId);
+      if (blockingNode) {
+        blockingNode.status = "cancelled";
+        blockingNode.approvalToken = undefined;
+      }
+      this.pendingClarification = undefined;
+    }
     for (const [nodeId, pending] of this.pending) {
       const node = this.nodes.get(nodeId);
       if (node) {
@@ -533,6 +649,22 @@ export class InteractiveExecutionSession {
   }
 
   private waitForNodeApprovalInternal(input: ExecutionGraphNode): Promise<NodeApprovalDecision> {
+    if (this.pendingClarification && this.pendingClarification.nodeId !== input.id) {
+      this.registerNode(input);
+      this.updateNodeStatus(input.id, "awaiting_approval", {
+        message: "blocked by unresolved clarification checkpoint",
+      });
+      return new Promise((resolve) => {
+        const poll = () => {
+          if (!this.pendingClarification) {
+            void this.waitForNodeApprovalInternal(input).then(resolve);
+            return;
+          }
+          setTimeout(poll, 25);
+        };
+        poll();
+      });
+    }
     this.registerNode(input);
     const node = this.nodes.get(input.id);
     if (!node) {

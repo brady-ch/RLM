@@ -98,6 +98,7 @@ export interface RecursivePromptMetadata {
   modelCalls: number;
   tokenUsage: TokenUsageTrace;
   toolCalls: ToolCallRecord[];
+  clarificationHistory?: ClarificationRecord[] | undefined;
   errors: string[];
 }
 
@@ -174,6 +175,8 @@ export interface ExecutionEvent {
   approvalSource?: "manual" | "auto" | "none" | undefined;
   failureCategory?: ExecutionFailureCategory | undefined;
   code?: string | undefined;
+  clarificationRecord?: ClarificationRecord | undefined;
+  pendingClarification?: ClarificationQuestion | undefined;
 }
 
 export interface ExecutionStatusUpdateDetail {
@@ -232,6 +235,23 @@ export interface ChatMutationProposal {
   clarificationQuestion?: string | undefined;
   requiresDeleteChoice: boolean;
   pendingDeleteChoice?: PendingDeleteChoice | undefined;
+}
+
+export interface ClarificationQuestion {
+  questionId: string;
+  nodeId: string;
+  promptText: string;
+  askedAt: string;
+}
+
+export interface ClarificationRecord {
+  question_id: string;
+  node_id: string;
+  prompt_text: string;
+  user_answer: string;
+  asked_at: string;
+  answered_at: string;
+  resume_event_id: string;
 }
 
 export interface TokenUsageTrace {

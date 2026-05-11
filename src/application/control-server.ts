@@ -142,6 +142,27 @@ async function routeRequest(
       const readiness = session.confirmGraphAndRun();
       return sendJson(response, { ...session.snapshot(), readiness });
     }
+    if (request.method === "POST" && url.pathname === "/api/clarifications/ask") {
+      const body = await readJsonBody(request);
+      const question = session.raiseClarificationCheckpoint({
+        nodeId: String(body["nodeId"] ?? ""),
+        promptText: String(body["promptText"] ?? ""),
+      });
+      return sendJson(response, { ...session.snapshot(), question });
+    }
+    if (request.method === "POST" && url.pathname === "/api/clarifications/answer") {
+      const body = await readJsonBody(request);
+      const record = session.answerClarificationAndContinue({
+        questionId: String(body["questionId"] ?? ""),
+        userAnswer: String(body["userAnswer"] ?? ""),
+      });
+      return sendJson(response, { ...session.snapshot(), record });
+    }
+    if (request.method === "POST" && url.pathname === "/api/clarifications/abort") {
+      const body = await readJsonBody(request);
+      session.abortRunFromClarification({ questionId: String(body["questionId"] ?? "") });
+      return sendJson(response, session.snapshot());
+    }
     if (request.method === "POST" && url.pathname === "/api/stop") {
       const body = await readJsonBody(request);
       session.stop(typeof body["reason"] === "string" ? body["reason"] : undefined);

@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import type { ClarificationQuestion, ClarificationRecord } from "../domain/types.js";
 
 export type RuntimeEventSeverity = "info" | "warn" | "error";
 
@@ -79,4 +80,34 @@ export function createMutationAuditEvent(input: MutationAuditInput): RuntimeEven
       reason: input.reason,
     },
   });
+}
+
+export function createClarificationQuestion(input: {
+  nodeId: string;
+  promptText: string;
+  askedAt?: string;
+}): ClarificationQuestion {
+  return {
+    questionId: randomUUID(),
+    nodeId: input.nodeId,
+    promptText: input.promptText,
+    askedAt: input.askedAt ?? new Date().toISOString(),
+  };
+}
+
+export function createClarificationRecord(input: {
+  question: ClarificationQuestion;
+  userAnswer: string;
+  answeredAt?: string;
+  resumeEventId: string;
+}): ClarificationRecord {
+  return {
+    question_id: input.question.questionId,
+    node_id: input.question.nodeId,
+    prompt_text: input.question.promptText,
+    user_answer: input.userAnswer,
+    asked_at: input.question.askedAt,
+    answered_at: input.answeredAt ?? new Date().toISOString(),
+    resume_event_id: input.resumeEventId,
+  };
 }
