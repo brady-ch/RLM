@@ -58,6 +58,23 @@ type SessionSnapshot = {
   approvalMode: "full" | "initial-plan" | "initial-plan-recursive";
   autoApprovalPaused: boolean;
   runSummary?: { message?: string };
+  chat?: {
+    readiness: {
+      state: "draft" | "ready_to_run";
+      reason: string;
+    };
+    pendingMutation?: {
+      id: string;
+      summary: string;
+      requiresClarification: boolean;
+      clarificationQuestion?: string;
+      requiresDeleteChoice: boolean;
+      pendingDeleteChoice?: {
+        nodeId: string;
+        options: Array<"delete_subtree" | "rewire_dependents">;
+      };
+    };
+  };
 };
 
 /** Mirror `labelForCategory` / status strings in `src/domain/execution-failure.ts` for header copy. */
@@ -90,7 +107,15 @@ function App() {
   });
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const [chatMessage, setChatMessage] = useState("");
+  const [deleteStrategy, setDeleteStrategy] = useState<"delete_subtree" | "rewire_dependents">("delete_subtree");
   const selectedNode = snapshot.graph.nodes.find((node) => node.id === selectedNodeId) ?? snapshot.graph.nodes[0];
+  const readiness = snapshot.chat?.readiness ?? {
+    state: "draft" as const,
+    reason: "Draft graph: confirm graph and run to start execution.",
+  };
+  const runDisabled = readiness.state !== "ready_to_run";
+  const pendingMutation = snapshot.chat?.pendingMutation;
 
   const refresh = useCallback(async () => {
     const response = await fetch("/api/session");
@@ -154,6 +179,12 @@ function App() {
           <span className="meta-pill">{approvalModeLabel(snapshot.approvalMode)}</span>
           <button
             className="icon"
+            onClick={() => runAction(setErrorMessage, () => post("/api/chat/confirm-run", {}), refresh)}
+          >
+            Confirm graph and run
+          </button>
+          <button
+            className="icon"
             title="Pause future auto-approvals"
             onClick={() => runAction(setErrorMessage, () => post("/api/pause-future-auto-approvals", {}), refresh)}
           >
@@ -168,6 +199,61 @@ function App() {
           </button>
         </header>
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
+        <div className="node-inspector">
+          <div>
+            <label>Run control</label>
+            <button disabled={runDisabled}>Run disabled until confirmed</button>
+            {runDisabled ? <div className="meta-row">{readiness.reason}</div> : <div className="meta-row">Ready to run.</div>}
+          </div>
+          <div>
+            <label>Chat mutation</label>
+            <textarea
+              value={chatMessage}
+              onChange={(event) => setChatMessage(event.target.value)}
+              placeholder="edit task-1: refine this prompt"
+            />
+            <div className="actions">
+              <button
+                disabled={chatMessage.trim().length === 0}
+                onClick={() => runAction(setErrorMessage, () => post("/api/chat/message", { message: chatMessage }), refresh)}
+              >
+                Preview mutation
+              </button>
+              <button onClick={() => runAction(setErrorMessage, () => post("/api/chat/cancel", {}), refresh)}>Clear preview</button>
+            </div>
+            {pendingMutation
+              ? (
+                <div className="meta-row">
+                  Pending: {pendingMutation.summary}
+                  {pendingMutation.requiresDeleteChoice && pendingMutation.pendingDeleteChoice
+                    ? (
+                      <div className="actions">
+                        <select value={deleteStrategy} onChange={(event) => setDeleteStrategy(event.target.value as "delete_subtree" | "rewire_dependents")}>
+                          {pendingMutation.pendingDeleteChoice.options.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                        <button
+                          onClick={() => runAction(
+                            setErrorMessage,
+                            () => post("/api/chat/apply", { proposalId: pendingMutation.id, deleteStrategy }),
+                            refresh,
+                          )}
+                        >
+                          Apply preview
+                        </button>
+                      </div>
+                    )
+                    : (
+                      <div className="actions">
+                        <button onClick={() => runAction(setErrorMessage, () => post("/api/chat/apply", { proposalId: pendingMutation.id }), refresh)}>
+                          Apply preview
+                        </button>
+                      </div>
+                    )}
+                </div>
+              )
+              : <div className="meta-row">No pending mutation preview.</div>}
+          </div>
+        </div>
         {selectedNode
           ? <NodeInspector node={selectedNode} refresh={refresh} setErrorMessage={setErrorMessage} />
           : <p className="empty">Waiting for execution graph.</p>}

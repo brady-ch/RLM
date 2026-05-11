@@ -211,6 +211,29 @@ export interface GraphMutationError {
   suggestedFix?: string | undefined;
 }
 
+export type ChatGraphReadinessState = "draft" | "ready_to_run";
+
+export interface ChatRunReadiness {
+  state: ChatGraphReadinessState;
+  reason: string;
+}
+
+export type DeleteStrategy = "delete_subtree" | "rewire_dependents";
+
+export interface PendingDeleteChoice {
+  nodeId: string;
+  options: DeleteStrategy[];
+}
+
+export interface ChatMutationProposal {
+  id: string;
+  summary: string;
+  requiresClarification: boolean;
+  clarificationQuestion?: string | undefined;
+  requiresDeleteChoice: boolean;
+  pendingDeleteChoice?: PendingDeleteChoice | undefined;
+}
+
 export interface TokenUsageTrace {
   inputTokens: number;
   outputTokens: number;

@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { extname, join, normalize } from "node:path";
 import type { AddressInfo } from "node:net";
 import type { InteractiveExecutionSession } from "./execution-controller.js";
-import type { ApprovalMode } from "../domain/types.js";
+import type { ApprovalMode, DeleteStrategy } from "../domain/types.js";
 
 export interface ControlServer {
   url: string;
@@ -106,8 +106,41 @@ async function routeRequest(
     }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/delete$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
-      const result = session.deleteNode(nodeId);
+      const body = await readJsonBody(request);
+      const strategy = body["strategy"] === "rewire_dependents" || body["strategy"] === "delete_subtree"
+        ? body["strategy"] as DeleteStrategy
+        : undefined;
+      const result = session.deleteNodeWithStrategy(nodeId, strategy);
       return sendJson(response, { ...session.snapshot(), deletedNodeIds: result.deleted });
+    }
+    if (request.method === "POST" && url.pathname === "/api/chat/message") {
+      const body = await readJsonBody(request);
+      const proposal = session.previewMutationFromChat(String(body["message"] ?? ""));
+      return sendJson(response, { ...session.snapshot(), proposal });
+    }
+    if (request.method === "POST" && url.pathname === "/api/chat/apply") {
+      const body = await readJsonBody(request);
+      const proposalId = typeof body["proposalId"] === "string" ? body["proposalId"] : undefined;
+      const deleteStrategy = body["deleteStrategy"] === "delete_subtree" || body["deleteStrategy"] === "rewire_dependents"
+        ? body["deleteStrategy"] as DeleteStrategy
+        : undefined;
+      const applyInput: { proposalId?: string; deleteStrategy?: DeleteStrategy } = {};
+      if (proposalId) {
+        applyInput.proposalId = proposalId;
+      }
+      if (deleteStrategy) {
+        applyInput.deleteStrategy = deleteStrategy;
+      }
+      const applied = session.applyPendingMutation(applyInput);
+      return sendJson(response, { ...session.snapshot(), applied });
+    }
+    if (request.method === "POST" && url.pathname === "/api/chat/cancel") {
+      session.clearPendingMutation();
+      return sendJson(response, session.snapshot());
+    }
+    if (request.method === "POST" && url.pathname === "/api/chat/confirm-run") {
+      const readiness = session.confirmGraphAndRun();
+      return sendJson(response, { ...session.snapshot(), readiness });
     }
     if (request.method === "POST" && url.pathname === "/api/stop") {
       const body = await readJsonBody(request);
