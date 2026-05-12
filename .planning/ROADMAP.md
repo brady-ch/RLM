@@ -15,11 +15,11 @@
 
 - [x] **Phase 6: Extension and Plugin Foundation** — Establish a documented extension mechanism for tools, skills, and model host adapters without forking core. (completed 2026-05-10)
 - [x] **Phase 7: MCP and Skills Interoperability** — Wire MCP server connectivity and on-disk skill loading through the extension layer from Phase 6. (completed 2026-05-10)
-- [ ] **Phase 8: Model Host Extensibility and Constrained Tool Calling** — Make local/remote model endpoints configurable and tool rounds schema-constrained per host.
+- [x] **Phase 8: Model Host Extensibility and Constrained Tool Calling** — Make local/remote model endpoints configurable and tool rounds schema-constrained per host. (completed 2026-05-11)
 - [x] **Phase 8.5: Typed Artifact + Stateful Workflow Runtime** — Add typed artifact contracts and guarded external run-state continuity for long-running, model-chained node workflows. (completed 2026-05-11)
-- [ ] **Phase 9: Chat-First Graph UX and Clarification Stops** — Replace single-shot prompt submission with conversational graph authoring and add explicit human-clarification pause semantics.
+- [x] **Phase 9: Chat-First Graph UX and Clarification Stops** — Replace single-shot prompt submission with conversational graph authoring and add explicit human-clarification pause semantics. (completed 2026-05-11)
 - [x] **Phase 10: Cross-Platform Executable Packaging and Install UX** — Ship single-executable distribution plus global-install path with zero-doc first-run behavior across macOS/Linux/Windows. (completed 2026-05-12)
-- [ ] **Phase 11: Node-Embedded Chat and Intuitive Graph Editing UX** — Ship a ComfyUI-style typed node composer with bounded recursive planning, dataflow ports, artifact refs, and direct graph editing.
+- [x] **Phase 11: Node-Embedded Chat and Intuitive Graph Editing UX** — Ship a ComfyUI-style typed node composer with bounded recursive planning, dataflow ports, artifact refs, and direct graph editing. (completed 2026-05-12)
 
 ---
 
@@ -62,7 +62,7 @@
 3. Ollama `tools` + `format` mutual exclusion is enforced — constrained decoding and tool rounds do not conflict.
 4. A new model host adapter can be registered via the Phase 6 extension mechanism without modifying core recursion logic or `LanguageModelPort`.
 5. CLI `--json-stream` output and the UI both show the host/endpoint used per node.
-**Plans:** TBD
+**Plans:** 2/2 plans complete
 
 ### Phase 8.5: Typed Artifact + Stateful Workflow Runtime
 **Goal:** Support deterministic multi-model node pipelines (including code-only nodes) using typed artifact contracts and a guarded external run-state store suitable for whole-book scale processing.
@@ -88,7 +88,7 @@
 3. Execution pauses with a visible, user-facing clarification prompt when the runtime requires human input during a run.
 4. Resumed execution after a clarification response proceeds explicitly — the question and answer are visible in run history.
 5. Dismiss/skip policy for clarification prompts is documented and explicit; no undocumented silent default exists.
-**Plans:** TBD
+**Plans:** 2/2 plans complete
 
 ### Phase 10: Cross-Platform Executable Packaging and Install UX
 **Goal:** As a new user, I want to install one executable (or global CLI) and run the tool in any folder with one command, so that I can open the UI and complete an edit-and-run workflow without reading setup docs.
@@ -115,7 +115,7 @@
 4. Recursive planning expansion is constrained by visible depth/node budgets; budget exhaustion pauses expansion and requires explicit approval to extend.
 5. UI supports large artifact workflows by passing artifact refs/metadata through graph state while storing large payloads (audio, book chunks) on disk or external storage.
 6. New-user usability check passes: install, launch, enter a root node prompt, generate an editable plan graph, break down a high-complexity child, inspect artifact refs, confirm run, and observe recursive expansion.
-**Plans:** 0/1 plans complete
+**Plans:** 1/1 plans complete
 
 ---
 
@@ -138,25 +138,25 @@
 | ERRO-01 | Phase 5 | Complete |
 | ERRO-02 | Phase 2 | Complete |
 | ERRO-03 | Phase 5 | Complete |
-| PLUG-01 | Phase 6 | Pending |
-| INT-01 | Phase 7 | Pending |
-| INT-02 | Phase 7 | Pending |
-| HOST-01 | Phase 8 | Pending |
-| TCON-01 | Phase 8 | Pending |
+| PLUG-01 | Phase 6 | Complete |
+| INT-01 | Phase 7 | Complete |
+| INT-02 | Phase 7 | Complete |
+| HOST-01 | Phase 8 | Complete |
+| TCON-01 | Phase 8 | Complete |
 | ARTF-01 | Phase 8.5 | Complete |
-| CHAT-01 | Phase 9 | Pending |
-| QUES-01 | Phase 9 | Pending |
-| DIST-01 | Phase 10 | Pending |
-| DIST-02 | Phase 10 | Pending |
-| DIST-03 | Phase 10 | Pending |
-| UXND-01 | Phase 11 | Pending |
-| UXND-02 | Phase 11 | Pending |
-| UXND-03 | Phase 11 | Pending |
-| UXND-04 | Phase 11 | Pending |
+| CHAT-01 | Phase 9 | Complete |
+| QUES-01 | Phase 9 | Complete |
+| DIST-01 | Phase 10 | Complete |
+| DIST-02 | Phase 10 | Complete |
+| DIST-03 | Phase 10 | Complete |
+| UXND-01 | Phase 11 | Complete |
+| UXND-02 | Phase 11 | Complete |
+| UXND-03 | Phase 11 | Complete |
+| UXND-04 | Phase 11 | Complete |
 
 **Coverage:**
 - v1 requirements: 15 total — all Complete ✓
-- v1.1 requirements: 15 total — all mapped ✓
+- v1.1 requirements: 15 total — all Complete ✓
 - Unmapped: 0 ✓
 
 ---
@@ -167,8 +167,8 @@
 |-------|----------------|--------|-----------|
 | 6. Extension and Plugin Foundation | 2/2 | Complete    | 2026-05-10 |
 | 7. MCP and Skills Interoperability | 2/2 | Complete    | 2026-05-10 |
-| 8. Model Host Extensibility and Constrained Tool Calling | 0/? | Not started | — |
+| 8. Model Host Extensibility and Constrained Tool Calling | 2/2 | Complete | 2026-05-11 |
 | 8.5 Typed Artifact + Stateful Workflow Runtime | 2/2 | Complete | 2026-05-11 |
-| 9. Chat-First Graph UX and Clarification Stops | 0/? | Not started | — |
+| 9. Chat-First Graph UX and Clarification Stops | 2/2 | Complete | 2026-05-11 |
 | 10. Cross-Platform Executable Packaging and Install UX | 2/2 | Complete    | 2026-05-12 |
-| 11. Node-Embedded Chat and Intuitive Graph Editing UX | 0/1 | Planned | — |
+| 11. Node-Embedded Chat and Intuitive Graph Editing UX | 1/1 | Complete | 2026-05-12 |

@@ -64,6 +64,69 @@ export interface ArtifactContract {
   validationPolicy?: "strict" | "lenient" | undefined;
 }
 
+export type ComposerNodeType = "AI" | "Code" | "TTS" | "Splitter" | "Joiner" | "Validator";
+
+export type ComposerComplexity = "low" | "medium" | "high";
+
+export interface ComposerPort {
+  id: string;
+  label: string;
+  artifactType: string;
+  schema?: string | undefined;
+  required?: boolean | undefined;
+}
+
+export interface ComposerArtifactRef {
+  id: string;
+  uri: string;
+  mediaType: string;
+  sizeBytes?: number | undefined;
+  durationMs?: number | undefined;
+  hash?: string | undefined;
+  producerNodeId?: string | undefined;
+  orderingKey?: string | undefined;
+  metadata?: Record<string, string | number | boolean> | undefined;
+}
+
+export interface ComposerPlanBudget {
+  maxDepth: number;
+  maxNodes: number;
+  usedDepth: number;
+  usedNodes: number;
+  remainingDepth: number;
+  remainingNodes: number;
+  approvalRequired: boolean;
+  exhausted: boolean;
+}
+
+export interface ComposerContextPolicy {
+  reads: string[];
+  writes: string[];
+  limits: string[];
+  memoryScopes: string[];
+}
+
+export interface NodeComposer {
+  type: ComposerNodeType;
+  runtime: "model" | "code" | "tts";
+  prompt?: string | undefined;
+  codeEntry?: string | undefined;
+  sandboxPolicy?: string | undefined;
+  inputs: ComposerPort[];
+  outputs: ComposerPort[];
+  artifactRefs: ComposerArtifactRef[];
+  contextPolicy: ComposerContextPolicy;
+  complexity: ComposerComplexity;
+  recommendedAction: "run" | "plan" | "break_down" | "review";
+  planBudget: ComposerPlanBudget;
+  pendingPlan?: {
+    parentNodeId: string;
+    childNodeIds: string[];
+    createdAt: string;
+    summary: string;
+  } | undefined;
+}
+
 export interface SolvedTask {
   id: string;
   prompt: string;
@@ -127,6 +190,7 @@ export interface ExecutionGraphNode {
   id: string;
   parentId?: string;
   kind: "task" | "workflow-agent" | "workflow-qa";
+  composer?: NodeComposer | undefined;
   label: string;
   prompt?: string | undefined;
   originalPrompt?: string | undefined;

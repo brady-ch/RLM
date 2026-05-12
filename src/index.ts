@@ -218,7 +218,7 @@ async function main(): Promise<void> {
   };
   try {
     if (options.command === "ui") {
-      const session = createInteractiveExecutionSession();
+      const session = createInteractiveExecutionSession({ seedRootPrompt: options.prompt });
       const uiDistDir = resolveUiDistDir(fileURLToPath(import.meta.url), process.env);
       const server = await startControlServer({
         session,
@@ -229,42 +229,10 @@ async function main(): Promise<void> {
         close: () => server.close(),
       });
       console.error(`RLM UI listening at ${server.url}`);
-      const uiExecution = session.control;
-      const result = options.workflow
-        ? await runWorkflow({
-          workflowId: options.workflow,
-          prompt: options.prompt,
-          config: runtimeConfig,
-          projectConfig,
-          registry,
-          memoryManager,
-          hostId: options.host,
-          createModel,
-          logger,
-          execution: uiExecution,
-        })
-        : await runConfiguredAgent({
-          prompt: options.prompt,
-          config: runtimeConfig,
-          projectConfig,
-          agent: selectAgent(registry, options.prompt, options.agent),
-          agentSource: options.agent ? "override" : "auto",
-          memoryManager,
-          hostId: options.host,
-          createModel,
-          logger,
-          execution: uiExecution,
-        });
-      if (loadedConfig.path) {
-        result.metadata.configPath = loadedConfig.path;
-      }
-      console.log(renderResult(result, {
-        compact: options.compact,
-        json: options.json,
-        includeTrace: options.trace,
-        model: projectConfig.models.default,
-      }));
-      setExitCodeIfRunFailed(result);
+      await new Promise<void>(() => {
+        // UI mode is an authoring session. Execution must be triggered by an
+        // explicit graph-confirmed action, not by merely opening the browser.
+      });
       return;
     }
 

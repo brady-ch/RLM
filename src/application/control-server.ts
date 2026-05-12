@@ -76,6 +76,31 @@ async function routeRequest(
       session.setNodeModelOverride(nodeId, String(body["model"] ?? ""));
       return sendJson(response, session.snapshot());
     }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/plan$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const result = session.planNode(nodeId);
+      return sendJson(response, { ...session.snapshot(), plan: result });
+    }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/breakdown$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const result = session.planNode(nodeId);
+      return sendJson(response, { ...session.snapshot(), plan: result });
+    }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/extend-budget$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const body = await readJsonBody(request);
+      const maxDepth = typeof body["maxDepth"] === "number" ? body["maxDepth"] : undefined;
+      const maxNodes = typeof body["maxNodes"] === "number" ? body["maxNodes"] : undefined;
+      const extension: { maxDepth?: number; maxNodes?: number } = {};
+      if (maxDepth !== undefined) {
+        extension.maxDepth = maxDepth;
+      }
+      if (maxNodes !== undefined) {
+        extension.maxNodes = maxNodes;
+      }
+      const budget = session.extendPlanBudget(nodeId, extension);
+      return sendJson(response, { ...session.snapshot(), budget });
+    }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/approve$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const body = await readJsonBody(request);

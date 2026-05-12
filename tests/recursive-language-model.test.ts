@@ -306,6 +306,127 @@ test("parses ui command and ui port", () => {
   assert.equal(options.uiPort, 4545);
 });
 
+test("interactive session seeds a typed root composer for first-run UI", () => {
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Create an audiobook workflow for an entire book",
+  });
+
+  const root = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
+  assert.ok(root);
+  assert.equal(root.status, "planned");
+  assert.equal(root.composer?.type, "TTS");
+  assert.equal(root.composer?.planBudget.remainingNodes, 11);
+  assert.ok(root.composer?.contextPolicy.limits.length);
+});
+
+test("node-local plan creates pending typed child graph without execution", () => {
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Create a full book audiobook workflow with speaker interpretation and TTS audio artifacts",
+  });
+
+  const result = session.planNode("root-composer");
+  const snapshot = session.snapshot();
+  const children = snapshot.graph.nodes.filter((node) => node.parentId === "root-composer");
+
+  assert.equal(result.exhausted, false);
+  assert.ok(children.length >= 5);
+  assert.ok(children.every((node) => node.status === "planned"));
+  assert.ok(children.some((node) => node.composer?.type === "TTS"));
+  assert.ok(children.some((node) => node.composer?.type === "Code"));
+  assert.ok(children.some((node) => node.composer?.complexity === "high"));
+  assert.equal(snapshot.chat.readiness.state, "draft");
+  assert.match(snapshot.chat.readiness.reason, /Pending planned child graph/);
+});
+
+test("plan budget exhaustion pauses expansion until explicit extension", () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "simple task" });
+  const root = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
+  assert.ok(root?.composer);
+  root.composer.planBudget = {
+    ...root.composer.planBudget,
+    maxDepth: 0,
+    maxNodes: 1,
+    remainingDepth: 0,
+    remainingNodes: 0,
+  };
+
+  const result = session.planNode("root-composer");
+  assert.equal(result.exhausted, true);
+  let updated = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
+  assert.equal(updated?.status, "awaiting_approval");
+  assert.equal(updated?.composer?.planBudget.exhausted, true);
+
+  session.extendPlanBudget("root-composer");
+  updated = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
+  assert.equal(updated?.composer?.planBudget.exhausted, false);
+  assert.ok((updated?.composer?.planBudget.remainingNodes ?? 0) > 0);
+});
+
+test("recursive planning shares root budget across high-complexity branches", () => {
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Create a full book audiobook workflow with speaker interpretation and TTS audio artifacts",
+  });
+
+  session.planNode("root-composer");
+  const highComplexityChildren = session.snapshot().graph.nodes
+    .filter((node) => node.parentId === "root-composer" && node.composer?.complexity === "high")
+    .map((node) => node.id);
+  assert.ok(highComplexityChildren.length >= 2);
+
+  for (const nodeId of highComplexityChildren) {
+    session.planNode(nodeId);
+  }
+
+  let snapshot = session.snapshot();
+  assert.ok(snapshot.graph.nodes.length <= 12);
+  const root = snapshot.graph.nodes.find((node) => node.id === "root-composer");
+  assert.equal(root?.composer?.planBudget.remainingNodes, 0);
+  assert.equal(root?.composer?.planBudget.exhausted, true);
+
+  const exhausted = session.planNode(highComplexityChildren[0]!);
+  assert.equal(exhausted.exhausted, true);
+  snapshot = session.snapshot();
+  assert.ok(snapshot.graph.nodes.length <= 12);
+});
+
+test("interactive connect rejects cycles and replaces old incoming edge on reparent", () => {
+  const session = createInteractiveExecutionSession();
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
+  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
+  session.control.registerNode?.({ id: "task-4", kind: "task", label: "new root", prompt: "new root", depth: 0, status: "ready" });
+
+  assert.throws(() => session.connectNode({ nodeId: "task-1", parentId: "task-1" }), /itself or one of its descendants/);
+  assert.throws(() => session.connectNode({ nodeId: "task-1", parentId: "task-3" }), /itself or one of its descendants/);
+
+  session.connectNode({ nodeId: "task-2", parentId: "task-4" });
+  const snapshot = session.snapshot();
+  assert.equal(snapshot.graph.nodes.find((node) => node.id === "task-2")?.parentId, "task-4");
+  assert.equal(snapshot.graph.nodes.find((node) => node.id === "task-2")?.depth, 1);
+  assert.equal(snapshot.graph.nodes.find((node) => node.id === "task-3")?.depth, 2);
+  assert.equal(snapshot.graph.edges.filter((edge) => edge.to === "task-2").length, 1);
+  assert.ok(snapshot.graph.edges.some((edge) => edge.from === "task-4" && edge.to === "task-2"));
+});
+
+test("control server exposes plan and budget endpoints with explicit exhaustion gate", async () => {
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Create a full book audiobook workflow with TTS audio artifacts",
+  });
+  const server = await startControlServer({ session });
+  try {
+    const planResponse = await fetch(`${server.url}/api/nodes/root-composer/plan`, { method: "POST" });
+    assert.equal(planResponse.status, 200);
+    const planned = await planResponse.json() as { plan: { plannedNodeIds: string[]; exhausted: boolean } };
+    assert.equal(planned.plan.exhausted, false);
+    assert.ok(planned.plan.plannedNodeIds.length > 0);
+
+    const earlyExtend = await fetch(`${server.url}/api/nodes/root-composer/extend-budget`, { method: "POST" });
+    assert.equal(earlyExtend.status, 409);
+  } finally {
+    await server.close();
+  }
+});
+
 test("interactive execution waits for node approval and uses edited prompt", async () => {
   const trace = new InMemoryTrace();
   const model = new QueueModel(["edited answer"]);

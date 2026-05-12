@@ -4,6 +4,10 @@ import type {
   ChatRunReadiness,
   ClarificationQuestion,
   ClarificationRecord,
+  ComposerComplexity,
+  ComposerNodeType,
+  ComposerPlanBudget,
+  ComposerPort,
   DeleteStrategy,
   ExecutionControl,
   ExecutionEvent,
@@ -84,8 +88,11 @@ export class InteractiveExecutionSession {
     }
     | undefined;
 
-  constructor(input: { approvalMode?: ApprovalMode } = {}) {
+  constructor(input: { approvalMode?: ApprovalMode; seedRootPrompt?: string | undefined } = {}) {
     this.approvalMode = input.approvalMode ?? "full";
+    if (input.seedRootPrompt) {
+      this.seedRootComposer(input.seedRootPrompt);
+    }
   }
 
   readonly control: ExecutionControl = {
@@ -225,6 +232,117 @@ export class InteractiveExecutionSession {
     this.publish({ type: "execution", status: node.status, nodeId, message: "node model override set" });
   }
 
+  planNode(nodeId: string): { plannedNodeIds: string[]; budget: ComposerPlanBudget; exhausted: boolean } {
+    const node = this.requireEditableNode(nodeId);
+    node.composer = withComposerDefaults(node);
+    const budgetRoot = this.findBudgetRoot(node);
+    budgetRoot.composer = withComposerDefaults(budgetRoot);
+    const budget = budgetRoot.composer.planBudget;
+    const usedNodes = this.collectDescendants(budgetRoot.id).length;
+    const remainingNodes = Math.max(0, budget.maxNodes - usedNodes);
+    const remainingDepth = Math.max(0, budget.maxDepth - node.depth);
+    if (remainingDepth <= 0 || remainingNodes <= 0) {
+      const exhausted = {
+        ...budget,
+        usedNodes,
+        usedDepth: Math.max(budget.usedDepth, node.depth),
+        remainingDepth,
+        remainingNodes,
+        exhausted: true,
+      };
+      budgetRoot.composer.planBudget = exhausted;
+      node.composer.planBudget = exhausted;
+      node.status = "awaiting_approval";
+      this.publish({ type: "execution", status: "awaiting_approval", nodeId, message: "plan budget exhausted; approval required to expand" });
+      return { plannedNodeIds: [], budget: exhausted, exhausted: true };
+    }
+
+    const childSpecs = plannedChildrenFor(node).slice(0, remainingNodes);
+    const created: string[] = [];
+    for (const spec of childSpecs) {
+      const id = `plan-${this.nodes.size + 1}`;
+      const child: ExecutionGraphNode = {
+        id,
+        parentId: node.id,
+        kind: "task",
+        label: spec.label,
+        prompt: spec.prompt,
+        originalPrompt: spec.prompt,
+        editableFields: ["prompt"],
+        depth: node.depth + 1,
+        status: "planned",
+        composer: createComposer({
+          type: spec.type,
+          prompt: spec.prompt,
+          complexity: spec.complexity,
+          budget: childBudgetFromRoot(budget, node.depth + 1, usedNodes + created.length + 1),
+          parentNodeId: node.id,
+        }),
+      };
+      this.registerNode(child);
+      created.push(id);
+    }
+
+    const nextUsedNodes = usedNodes + created.length;
+    const nextBudget = {
+      ...budget,
+      usedNodes: nextUsedNodes,
+      usedDepth: Math.max(budget.usedDepth, node.depth + 1),
+      remainingDepth: Math.max(0, budget.maxDepth - node.depth),
+      remainingNodes: Math.max(0, budget.maxNodes - nextUsedNodes),
+      exhausted: budget.maxDepth - node.depth <= 0 || budget.maxNodes - nextUsedNodes <= 0,
+    };
+    budgetRoot.composer.planBudget = nextBudget;
+    node.composer.planBudget = nextBudget;
+    node.composer.pendingPlan = {
+      parentNodeId: node.id,
+      childNodeIds: created,
+      createdAt: new Date().toISOString(),
+      summary: `${created.length} pending child node(s) planned. Execution requires explicit approval.`,
+    };
+    node.composer.recommendedAction = created.some((id) => this.nodes.get(id)?.composer?.complexity === "high") ? "break_down" : "review";
+    this.chatReadiness = {
+      state: "draft",
+      reason: "Pending planned child graph: inspect and approve before running.",
+    };
+    this.publish({ type: "execution", status: node.status, nodeId, message: `planned ${created.length} pending child node(s)` });
+    return { plannedNodeIds: created, budget: nextBudget, exhausted: false };
+  }
+
+  extendPlanBudget(nodeId: string, extension: Partial<Pick<ComposerPlanBudget, "maxDepth" | "maxNodes">> = {}): ComposerPlanBudget {
+    const node = this.requireEditableNode(nodeId);
+    node.composer = withComposerDefaults(node);
+    if (!node.composer.planBudget.exhausted) {
+      throw new MutationError(
+        "budget_not_exhausted",
+        "Plan budget can only be extended after expansion is exhausted.",
+        [nodeId],
+        undefined,
+        "Plan or break down until the budget is exhausted, then extend explicitly.",
+      );
+    }
+    const budgetRoot = this.findBudgetRoot(node);
+    budgetRoot.composer = withComposerDefaults(budgetRoot);
+    const current = budgetRoot.composer.planBudget.exhausted ? budgetRoot.composer.planBudget : node.composer.planBudget;
+    const maxDepth = Math.max(current.maxDepth, extension.maxDepth ?? current.maxDepth + 1);
+    const maxNodes = Math.max(current.maxNodes, extension.maxNodes ?? current.maxNodes + 4);
+    const usedNodes = this.collectDescendants(budgetRoot.id).length;
+    const nextBudget = {
+      ...current,
+      maxDepth,
+      maxNodes,
+      remainingDepth: Math.max(0, maxDepth - current.usedDepth),
+      remainingNodes: Math.max(0, maxNodes - usedNodes),
+      usedNodes,
+      exhausted: false,
+      approvalRequired: true,
+    };
+    budgetRoot.composer.planBudget = nextBudget;
+    node.composer.planBudget = nextBudget;
+    this.publish({ type: "execution", status: node.status, nodeId, message: "plan budget extended" });
+    return nextBudget;
+  }
+
   addNode(input: {
     parentId: string;
     prompt: string;
@@ -250,6 +368,13 @@ export class InteractiveExecutionSession {
       label: preview(normalized, 80),
       prompt: normalized,
       originalPrompt: normalized,
+      composer: createComposer({
+        type: inferNodeType(normalized),
+        prompt: normalized,
+        complexity: estimateComplexity(normalized),
+        budget: defaultPlanBudget(parentDepth + 1),
+        parentNodeId: input.parentId,
+      }),
       editableFields: ["prompt"],
       depth: parentDepth + 1,
       status: "ready",
@@ -265,8 +390,22 @@ export class InteractiveExecutionSession {
     if (!node || !parent) {
       throw new MutationError("unknown_node", "Cannot connect unknown nodes.", [input.nodeId, input.parentId], undefined, "Select valid existing nodes.");
     }
+    if (input.nodeId === input.parentId || this.collectDescendants(input.nodeId).includes(input.parentId)) {
+      throw new MutationError(
+        "cycle_detected",
+        "Cannot connect a node to itself or one of its descendants.",
+        [input.nodeId, input.parentId],
+        undefined,
+        "Choose a parent outside the node subtree.",
+      );
+    }
+    for (let i = this.edges.length - 1; i >= 0; i -= 1) {
+      if (this.edges[i]?.to === input.nodeId) {
+        this.edges.splice(i, 1);
+      }
+    }
     node.parentId = input.parentId;
-    node.depth = parent.depth + 1;
+    this.updateDepthsFrom(node.id, parent.depth + 1);
     if (node.depth > 64) {
       throw new MutationError("max_depth_exceeded", "Node depth exceeds configured max depth guardrail.", [node.id, parent.id], `depth=${node.depth}`, "Connect under a shallower parent.");
     }
@@ -600,7 +739,7 @@ export class InteractiveExecutionSession {
   private registerNode(input: ExecutionGraphNode): void {
     const existing = this.nodes.get(input.id);
     if (existing) {
-      this.nodes.set(input.id, { ...existing, ...input });
+      this.nodes.set(input.id, { ...existing, ...input, composer: input.composer ?? existing.composer });
       return;
     }
 
@@ -608,6 +747,13 @@ export class InteractiveExecutionSession {
       ...input,
       prompt: input.prompt ?? input.label,
       originalPrompt: input.originalPrompt ?? input.prompt ?? input.label,
+      composer: input.composer ?? createComposer({
+        type: inferNodeType(input.prompt ?? input.label),
+        prompt: input.prompt ?? input.label,
+        complexity: estimateComplexity(input.prompt ?? input.label),
+        budget: defaultPlanBudget(input.depth),
+        parentNodeId: input.parentId,
+      }),
       plannedModel: input.plannedModel ?? "resolved-at-runtime",
       modelOverrideSource: input.modelOverrideSource ?? "none",
       editableFields: input.editableFields ?? ["prompt"],
@@ -761,6 +907,27 @@ export class InteractiveExecutionSession {
     return node;
   }
 
+  private seedRootComposer(prompt: string): void {
+    const normalized = prompt.trim() || "Describe the workflow you want to build.";
+    const node: ExecutionGraphNode = {
+      id: "root-composer",
+      kind: "task",
+      label: preview(normalized, 80),
+      prompt: normalized,
+      originalPrompt: normalized,
+      editableFields: ["prompt"],
+      depth: 0,
+      status: "planned",
+      composer: createComposer({
+        type: inferNodeType(normalized),
+        prompt: normalized,
+        complexity: estimateComplexity(normalized),
+        budget: defaultPlanBudget(0),
+      }),
+    };
+    this.registerNode(node);
+  }
+
   private publish(event: ExecutionEvent): void {
     for (const subscriber of this.subscribers) {
       subscriber(event);
@@ -778,6 +945,31 @@ export class InteractiveExecutionSession {
       }
     }
     return result;
+  }
+
+  private findBudgetRoot(node: ExecutionGraphNode): ExecutionGraphNode {
+    let current = node;
+    while (current.parentId) {
+      const parent = this.nodes.get(current.parentId);
+      if (!parent) {
+        break;
+      }
+      current = parent;
+    }
+    return current;
+  }
+
+  private updateDepthsFrom(nodeId: string, depth: number): void {
+    const node = this.nodes.get(nodeId);
+    if (!node) {
+      return;
+    }
+    node.depth = depth;
+    for (const child of this.nodes.values()) {
+      if (child.parentId === nodeId) {
+        this.updateDepthsFrom(child.id, depth + 1);
+      }
+    }
   }
 
   private resolveNodeTarget(target: string, action: string): string {
@@ -886,7 +1078,7 @@ export class InteractiveExecutionSession {
   }
 }
 
-export function createInteractiveExecutionSession(input: { approvalMode?: ApprovalMode } = {}): InteractiveExecutionSession {
+export function createInteractiveExecutionSession(input: { approvalMode?: ApprovalMode; seedRootPrompt?: string | undefined } = {}): InteractiveExecutionSession {
   return new InteractiveExecutionSession(input);
 }
 
@@ -906,4 +1098,218 @@ export function createExecutionControl(input: {
 function preview(value: string, maxLength: number): string {
   const normalized = value.replace(/\s+/g, " ").trim();
   return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 3)}...`;
+}
+
+function createComposer(input: {
+  type: ComposerNodeType;
+  prompt: string;
+  complexity: ComposerComplexity;
+  budget: ComposerPlanBudget;
+  parentNodeId?: string | undefined;
+}): NonNullable<ExecutionGraphNode["composer"]> {
+  const ports = portsForType(input.type);
+  return {
+    type: input.type,
+    runtime: runtimeForType(input.type),
+    prompt: input.prompt,
+    codeEntry: input.type === "Code" ? "scripts/node.ts" : undefined,
+    sandboxPolicy: input.type === "Code" ? "subprocess" : undefined,
+    inputs: ports.inputs,
+    outputs: ports.outputs,
+    artifactRefs: artifactRefsForType(input.type, input.parentNodeId),
+    contextPolicy: contextPolicyForType(input.type),
+    complexity: input.complexity,
+    recommendedAction: input.complexity === "high" ? "break_down" : "plan",
+    planBudget: input.budget,
+  };
+}
+
+function withComposerDefaults(node: ExecutionGraphNode): NonNullable<ExecutionGraphNode["composer"]> {
+  return node.composer ?? createComposer({
+    type: inferNodeType(node.prompt ?? node.label),
+    prompt: node.prompt ?? node.label,
+    complexity: estimateComplexity(node.prompt ?? node.label),
+    budget: defaultPlanBudget(node.depth),
+    parentNodeId: node.parentId,
+  });
+}
+
+function defaultPlanBudget(depth: number): ComposerPlanBudget {
+  return {
+    maxDepth: 3,
+    maxNodes: 12,
+    usedDepth: depth,
+    usedNodes: 1,
+    remainingDepth: Math.max(0, 3 - depth),
+    remainingNodes: 11,
+    approvalRequired: true,
+    exhausted: false,
+  };
+}
+
+function childBudgetFromRoot(root: ComposerPlanBudget, depth: number, usedNodes: number): ComposerPlanBudget {
+  return {
+    maxDepth: root.maxDepth,
+    maxNodes: root.maxNodes,
+    usedDepth: depth,
+    usedNodes,
+    remainingDepth: Math.max(0, root.maxDepth - depth),
+    remainingNodes: Math.max(0, root.maxNodes - usedNodes),
+    approvalRequired: true,
+    exhausted: root.maxDepth - depth <= 0 || root.maxNodes - usedNodes <= 0,
+  };
+}
+
+function inferNodeType(prompt: string): ComposerNodeType {
+  const lower = prompt.toLowerCase();
+  if (lower.includes("tts") || lower.includes("speech") || lower.includes("audio")) {
+    return "TTS";
+  }
+  if (lower.includes("code") || lower.includes("script") || lower.includes("splice") || lower.includes("parse")) {
+    return "Code";
+  }
+  if (lower.includes("split") || lower.includes("chunk") || lower.includes("segment")) {
+    return "Splitter";
+  }
+  if (lower.includes("join") || lower.includes("merge")) {
+    return "Joiner";
+  }
+  if (lower.includes("valid") || lower.includes("check")) {
+    return "Validator";
+  }
+  return "AI";
+}
+
+function estimateComplexity(prompt: string): ComposerComplexity {
+  const lower = prompt.toLowerCase();
+  const signals = ["book", "workflow", "recursive", "audio", "artifact", "multiple", "pipeline", "graph", "entire"];
+  const score = signals.filter((signal) => lower.includes(signal)).length + Math.floor(prompt.length / 180);
+  if (score >= 3) {
+    return "high";
+  }
+  if (score >= 1) {
+    return "medium";
+  }
+  return "low";
+}
+
+function runtimeForType(type: ComposerNodeType): "model" | "code" | "tts" {
+  if (type === "Code" || type === "Splitter" || type === "Joiner") {
+    return "code";
+  }
+  if (type === "TTS") {
+    return "tts";
+  }
+  return "model";
+}
+
+function portsForType(type: ComposerNodeType): { inputs: ComposerPort[]; outputs: ComposerPort[] } {
+  switch (type) {
+    case "Code":
+      return {
+        inputs: [{ id: "in-artifacts", label: "Artifacts", artifactType: "artifact/ref[]" }],
+        outputs: [{ id: "out-artifacts", label: "Artifacts", artifactType: "artifact/ref[]" }],
+      };
+    case "TTS":
+      return {
+        inputs: [
+          { id: "in-segments", label: "Text segments", artifactType: "text/segment[]" },
+          { id: "in-voices", label: "Voice map", artifactType: "voice/profile[]" },
+        ],
+        outputs: [{ id: "out-audio", label: "Audio clips", artifactType: "audio/ref[]" }],
+      };
+    case "Splitter":
+      return {
+        inputs: [{ id: "in-document", label: "Document", artifactType: "document/ref" }],
+        outputs: [{ id: "out-segments", label: "Segments", artifactType: "text/segment[]" }],
+      };
+    case "Joiner":
+      return {
+        inputs: [{ id: "in-ordered", label: "Ordered refs", artifactType: "artifact/ref[]" }],
+        outputs: [{ id: "out-joined", label: "Joined artifact", artifactType: "artifact/ref" }],
+      };
+    case "Validator":
+      return {
+        inputs: [{ id: "in-candidate", label: "Candidate", artifactType: "artifact/ref" }],
+        outputs: [{ id: "out-validation", label: "Validation", artifactType: "validation/report" }],
+      };
+    default:
+      return {
+        inputs: [{ id: "in-context", label: "Context", artifactType: "context/packet" }],
+        outputs: [{ id: "out-structured", label: "Structured output", artifactType: "json/artifact" }],
+      };
+  }
+}
+
+function artifactRefsForType(type: ComposerNodeType, parentNodeId?: string): NonNullable<ExecutionGraphNode["composer"]>["artifactRefs"] {
+  if (type === "TTS") {
+    return [{
+      id: "audio-ref-preview",
+      uri: ".rlm/runs/<run-id>/artifacts/audio-clip.wav",
+      mediaType: "audio/wav",
+      durationMs: 0,
+      producerNodeId: parentNodeId,
+      orderingKey: "chapter:segment",
+      metadata: { storage: "disk", payload: "external" },
+    }];
+  }
+  if (type === "Splitter" || type === "Code") {
+    return [{
+      id: "manifest-ref-preview",
+      uri: ".rlm/runs/<run-id>/artifacts/manifest.json",
+      mediaType: "application/json",
+      producerNodeId: parentNodeId,
+      metadata: { storage: "disk", payload: "external" },
+    }];
+  }
+  return [];
+}
+
+function contextPolicyForType(type: ComposerNodeType): NonNullable<ExecutionGraphNode["composer"]>["contextPolicy"] {
+  if (type === "TTS") {
+    return {
+      reads: ["current text segment", "speaker bible entry", "voice profile"],
+      writes: ["audio artifact refs", "clip timing metadata"],
+      limits: ["max TTS duration per clip", "max segments per batch"],
+      memoryScopes: ["speaker-bible", "segment-manifest"],
+    };
+  }
+  if (type === "Code" || type === "Splitter" || type === "Joiner") {
+    return {
+      reads: ["artifact refs", "manifest metadata"],
+      writes: ["artifact refs", "status metadata"],
+      limits: ["stream files from disk", "do not embed payloads in graph state"],
+      memoryScopes: ["run-manifest"],
+    };
+  }
+  return {
+    reads: ["current segment", "rolling summary", "relevant memory entries"],
+    writes: ["structured annotations", "memory updates"],
+    limits: ["bounded context packet", "schema-constrained output"],
+    memoryScopes: ["speaker-bible", "chapter-summary"],
+  };
+}
+
+function plannedChildrenFor(node: ExecutionGraphNode): Array<{
+  label: string;
+  prompt: string;
+  type: ComposerNodeType;
+  complexity: ComposerComplexity;
+}> {
+  const prompt = node.prompt ?? node.label;
+  const lower = prompt.toLowerCase();
+  if (lower.includes("book") || lower.includes("audio") || lower.includes("speech")) {
+    return [
+      { label: "Parse book into segments", prompt: "Parse the source book into ordered chapter and segment artifact refs.", type: "Splitter", complexity: "medium" },
+      { label: "Interpret speakers", prompt: "Infer speaker attribution and update a persistent speaker bible from bounded text segments.", type: "AI", complexity: "high" },
+      { label: "Generate TTS clips", prompt: "Generate consistent per-speaker audio clips from segment refs and voice profiles.", type: "TTS", complexity: "high" },
+      { label: "Validate continuity", prompt: "Validate speaker and audio continuity across generated clips.", type: "Validator", complexity: "medium" },
+      { label: "Splice final audio", prompt: "Splice ordered audio artifact refs into the final audiobook file.", type: "Code", complexity: "medium" },
+    ];
+  }
+  return [
+    { label: "Plan implementation slice", prompt: `Create the smallest safe implementation slice for: ${prompt}`, type: "AI", complexity: "medium" },
+    { label: "Execute code changes", prompt: `Apply code or configuration changes for: ${prompt}`, type: "Code", complexity: "medium" },
+    { label: "Validate results", prompt: `Validate the completed work for: ${prompt}`, type: "Validator", complexity: "low" },
+  ];
 }

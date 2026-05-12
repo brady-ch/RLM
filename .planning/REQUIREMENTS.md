@@ -88,7 +88,7 @@
 
 ### Chat-first planning
 
-- [ ] **CHAT-01**: User can create and refine the execution node graph through a conversational UI session (not only a single-shot prompt submission).
+- [x] **CHAT-01**: User can create and refine the execution node graph through a conversational UI session (not only a single-shot prompt submission).
 
 ### Extensibility
 
@@ -96,15 +96,15 @@
 
 ### Model hosts
 
-- [ ] **HOST-01**: User can configure **local and remote** model endpoints with consistent selection and tier/routing semantics across CLI and UI.
+- [x] **HOST-01**: User can configure **local and remote** model endpoints with consistent selection and tier/routing semantics across CLI and UI.
 
 ### Human clarification
 
-- [ ] **QUES-01**: Execution pauses with an explicit user-facing prompt when the runtime requires human answers; the run does not continue until the user responds or an explicit documented dismiss/skip policy applies (no silent continuation).
+- [x] **QUES-01**: Execution pauses with an explicit user-facing prompt when the runtime requires human answers; the run does not continue until the user responds or an explicit documented dismiss/skip policy applies (no silent continuation).
 
 ### Constrained tool calling
 
-- [ ] **TCON-01**: Tool-calling rounds support constrained decoding for tool selection and arguments per `.planning/research/TOOL-CALLING-CONSTRAINED-DECODING.md` (JSON Schema / envelope approach appropriate to each host), integrated through `LanguageModelPort` and the recursive execution loop, without violating host constraints (e.g. Ollama `tools` + `format` mutual exclusion).
+- [x] **TCON-01**: Tool-calling rounds support constrained decoding for tool selection and arguments per `.planning/research/TOOL-CALLING-CONSTRAINED-DECODING.md` (JSON Schema / envelope approach appropriate to each host), integrated through `LanguageModelPort` and the recursive execution loop, without violating host constraints (e.g. Ollama `tools` + `format` mutual exclusion).
 
 ### Typed workflow continuity
 
@@ -118,10 +118,10 @@
 
 ### Graph editing UX
 
-- [ ] **UXND-01**: UI supports direct node dragging and graph layout manipulation for planned/executing workflows.
-- [ ] **UXND-02**: Each node exposes a typed node composer for node-local authoring/refinement: prompt or code configuration, runtime/model selection, typed input/output ports, complexity signal, and visible plan budget.
-- [ ] **UXND-03**: UI provides explicit controls to plan/spawn connected child nodes, break down high-complexity nodes, and delete a node/subtree with safe validation.
-- [ ] **UXND-04**: Recursive runtime can expand to N downstream nodes as determined by recursive planning logic, constrained by visible per-run/per-node planning budgets and explicit approval to extend limits.
+- [x] **UXND-01**: UI supports direct node dragging and graph layout manipulation for planned/executing workflows.
+- [x] **UXND-02**: Each node exposes a typed node composer for node-local authoring/refinement: prompt or code configuration, runtime/model selection, typed input/output ports, complexity signal, and visible plan budget.
+- [x] **UXND-03**: UI provides explicit controls to plan/spawn connected child nodes, break down high-complexity nodes, and delete a node/subtree with safe validation.
+- [x] **UXND-04**: Recursive runtime can expand to N downstream nodes as determined by recursive planning logic, constrained by visible per-run/per-node planning budgets and explicit approval to extend limits.
 
 ### Traceability (v1.1)
 
@@ -129,22 +129,22 @@
 |-------------|-------|--------|
 | INT-01 | Phase 7 | Complete |
 | INT-02 | Phase 7 | Complete |
-| CHAT-01 | Phase 9 | Pending |
+| CHAT-01 | Phase 9 | Complete |
 | PLUG-01 | Phase 6 | Complete |
-| HOST-01 | Phase 8 | Pending |
-| QUES-01 | Phase 9 | Pending |
-| TCON-01 | Phase 8 | Pending |
+| HOST-01 | Phase 8 | Complete |
+| QUES-01 | Phase 9 | Complete |
+| TCON-01 | Phase 8 | Complete |
 | ARTF-01 | Phase 8.5 | Complete |
 | DIST-01 | Phase 10 | Complete |
 | DIST-02 | Phase 10 | Complete |
 | DIST-03 | Phase 10 | Complete |
-| UXND-01 | Phase 11 | Pending |
-| UXND-02 | Phase 11 | Pending |
-| UXND-03 | Phase 11 | Pending |
-| UXND-04 | Phase 11 | Pending |
+| UXND-01 | Phase 11 | Complete |
+| UXND-02 | Phase 11 | Complete |
+| UXND-03 | Phase 11 | Complete |
+| UXND-04 | Phase 11 | Complete |
 
 **Coverage (v1.1):** 15/15 requirements mapped ✓
 
 ---
 *Requirements defined: 2026-05-08 (v1); 2026-05-09 (v1.1)*
-*Last updated: 2026-05-12 — refined node-embedded UX toward typed dataflow composer and bounded recursive planning*
+*Last updated: 2026-05-12 — Phase 11 typed dataflow composer completed*
