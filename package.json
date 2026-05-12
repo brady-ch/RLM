@@ -24,6 +24,8 @@
     "dev:ui": "vite --config ui/vite.config.ts",
     "build": "tsc -p tsconfig.json",
     "build:ui": "vite build --config ui/vite.config.ts",
+    "package:build": "node scripts/packaging/build-release.mjs",
+    "package:smoke": "npm run package:build",
     "start": "node dist/src/index.js",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js"

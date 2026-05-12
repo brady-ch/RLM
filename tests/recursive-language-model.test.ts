@@ -23,13 +23,13 @@ import { createAgentRegistry, selectAgent } from "../src/application/agent-regis
 import { loadProjectConfig, resolveRuntimeConfig } from "../src/application/project-config.js";
 import { MemoryManager } from "../src/application/memory-manager.js";
 import { PurposeRoutingLanguageModel, selectDynamicTier } from "../src/application/model-provider.js";
-import { createYamlModelScoreStore } from "../src/application/model-score-store.js";
 import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
 import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
 import { startControlServer } from "../src/application/control-server.js";
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
 import type { RuntimeLogEvent, RuntimeLogger } from "../src/ports/runtime-logger-port.js";
+import { FileRunStateStore } from "../src/adapters/file-run-state-store.js";
 
 type QueueResponse = string | LanguageModelResponse;
 
@@ -115,6 +115,28 @@ test("answers directly when max depth is zero", async () => {
     result.trace.map((event) => event.kind),
     ["answer"],
   );
+});
+
+test("emits code_execution trace/event for code-only tasks", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(new QueueModel(["DIRECT", "done"]), trace);
+  const events: Array<{ subtype?: string | undefined; status: string }> = [];
+
+  const result = await engine.run({
+    prompt: "code: print('hello')",
+    config: {
+      ...config,
+      maxDepth: 1,
+    },
+    execution: {
+      isCancelled: () => false,
+      onEvent: (event) => events.push({ subtype: event.subtype, status: event.status }),
+    },
+  });
+
+  assert.equal(result.answer, "done");
+  assert.ok(result.trace.some((event) => event.kind === "code_execution"));
+  assert.ok(events.some((event) => event.subtype === "code_execution" && event.status === "running"));
 });
 
 test("decomposes, solves children, summarizes, and synthesizes", async () => {
@@ -285,6 +307,127 @@ test("parses ui command and ui port", () => {
   assert.equal(options.uiPort, 4545);
 });
 
+test("interactive session seeds a typed root composer for first-run UI", () => {
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Create an audiobook workflow for an entire book",
+  });
+
+  const root = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
+  assert.ok(root);
+  assert.equal(root.status, "planned");
+  assert.equal(root.composer?.type, "TTS");
+  assert.equal(root.composer?.planBudget.remainingNodes, 11);
+  assert.ok(root.composer?.contextPolicy.limits.length);
+});
+
+test("node-local plan creates pending typed child graph without execution", () => {
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Create a full book audiobook workflow with speaker interpretation and TTS audio artifacts",
+  });
+
+  const result = session.planNode("root-composer");
+  const snapshot = session.snapshot();
+  const children = snapshot.graph.nodes.filter((node) => node.parentId === "root-composer");
+
+  assert.equal(result.exhausted, false);
+  assert.ok(children.length >= 5);
+  assert.ok(children.every((node) => node.status === "planned"));
+  assert.ok(children.some((node) => node.composer?.type === "TTS"));
+  assert.ok(children.some((node) => node.composer?.type === "Code"));
+  assert.ok(children.some((node) => node.composer?.complexity === "high"));
+  assert.equal(snapshot.chat.readiness.state, "draft");
+  assert.match(snapshot.chat.readiness.reason, /Pending planned child graph/);
+});
+
+test("plan budget exhaustion pauses expansion until explicit extension", () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "simple task" });
+  const root = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
+  assert.ok(root?.composer);
+  root.composer.planBudget = {
+    ...root.composer.planBudget,
+    maxDepth: 0,
+    maxNodes: 1,
+    remainingDepth: 0,
+    remainingNodes: 0,
+  };
+
+  const result = session.planNode("root-composer");
+  assert.equal(result.exhausted, true);
+  let updated = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
+  assert.equal(updated?.status, "awaiting_approval");
+  assert.equal(updated?.composer?.planBudget.exhausted, true);
+
+  session.extendPlanBudget("root-composer");
+  updated = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
+  assert.equal(updated?.composer?.planBudget.exhausted, false);
+  assert.ok((updated?.composer?.planBudget.remainingNodes ?? 0) > 0);
+});
+
+test("recursive planning shares root budget across high-complexity branches", () => {
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Create a full book audiobook workflow with speaker interpretation and TTS audio artifacts",
+  });
+
+  session.planNode("root-composer");
+  const highComplexityChildren = session.snapshot().graph.nodes
+    .filter((node) => node.parentId === "root-composer" && node.composer?.complexity === "high")
+    .map((node) => node.id);
+  assert.ok(highComplexityChildren.length >= 2);
+
+  for (const nodeId of highComplexityChildren) {
+    session.planNode(nodeId);
+  }
+
+  let snapshot = session.snapshot();
+  assert.ok(snapshot.graph.nodes.length <= 12);
+  const root = snapshot.graph.nodes.find((node) => node.id === "root-composer");
+  assert.equal(root?.composer?.planBudget.remainingNodes, 0);
+  assert.equal(root?.composer?.planBudget.exhausted, true);
+
+  const exhausted = session.planNode(highComplexityChildren[0]!);
+  assert.equal(exhausted.exhausted, true);
+  snapshot = session.snapshot();
+  assert.ok(snapshot.graph.nodes.length <= 12);
+});
+
+test("interactive connect rejects cycles and replaces old incoming edge on reparent", () => {
+  const session = createInteractiveExecutionSession();
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
+  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
+  session.control.registerNode?.({ id: "task-4", kind: "task", label: "new root", prompt: "new root", depth: 0, status: "ready" });
+
+  assert.throws(() => session.connectNode({ nodeId: "task-1", parentId: "task-1" }), /itself or one of its descendants/);
+  assert.throws(() => session.connectNode({ nodeId: "task-1", parentId: "task-3" }), /itself or one of its descendants/);
+
+  session.connectNode({ nodeId: "task-2", parentId: "task-4" });
+  const snapshot = session.snapshot();
+  assert.equal(snapshot.graph.nodes.find((node) => node.id === "task-2")?.parentId, "task-4");
+  assert.equal(snapshot.graph.nodes.find((node) => node.id === "task-2")?.depth, 1);
+  assert.equal(snapshot.graph.nodes.find((node) => node.id === "task-3")?.depth, 2);
+  assert.equal(snapshot.graph.edges.filter((edge) => edge.to === "task-2").length, 1);
+  assert.ok(snapshot.graph.edges.some((edge) => edge.from === "task-4" && edge.to === "task-2"));
+});
+
+test("control server exposes plan and budget endpoints with explicit exhaustion gate", async () => {
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Create a full book audiobook workflow with TTS audio artifacts",
+  });
+  const server = await startControlServer({ session });
+  try {
+    const planResponse = await fetch(`${server.url}/api/nodes/root-composer/plan`, { method: "POST" });
+    assert.equal(planResponse.status, 200);
+    const planned = await planResponse.json() as { plan: { plannedNodeIds: string[]; exhausted: boolean } };
+    assert.equal(planned.plan.exhausted, false);
+    assert.ok(planned.plan.plannedNodeIds.length > 0);
+
+    const earlyExtend = await fetch(`${server.url}/api/nodes/root-composer/extend-budget`, { method: "POST" });
+    assert.equal(earlyExtend.status, 409);
+  } finally {
+    await server.close();
+  }
+});
+
 test("interactive execution waits for node approval and uses edited prompt", async () => {
   const trace = new InMemoryTrace();
   const model = new QueueModel(["edited answer"]);
@@ -393,6 +536,151 @@ test("interactive execution session supports add/connect/delete mutations at che
   session.approveNode("task-1", token);
   const result = await run;
   assert.equal(result.answer, "approved answer");
+});
+
+test("interactive delete with dependents requires explicit strategy choice", () => {
+  const session = createInteractiveExecutionSession();
+  // Seed nodes directly via control registration to model a dependency chain.
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
+  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
+  assert.throws(() => session.deleteNode("task-2"), /explicit choice/);
+});
+
+test("clarification checkpoints are hard-blocking and skip is rejected", () => {
+  const session = createInteractiveExecutionSession();
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  const question = session.raiseClarificationCheckpoint({
+    nodeId: "task-1",
+    promptText: "Need environment details?",
+  });
+  assert.equal(session.snapshot().chat.pendingClarification?.questionId, question.questionId);
+  assert.throws(
+    () => session.skipNode("task-1"),
+    /answer and continue or abort/,
+  );
+});
+
+test("clarification answer emits canonical record fields and clears pending state", () => {
+  const session = createInteractiveExecutionSession();
+  const events: Array<{ record?: Record<string, string> }> = [];
+  session.subscribe((event) => {
+    if (event.clarificationRecord) {
+      events.push({ record: event.clarificationRecord as unknown as Record<string, string> });
+    }
+  });
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  const question = session.raiseClarificationCheckpoint({
+    nodeId: "task-1",
+    promptText: "Need environment details?",
+  });
+  const record = session.answerClarificationAndContinue({
+    questionId: question.questionId,
+    userAnswer: "Use staging credentials.",
+  });
+  assert.equal(record.question_id, question.questionId);
+  assert.equal(record.node_id, "task-1");
+  assert.equal(record.prompt_text, "Need environment details?");
+  assert.equal(record.user_answer, "Use staging credentials.");
+  assert.ok(record.asked_at.length > 0);
+  assert.ok(record.answered_at.length > 0);
+  assert.ok(record.resume_event_id.length > 0);
+  assert.equal(session.snapshot().chat.pendingClarification, undefined);
+  assert.equal(session.snapshot().chat.clarificationHistory.length, 1);
+  assert.equal(events.length, 1);
+});
+
+test("clarification abort persists pending question snapshot", () => {
+  const session = createInteractiveExecutionSession();
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  const question = session.raiseClarificationCheckpoint({
+    nodeId: "task-1",
+    promptText: "Need environment details?",
+  });
+  session.abortRunFromClarification({ questionId: question.questionId });
+  const snapshot = session.snapshot();
+  assert.equal(snapshot.status, "cancelled");
+  assert.equal(snapshot.chat.abortSnapshot?.pendingQuestion.questionId, question.questionId);
+  assert.equal(snapshot.chat.abortSnapshot?.pendingQuestion.promptText, "Need environment details?");
+});
+
+test("runtime model clarification request blocks until answered and records history", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel([
+    "CLARIFY: Which deployment environment should I target?",
+    "Use staging.",
+  ]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession();
+  const run = engine.run({
+    prompt: "Deploy the service",
+    config: { ...config, maxDepth: 0 },
+    execution: session.control,
+  });
+
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  const pending = session.snapshot().chat.pendingClarification;
+  assert.equal(pending?.promptText, "Which deployment environment should I target?");
+  session.answerClarificationAndContinue({
+    questionId: pending?.questionId ?? "",
+    userAnswer: "Use staging credentials.",
+  });
+
+  const result = await run;
+  assert.equal(result.answer, "Use staging.");
+  assert.equal(result.metadata.clarificationHistory?.length, 1);
+  assert.equal(result.metadata.clarificationHistory?.[0]?.user_answer, "Use staging credentials.");
+});
+
+test("recursive execution persists node status updates into run-state store", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-runtime-state-"));
+  try {
+    const trace = new InMemoryTrace();
+    const store = new FileRunStateStore({ baseDir: dir, now: () => "2026-05-11T00:00:00.000Z" });
+    const engine = new RecursiveLanguageModel(new QueueModel(["direct answer"]), trace);
+
+    const result = await engine.run({
+      prompt: "Answer directly",
+      config: { ...config, maxDepth: 0 },
+      runState: {
+        runId: "run-1",
+        store,
+        actor: "runtime",
+        capabilityToken: "tok-runtime",
+      },
+    });
+
+    assert.equal(result.answer, "direct answer");
+    const snapshot = await store.getSnapshot("run-1");
+    assert.equal(snapshot?.metadata["prompt"], "Answer directly");
+    assert.ok(snapshot?.nodeStatuses.some((item) => item.nodeId === "task-1" && item.status === "completed"));
+    assert.ok(snapshot?.mutationLog.some((item) => item.path === "nodeStatuses.task-1" && item.accepted));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("interactive delete_subtree removes target and descendants", () => {
+  const session = createInteractiveExecutionSession();
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
+  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
+  const result = session.deleteNodeWithStrategy("task-2", "delete_subtree");
+  assert.deepEqual(result.deleted.sort(), ["task-2", "task-3"]);
+});
+
+test("interactive rewire_dependents preserves downstream nodes and only deletes target", () => {
+  const session = createInteractiveExecutionSession();
+  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
+  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
+  const result = session.deleteNodeWithStrategy("task-2", "rewire_dependents");
+  assert.deepEqual(result.deleted, ["task-2"]);
+  const graph = session.snapshot().graph;
+  const grandchild = graph.nodes.find((node) => node.id === "task-3");
+  assert.equal(grandchild?.parentId, "task-1");
 });
 
 test("interactive execution session returns structured mutation errors", () => {
@@ -698,12 +986,6 @@ test("explicit node model override failure is strict and does not fallback", asy
           small: { name: "base-model", estimatedRamMb: 10 },
           medium: { name: "base-model", estimatedRamMb: 10 },
           large: { name: "base-model", estimatedRamMb: 10 },
-        },
-        rotation: {
-          enabled: false,
-          sampleRate: 0,
-          scorePath: "scores.yaml",
-          evaluatorTier: "large",
         },
       },
       agents: {},
@@ -1130,11 +1412,6 @@ test("workflow runs QA validation and exposes bugfix tasks in a higher-priority 
   const projectConfig = {
     models: {
       default: "small-model",
-      rotation: {
-        enabled: false,
-        sampleRate: 0,
-        scorePath: "rlm.model-scores.yaml",
-      },
       tiers: {
         small: {
           name: "small-model",
@@ -1249,11 +1526,6 @@ test("workflow dispatch tiers run minimal agents for simple prompts", async () =
   const projectConfig = {
     models: {
       default: "small-model",
-      rotation: {
-        enabled: false,
-        sampleRate: 0,
-        scorePath: "rlm.model-scores.yaml",
-      },
       tiers: {
         small: {
           name: "small-model",
@@ -1365,11 +1637,6 @@ test("workflow dispatch tiers run complex agent sets and QA for complex prompts"
   const projectConfig = {
     models: {
       default: "small-model",
-      rotation: {
-        enabled: false,
-        sampleRate: 0,
-        scorePath: "rlm.model-scores.yaml",
-      },
       tiers: {
         small: {
           name: "small-model",
@@ -1690,11 +1957,6 @@ test("purpose routing model selects per-purpose and dynamic tiers", async () => 
     config: {
       models: {
         default: "small-model",
-        rotation: {
-          enabled: false,
-          sampleRate: 0,
-          scorePath: "rlm.model-scores.yaml",
-        },
         tiers: {
           small: {
             name: "small-model",
@@ -1741,98 +2003,6 @@ test("purpose routing model selects per-purpose and dynamic tiers", async () => 
   assert.equal((await model.complete([], { purpose: "answer", complexityDepth: 3 })).content, "large-model response");
   assert.equal((await model.complete([], { purpose: "decompose", complexityDepth: 1 })).content, "medium-model response");
   assert.deepEqual(calls, ["answer:large-model", "decompose:medium-model"]);
-});
-
-test("purpose routing occasionally selects use-case alternates and records yaml scores", async () => {
-  const workspace = await mkdtemp(join(tmpdir(), "rlm-model-scores-"));
-  try {
-    const selections: string[] = [];
-    const createdModels = new Map<string, QueueModel>();
-    const model = new PurposeRoutingLanguageModel({
-      config: {
-        models: {
-          default: "small-model",
-          rotation: {
-            enabled: true,
-            sampleRate: 1,
-            scorePath: "rlm.model-scores.yaml",
-          },
-          tiers: {
-            small: {
-              name: "small-model",
-              estimatedRamMb: 512,
-              alternateModels: [
-                {
-                  name: "small-alt-model",
-                  useCases: ["answer"],
-                },
-                {
-                  name: "classify-alt-model",
-                  useCases: ["classify"],
-                },
-              ],
-            },
-            large: {
-              name: "large-judge-model",
-              estimatedRamMb: 2048,
-            },
-          },
-        },
-        memory: {
-          maxRamMb: 4096,
-          reserveSystemRamMb: 0,
-          waitForCapacity: false,
-          capacityCheckIntervalMs: 1,
-        },
-        runtime: config,
-        agents: {},
-        workflows: {},
-      },
-      agent: {
-        tools: [],
-        models: {
-          depth: "small",
-          classify: "small",
-          decompose: "small",
-          answer: "small",
-          summarize: "small",
-          synthesize: "small",
-        },
-      },
-      createModel: (name) => {
-        const responses = name === "large-judge-model"
-          ? ["score: 4.5\nreason: useful alternate answer"]
-          : [`${name} response`];
-        const created = new QueueModel(responses);
-        createdModels.set(name, created);
-        return created;
-      },
-      scoreStore: createYamlModelScoreStore(workspace, "rlm.model-scores.yaml"),
-      random: () => 0,
-      recordSelection: (selection) => selections.push(`${selection.purpose}:${selection.model}:${selection.source}:${selection.evaluatorModel ?? ""}`),
-    });
-
-    const response = await model.complete([
-      {
-        role: "user",
-        content: "answer this",
-      },
-    ], {
-      purpose: "answer",
-      complexityDepth: 1,
-    });
-
-    assert.equal(response.content, "small-alt-model response");
-    assert.deepEqual(selections, ["answer:small-alt-model:rotation:large-judge-model"]);
-    assert.equal(createdModels.get("small-model"), undefined);
-    assert.equal(createdModels.get("large-judge-model")?.calls.length, 1);
-    const scoreFile = await readFile(join(workspace, "rlm.model-scores.yaml"), "utf8");
-    assert.match(scoreFile, /small-alt-model/);
-    assert.match(scoreFile, /averageScore: 4\.5/);
-    assert.match(scoreFile, /useful alternate answer/);
-  } finally {
-    await rm(workspace, { recursive: true, force: true });
-  }
 });
 
 test("memory manager reserves, releases, and rejects over-capacity requests", async () => {
@@ -1957,6 +2127,7 @@ test("renders json output for tool use", () => {
       totalTokens: 0,
       unknownCompletions: 0,
     },
+    clarificationHistory: [],
     trace: [],
     toolCalls: [],
     errors: [],
@@ -1976,11 +2147,6 @@ test("Phase 5 regression: workflow model failure marks executionStatus and graph
   const projectConfig = {
     models: {
       default: "small-model",
-      rotation: {
-        enabled: false,
-        sampleRate: 0,
-        scorePath: "rlm.model-scores.yaml",
-      },
       tiers: {
         small: {
           name: "small-model",

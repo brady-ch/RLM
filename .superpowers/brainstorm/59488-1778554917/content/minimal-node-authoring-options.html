@@ -1,0 +1,94 @@
+<h2>Minimal recursive node authoring</h2>
+<p class="subtitle">Three ways to make prompt-in-node, plan mode, and complexity breakdown feel small instead of heavy.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. Node composer first</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+            <div style="border:1px solid #d0d7de;border-radius:8px;padding:12px;background:white">
+              <div class="label">Root node</div>
+              <textarea class="mock-input" style="width:100%;height:68px;resize:none" placeholder="Describe the task..."></textarea>
+              <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+                <button class="mock-button">Plan</button>
+                <button class="mock-button">Run</button>
+                <span style="font-size:12px;color:#57606a">Complexity: Medium</span>
+              </div>
+            </div>
+            <div style="display:grid;gap:10px">
+              <div class="placeholder">Child plan node</div>
+              <div class="placeholder">Child execution node</div>
+              <div class="placeholder">Child review node</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Composer inside every node</h3>
+      <p>Each node has one prompt field and two actions: Plan or Run. Plan creates child nodes behind an approval cap.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. Inspector plus clean graph</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1.3fr .9fr;gap:16px;align-items:start">
+            <div style="display:grid;gap:10px">
+              <div style="border:2px solid #0969da;border-radius:8px;padding:12px;background:white">Selected node<br><span style="font-size:12px;color:#57606a">Plan pending</span></div>
+              <div style="display:flex;gap:10px">
+                <div class="placeholder" style="flex:1">Child</div>
+                <div class="placeholder" style="flex:1">Child</div>
+              </div>
+            </div>
+            <div style="border:1px solid #d0d7de;border-radius:8px;padding:12px;background:white">
+              <div class="label">Inspector</div>
+              <textarea class="mock-input" style="width:100%;height:80px;resize:none" placeholder="Prompt for selected node..."></textarea>
+              <button class="mock-button" style="margin-top:10px;width:100%">Break down</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Graph stays sparse, editing lives beside it</h3>
+      <p>The canvas remains minimal. Selecting a node opens a compact side inspector for prompt, complexity, and plan controls.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C. One command bar</div>
+        <div class="mockup-body">
+          <div style="display:grid;gap:14px">
+            <div style="display:flex;gap:10px">
+              <input class="mock-input" style="flex:1" placeholder="Ask RLM what to build or change..." />
+              <button class="mock-button">Plan</button>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;justify-content:center">
+              <div class="placeholder" style="width:130px">Root</div>
+              <div>→</div>
+              <div class="placeholder" style="width:130px">Child</div>
+              <div>→</div>
+              <div class="placeholder" style="width:130px">Review</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Global prompt creates graph changes</h3>
+      <p>A command bar drives everything. Nodes are mostly status cards, with fewer embedded controls.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>My initial read</h3>
+  <p>For your “enter prompts into a node” model, A is closest. B may be cleaner if nodes start feeling too busy. C is minimal visually, but it loses the strong node-local mental model you described.</p>
+</div>

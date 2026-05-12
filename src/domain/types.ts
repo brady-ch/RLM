@@ -1,4 +1,5 @@
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
+import type { RunStateStorePort } from "../ports/run-state-store-port.js";
 import type { ExecutionFailureCategory } from "./execution-failure.js";
 
 export interface RecursiveModelConfig {
@@ -15,11 +16,19 @@ export interface RecursivePromptRequest {
   config: RecursiveModelConfig;
   logger?: RuntimeLogger | undefined;
   execution?: ExecutionControl | undefined;
+  runState?: RuntimeRunState | undefined;
   agent?: {
     id: string;
     source: "auto" | "override";
     systemPrompt: string;
   };
+}
+
+export interface RuntimeRunState {
+  runId: string;
+  store: RunStateStorePort;
+  actor: string;
+  capabilityToken: string;
 }
 
 export interface RecursivePromptResult {
@@ -41,6 +50,7 @@ export interface TraceEvent {
     | "synthesize"
     | "tool-call"
     | "tool-result"
+    | "code_execution"
     | "error";
   prompt: string;
   output: string;
@@ -51,7 +61,79 @@ export interface TaskNode {
   parentId?: string;
   prompt: string;
   depth: number;
+  kind?: "task" | "code" | undefined;
+  artifactContract?: ArtifactContract | undefined;
   modelOverride?: string | undefined;
+}
+
+export interface ArtifactContract {
+  inputSchema?: string | undefined;
+  outputSchema?: string | undefined;
+  edgeNarrowingSchema?: string | undefined;
+  validationPolicy?: "strict" | "lenient" | undefined;
+}
+
+export type ComposerNodeType = "AI" | "Code" | "TTS" | "Splitter" | "Joiner" | "Validator";
+
+export type ComposerComplexity = "low" | "medium" | "high";
+
+export interface ComposerPort {
+  id: string;
+  label: string;
+  artifactType: string;
+  schema?: string | undefined;
+  required?: boolean | undefined;
+}
+
+export interface ComposerArtifactRef {
+  id: string;
+  uri: string;
+  mediaType: string;
+  sizeBytes?: number | undefined;
+  durationMs?: number | undefined;
+  hash?: string | undefined;
+  producerNodeId?: string | undefined;
+  orderingKey?: string | undefined;
+  metadata?: Record<string, string | number | boolean> | undefined;
+}
+
+export interface ComposerPlanBudget {
+  maxDepth: number;
+  maxNodes: number;
+  usedDepth: number;
+  usedNodes: number;
+  remainingDepth: number;
+  remainingNodes: number;
+  approvalRequired: boolean;
+  exhausted: boolean;
+}
+
+export interface ComposerContextPolicy {
+  reads: string[];
+  writes: string[];
+  limits: string[];
+  memoryScopes: string[];
+}
+
+export interface NodeComposer {
+  type: ComposerNodeType;
+  runtime: "model" | "code" | "tts";
+  prompt?: string | undefined;
+  codeEntry?: string | undefined;
+  sandboxPolicy?: string | undefined;
+  inputs: ComposerPort[];
+  outputs: ComposerPort[];
+  artifactRefs: ComposerArtifactRef[];
+  contextPolicy: ComposerContextPolicy;
+  complexity: ComposerComplexity;
+  recommendedAction: "run" | "plan" | "break_down" | "review";
+  planBudget: ComposerPlanBudget;
+  pendingPlan?: {
+    parentNodeId: string;
+    childNodeIds: string[];
+    createdAt: string;
+    summary: string;
+  } | undefined;
 }
 
 export interface SolvedTask {
@@ -88,6 +170,7 @@ export interface RecursivePromptMetadata {
   modelCalls: number;
   tokenUsage: TokenUsageTrace;
   toolCalls: ToolCallRecord[];
+  clarificationHistory?: ClarificationRecord[] | undefined;
   errors: string[];
 }
 
@@ -116,6 +199,7 @@ export interface ExecutionGraphNode {
   id: string;
   parentId?: string;
   kind: "task" | "workflow-agent" | "workflow-qa";
+  composer?: NodeComposer | undefined;
   label: string;
   prompt?: string | undefined;
   originalPrompt?: string | undefined;
@@ -150,6 +234,12 @@ export interface ExecutionEvent {
   type: "execution";
   status: ExecutionStatus;
   nodeId?: string | undefined;
+  subtype?: "code_execution" | undefined;
+  artifactValidation?: {
+    accepted: boolean;
+    policy: "strict" | "lenient";
+    reason: string;
+  } | undefined;
   modelCallsUsed?: number | undefined;
   modelCallsRemaining?: number | undefined;
   toolCallsUsed?: number | undefined;
@@ -158,6 +248,8 @@ export interface ExecutionEvent {
   approvalSource?: "manual" | "auto" | "none" | undefined;
   failureCategory?: ExecutionFailureCategory | undefined;
   code?: string | undefined;
+  clarificationRecord?: ClarificationRecord | undefined;
+  pendingClarification?: ClarificationQuestion | undefined;
 }
 
 export interface ExecutionStatusUpdateDetail {
@@ -177,6 +269,8 @@ export interface ExecutionControl {
   waitForNodeApproval?: ((node: ExecutionGraphNode) => Promise<NodeApprovalDecision>) | undefined;
   pauseFutureAutoApprovals?: (() => void) | undefined;
   autoApprovalPaused?: (() => boolean) | undefined;
+  requestClarification?: ((input: { nodeId: string; promptText: string }) => Promise<string>) | undefined;
+  getClarificationHistory?: (() => ClarificationRecord[]) | undefined;
 }
 
 export interface NodeApprovalDecision {
@@ -195,6 +289,46 @@ export interface GraphMutationError {
   suggestedFix?: string | undefined;
 }
 
+export type ChatGraphReadinessState = "draft" | "ready_to_run";
+
+export interface ChatRunReadiness {
+  state: ChatGraphReadinessState;
+  reason: string;
+}
+
+export type DeleteStrategy = "delete_subtree" | "rewire_dependents";
+
+export interface PendingDeleteChoice {
+  nodeId: string;
+  options: DeleteStrategy[];
+}
+
+export interface ChatMutationProposal {
+  id: string;
+  summary: string;
+  requiresClarification: boolean;
+  clarificationQuestion?: string | undefined;
+  requiresDeleteChoice: boolean;
+  pendingDeleteChoice?: PendingDeleteChoice | undefined;
+}
+
+export interface ClarificationQuestion {
+  questionId: string;
+  nodeId: string;
+  promptText: string;
+  askedAt: string;
+}
+
+export interface ClarificationRecord {
+  question_id: string;
+  node_id: string;
+  prompt_text: string;
+  user_answer: string;
+  asked_at: string;
+  answered_at: string;
+  resume_event_id: string;
+}
+
 export interface TokenUsageTrace {
   inputTokens: number;
   outputTokens: number;
@@ -208,8 +342,10 @@ export interface ModelSelectionTrace {
   model: string;
   tier: string;
   estimatedRamMb: number;
-  source?: "configured" | "rotation" | undefined;
-  evaluatorModel?: string | undefined;
+  source?: "configured" | undefined;
+  hostId?: string | undefined;
+  hostKind?: "ollama" | "http" | undefined;
+  hostEndpoint?: string | undefined;
 }
 
 export interface MemoryReservationTrace {

@@ -5,8 +5,8 @@
 - **Active milestone:** v1.1 — Interop, chat-first, plugins, constrained tools
 - **Project mode:** mvp
 - **v1.0 history:** Phases 1–5 completed 2026-05-08 — see `.planning/milestones/v1.0-ROADMAP.md`
-- **v1.1 requirements:** 8
-- **v1.1 phases:** 5 (Phase 6–9 plus Phase 8.5)
+- **v1.1 requirements:** 15
+- **v1.1 phases:** 7 (Phase 6–11 with Phase 8.5)
 - **Coverage target:** 100% of v1.1 requirements mapped exactly once
 
 ---
@@ -15,9 +15,11 @@
 
 - [x] **Phase 6: Extension and Plugin Foundation** — Establish a documented extension mechanism for tools, skills, and model host adapters without forking core. (completed 2026-05-10)
 - [x] **Phase 7: MCP and Skills Interoperability** — Wire MCP server connectivity and on-disk skill loading through the extension layer from Phase 6. (completed 2026-05-10)
-- [ ] **Phase 8: Model Host Extensibility and Constrained Tool Calling** — Make local/remote model endpoints configurable and tool rounds schema-constrained per host.
-- [ ] **Phase 8.5: Typed Artifact + Stateful Workflow Runtime** — Add typed artifact contracts and guarded external run-state continuity for long-running, model-chained node workflows.
-- [ ] **Phase 9: Chat-First Graph UX and Clarification Stops** — Replace single-shot prompt submission with conversational graph authoring and add explicit human-clarification pause semantics.
+- [x] **Phase 8: Model Host Extensibility and Constrained Tool Calling** — Make local/remote model endpoints configurable and tool rounds schema-constrained per host. (completed 2026-05-11)
+- [x] **Phase 8.5: Typed Artifact + Stateful Workflow Runtime** — Add typed artifact contracts and guarded external run-state continuity for long-running, model-chained node workflows. (completed 2026-05-11)
+- [x] **Phase 9: Chat-First Graph UX and Clarification Stops** — Replace single-shot prompt submission with conversational graph authoring and add explicit human-clarification pause semantics. (completed 2026-05-11)
+- [x] **Phase 10: Cross-Platform Executable Packaging and Install UX** — Ship single-executable distribution plus global-install path with zero-doc first-run behavior across macOS/Linux/Windows. (completed 2026-05-12)
+- [x] **Phase 11: Node-Embedded Chat and Intuitive Graph Editing UX** — Ship a ComfyUI-style typed node composer with bounded recursive planning, dataflow ports, artifact refs, and direct graph editing. (completed 2026-05-12)
 
 ---
 
@@ -60,7 +62,7 @@
 3. Ollama `tools` + `format` mutual exclusion is enforced — constrained decoding and tool rounds do not conflict.
 4. A new model host adapter can be registered via the Phase 6 extension mechanism without modifying core recursion logic or `LanguageModelPort`.
 5. CLI `--json-stream` output and the UI both show the host/endpoint used per node.
-**Plans:** TBD
+**Plans:** 2/2 plans complete
 
 ### Phase 8.5: Typed Artifact + Stateful Workflow Runtime
 **Goal:** Support deterministic multi-model node pipelines (including code-only nodes) using typed artifact contracts and a guarded external run-state store suitable for whole-book scale processing.
@@ -73,10 +75,10 @@
 3. External run-state store is mutable and queryable with optimistic concurrency (`version`/`etag`) and path-level mutation ACL.
 4. Every state mutation attempt is audit-logged (accepted or rejected), with enough metadata to replay and diagnose full-book workflows.
 5. Text-to-audio model type can be configured as a node target and chained with parsing/reassembly nodes without breaking existing agent skill compatibility.
-**Plans:** TBD
+**Plans:** 2/2 plans complete
 
 ### Phase 9: Chat-First Graph UX and Clarification Stops
-**Goal:** Users build and refine execution graphs through conversation, and the runtime pauses with an explicit human prompt when clarification is required — no silent continuation.
+**Goal:** As a workflow author, I want to build and refine execution graphs through conversation and receive explicit clarification stops during runs, so that no execution continues silently without my input.
 **Mode:** mvp
 **Depends on:** Phase 5 (control-server and checkpoint infrastructure)
 **Requirements:** CHAT-01, QUES-01
@@ -86,7 +88,34 @@
 3. Execution pauses with a visible, user-facing clarification prompt when the runtime requires human input during a run.
 4. Resumed execution after a clarification response proceeds explicitly — the question and answer are visible in run history.
 5. Dismiss/skip policy for clarification prompts is documented and explicit; no undocumented silent default exists.
-**Plans:** TBD
+**Plans:** 2/2 plans complete
+
+### Phase 10: Cross-Platform Executable Packaging and Install UX
+**Goal:** As a new user, I want to install one executable (or global CLI) and run the tool in any folder with one command, so that I can open the UI and complete an edit-and-run workflow without reading setup docs.
+**Mode:** mvp
+**Depends on:** Phase 9
+**Requirements:** DIST-01, DIST-02, DIST-03
+**Success Criteria** (what must be TRUE):
+1. Build pipeline produces signed/reproducible single executable artifacts for macOS, Linux, and Windows.
+2. Global-install path (`rlm`) works and executes against the caller's current working directory.
+3. First-run path requires one command to launch UI session with actionable defaults (no required manual config edits).
+4. Installer/runtime messaging clearly explains next action (UI URL, prompt expectations, stop/restart).
+5. Packaging verification covers platform-specific startup checks and folder-local operation semantics.
+**Plans:** 2/2 plans complete
+
+### Phase 11: Node-Embedded Chat and Intuitive Graph Editing UX
+**Goal:** As a workflow author, I want a ComfyUI-style typed node composer with direct graph controls, bounded recursive planning, artifact-aware dataflow ports, and code-only node support surfaced in the UI, so that I can build modular long-running workflows such as full-book audiobook generation without context overflow.
+**Mode:** mvp
+**Depends on:** Phase 10
+**Requirements:** UXND-01, UXND-02, UXND-03, UXND-04
+**Success Criteria** (what must be TRUE):
+1. Each editable node exposes a typed composer: node type, runtime/model selector, prompt or code configuration, typed input/output ports, artifact schema summary, complexity rating, and plan budget.
+2. Plan mode creates editable pending child nodes, labels decomposition complexity, and never starts execution until the user explicitly approves.
+3. UI provides explicit plan/spawn, break down, delete, drag, and connect-port controls with safe dependency validation and clear error recovery.
+4. Recursive planning expansion is constrained by visible depth/node budgets; budget exhaustion pauses expansion and requires explicit approval to extend.
+5. UI supports large artifact workflows by passing artifact refs/metadata through graph state while storing large payloads (audio, book chunks) on disk or external storage.
+6. New-user usability check passes: install, launch, enter a root node prompt, generate an editable plan graph, break down a high-complexity child, inspect artifact refs, confirm run, and observe recursive expansion.
+**Plans:** 1/1 plans complete
 
 ---
 
@@ -109,18 +138,25 @@
 | ERRO-01 | Phase 5 | Complete |
 | ERRO-02 | Phase 2 | Complete |
 | ERRO-03 | Phase 5 | Complete |
-| PLUG-01 | Phase 6 | Pending |
-| INT-01 | Phase 7 | Pending |
-| INT-02 | Phase 7 | Pending |
-| HOST-01 | Phase 8 | Pending |
-| TCON-01 | Phase 8 | Pending |
-| ARTF-01 | Phase 8.5 | Pending |
-| CHAT-01 | Phase 9 | Pending |
-| QUES-01 | Phase 9 | Pending |
+| PLUG-01 | Phase 6 | Complete |
+| INT-01 | Phase 7 | Complete |
+| INT-02 | Phase 7 | Complete |
+| HOST-01 | Phase 8 | Complete |
+| TCON-01 | Phase 8 | Complete |
+| ARTF-01 | Phase 8.5 | Complete |
+| CHAT-01 | Phase 9 | Complete |
+| QUES-01 | Phase 9 | Complete |
+| DIST-01 | Phase 10 | Complete |
+| DIST-02 | Phase 10 | Complete |
+| DIST-03 | Phase 10 | Complete |
+| UXND-01 | Phase 11 | Complete |
+| UXND-02 | Phase 11 | Complete |
+| UXND-03 | Phase 11 | Complete |
+| UXND-04 | Phase 11 | Complete |
 
 **Coverage:**
 - v1 requirements: 15 total — all Complete ✓
-- v1.1 requirements: 8 total — all mapped ✓
+- v1.1 requirements: 15 total — all Complete ✓
 - Unmapped: 0 ✓
 
 ---
@@ -131,6 +167,8 @@
 |-------|----------------|--------|-----------|
 | 6. Extension and Plugin Foundation | 2/2 | Complete    | 2026-05-10 |
 | 7. MCP and Skills Interoperability | 2/2 | Complete    | 2026-05-10 |
-| 8. Model Host Extensibility and Constrained Tool Calling | 0/? | Not started | — |
-| 8.5 Typed Artifact + Stateful Workflow Runtime | 0/? | Not started | — |
-| 9. Chat-First Graph UX and Clarification Stops | 0/? | Not started | — |
+| 8. Model Host Extensibility and Constrained Tool Calling | 2/2 | Complete | 2026-05-11 |
+| 8.5 Typed Artifact + Stateful Workflow Runtime | 2/2 | Complete | 2026-05-11 |
+| 9. Chat-First Graph UX and Clarification Stops | 2/2 | Complete | 2026-05-11 |
+| 10. Cross-Platform Executable Packaging and Install UX | 2/2 | Complete    | 2026-05-12 |
+| 11. Node-Embedded Chat and Intuitive Graph Editing UX | 1/1 | Complete | 2026-05-12 |

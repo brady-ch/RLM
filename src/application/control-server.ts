@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { extname, join, normalize } from "node:path";
 import type { AddressInfo } from "node:net";
 import type { InteractiveExecutionSession } from "./execution-controller.js";
-import type { ApprovalMode } from "../domain/types.js";
+import type { ApprovalMode, DeleteStrategy } from "../domain/types.js";
 
 export interface ControlServer {
   url: string;
@@ -76,6 +76,31 @@ async function routeRequest(
       session.setNodeModelOverride(nodeId, String(body["model"] ?? ""));
       return sendJson(response, session.snapshot());
     }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/plan$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const result = session.planNode(nodeId);
+      return sendJson(response, { ...session.snapshot(), plan: result });
+    }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/breakdown$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const result = session.planNode(nodeId);
+      return sendJson(response, { ...session.snapshot(), plan: result });
+    }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/extend-budget$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const body = await readJsonBody(request);
+      const maxDepth = typeof body["maxDepth"] === "number" ? body["maxDepth"] : undefined;
+      const maxNodes = typeof body["maxNodes"] === "number" ? body["maxNodes"] : undefined;
+      const extension: { maxDepth?: number; maxNodes?: number } = {};
+      if (maxDepth !== undefined) {
+        extension.maxDepth = maxDepth;
+      }
+      if (maxNodes !== undefined) {
+        extension.maxNodes = maxNodes;
+      }
+      const budget = session.extendPlanBudget(nodeId, extension);
+      return sendJson(response, { ...session.snapshot(), budget });
+    }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/approve$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const body = await readJsonBody(request);
@@ -106,8 +131,62 @@ async function routeRequest(
     }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/delete$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
-      const result = session.deleteNode(nodeId);
+      const body = await readJsonBody(request);
+      const strategy = body["strategy"] === "rewire_dependents" || body["strategy"] === "delete_subtree"
+        ? body["strategy"] as DeleteStrategy
+        : undefined;
+      const result = session.deleteNodeWithStrategy(nodeId, strategy);
       return sendJson(response, { ...session.snapshot(), deletedNodeIds: result.deleted });
+    }
+    if (request.method === "POST" && url.pathname === "/api/chat/message") {
+      const body = await readJsonBody(request);
+      const proposal = session.previewMutationFromChat(String(body["message"] ?? ""));
+      return sendJson(response, { ...session.snapshot(), proposal });
+    }
+    if (request.method === "POST" && url.pathname === "/api/chat/apply") {
+      const body = await readJsonBody(request);
+      const proposalId = typeof body["proposalId"] === "string" ? body["proposalId"] : undefined;
+      const deleteStrategy = body["deleteStrategy"] === "delete_subtree" || body["deleteStrategy"] === "rewire_dependents"
+        ? body["deleteStrategy"] as DeleteStrategy
+        : undefined;
+      const applyInput: { proposalId?: string; deleteStrategy?: DeleteStrategy } = {};
+      if (proposalId) {
+        applyInput.proposalId = proposalId;
+      }
+      if (deleteStrategy) {
+        applyInput.deleteStrategy = deleteStrategy;
+      }
+      const applied = session.applyPendingMutation(applyInput);
+      return sendJson(response, { ...session.snapshot(), applied });
+    }
+    if (request.method === "POST" && url.pathname === "/api/chat/cancel") {
+      session.clearPendingMutation();
+      return sendJson(response, session.snapshot());
+    }
+    if (request.method === "POST" && url.pathname === "/api/chat/confirm-run") {
+      const readiness = session.confirmGraphAndRun();
+      return sendJson(response, { ...session.snapshot(), readiness });
+    }
+    if (request.method === "POST" && url.pathname === "/api/clarifications/ask") {
+      const body = await readJsonBody(request);
+      const question = session.raiseClarificationCheckpoint({
+        nodeId: String(body["nodeId"] ?? ""),
+        promptText: String(body["promptText"] ?? ""),
+      });
+      return sendJson(response, { ...session.snapshot(), question });
+    }
+    if (request.method === "POST" && url.pathname === "/api/clarifications/answer") {
+      const body = await readJsonBody(request);
+      const record = session.answerClarificationAndContinue({
+        questionId: String(body["questionId"] ?? ""),
+        userAnswer: String(body["userAnswer"] ?? ""),
+      });
+      return sendJson(response, { ...session.snapshot(), record });
+    }
+    if (request.method === "POST" && url.pathname === "/api/clarifications/abort") {
+      const body = await readJsonBody(request);
+      session.abortRunFromClarification({ questionId: String(body["questionId"] ?? "") });
+      return sendJson(response, session.snapshot());
     }
     if (request.method === "POST" && url.pathname === "/api/stop") {
       const body = await readJsonBody(request);

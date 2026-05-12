@@ -52,6 +52,12 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
       );
     }
   }
+  if (result.metadata.modelSelections.length > 0) {
+    lines.push("hosts:");
+    for (const selection of result.metadata.modelSelections) {
+      lines.push(`- ${selection.purpose}:${selection.hostId ?? "unknown"} (${selection.hostKind ?? "unknown"}) ${selection.hostEndpoint ?? "n/a"}`);
+    }
+  }
 
   if (options.includeTrace) {
     lines.push(
@@ -81,6 +87,7 @@ function renderJson(result: RecursivePromptResult, options: RenderOptions): stri
     memoryReservations: result.metadata.memoryReservations,
     modelCalls: result.metadata.modelCalls,
     tokenUsage: result.metadata.tokenUsage,
+    clarificationHistory: result.metadata.clarificationHistory ?? [],
     trace: options.includeTrace ? result.trace : [],
     toolCalls: result.metadata.toolCalls,
     errors: result.metadata.errors,

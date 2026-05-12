@@ -1,0 +1,63 @@
+<h2>ComfyUI-style node composer</h2>
+<p class="subtitle">A denser graph-tool node: visible ports, prompt body, mode controls, complexity, budget, and execution state.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Recommended denser node shape</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+      <div style="border:1px solid #24292f;border-radius:8px;background:#f6f8fa;box-shadow:0 2px 6px rgba(31,35,40,.12);overflow:hidden">
+        <div style="background:#24292f;color:white;padding:8px 10px;display:flex;justify-content:space-between;align-items:center">
+          <strong style="font-size:13px">Root Plan Node</strong>
+          <span style="font-size:11px;color:#d0d7de">Draft</span>
+        </div>
+        <div style="display:grid;grid-template-columns:18px 1fr 18px;gap:8px;padding:10px">
+          <div style="display:grid;gap:10px;align-content:start;padding-top:8px">
+            <span title="context input" style="width:10px;height:10px;border-radius:50%;background:#8250df;display:block"></span>
+            <span title="artifact input" style="width:10px;height:10px;border-radius:50%;background:#0969da;display:block"></span>
+          </div>
+          <div>
+            <div class="label">Prompt</div>
+            <textarea class="mock-input" style="width:100%;height:70px;resize:none;background:white" placeholder="Describe what this node should accomplish..."></textarea>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+              <select class="mock-input"><option>Mode: Plan</option></select>
+              <select class="mock-input"><option>Complexity: Auto</option></select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+              <div style="font-size:12px;color:#57606a">Budget: 3 levels</div>
+              <div style="font-size:12px;color:#57606a">Max nodes: 12</div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="mock-button">Plan</button>
+              <button class="mock-button">Run</button>
+              <button class="mock-button">Break down</button>
+            </div>
+          </div>
+          <div style="display:grid;gap:10px;align-content:start;padding-top:8px">
+            <span title="plan output" style="width:10px;height:10px;border-radius:50%;background:#1a7f37;display:block"></span>
+            <span title="artifact output" style="width:10px;height:10px;border-radius:50%;background:#fb8500;display:block"></span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;gap:12px">
+        <div style="border:1px solid #d0d7de;border-radius:8px;background:white;padding:12px">
+          <h3 style="margin-top:0">Always visible</h3>
+          <p>Prompt, mode, complexity, budget, primary run/plan actions, input/output ports, and node status.</p>
+        </div>
+        <div style="border:1px solid #d0d7de;border-radius:8px;background:white;padding:12px">
+          <h3 style="margin-top:0">Still constrained</h3>
+          <p>Plan creates pending child nodes. Breaking down consumes budget. Execution requires approval unless the user explicitly changes policy.</p>
+        </div>
+        <div style="border:1px solid #d0d7de;border-radius:8px;background:white;padding:12px">
+          <h3 style="margin-top:0">Minimal canvas</h3>
+          <p>Density lives inside nodes. The surrounding UI can stay close to toolbar plus graph surface.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Tradeoff</h3>
+  <p>This is less minimal per node, but more powerful and predictable for graph authors. It fits a ComfyUI-like mental model better than progressive disclosure.</p>
+</div>

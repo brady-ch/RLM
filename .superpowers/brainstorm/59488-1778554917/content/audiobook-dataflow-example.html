@@ -1,0 +1,68 @@
+<h2>Audiobook dataflow target</h2>
+<p class="subtitle">A concrete workflow that uses model nodes, code-only nodes, typed artifacts, batching, and final splicing.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Book-to-audio recursive workflow</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-items:center">
+      <div style="border:1px solid #24292f;border-radius:8px;background:#f6f8fa;overflow:hidden">
+        <div style="background:#24292f;color:white;padding:7px 9px;font-size:12px">Book Parser</div>
+        <div style="padding:10px;font-size:12px">
+          <div class="label">Code-only</div>
+          <div>Input: EPUB/PDF/TXT</div>
+          <div>Output: chapters[]</div>
+        </div>
+      </div>
+      <div style="text-align:center;color:#57606a">chapters[] →</div>
+      <div style="border:1px solid #8250df;border-radius:8px;background:#fbf8ff;overflow:hidden">
+        <div style="background:#8250df;color:white;padding:7px 9px;font-size:12px">Speaker Interpreter</div>
+        <div style="padding:10px;font-size:12px">
+          <div class="label">AI model</div>
+          <div>Input: chapter text</div>
+          <div>Output: segments[] + speaker map</div>
+        </div>
+      </div>
+      <div style="text-align:center;color:#57606a">segments[] →</div>
+      <div style="border:1px solid #0969da;border-radius:8px;background:#f0f6ff;overflow:hidden">
+        <div style="background:#0969da;color:white;padding:7px 9px;font-size:12px">TTS Batch Node</div>
+        <div style="padding:10px;font-size:12px">
+          <div class="label">Text to speech</div>
+          <div>Voice: by speaker</div>
+          <div>Output: audio clips[]</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-items:center;margin-top:18px">
+      <div></div>
+      <div></div>
+      <div style="border:1px solid #1a7f37;border-radius:8px;background:#dafbe1;overflow:hidden">
+        <div style="background:#1a7f37;color:white;padding:7px 9px;font-size:12px">Consistency Check</div>
+        <div style="padding:10px;font-size:12px">
+          <div class="label">AI or code</div>
+          <div>Validates speaker continuity</div>
+          <div>Flags mismatches</div>
+        </div>
+      </div>
+      <div style="text-align:center;color:#57606a">approved clips →</div>
+      <div style="border:1px solid #6e7781;border-radius:8px;background:white;overflow:hidden">
+        <div style="background:#6e7781;color:white;padding:7px 9px;font-size:12px">Audio Splicer</div>
+        <div style="padding:10px;font-size:12px">
+          <div class="label">Code-only</div>
+          <div>Input: audio clips[]</div>
+          <div>Output: final audiobook</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Implication for the UI</h3>
+  <p>Nodes should be typed modules, not just prompts. Each node needs visible artifact ports, a node type, a model/runtime selector, prompt or code configuration, batching controls, and validation state.</p>
+</div>
+
+<div class="section">
+  <h3>Recursive planning role</h3>
+  <p>Plan mode should generate this graph from a high-level request, but the user can then open any high-complexity node and plan its internal subgraph with the same budget rules.</p>
+</div>

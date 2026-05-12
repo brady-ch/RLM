@@ -1,0 +1,78 @@
+<h2>What should Plan do?</h2>
+<p class="subtitle">Same node composer, three different levels of commitment before execution starts.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. Draft child graph only</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div style="border:1px solid #d0d7de;border-radius:8px;padding:12px;background:white">
+              <div class="label">Root</div>
+              <div style="font-size:13px;margin-bottom:8px">Build cross-platform release UX</div>
+              <button class="mock-button">Plan</button>
+            </div>
+            <div style="display:grid;gap:8px">
+              <div class="placeholder">1. Inspect packaging path</div>
+              <div class="placeholder">2. Build first-run chooser</div>
+              <div class="placeholder">3. Verify startup</div>
+            </div>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:#57606a">Nothing runs until user approves the drafted children.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Plan creates editable pending nodes</h3>
+      <p>Safest and cleanest. The graph expands, but execution remains stopped until the author confirms.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. Plan plus complexity labels</div>
+        <div class="mockup-body">
+          <div style="display:grid;gap:8px">
+            <div style="border:1px solid #d0d7de;border-radius:8px;padding:10px;background:white">Root <span style="float:right;font-size:12px;color:#9a6700">High</span></div>
+            <div class="placeholder">Packaging adapter <span style="float:right">Med</span></div>
+            <div class="placeholder">Install prompt <span style="float:right">Low</span></div>
+            <div class="placeholder">UI smoke tests <span style="float:right">Med</span></div>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:#57606a">High-complexity nodes show a Break down action.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Plan estimates decomposition pressure</h3>
+      <p>The planner marks nodes Low, Medium, or High so the user knows where to recurse again.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C. Plan auto-runs simple nodes</div>
+        <div class="mockup-body">
+          <div style="display:grid;gap:8px">
+            <div class="placeholder">Root planning complete</div>
+            <div class="placeholder">Docs node: running</div>
+            <div class="placeholder">Code node: waiting approval</div>
+            <div class="placeholder">Test node: queued</div>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:#57606a">Simple children may begin automatically under a configured budget.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Plan can start bounded execution</h3>
+      <p>Fastest, but easier to surprise the author. Requires strong budgets and visible pause points.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Recommendation</h3>
+  <p>Use B as the default behavior, with A as the safety rule: Plan expands into editable pending nodes, labels complexity, and never starts execution until explicitly approved.</p>
+</div>

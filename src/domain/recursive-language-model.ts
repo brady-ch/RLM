@@ -12,6 +12,7 @@ import type {
   RecursivePromptMetadata,
   RecursivePromptRequest,
   RecursivePromptResult,
+  RuntimeRunState,
   SolvedTask,
   TaskNode,
   ToolCallRecord,
@@ -30,6 +31,8 @@ export class RecursiveLanguageModel {
   private metadata: RecursivePromptMetadata = createEmptyMetadata();
   private logger: RuntimeLogger | undefined;
   private execution: RecursivePromptRequest["execution"] | undefined;
+  private runState: RuntimeRunState | undefined;
+  private runStateWrites: Array<Promise<void>> = [];
   private initialApprovalBoundaryPassed = false;
   private executionNodes = new Map<string, NonNullable<RecursivePromptMetadata["executionGraph"]>["nodes"][number]>();
   private executionEdges: NonNullable<RecursivePromptMetadata["executionGraph"]>["edges"] = [];
@@ -51,6 +54,8 @@ export class RecursiveLanguageModel {
     this.metadata = createEmptyMetadata();
     this.logger = request.logger;
     this.execution = request.execution;
+    this.runState = request.runState;
+    this.runStateWrites = [];
     this.initialApprovalBoundaryPassed = false;
     if (request.agent) {
       this.agentSystemPrompt = request.agent.systemPrompt;
@@ -61,6 +66,7 @@ export class RecursiveLanguageModel {
     } else {
       this.agentSystemPrompt = "";
     }
+    await this.initializeRunState(request.prompt);
     const depth = await this.selectDepth(request.prompt, request.config);
     const config: RecursiveModelConfig = {
       ...request.config,
@@ -103,6 +109,7 @@ export class RecursiveLanguageModel {
       const answer = await this.solve(root, config);
       // Do not report completed when errors or failed nodes indicate a degraded/failed run (D-01 / D-09).
       this.syncExecutionStatusWithOutcome();
+      await this.flushRunStateWrites();
       this.metadata.modelCalls = this.modelCalls;
       this.log("run", "completed recursive run", {
         modelCalls: this.metadata.modelCalls,
@@ -134,6 +141,7 @@ export class RecursiveLanguageModel {
       }
 
       this.updateExecutionGraph();
+      await this.flushRunStateWrites();
       throw error;
     }
   }
@@ -152,6 +160,33 @@ export class RecursiveLanguageModel {
       maxDepth: config.maxDepth ?? 0,
       prompt: preview(task.prompt),
     });
+    if (isCodeTask(task)) {
+      const codeTrace: {
+        id: string;
+        parentId?: string;
+        depth: number;
+        kind: "code_execution";
+        prompt: string;
+        output: string;
+      } = {
+        id: task.id,
+        depth: task.depth,
+        kind: "code_execution",
+        prompt: task.prompt,
+        output: "executing code-only node",
+      };
+      if (task.parentId) {
+        codeTrace.parentId = task.parentId;
+      }
+      this.trace.record(codeTrace);
+      this.emitExecution({
+        type: "execution",
+        status: "running",
+        nodeId: task.id,
+        subtype: "code_execution",
+        message: "executing code-only node",
+      });
+    }
     const maxDepth = config.maxDepth ?? 0;
     if (task.depth >= maxDepth) {
       const answer = await this.answerDirectly(task, "Depth limit reached; answer directly.");
@@ -430,6 +465,7 @@ export class RecursiveLanguageModel {
         purpose: toModelPurpose(kind),
         complexityDepth: this.metadata.depth.selected,
         overrideModel: task.modelOverride,
+        constrainedToolCalling: allowTools && this.toolsByName.size > 0,
       });
       this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
       this.recordUsage(response.usage);
@@ -446,6 +482,19 @@ export class RecursiveLanguageModel {
       });
 
       if (response.toolCalls.length === 0) {
+        const clarificationPrompt = parseClarificationRequest(response.content);
+        if (clarificationPrompt) {
+          const answer = await this.requestClarification(task, clarificationPrompt);
+          conversation.push({
+            role: "assistant",
+            content: response.content,
+          });
+          conversation.push({
+            role: "user",
+            content: answer,
+          });
+          continue;
+        }
         return response.content;
       }
 
@@ -583,6 +632,7 @@ export class RecursiveLanguageModel {
       purpose: toModelPurpose(kind),
       complexityDepth: this.metadata.depth.selected,
       overrideModel: task.modelOverride,
+      constrainedToolCalling: false,
     });
     this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
     this.recordUsage(response.usage);
@@ -818,6 +868,7 @@ export class RecursiveLanguageModel {
     node.startedAt = new Date().toISOString();
     this.metadata.executionStatus = "running";
     this.updateExecutionGraph();
+    this.runStateWrites.push(this.persistNodeStatus(nodeId, "running"));
     this.execution?.updateNodeStatus?.(nodeId, "running");
     this.emitExecution({
       type: "execution",
@@ -841,6 +892,7 @@ export class RecursiveLanguageModel {
     node.status = "completed";
     node.completedAt = new Date().toISOString();
     this.updateExecutionGraph();
+    this.runStateWrites.push(this.persistNodeStatus(nodeId, "completed"));
     this.execution?.updateNodeStatus?.(nodeId, "completed");
     this.emitExecution({
       type: "execution",
@@ -866,6 +918,7 @@ export class RecursiveLanguageModel {
     node.completedAt = new Date().toISOString();
     this.metadata.executionStatus = status;
     this.updateExecutionGraph();
+    this.runStateWrites.push(this.persistNodeStatus(nodeId, status));
     const resolvedDetail: ExecutionStatusUpdateDetail | undefined = status === "cancelled"
       ? {
         failureCategory: "cancelled",
@@ -992,6 +1045,88 @@ export class RecursiveLanguageModel {
     this.execution?.onEvent?.(event);
   }
 
+  private async requestClarification(task: TaskNode, promptText: string): Promise<string> {
+    if (!this.execution?.requestClarification) {
+      return promptText;
+    }
+    const answer = await this.execution.requestClarification({
+      nodeId: task.id,
+      promptText,
+    });
+    this.metadata.clarificationHistory = this.execution.getClarificationHistory?.() ?? [];
+    return answer;
+  }
+
+  private async initializeRunState(prompt: string): Promise<void> {
+    if (!this.runState) {
+      return;
+    }
+    await this.runState.store.createRun(this.runState.runId, {
+      metadata: {
+        prompt,
+        agent: this.metadata.agent.id,
+      },
+    });
+    await this.runState.store.registerCapabilityToken?.(
+      this.runState.runId,
+      this.runState.actor,
+      this.runState.capabilityToken,
+    );
+  }
+
+  private async persistNodeStatus(nodeId: string, status: string): Promise<void> {
+    if (!this.runState) {
+      return;
+    }
+    let result: Awaited<ReturnType<RuntimeRunState["store"]["mutate"]>> | undefined;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const snapshot = await this.runState.store.getSnapshot(this.runState.runId);
+      if (!snapshot) {
+        return;
+      }
+      const updatedAt = new Date().toISOString();
+      result = await this.runState.store.mutate(this.runState.runId, {
+        actor: this.runState.actor,
+        capabilityToken: this.runState.capabilityToken,
+        expectedVersion: snapshot.version,
+        action: "set",
+        path: `nodeStatuses.${nodeId}`,
+        value: {
+          nodeId,
+          status,
+          updatedAt,
+        },
+      });
+      if (result.accepted || !result.reason.includes("etag/version conflict")) {
+        break;
+      }
+    }
+    if (!result) {
+      return;
+    }
+    this.emitExecution({
+      type: "execution",
+      status: status === "completed" || status === "failed" || status === "cancelled" || status === "skipped"
+        ? status
+        : "running",
+      nodeId,
+      artifactValidation: {
+        accepted: result.accepted,
+        policy: "strict",
+        reason: result.reason,
+      },
+      message: result.accepted ? "run-state node status persisted" : `run-state node status rejected: ${result.reason}`,
+    });
+  }
+
+  private async flushRunStateWrites(): Promise<void> {
+    if (this.runStateWrites.length === 0) {
+      return;
+    }
+    const writes = this.runStateWrites.splice(0);
+    await Promise.all(writes);
+  }
+
   private estimateModelCalls(config: RecursiveModelConfig | undefined): number {
     if (!config) {
       return Math.max(this.modelCalls, 1);
@@ -1052,6 +1187,11 @@ function preview(value: string, maxLength = 180): string {
   return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 3)}...`;
 }
 
+function parseClarificationRequest(value: string): string | undefined {
+  const match = value.trim().match(/^CLARIFY\s*:\s*(.+)$/is);
+  return match?.[1]?.trim();
+}
+
 function parseFirstInteger(value: string): number | undefined {
   const match = value.match(/\b\d+\b/);
   if (!match?.[0]) {
@@ -1059,6 +1199,14 @@ function parseFirstInteger(value: string): number | undefined {
   }
 
   return Number.parseInt(match[0], 10);
+}
+
+function isCodeTask(task: TaskNode): boolean {
+  if (task.kind === "code") {
+    return true;
+  }
+  const normalized = task.prompt.trim().toLowerCase();
+  return normalized.startsWith("code:") || normalized.startsWith("run code:");
 }
 
 function clamp(value: number, min: number, max: number): number {

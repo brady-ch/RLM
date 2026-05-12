@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { OllamaLanguageModelAdapter } from "./adapters/ollama-language-model.js";
+import { HttpLanguageModelAdapter } from "./adapters/http-language-model.js";
+import { FileRunStateStore } from "./adapters/file-run-state-store.js";
 import { runConfiguredAgent } from "./application/agent-runner.js";
 import { createAgentRegistry, selectAgent } from "./application/agent-registry.js";
 import { ExtensionHost } from "./application/extension-host.js";
@@ -12,7 +14,8 @@ import {
   McpSkillRuntime,
 } from "./application/mcp-skill-runtime.js";
 import { MemoryManager } from "./application/memory-manager.js";
-import { applyModelOverride, loadProjectConfig, resolveRuntimeConfig } from "./application/project-config.js";
+import { createMcpTools, createSkillTool } from "./application/interop-runtime.js";
+import { applyModelOverride, loadProjectConfig, resolveRuntimeConfig, seedProjectRlmStarter } from "./application/project-config.js";
 import { ResourceCleanup } from "./application/resource-cleanup.js";
 import { runWorkflow } from "./application/workflow-runner.js";
 import * as guardedShellExtension from "./extensions/tools/guarded-shell.extension.js";
@@ -22,21 +25,70 @@ import * as workspaceFileWriteExtension from "./extensions/tools/workspace-file-
 import { CancellationController, createExecutionControl, createInteractiveExecutionSession } from "./application/execution-controller.js";
 import { startControlServer } from "./application/control-server.js";
 import { helpText, parseArgs } from "./cli/args.js";
+import {
+  formatLaunchModeBanner,
+  injectLaunchArgv,
+  promptLaunchChoice,
+  resolveLaunchMode,
+  shouldSkipLaunchWizard,
+} from "./cli/first-run.js";
+import { resolveUiDistDir } from "./cli/ui-dist-dir.js";
 import { renderResult } from "./cli/render.js";
 import { createStderrRuntimeLogger } from "./cli/runtime-logger.js";
 import { installShutdownHandlers } from "./cli/shutdown.js";
 import type { LanguageModelPort } from "./ports/language-model-port.js";
+import type { ModelRuntimeSelection } from "./application/model-provider.js";
 import type { ExecutionEvent, RecursivePromptResult } from "./domain/types.js";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { constants } from "node:fs";
+import { access } from "node:fs/promises";
+
+async function readablePath(pathLike: string): Promise<boolean> {
+  try {
+    await access(pathLike, constants.R_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function main(): Promise<void> {
-  const options = parseArgs(process.argv.slice(2));
+  let cliArgv = process.argv.slice(2);
+  const ttyCombined = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+
+  if (!shouldSkipLaunchWizard(cliArgv)) {
+    const preliminary = resolveLaunchMode(process.env, ttyCombined);
+    if (preliminary.shouldPrompt) {
+      process.stderr.write(formatLaunchModeBanner());
+      const answer = await promptLaunchChoice();
+      const settled = resolveLaunchMode(process.env, ttyCombined, answer);
+      cliArgv = injectLaunchArgv(cliArgv, settled.mode);
+    }
+    else {
+      cliArgv = injectLaunchArgv(cliArgv, preliminary.mode);
+    }
+  }
+
+  const options = parseArgs(cliArgv);
   if (options.command === "help") {
     console.log(helpText());
     return;
   }
 
-  const loadedConfig = await loadProjectConfig(options.configPath);
+  let loadedConfig = await loadProjectConfig(options.configPath);
+  const legacyMonoConfig = resolve(process.cwd(), "rlm.config.yaml");
+  if (
+    options.command === "ui"
+    && options.configPath === undefined
+    && process.env.RLM_SKIP_STARTER_SEED !== "1"
+    && !(await readablePath(legacyMonoConfig))
+  ) {
+    const seeded = await seedProjectRlmStarter(process.cwd());
+    if (seeded) {
+      loadedConfig = await loadProjectConfig(options.configPath);
+    }
+  }
   const projectConfig = applyModelOverride(loadedConfig.config, options.modelOverride);
   const runtimeConfig = resolveRuntimeConfig(projectConfig, options.configOverrides);
   const logger = options.verbose ? createStderrRuntimeLogger() : undefined;
@@ -75,6 +127,7 @@ async function main(): Promise<void> {
   });
   const extensionHost = new ExtensionHost();
   const runtimeEventsStore = new InMemoryEventStore();
+  const runId = `run-${Date.now()}`;
   const runtimeEvents = new McpSkillRuntime(
     projectConfig.interop ?? {
       mcp: { servers: [] },
@@ -85,7 +138,7 @@ async function main(): Promise<void> {
         pathPolicies: [],
       },
     },
-    `run-${Date.now()}`,
+    runId,
     new CentralAtomicSequenceAllocator(),
     new CompositeEventSink([
       new EventStoreSink(runtimeEventsStore),
@@ -118,13 +171,26 @@ async function main(): Promise<void> {
 
     await extensionHost.loadExternal(configuredExtensions, extensionOptions);
   }
+  const interopTools = [
+    createSkillTool(runtimeEvents),
+    ...await createMcpTools(projectConfig.interop?.mcp.servers ?? [], runtimeEvents, (child) => {
+      cleanup.track({
+        close: async () => {
+          child.kill();
+        },
+      });
+    }),
+  ];
+  for (const tool of interopTools) {
+    extensionHost.tools.register(tool);
+  }
   const toolsFor = (agentId: string) => {
     const agentConfig = projectConfig.agents[agentId];
     if (!agentConfig) {
       throw new Error(`Missing configuration for agent "${agentId}".`);
     }
 
-    return agentConfig.tools.map((toolName) => {
+    const configuredTools = agentConfig.tools.map((toolName) => {
       const tool = extensionHost.tools.get(toolName);
       if (!tool) {
         throw new Error(`Agent "${agentId}" references unknown tool "${toolName}".`);
@@ -132,6 +198,20 @@ async function main(): Promise<void> {
 
       return tool;
     });
+    const configuredNames = new Set(configuredTools.map((tool) => tool.name));
+    return [
+      ...configuredTools,
+      ...interopTools.filter((tool) => !configuredNames.has(tool.name)),
+    ];
+  };
+  const runStateStore = new FileRunStateStore({
+    baseDir: join(process.cwd(), ".planning", "runs"),
+  });
+  const runState = {
+    runId,
+    store: runStateStore,
+    actor: "runtime",
+    capabilityToken: `${runId}:runtime`,
   };
   logger?.log({
     stage: "interop",
@@ -151,27 +231,25 @@ async function main(): Promise<void> {
     agentConfigs: projectConfig.agents,
   });
   const createdModels = new Map<string, LanguageModelPort>();
-  const createModel = (model: string) => {
-    const existing = createdModels.get(model);
+  const createModel = (model: string, runtime: ModelRuntimeSelection) => {
+    const modelKey = `${runtime.hostId}:${model}`;
+    const existing = createdModels.get(modelKey);
     if (existing) {
       return existing;
     }
 
-    const modelOptions: ConstructorParameters<typeof OllamaLanguageModelAdapter>[0] = {
-      model,
-    };
-    if (options.baseUrl) {
-      modelOptions.baseUrl = options.baseUrl;
-    }
-
-    const created = new OllamaLanguageModelAdapter(modelOptions);
-    createdModels.set(model, cleanup.track(created));
+    const effectiveBaseUrl = options.baseUrl ?? runtime.baseUrl;
+    const created = runtime.hostKind === "http"
+      ? new HttpLanguageModelAdapter({ model, baseUrl: effectiveBaseUrl })
+      : new OllamaLanguageModelAdapter({ model, baseUrl: effectiveBaseUrl });
+    cleanup.track(created);
+    createdModels.set(modelKey, created);
     return created;
   };
   try {
     if (options.command === "ui") {
-      const session = createInteractiveExecutionSession();
-      const uiDistDir = join(process.cwd(), "ui", "dist");
+      const session = createInteractiveExecutionSession({ seedRootPrompt: options.prompt });
+      const uiDistDir = resolveUiDistDir(fileURLToPath(import.meta.url), process.env);
       const server = await startControlServer({
         session,
         port: options.uiPort,
@@ -181,40 +259,10 @@ async function main(): Promise<void> {
         close: () => server.close(),
       });
       console.error(`RLM UI listening at ${server.url}`);
-      const uiExecution = session.control;
-      const result = options.workflow
-        ? await runWorkflow({
-          workflowId: options.workflow,
-          prompt: options.prompt,
-          config: runtimeConfig,
-          projectConfig,
-          registry,
-          memoryManager,
-          createModel,
-          logger,
-          execution: uiExecution,
-        })
-        : await runConfiguredAgent({
-          prompt: options.prompt,
-          config: runtimeConfig,
-          projectConfig,
-          agent: selectAgent(registry, options.prompt, options.agent),
-          agentSource: options.agent ? "override" : "auto",
-          memoryManager,
-          createModel,
-          logger,
-          execution: uiExecution,
-        });
-      if (loadedConfig.path) {
-        result.metadata.configPath = loadedConfig.path;
-      }
-      console.log(renderResult(result, {
-        compact: options.compact,
-        json: options.json,
-        includeTrace: options.trace,
-        model: projectConfig.models.default,
-      }));
-      setExitCodeIfRunFailed(result);
+      await new Promise<void>(() => {
+        // UI mode is an authoring session. Execution must be triggered by an
+        // explicit graph-confirmed action, not by merely opening the browser.
+      });
       return;
     }
 
@@ -227,11 +275,13 @@ async function main(): Promise<void> {
       createModel,
       logger,
       execution,
+      runState,
     } as const;
     let result = options.workflow
       ? await runWorkflow({
         ...runInputBase,
         workflowId: options.workflow,
+        hostId: options.host,
       })
       : await runConfiguredAgent({
         prompt: runInputBase.prompt,
@@ -240,9 +290,11 @@ async function main(): Promise<void> {
         agent: selectAgent(registry, options.prompt, options.agent),
         agentSource: options.agent ? "override" : "auto",
         memoryManager: runInputBase.memoryManager,
+        hostId: options.host,
         createModel: runInputBase.createModel,
         logger: runInputBase.logger,
         execution,
+        runState,
       });
     if (options.requireApproval && !options.planOnly) {
       if (!options.approve) {
@@ -257,7 +309,9 @@ async function main(): Promise<void> {
         ? await runWorkflow({
           ...runInputBase,
           workflowId: options.workflow,
+          hostId: options.host,
           execution: executeControl,
+          runState,
         })
         : await runConfiguredAgent({
           prompt: runInputBase.prompt,
@@ -266,9 +320,11 @@ async function main(): Promise<void> {
           agent: selectAgent(registry, options.prompt, options.agent),
           agentSource: options.agent ? "override" : "auto",
           memoryManager: runInputBase.memoryManager,
+          hostId: options.host,
           createModel: runInputBase.createModel,
           logger: runInputBase.logger,
           execution: executeControl,
+          runState,
         });
     }
     if (loadedConfig.path) {

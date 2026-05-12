@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -11,6 +11,7 @@ import {
   InMemoryEventStore,
   McpSkillRuntime,
 } from "../src/application/mcp-skill-runtime.js";
+import { createMcpTools, createSkillTool } from "../src/application/interop-runtime.js";
 
 test("skill resolution uses search-path order and lenient parse warnings", async () => {
   const store = new InMemoryEventStore();
@@ -166,6 +167,111 @@ test("event sink can fan out to memory and file export", async () => {
     assert.ok(store.events[0]?.fingerprint);
     assert.equal(store.events[0]?.seq, 1);
     assert.equal(store.events[0]?.severity, "info");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+test("configured skill search paths expose an executable production skill tool", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-skills-"));
+  const skillDir = join(dir, "summarize");
+  try {
+    await mkdir(skillDir, { recursive: true });
+    await writeFile(
+      join(skillDir, "SKILL.md"),
+      "---\nname: summarize\ndescription: Summarize text\n---\nUse terse bullets.\n",
+      "utf8",
+    );
+    const store = new InMemoryEventStore();
+    const runtime = new McpSkillRuntime(
+      {
+        mcp: { servers: [] },
+        skills: {
+          searchPaths: [dir],
+          duplicateStrategy: "first_match",
+          cache: false,
+          pathPolicies: [{ path: dir, strictness: "strict" }],
+        },
+      },
+      "run-skill-tool",
+      new CentralAtomicSequenceAllocator(),
+      new EventStoreSink(store),
+      () => 1_000,
+    );
+
+    const tool = createSkillTool(runtime);
+    const result = await tool.execute({ name: "summarize" });
+
+    assert.equal(result.status, "success");
+    assert.match(result.output, /Use terse bullets/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("configured MCP server exposes framed stdio tools", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-mcp-server-"));
+  const serverPath = join(dir, "server.mjs");
+  try {
+    await writeFile(serverPath, `
+let buffer = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  buffer += chunk;
+  for (;;) {
+    const headerEnd = buffer.indexOf("\\r\\n\\r\\n");
+    if (headerEnd < 0) return;
+    const header = buffer.slice(0, headerEnd);
+    const length = Number(header.match(/Content-Length:\\s*(\\d+)/i)?.[1] ?? "0");
+    const bodyStart = headerEnd + 4;
+    const bodyEnd = bodyStart + length;
+    if (buffer.length < bodyEnd) return;
+    const request = JSON.parse(buffer.slice(bodyStart, bodyEnd));
+    buffer = buffer.slice(bodyEnd);
+    if (request.id !== undefined) handle(request);
+  }
+});
+function send(id, result) {
+  const body = JSON.stringify({ jsonrpc: "2.0", id, result });
+  process.stdout.write("Content-Length: " + Buffer.byteLength(body) + "\\r\\n\\r\\n" + body);
+}
+function handle(request) {
+  if (request.method === "initialize") send(request.id, { capabilities: { tools: {} } });
+  if (request.method === "tools/list") send(request.id, { tools: [{ name: "echo", description: "Echo", inputSchema: {} }] });
+  if (request.method === "tools/call") send(request.id, { content: [{ type: "text", text: "mcp:" + request.params.arguments.text }] });
+}
+`, "utf8");
+    const store = new InMemoryEventStore();
+    const runtime = new McpSkillRuntime(
+      {
+        mcp: { servers: [{ id: "local", command: process.execPath, args: [serverPath], required: true }] },
+        skills: {
+          searchPaths: [],
+          duplicateStrategy: "first_match",
+          cache: false,
+          pathPolicies: [],
+        },
+      },
+      "run-mcp-tool",
+      new CentralAtomicSequenceAllocator(),
+      new EventStoreSink(store),
+      () => 1_000,
+    );
+    const children: Array<{ kill(): boolean }> = [];
+    const tools = await createMcpTools(
+      [{ id: "local", command: process.execPath, args: [serverPath], required: true }],
+      runtime,
+      (child) => children.push(child),
+    );
+    try {
+      const tool = tools.find((item) => item.name === "local.echo");
+      assert.ok(tool);
+      const result = await tool.execute({ text: "hello" });
+      assert.deepEqual(result, { status: "success", output: "mcp:hello" });
+    } finally {
+      for (const child of children) {
+        child.kill();
+      }
+    }
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

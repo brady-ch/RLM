@@ -16,6 +16,7 @@ export interface RunRecursivePromptInput {
   agent?: SelectedAgent;
   logger?: RuntimeLogger | undefined;
   execution?: ExecutionControl | undefined;
+  runState?: Parameters<RecursiveLanguageModel["run"]>[0]["runState"] | undefined;
 }
 
 export async function runRecursivePrompt(input: RunRecursivePromptInput): Promise<RecursivePromptResult> {
@@ -25,6 +26,7 @@ export async function runRecursivePrompt(input: RunRecursivePromptInput): Promis
     config: input.config,
     logger: input.logger,
     execution: input.execution,
+    runState: input.runState,
   };
   if (input.agent) {
     request.agent = input.agent;

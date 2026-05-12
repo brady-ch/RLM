@@ -20,6 +20,7 @@ export interface CliOptions {
   workflow?: string;
   configPath?: string;
   baseUrl?: string;
+  host?: string;
   uiPort?: number;
 }
 
@@ -30,6 +31,9 @@ const DEFAULT_CONFIG: RecursiveModelConfig = {
   maxModelCalls: 24,
   maxToolRounds: 3,
 };
+
+const DEFAULT_UI_BOOTSTRAP_PROMPT =
+  "Create a concise two-step checklist for testing recursive prompting in this workspace.";
 
 export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env): CliOptions {
   const [commandCandidate, ...rest] = argv;
@@ -57,6 +61,7 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   let workflow: string | undefined;
   let configPath: string | undefined;
   let baseUrl = env.OLLAMA_HOST;
+  let host = env.RLM_HOST;
   let uiPort: number | undefined;
   const promptParts: string[] = [];
 
@@ -191,6 +196,11 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
       index += 1;
       continue;
     }
+    if (arg === "--host") {
+      host = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
     if (arg === "--ui-port") {
       uiPort = parsePositiveInteger(readValue(args, index, arg), arg);
       index += 1;
@@ -200,9 +210,15 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     promptParts.push(arg);
   }
 
-  const prompt = promptParts.join(" ").trim();
-  if (!prompt) {
-    throw new Error("Missing prompt. Example: npm run dev -- ask \"Explain recursive prompting\"");
+  const promptInput = promptParts.join(" ").trim();
+  let prompt = promptInput;
+  if (!promptInput) {
+    if (command === "ui") {
+      prompt = DEFAULT_UI_BOOTSTRAP_PROMPT;
+    }
+    else {
+      throw new Error("Missing prompt. Example: npm run dev -- ask \"Explain recursive prompting\"");
+    }
   }
 
   const options: CliOptions = {
@@ -232,6 +248,9 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   }
   if (baseUrl) {
     options.baseUrl = baseUrl;
+  }
+  if (host) {
+    options.host = host;
   }
   if (uiPort !== undefined) {
     options.uiPort = uiPort;
@@ -264,6 +283,7 @@ export function helpText(): string {
     "  --workflow <id>         Run configured agent workflow. Default workflow id: default",
     "  --config <path>         YAML config path. Default: ./rlm.config.yaml when present",
     "  --base-url <url>        Ollama base URL. Default: OLLAMA_HOST or LangChain default",
+    "  --host <id>             Runtime host id. Precedence: RLM_HOST > --host > YAML runtimeHost > first host",
     "  --json                 Print stable JSON output for tool consumption",
     "                        Exit code 1 when executionStatus is failed or errors are present.",
     "  --compact              Print compact output for compatibility",
@@ -275,6 +295,12 @@ export function helpText(): string {
     "  --approval-mode <mode> Approval behavior: full | initial-plan | initial-plan-recursive",
     "  --approve              Auto-approve a require-approval run (non-interactive)",
     "  --ui-port <n>          Port for local React Flow UI. Default: available port",
+    "",
+    "Environment:",
+    '  RLM_UI_DIST=<dir>         Override packaged UI asset directory.',
+    '  RLM_NON_INTERACTIVE=1     Skip the interactive launcher; defaults to UI mode.',
+    "  RLM_LAUNCH_MODE=cli       Pair with RLM_NON_INTERACTIVE=1 to force CLI mode without a prompt.",
+    '  Working directory is treated as the project root for ./rlm.config.yaml and ./.rlm/',
   ].join("\n");
 }
 
@@ -300,6 +326,9 @@ function helpOptions(env: NodeJS.ProcessEnv): CliOptions {
   }
   if (env.OLLAMA_HOST) {
     options.baseUrl = env.OLLAMA_HOST;
+  }
+  if (env.RLM_HOST) {
+    options.host = env.RLM_HOST;
   }
 
   return options;

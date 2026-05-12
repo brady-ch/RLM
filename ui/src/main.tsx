@@ -11,7 +11,7 @@ import {
   type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Check, Edit3, Square, X } from "lucide-react";
+import { Check, GitBranchPlus, Scissors, Square, Trash2, X } from "lucide-react";
 import "./styles.css";
 
 type ExecutionStatus =
@@ -29,6 +29,50 @@ type ExecutionNode = {
   id: string;
   parentId?: string;
   kind: "task" | "workflow-agent" | "workflow-qa";
+  composer?: {
+    type: "AI" | "Code" | "TTS" | "Splitter" | "Joiner" | "Validator";
+    runtime: "model" | "code" | "tts";
+    prompt?: string;
+    codeEntry?: string;
+    sandboxPolicy?: string;
+    inputs: Array<{ id: string; label: string; artifactType: string; schema?: string; required?: boolean }>;
+    outputs: Array<{ id: string; label: string; artifactType: string; schema?: string; required?: boolean }>;
+    artifactRefs: Array<{
+      id: string;
+      uri: string;
+      mediaType: string;
+      sizeBytes?: number;
+      durationMs?: number;
+      hash?: string;
+      producerNodeId?: string;
+      orderingKey?: string;
+      metadata?: Record<string, string | number | boolean>;
+    }>;
+    contextPolicy: {
+      reads: string[];
+      writes: string[];
+      limits: string[];
+      memoryScopes: string[];
+    };
+    complexity: "low" | "medium" | "high";
+    recommendedAction: "run" | "plan" | "break_down" | "review";
+    planBudget: {
+      maxDepth: number;
+      maxNodes: number;
+      usedDepth: number;
+      usedNodes: number;
+      remainingDepth: number;
+      remainingNodes: number;
+      approvalRequired: boolean;
+      exhausted: boolean;
+    };
+    pendingPlan?: {
+      parentNodeId: string;
+      childNodeIds: string[];
+      createdAt: string;
+      summary: string;
+    };
+  };
   label: string;
   prompt?: string;
   originalPrompt?: string;
@@ -58,6 +102,38 @@ type SessionSnapshot = {
   approvalMode: "full" | "initial-plan" | "initial-plan-recursive";
   autoApprovalPaused: boolean;
   runSummary?: { message?: string };
+  chat?: {
+    readiness: {
+      state: "draft" | "ready_to_run";
+      reason: string;
+    };
+    pendingMutation?: {
+      id: string;
+      summary: string;
+      requiresClarification: boolean;
+      clarificationQuestion?: string;
+      requiresDeleteChoice: boolean;
+      pendingDeleteChoice?: {
+        nodeId: string;
+        options: Array<"delete_subtree" | "rewire_dependents">;
+      };
+    };
+    pendingClarification?: {
+      questionId: string;
+      nodeId: string;
+      promptText: string;
+      askedAt: string;
+    };
+    clarificationHistory: Array<{
+      question_id: string;
+      node_id: string;
+      prompt_text: string;
+      user_answer: string;
+      asked_at: string;
+      answered_at: string;
+      resume_event_id: string;
+    }>;
+  };
 };
 
 /** Mirror `labelForCategory` / status strings in `src/domain/execution-failure.ts` for header copy. */
@@ -90,7 +166,18 @@ function App() {
   });
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const [chatMessage, setChatMessage] = useState("");
+  const [deleteStrategy, setDeleteStrategy] = useState<"delete_subtree" | "rewire_dependents">("delete_subtree");
+  const [clarificationAnswer, setClarificationAnswer] = useState("");
   const selectedNode = snapshot.graph.nodes.find((node) => node.id === selectedNodeId) ?? snapshot.graph.nodes[0];
+  const readiness = snapshot.chat?.readiness ?? {
+    state: "draft" as const,
+    reason: "Draft graph: confirm graph and run to start execution.",
+  };
+  const runDisabled = readiness.state !== "ready_to_run";
+  const pendingMutation = snapshot.chat?.pendingMutation;
+  const pendingClarification = snapshot.chat?.pendingClarification;
+  const clarificationHistory = snapshot.chat?.clarificationHistory ?? [];
 
   const refresh = useCallback(async () => {
     const response = await fetch("/api/session");
@@ -113,8 +200,8 @@ function App() {
     id: node.id,
     type: "execution",
     position: {
-      x: node.depth * 320,
-      y: index * 145,
+      x: node.depth * 430,
+      y: index * 245,
     },
     data: { execution: node },
   })), [snapshot.graph.nodes]);
@@ -154,6 +241,12 @@ function App() {
           <span className="meta-pill">{approvalModeLabel(snapshot.approvalMode)}</span>
           <button
             className="icon"
+            onClick={() => runAction(setErrorMessage, () => post("/api/chat/confirm-run", {}), refresh)}
+          >
+            Confirm graph and run
+          </button>
+          <button
+            className="icon"
             title="Pause future auto-approvals"
             onClick={() => runAction(setErrorMessage, () => post("/api/pause-future-auto-approvals", {}), refresh)}
           >
@@ -168,6 +261,114 @@ function App() {
           </button>
         </header>
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
+        <div className="node-inspector">
+          <div>
+            <label>Run control</label>
+            <button disabled={runDisabled}>Run disabled until confirmed</button>
+            {runDisabled ? <div className="meta-row">{readiness.reason}</div> : <div className="meta-row">Ready to run.</div>}
+          </div>
+          <div>
+            <label>Chat mutation</label>
+            <textarea
+              value={chatMessage}
+              onChange={(event) => setChatMessage(event.target.value)}
+              placeholder="edit task-1: refine this prompt"
+            />
+            <div className="actions">
+              <button
+                disabled={chatMessage.trim().length === 0}
+                onClick={() => runAction(setErrorMessage, () => post("/api/chat/message", { message: chatMessage }), refresh)}
+              >
+                Preview mutation
+              </button>
+              <button onClick={() => runAction(setErrorMessage, () => post("/api/chat/cancel", {}), refresh)}>Clear preview</button>
+            </div>
+            {pendingMutation
+              ? (
+                <div className="meta-row">
+                  Pending: {pendingMutation.summary}
+                  {pendingMutation.requiresDeleteChoice && pendingMutation.pendingDeleteChoice
+                    ? (
+                      <div className="actions">
+                        <select value={deleteStrategy} onChange={(event) => setDeleteStrategy(event.target.value as "delete_subtree" | "rewire_dependents")}>
+                          {pendingMutation.pendingDeleteChoice.options.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                        <button
+                          onClick={() => runAction(
+                            setErrorMessage,
+                            () => post("/api/chat/apply", { proposalId: pendingMutation.id, deleteStrategy }),
+                            refresh,
+                          )}
+                        >
+                          Apply preview
+                        </button>
+                      </div>
+                    )
+                    : (
+                      <div className="actions">
+                        <button onClick={() => runAction(setErrorMessage, () => post("/api/chat/apply", { proposalId: pendingMutation.id }), refresh)}>
+                          Apply preview
+                        </button>
+                      </div>
+                    )}
+                </div>
+              )
+              : <div className="meta-row">No pending mutation preview.</div>}
+          </div>
+          <div>
+            <label>Clarification timeline</label>
+            {pendingClarification
+              ? (
+                <div className="meta-row">
+                  <div><b>Pending:</b> {pendingClarification.promptText}</div>
+                  <div className="meta-row">node={pendingClarification.nodeId} asked={pendingClarification.askedAt}</div>
+                  <textarea
+                    value={clarificationAnswer}
+                    onChange={(event) => setClarificationAnswer(event.target.value)}
+                    placeholder="Type clarification answer"
+                  />
+                  <div className="actions">
+                    <button
+                      disabled={clarificationAnswer.trim().length === 0}
+                      onClick={() => runAction(
+                        setErrorMessage,
+                        () => post("/api/clarifications/answer", {
+                          questionId: pendingClarification.questionId,
+                          userAnswer: clarificationAnswer,
+                        }),
+                        async () => {
+                          setClarificationAnswer("");
+                          await refresh();
+                        },
+                      )}
+                    >
+                      Answer and continue
+                    </button>
+                    <button
+                      className="danger"
+                      onClick={() => runAction(
+                        setErrorMessage,
+                        () => post("/api/clarifications/abort", { questionId: pendingClarification.questionId }),
+                        refresh,
+                      )}
+                    >
+                      Abort run
+                    </button>
+                  </div>
+                </div>
+              )
+              : <div className="meta-row">No pending clarification.</div>}
+            <div className="meta-row">
+              {clarificationHistory.length === 0
+                ? "No clarification history yet."
+                : clarificationHistory.map((record) => (
+                  <div key={record.resume_event_id}>
+                    Q[{record.question_id}] {record.prompt_text} {"->"} A: {record.user_answer}
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
         {selectedNode
           ? <NodeInspector node={selectedNode} refresh={refresh} setErrorMessage={setErrorMessage} />
           : <p className="empty">Waiting for execution graph.</p>}
@@ -178,14 +379,38 @@ function App() {
 
 function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
   const node = data.execution;
+  const composer = node.composer;
   return (
     <div className={`node-card ${node.status}`}>
-      <Handle type="target" position={Position.Left} />
-      <div className="node-topline">
-        <span>{node.kind}</span>
-        <b>{node.status}</b>
+      <Handle className="node-port node-port-input" type="target" position={Position.Left} />
+      <div className="node-header">
+        <div>
+          <div className="node-type">{composer?.type ?? node.kind}</div>
+          <div className="node-runtime">{composer?.runtime ?? "runtime"} · {node.status}</div>
+        </div>
+        <span className={`complexity ${composer?.complexity ?? "low"}`}>{composer?.complexity ?? "low"}</span>
       </div>
       <div className="node-title">{node.label}</div>
+      {composer
+        ? (
+          <>
+            <div className="port-list">
+              <div>
+                <span className="port-heading">Inputs</span>
+                {composer.inputs.map((port) => <span className="port-pill" key={port.id}>{port.label}: {port.artifactType}</span>)}
+              </div>
+              <div>
+                <span className="port-heading">Outputs</span>
+                {composer.outputs.map((port) => <span className="port-pill" key={port.id}>{port.label}: {port.artifactType}</span>)}
+              </div>
+            </div>
+            <div className="budget-line">
+              Budget {composer.planBudget.remainingDepth} depth / {composer.planBudget.remainingNodes} nodes
+              {composer.planBudget.exhausted ? <span className="budget-stop">needs approval</span> : null}
+            </div>
+          </>
+        )
+        : null}
       <div className="node-models">
         <div>P: {node.plannedModel ?? "resolved-at-runtime"}</div>
         <div>E: {node.effectiveModel ?? "pending"}</div>
@@ -193,7 +418,7 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
         <div>Approval: {node.approvalSource ?? "none"}</div>
         {node.spawnedAfterInitialApproval ? <div className="badge">spawned branch</div> : null}
       </div>
-      <Handle type="source" position={Position.Right} />
+      <Handle className="node-port node-port-output" type="source" position={Position.Right} />
     </div>
   );
 }
@@ -213,13 +438,72 @@ function NodeInspector(
 
   const editable = node.status === "planned" || node.status === "ready" || node.status === "awaiting_approval";
   const waiting = node.status === "awaiting_approval";
+  const composer = node.composer;
 
   return (
-    <div className="node-inspector">
+        <div className="node-inspector">
       <div>
         <label>Node</label>
         <h1>{node.id}</h1>
       </div>
+      {composer
+        ? (
+          <div className="composer-panel">
+            <div className="composer-grid">
+              <div>
+                <label>Node type</label>
+                <div className="meta-row strong">{composer.type}</div>
+              </div>
+              <div>
+                <label>Runtime</label>
+                <div className="meta-row strong">{composer.runtime}</div>
+              </div>
+              <div>
+                <label>Complexity</label>
+                <div className={`meta-row complexity ${composer.complexity}`}>{composer.complexity}</div>
+              </div>
+              <div>
+                <label>Recommended</label>
+                <div className="meta-row strong">{composer.recommendedAction}</div>
+              </div>
+            </div>
+            <div>
+              <label>Plan budget</label>
+              <div className="budget-box">
+                <span>{composer.planBudget.remainingDepth} depth left</span>
+                <span>{composer.planBudget.remainingNodes} nodes left</span>
+                <span>{composer.planBudget.approvalRequired ? "approval required" : "auto"}</span>
+                {composer.planBudget.exhausted ? <span className="budget-stop">needs approval to expand</span> : null}
+              </div>
+            </div>
+            <div>
+              <label>Ports</label>
+              <PortRows title="Inputs" ports={composer.inputs} />
+              <PortRows title="Outputs" ports={composer.outputs} />
+            </div>
+            <div>
+              <label>Context Policy</label>
+              <PolicyRows title="Reads" items={composer.contextPolicy.reads} />
+              <PolicyRows title="Writes" items={composer.contextPolicy.writes} />
+              <PolicyRows title="Limits" items={composer.contextPolicy.limits} />
+              <PolicyRows title="Memory" items={composer.contextPolicy.memoryScopes} />
+            </div>
+            <div>
+              <label>Artifact refs</label>
+              {composer.artifactRefs.length === 0
+                ? <div className="meta-row">No artifact refs yet. Large payloads stay outside graph state.</div>
+                : composer.artifactRefs.map((artifact) => (
+                  <div className="artifact-row" key={artifact.id}>
+                    <b>{artifact.id}</b>
+                    <span>{artifact.mediaType}</span>
+                    <span>{artifact.uri}</span>
+                    {artifact.orderingKey ? <span>order={artifact.orderingKey}</span> : null}
+                  </div>
+                ))}
+            </div>
+          </div>
+        )
+        : null}
       <div>
         <label>Prompt</label>
         <textarea value={prompt} disabled={!editable} onChange={(event) => setPrompt(event.target.value)} />
@@ -255,7 +539,19 @@ function NodeInspector(
       </div>
       <div className="actions">
         <button disabled={!editable} onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/edit`, { prompt }), refresh)}>
-          <Edit3 size={16} /> Edit
+          Save prompt
+        </button>
+        <button disabled={!editable} onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/plan`, {}), refresh)}>
+          <GitBranchPlus size={16} /> Plan
+        </button>
+        <button disabled={!editable} onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/breakdown`, {}), refresh)}>
+          <Scissors size={16} /> Break down
+        </button>
+        <button
+          disabled={!editable || composer?.planBudget.exhausted !== true}
+          onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/extend-budget`, {}), refresh)}
+        >
+          Extend budget
         </button>
         <button
           disabled={!waiting}
@@ -274,13 +570,13 @@ function NodeInspector(
         <label>Add Child</label>
         <textarea
           value={newChildPrompt}
-          disabled={!waiting}
+          disabled={!editable}
           onChange={(event) => setNewChildPrompt(event.target.value)}
           placeholder="New child prompt"
         />
         <div className="actions">
           <button
-            disabled={!waiting || newChildPrompt.trim().length === 0}
+            disabled={!editable || newChildPrompt.trim().length === 0}
             onClick={() => runAction(setErrorMessage, () => post("/api/nodes/add", { parentId: node.id, prompt: newChildPrompt }), refresh)}
           >
             Add child
@@ -291,25 +587,44 @@ function NodeInspector(
         <label>Connect Parent ID</label>
         <input
           value={connectParentId}
-          disabled={!waiting}
+          disabled={!editable}
           onChange={(event) => setConnectParentId(event.target.value)}
           placeholder="task-1"
         />
         <div className="actions">
           <button
-            disabled={!waiting || connectParentId.trim().length === 0}
+            disabled={!editable || connectParentId.trim().length === 0}
             onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/connect`, { parentId: connectParentId }), refresh)}
           >
             Connect
           </button>
           <button
-            disabled={!waiting}
+            disabled={!editable}
+            className="danger"
             onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/delete`, {}), refresh)}
           >
-            Delete subtree
+            <Trash2 size={16} /> Delete subtree
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PortRows({ title, ports }: { title: string; ports: NonNullable<ExecutionNode["composer"]>["inputs"] }) {
+  return (
+    <div className="port-row-group">
+      <span>{title}</span>
+      {ports.map((port) => <code key={port.id}>{port.label}: {port.artifactType}</code>)}
+    </div>
+  );
+}
+
+function PolicyRows({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="policy-row">
+      <span>{title}</span>
+      <p>{items.join(", ")}</p>
     </div>
   );
 }
