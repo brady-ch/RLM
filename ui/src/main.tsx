@@ -1,14 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
+  applyNodeChanges,
   Background,
   Controls,
   Handle,
   MiniMap,
   Position,
   ReactFlow,
+  type Connection,
   type Edge,
   type Node,
+  type NodeChange,
+  type OnConnect,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Check, GitBranchPlus, Scissors, Square, Trash2, X } from "lucide-react";
@@ -28,6 +32,7 @@ type ExecutionStatus =
 type ExecutionNode = {
   id: string;
   parentId?: string;
+  position?: { x: number; y: number };
   kind: "task" | "workflow-agent" | "workflow-qa";
   composer?: {
     type: "AI" | "Code" | "TTS" | "Splitter" | "Joiner" | "Validator";
@@ -47,6 +52,11 @@ type ExecutionNode = {
       producerNodeId?: string;
       orderingKey?: string;
       metadata?: Record<string, string | number | boolean>;
+      validation?: {
+        state: "validated" | "skipped" | "failed";
+        reason?: string;
+        policy?: "strict" | "lenient";
+      };
     }>;
     contextPolicy: {
       reads: string[];
@@ -92,7 +102,8 @@ type ExecutionNode = {
 
 type ExecutionGraph = {
   nodes: ExecutionNode[];
-  edges: Array<{ from: string; to: string }>;
+  edges: Array<{ from: string; to: string; sourceHandle?: string; targetHandle?: string }>;
+  viewport?: { x: number; y: number; zoom: number };
 };
 
 type SessionSnapshot = {
@@ -157,6 +168,26 @@ const nodeTypes = {
   execution: ExecutionNodeCard,
 };
 
+function executionToFlowNode(node: ExecutionNode, index: number): Node<FlowNodeData> {
+  return {
+    id: node.id,
+    type: "execution",
+    position: node.position ?? { x: node.depth * 430, y: index * 245 },
+    data: { execution: node },
+  };
+}
+
+function graphToFlowEdges(edges: ExecutionGraph["edges"]): Edge[] {
+  return edges.map((edge, i) => ({
+    id: `${edge.from}->${edge.to}-${i}`,
+    source: edge.from,
+    target: edge.to,
+    sourceHandle: edge.sourceHandle,
+    targetHandle: edge.targetHandle,
+    animated: true,
+  }));
+}
+
 function App() {
   const [snapshot, setSnapshot] = useState<SessionSnapshot>({
     graph: { nodes: [], edges: [] },
@@ -164,6 +195,14 @@ function App() {
     approvalMode: "full",
     autoApprovalPaused: false,
   });
+  const [nodes, setNodes] = useState<Node<FlowNodeData>[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const draggingRef = useRef(false);
+  const layoutFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingLayoutRef = useRef<Record<string, { x: number; y: number }>>({});
+  const lastGraphSyncKey = useRef<string>("");
+  const viewportFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rfInstanceRef = useRef<{ setViewport: (v: { x: number; y: number; zoom: number }) => void } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const [chatMessage, setChatMessage] = useState("");
@@ -199,22 +238,78 @@ function App() {
     return () => events.close();
   }, [refresh]);
 
-  const nodes = useMemo<Array<Node<FlowNodeData>>>(() => snapshot.graph.nodes.map((node, index) => ({
-    id: node.id,
-    type: "execution",
-    position: {
-      x: node.depth * 430,
-      y: index * 245,
-    },
-    data: { execution: node },
-  })), [snapshot.graph.nodes]);
+  useEffect(() => {
+    if (draggingRef.current) {
+      return;
+    }
+    const key = JSON.stringify({ nodes: snapshot.graph.nodes, edges: snapshot.graph.edges });
+    if (key === lastGraphSyncKey.current) {
+      return;
+    }
+    lastGraphSyncKey.current = key;
+    setNodes(snapshot.graph.nodes.map((node, index) => executionToFlowNode(node, index)));
+    setEdges(graphToFlowEdges(snapshot.graph.edges));
+  }, [snapshot]);
 
-  const edges = useMemo<Edge[]>(() => snapshot.graph.edges.map((edge) => ({
-    id: `${edge.from}-${edge.to}`,
-    source: edge.from,
-    target: edge.to,
-    animated: true,
-  })), [snapshot.graph.edges]);
+  useEffect(() => {
+    const v = snapshot.graph.viewport;
+    if (!v || !rfInstanceRef.current) {
+      return;
+    }
+    rfInstanceRef.current.setViewport(v);
+  }, [snapshot.graph.viewport]);
+
+  const flushLayout = useCallback(() => {
+    if (layoutFlushTimer.current) {
+      clearTimeout(layoutFlushTimer.current);
+    }
+    layoutFlushTimer.current = setTimeout(() => {
+      layoutFlushTimer.current = null;
+      const payload = { ...pendingLayoutRef.current };
+      pendingLayoutRef.current = {};
+      if (Object.keys(payload).length === 0) {
+        return;
+      }
+      void runAction(setErrorMessage, async () => {
+        await post("/api/graph/layout", { positions: payload });
+      }, refresh);
+    }, 150);
+  }, [refresh]);
+
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    setNodes((nds) => applyNodeChanges(changes, nds) as Node<FlowNodeData>[]);
+    for (const ch of changes) {
+      if (ch.type === "position" && ch.position && ch.id) {
+        pendingLayoutRef.current[ch.id] = ch.position;
+        flushLayout();
+      }
+    }
+  }, [flushLayout]);
+
+  const onConnect = useCallback((connection: Connection) => {
+    if (!connection.source || !connection.target) {
+      return;
+    }
+    void runAction(setErrorMessage, async () => {
+      await post(`/api/nodes/${encodeURIComponent(connection.target)}/connect`, {
+        parentId: connection.source,
+        ...(connection.sourceHandle != null ? { sourceHandle: connection.sourceHandle } : {}),
+        ...(connection.targetHandle != null ? { targetHandle: connection.targetHandle } : {}),
+      });
+    }, refresh);
+  }, [refresh]);
+
+  const onViewportMoveEnd = useCallback((_event: unknown, vp: { x: number; y: number; zoom: number }) => {
+    if (viewportFlushTimer.current) {
+      clearTimeout(viewportFlushTimer.current);
+    }
+    viewportFlushTimer.current = setTimeout(() => {
+      viewportFlushTimer.current = null;
+      void runAction(setErrorMessage, async () => {
+        await post("/api/graph/viewport", { x: vp.x, y: vp.y, zoom: vp.zoom });
+      }, refresh);
+    }, 200);
+  }, [refresh]);
 
   return (
     <main className="shell">
@@ -223,8 +318,21 @@ function App() {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onConnect={onConnect as OnConnect}
+          nodesConnectable
+          nodesDraggable
+          onNodeDragStart={() => {
+            draggingRef.current = true;
+          }}
+          onNodeDragStop={() => {
+            draggingRef.current = false;
+          }}
+          onMoveEnd={onViewportMoveEnd}
+          onInit={(inst) => {
+            rfInstanceRef.current = inst;
+          }}
           onNodeClick={(_, node) => setSelectedNodeId(node.id)}
-          fitView
         >
           <Background gap={20} color="#d8ded9" />
           <MiniMap pannable zoomable />
@@ -388,7 +496,18 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
   const composer = node.composer;
   return (
     <div className={`node-card ${node.status}`}>
-      <Handle className="node-port node-port-input" type="target" position={Position.Left} />
+      {composer && composer.inputs.length > 0
+        ? composer.inputs.map((port, i) => (
+            <Handle
+              key={port.id}
+              id={port.id}
+              className="node-port node-port-input"
+              type="target"
+              position={Position.Left}
+              style={{ top: `${((i + 1) / (composer.inputs.length + 1)) * 100}%` }}
+            />
+          ))
+        : <Handle className="node-port node-port-input" id="in" type="target" position={Position.Left} />}
       <div className="node-header">
         <div>
           <div className="node-type">{composer?.type ?? node.kind}</div>
@@ -411,7 +530,7 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
               </div>
             </div>
             <div className="budget-line">
-              Budget {composer.planBudget.remainingDepth} depth / {composer.planBudget.remainingNodes} nodes
+              Budget used {composer.planBudget.usedDepth}/{composer.planBudget.maxDepth} depth · {composer.planBudget.usedNodes}/{composer.planBudget.maxNodes} nodes · left {composer.planBudget.remainingDepth}/{composer.planBudget.remainingNodes}
               {composer.planBudget.exhausted ? <span className="budget-stop">needs approval</span> : null}
             </div>
           </>
@@ -424,7 +543,18 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
         <div>Approval: {node.approvalSource ?? "none"}</div>
         {node.spawnedAfterInitialApproval ? <div className="badge">spawned branch</div> : null}
       </div>
-      <Handle className="node-port node-port-output" type="source" position={Position.Right} />
+      {composer && composer.outputs.length > 0
+        ? composer.outputs.map((port, i) => (
+            <Handle
+              key={port.id}
+              id={port.id}
+              className="node-port node-port-output"
+              type="source"
+              position={Position.Right}
+              style={{ top: `${((i + 1) / (composer.outputs.length + 1)) * 100}%` }}
+            />
+          ))
+        : <Handle className="node-port node-port-output" id="out" type="source" position={Position.Right} />}
     </div>
   );
 }
@@ -476,8 +606,9 @@ function NodeInspector(
             <div>
               <label>Plan budget</label>
               <div className="budget-box">
-                <span>{composer.planBudget.remainingDepth} depth left</span>
-                <span>{composer.planBudget.remainingNodes} nodes left</span>
+                <span>Used {composer.planBudget.usedDepth}/{composer.planBudget.maxDepth} depth (cap)</span>
+                <span>Used {composer.planBudget.usedNodes}/{composer.planBudget.maxNodes} nodes (cap)</span>
+                <span>Remaining {composer.planBudget.remainingDepth} depth · {composer.planBudget.remainingNodes} nodes</span>
                 <span>{composer.planBudget.approvalRequired ? "approval required" : "auto"}</span>
                 {composer.planBudget.exhausted ? <span className="budget-stop">needs approval to expand</span> : null}
               </div>
@@ -504,6 +635,15 @@ function NodeInspector(
                     <span>{artifact.mediaType}</span>
                     <span>{artifact.uri}</span>
                     {artifact.orderingKey ? <span>order={artifact.orderingKey}</span> : null}
+                    {artifact.validation
+                      ? (
+                        <span className={`artifact-validation artifact-validation-${artifact.validation.state}`}>
+                          {artifact.validation.state}
+                          {artifact.validation.policy ? ` (${artifact.validation.policy})` : ""}
+                          {artifact.validation.reason ? `: ${artifact.validation.reason}` : ""}
+                        </span>
+                      )
+                      : null}
                   </div>
                 ))}
             </div>

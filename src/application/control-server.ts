@@ -61,6 +61,36 @@ async function routeRequest(
     if (request.method === "GET" && url.pathname === "/api/graph") {
       return sendJson(response, session.snapshot().graph);
     }
+    if (request.method === "POST" && url.pathname === "/api/graph/layout") {
+      const body = await readJsonBody(request);
+      const raw = body["positions"];
+      if (!raw || typeof raw !== "object") {
+        return sendJson(response, { error: "Expected positions object." }, 400);
+      }
+      const positions: Record<string, { x: number; y: number }> = {};
+      for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+        if (!value || typeof value !== "object") {
+          continue;
+        }
+        const v = value as Record<string, unknown>;
+        const x = Number(v["x"]);
+        const y = Number(v["y"]);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          positions[id] = { x, y };
+        }
+      }
+      session.updateGraphLayout(positions);
+      return sendJson(response, session.snapshot());
+    }
+    if (request.method === "POST" && url.pathname === "/api/graph/viewport") {
+      const body = await readJsonBody(request);
+      session.setGraphViewport({
+        x: Number(body["x"] ?? 0),
+        y: Number(body["y"] ?? 0),
+        zoom: Number(body["zoom"] ?? 1),
+      });
+      return sendJson(response, session.snapshot());
+    }
     if (request.method === "GET" && url.pathname === "/api/events") {
       return streamEvents(response, session);
     }
@@ -126,7 +156,17 @@ async function routeRequest(
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/connect$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const body = await readJsonBody(request);
-      session.connectNode({ nodeId, parentId: String(body["parentId"] ?? "") });
+      const connectInput: { nodeId: string; parentId: string; sourceHandle?: string; targetHandle?: string } = {
+        nodeId,
+        parentId: String(body["parentId"] ?? ""),
+      };
+      if (typeof body["sourceHandle"] === "string") {
+        connectInput.sourceHandle = body["sourceHandle"];
+      }
+      if (typeof body["targetHandle"] === "string") {
+        connectInput.targetHandle = body["targetHandle"];
+      }
+      session.connectNode(connectInput);
       return sendJson(response, session.snapshot());
     }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/delete$/)) {

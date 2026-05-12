@@ -64,6 +64,7 @@ class MutationError extends Error implements GraphMutationError {
 export class InteractiveExecutionSession {
   private readonly nodes = new Map<string, ExecutionGraphNode>();
   private readonly edges: ExecutionGraph["edges"] = [];
+  private graphViewport: { x: number; y: number; zoom: number } = { x: 0, y: 0, zoom: 1 };
   private readonly pending = new Map<string, PendingApproval>();
   private readonly resolvedApprovalTokens = new Set<string>();
   private readonly statusWaiters = new Map<string, Array<(node: ExecutionGraphNode) => void>>();
@@ -176,6 +177,7 @@ export class InteractiveExecutionSession {
       graph: {
         nodes,
         edges: [...this.edges],
+        viewport: { ...this.graphViewport },
       },
       status,
       activeNodeId: activeNode?.id,
@@ -271,6 +273,7 @@ export class InteractiveExecutionSession {
 
   planNode(nodeId: string): { plannedNodeIds: string[]; budget: ComposerPlanBudget; exhausted: boolean } {
     const node = this.requireEditableNode(nodeId);
+    this.ensureNodePosition(node);
     node.composer = withComposerDefaults(node);
     const budgetRoot = this.findBudgetRoot(node);
     budgetRoot.composer = withComposerDefaults(budgetRoot);
@@ -296,6 +299,8 @@ export class InteractiveExecutionSession {
 
     const childSpecs = plannedChildrenFor(node).slice(0, remainingNodes);
     const created: string[] = [];
+    const baseX = (node.position?.x ?? node.depth * 430) + 430;
+    const baseY = node.position?.y ?? 0;
     for (const spec of childSpecs) {
       const id = `plan-${this.nodes.size + 1}`;
       const child: ExecutionGraphNode = {
@@ -308,6 +313,7 @@ export class InteractiveExecutionSession {
         editableFields: ["prompt"],
         depth: node.depth + 1,
         status: "planned",
+        position: { x: baseX, y: baseY + created.length * 220 },
         composer: createComposer({
           type: spec.type,
           prompt: spec.prompt,
@@ -393,11 +399,15 @@ export class InteractiveExecutionSession {
     if (!normalized) {
       throw new MutationError("invalid_prompt", "Node prompt cannot be empty.", [input.parentId], undefined, "Provide a non-empty prompt.");
     }
+    this.ensureNodePosition(parent);
     const parentDepth = parent.depth;
     if (parentDepth + 1 > 64) {
       throw new MutationError("max_depth_exceeded", "Node depth exceeds configured max depth guardrail.", [input.parentId], `depth=${parentDepth + 1}`, "Attach under a shallower parent.");
     }
+    const manualSiblings = [...this.nodes.values()].filter((n) => n.parentId === input.parentId).length;
     const id = `task-manual-${this.nodes.size + 1}`;
+    const px = parent.position?.x ?? parent.depth * 430;
+    const py = parent.position?.y ?? 0;
     const node: ExecutionGraphNode = {
       id,
       parentId: input.parentId,
@@ -405,6 +415,7 @@ export class InteractiveExecutionSession {
       label: preview(normalized, 80),
       prompt: normalized,
       originalPrompt: normalized,
+      position: { x: px + 430, y: py + manualSiblings * 220 },
       composer: createComposer({
         type: inferNodeType(normalized),
         prompt: normalized,
@@ -421,7 +432,7 @@ export class InteractiveExecutionSession {
     return node;
   }
 
-  connectNode(input: { nodeId: string; parentId: string }): void {
+  connectNode(input: { nodeId: string; parentId: string; sourceHandle?: string; targetHandle?: string }): void {
     const node = this.nodes.get(input.nodeId);
     const parent = this.nodes.get(input.parentId);
     if (!node || !parent) {
@@ -446,10 +457,43 @@ export class InteractiveExecutionSession {
     if (node.depth > 64) {
       throw new MutationError("max_depth_exceeded", "Node depth exceeds configured max depth guardrail.", [node.id, parent.id], `depth=${node.depth}`, "Connect under a shallower parent.");
     }
-    if (!this.edges.some((edge) => edge.from === input.parentId && edge.to === input.nodeId)) {
-      this.edges.push({ from: input.parentId, to: input.nodeId });
+    const existing = this.edges.find((edge) => edge.from === input.parentId && edge.to === input.nodeId);
+    if (existing) {
+      existing.sourceHandle = input.sourceHandle;
+      existing.targetHandle = input.targetHandle;
+    } else {
+      this.edges.push({
+        from: input.parentId,
+        to: input.nodeId,
+        sourceHandle: input.sourceHandle,
+        targetHandle: input.targetHandle,
+      });
     }
     this.reevaluateSubtreeFrom(input.parentId);
+  }
+
+  updateGraphLayout(positions: Record<string, { x: number; y: number }>): void {
+    for (const [id, pos] of Object.entries(positions)) {
+      if (!Number.isFinite(pos.x) || !Number.isFinite(pos.y)) {
+        continue;
+      }
+      const node = this.nodes.get(id);
+      if (!node) {
+        continue;
+      }
+      node.position = { x: pos.x, y: pos.y };
+    }
+    this.publish({ type: "execution", status: "planned", message: "graph layout updated" });
+  }
+
+  setGraphViewport(viewport: { x: number; y: number; zoom: number }): void {
+    const zoom = Number.isFinite(viewport.zoom) && viewport.zoom > 0 ? viewport.zoom : 1;
+    this.graphViewport = {
+      x: Number.isFinite(viewport.x) ? viewport.x : 0,
+      y: Number.isFinite(viewport.y) ? viewport.y : 0,
+      zoom,
+    };
+    this.publish({ type: "execution", status: "planned", message: "graph viewport updated" });
   }
 
   deleteNode(nodeId: string): { deleted: string[] } {
@@ -737,6 +781,7 @@ export class InteractiveExecutionSession {
       graph: {
         nodes: [...this.nodes.values()].map((node) => ({ ...node })),
         edges: [...this.edges],
+        viewport: { ...this.graphViewport },
       },
       pendingQuestion: pending,
     };
@@ -801,7 +846,9 @@ export class InteractiveExecutionSession {
   private registerNode(input: ExecutionGraphNode): void {
     const existing = this.nodes.get(input.id);
     if (existing) {
-      this.nodes.set(input.id, { ...existing, ...input, composer: input.composer ?? existing.composer });
+      const merged: ExecutionGraphNode = { ...existing, ...input, composer: input.composer ?? existing.composer };
+      this.nodes.set(input.id, merged);
+      this.ensureNodePosition(merged);
       return;
     }
 
@@ -824,6 +871,7 @@ export class InteractiveExecutionSession {
       autoApprovalPaused: this.futureAutoApprovalsPaused,
     };
     this.nodes.set(node.id, node);
+    this.ensureNodePosition(node);
     if (node.parentId && !this.edges.some((edge) => edge.from === node.parentId && edge.to === node.id)) {
       this.edges.push({ from: node.parentId, to: node.id });
     }
@@ -984,6 +1032,7 @@ export class InteractiveExecutionSession {
       editableFields: ["prompt"],
       depth: 0,
       status: "planned",
+      position: { x: 80, y: 120 },
       composer: createComposer({
         type: inferNodeType(normalized),
         prompt: normalized,
@@ -995,8 +1044,44 @@ export class InteractiveExecutionSession {
   }
 
   private publish(event: ExecutionEvent): void {
+    this.applyArtifactValidationFromEvent(event);
     for (const subscriber of this.subscribers) {
       subscriber(event);
+    }
+  }
+
+  private applyArtifactValidationFromEvent(event: ExecutionEvent): void {
+    if (!event.nodeId || !event.artifactValidation) {
+      return;
+    }
+    const node = this.nodes.get(event.nodeId);
+    if (!node?.composer || node.composer.artifactRefs.length === 0) {
+      return;
+    }
+    const { accepted, policy, reason } = event.artifactValidation;
+    const state = accepted ? "validated" : "failed";
+    for (const ref of node.composer.artifactRefs) {
+      ref.validation = { state, policy, reason };
+    }
+  }
+
+  private ensureNodePosition(node: ExecutionGraphNode): void {
+    if (
+      node.position
+      && Number.isFinite(node.position.x)
+      && Number.isFinite(node.position.y)
+    ) {
+      return;
+    }
+    const parent = node.parentId ? this.nodes.get(node.parentId) : undefined;
+    const siblings = [...this.nodes.values()]
+      .filter((n) => n.parentId === node.parentId)
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const idx = Math.max(0, siblings.findIndex((n) => n.id === node.id));
+    if (parent?.position) {
+      node.position = { x: parent.position.x + 430, y: parent.position.y + idx * 220 };
+    } else {
+      node.position = { x: node.depth * 430, y: idx * 245 };
     }
   }
 

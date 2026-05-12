@@ -95,6 +95,12 @@ export interface ComposerArtifactRef {
   producerNodeId?: string | undefined;
   orderingKey?: string | undefined;
   metadata?: Record<string, string | number | boolean> | undefined;
+  /** Last-known validation from runtime events (e.g. run-state / artifact policy). */
+  validation?: {
+    state: "validated" | "skipped" | "failed";
+    reason?: string | undefined;
+    policy?: "strict" | "lenient" | undefined;
+  } | undefined;
 }
 
 export interface ComposerPlanBudget {
@@ -199,6 +205,8 @@ export interface ExecutionGraphNode {
   id: string;
   parentId?: string;
   kind: "task" | "workflow-agent" | "workflow-qa";
+  /** Authoritative canvas position for the control-server session graph. */
+  position?: { x: number; y: number } | undefined;
   composer?: NodeComposer | undefined;
   label: string;
   prompt?: string | undefined;
@@ -223,11 +231,17 @@ export interface ExecutionGraphNode {
 export interface ExecutionGraphEdge {
   from: string;
   to: string;
+  /** Output port id on the `from` node when the edge was created from handles. */
+  sourceHandle?: string | undefined;
+  /** Input port id on the `to` node when the edge was created from handles. */
+  targetHandle?: string | undefined;
 }
 
 export interface ExecutionGraph {
   nodes: ExecutionGraphNode[];
   edges: ExecutionGraphEdge[];
+  /** Last persisted React Flow viewport for this session (optional). */
+  viewport?: { x: number; y: number; zoom: number } | undefined;
 }
 
 export interface ExecutionEvent {

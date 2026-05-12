@@ -409,6 +409,29 @@ test("interactive connect rejects cycles and replaces old incoming edge on repar
   assert.ok(snapshot.graph.edges.some((edge) => edge.from === "task-4" && edge.to === "task-2"));
 });
 
+test("session graph persists layout, viewport, and typed edge handles", () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "workflow" });
+  const root = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
+  assert.ok(root?.position);
+
+  session.updateGraphLayout({ "root-composer": { x: 10, y: 20 } });
+  assert.deepEqual(session.snapshot().graph.nodes.find((node) => node.id === "root-composer")?.position, { x: 10, y: 20 });
+
+  session.setGraphViewport({ x: 1, y: 2, zoom: 0.75 });
+  assert.deepEqual(session.snapshot().graph.viewport, { x: 1, y: 2, zoom: 0.75 });
+
+  const child = session.addNode({ parentId: "root-composer", prompt: "child node" });
+  session.connectNode({
+    nodeId: child.id,
+    parentId: "root-composer",
+    sourceHandle: "src-port",
+    targetHandle: "tgt-port",
+  });
+  const edge = session.snapshot().graph.edges.find((e) => e.from === "root-composer" && e.to === child.id);
+  assert.equal(edge?.sourceHandle, "src-port");
+  assert.equal(edge?.targetHandle, "tgt-port");
+});
+
 test("control server exposes plan and budget endpoints with explicit exhaustion gate", async () => {
   const session = createInteractiveExecutionSession({
     seedRootPrompt: "Create a full book audiobook workflow with TTS audio artifacts",
