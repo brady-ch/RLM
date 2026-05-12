@@ -1059,13 +1059,23 @@ export class InteractiveExecutionSession {
         "Use delete_subtree for root deletes.",
       );
     }
+    const parent = this.nodes.get(node.parentId);
+    if (!parent) {
+      throw new MutationError(
+        "unknown_node",
+        `Parent "${node.parentId}" is missing for rewiring.`,
+        [nodeId, node.parentId],
+        undefined,
+        "Refresh the graph or choose a different delete strategy.",
+      );
+    }
     for (const dependentId of dependentIds) {
       const dependent = this.nodes.get(dependentId);
       if (!dependent) {
         continue;
       }
       dependent.parentId = node.parentId;
-      dependent.depth = Math.max(0, node.depth);
+      this.updateDepthsFrom(dependent.id, parent.depth + 1);
       this.edges.push({ from: node.parentId, to: dependent.id });
     }
     this.nodes.delete(nodeId);
