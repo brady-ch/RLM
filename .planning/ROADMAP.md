@@ -19,7 +19,7 @@
 - [x] **Phase 8.5: Typed Artifact + Stateful Workflow Runtime** — Add typed artifact contracts and guarded external run-state continuity for long-running, model-chained node workflows. (completed 2026-05-11)
 - [ ] **Phase 9: Chat-First Graph UX and Clarification Stops** — Replace single-shot prompt submission with conversational graph authoring and add explicit human-clarification pause semantics.
 - [x] **Phase 10: Cross-Platform Executable Packaging and Install UX** — Ship single-executable distribution plus global-install path with zero-doc first-run behavior across macOS/Linux/Windows. (completed 2026-05-12)
-- [ ] **Phase 11: Node-Embedded Chat and Intuitive Graph Editing UX** — Make node-local chat authoring the default editing path with intuitive spawn/delete/drag interactions.
+- [ ] **Phase 11: Node-Embedded Chat and Intuitive Graph Editing UX** — Ship a ComfyUI-style typed node composer with bounded recursive planning, dataflow ports, artifact refs, and direct graph editing.
 
 ---
 
@@ -104,17 +104,18 @@
 **Plans:** 2/2 plans complete
 
 ### Phase 11: Node-Embedded Chat and Intuitive Graph Editing UX
-**Goal:** As a workflow author, I want chat input directly inside nodes and direct graph controls (spawn/delete/drag), so that I can author and refine recursive workflows quickly without context switching.
+**Goal:** As a workflow author, I want a ComfyUI-style typed node composer with direct graph controls, bounded recursive planning, artifact-aware dataflow ports, and code-only node support surfaced in the UI, so that I can build modular long-running workflows such as full-book audiobook generation without context overflow.
 **Mode:** mvp
 **Depends on:** Phase 10
 **Requirements:** UXND-01, UXND-02, UXND-03, UXND-04
 **Success Criteria** (what must be TRUE):
-1. Each editable node exposes embedded chat input and mutation preview/apply controls in-node.
-2. UI provides explicit spawn-child and delete controls with safe dependency validation and clear error recovery.
-3. Node dragging and layout interactions are intuitive and stable during authoring and paused execution states.
-4. Recursive runtime can expand to N downstream nodes as needed, with UI remaining responsive and legible.
-5. New-user usability check passes: install, launch, spawn/edit/delete/drag, confirm run, and observe recursive expansion.
-**Plans:** TBD
+1. Each editable node exposes a typed composer: node type, runtime/model selector, prompt or code configuration, typed input/output ports, artifact schema summary, complexity rating, and plan budget.
+2. Plan mode creates editable pending child nodes, labels decomposition complexity, and never starts execution until the user explicitly approves.
+3. UI provides explicit plan/spawn, break down, delete, drag, and connect-port controls with safe dependency validation and clear error recovery.
+4. Recursive planning expansion is constrained by visible depth/node budgets; budget exhaustion pauses expansion and requires explicit approval to extend.
+5. UI supports large artifact workflows by passing artifact refs/metadata through graph state while storing large payloads (audio, book chunks) on disk or external storage.
+6. New-user usability check passes: install, launch, enter a root node prompt, generate an editable plan graph, break down a high-complexity child, inspect artifact refs, confirm run, and observe recursive expansion.
+**Plans:** 0/1 plans complete
 
 ---
 
@@ -170,4 +171,4 @@
 | 8.5 Typed Artifact + Stateful Workflow Runtime | 2/2 | Complete | 2026-05-11 |
 | 9. Chat-First Graph UX and Clarification Stops | 0/? | Not started | — |
 | 10. Cross-Platform Executable Packaging and Install UX | 2/2 | Complete    | 2026-05-12 |
-| 11. Node-Embedded Chat and Intuitive Graph Editing UX | 0/? | Not started | — |
+| 11. Node-Embedded Chat and Intuitive Graph Editing UX | 0/1 | Planned | — |

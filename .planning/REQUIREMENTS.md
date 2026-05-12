@@ -119,9 +119,9 @@
 ### Graph editing UX
 
 - [ ] **UXND-01**: UI supports direct node dragging and graph layout manipulation for planned/executing workflows.
-- [ ] **UXND-02**: Each node includes embedded chat input for node-local authoring/refinement workflows.
-- [ ] **UXND-03**: UI provides explicit controls to spawn a connected child node from any editable node and delete a node/subtree with safe validation.
-- [ ] **UXND-04**: Recursive runtime can expand to N downstream nodes as determined by recursive planning logic without fixed node-count caps in normal operation.
+- [ ] **UXND-02**: Each node exposes a typed node composer for node-local authoring/refinement: prompt or code configuration, runtime/model selection, typed input/output ports, complexity signal, and visible plan budget.
+- [ ] **UXND-03**: UI provides explicit controls to plan/spawn connected child nodes, break down high-complexity nodes, and delete a node/subtree with safe validation.
+- [ ] **UXND-04**: Recursive runtime can expand to N downstream nodes as determined by recursive planning logic, constrained by visible per-run/per-node planning budgets and explicit approval to extend limits.
 
 ### Traceability (v1.1)
 
@@ -147,4 +147,4 @@
 
 ---
 *Requirements defined: 2026-05-08 (v1); 2026-05-09 (v1.1)*
-*Last updated: 2026-05-11 — added distribution and node-embedded UX MVP requirements*
+*Last updated: 2026-05-12 — refined node-embedded UX toward typed dataflow composer and bounded recursive planning*

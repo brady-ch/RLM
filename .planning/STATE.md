@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Interop, chat-first, plugins, constrained tools
-status: ready_to_plan
-last_updated: "2026-05-12T02:31:50.028Z"
-last_activity: 2026-05-12 -- Phase 10 execution started
+status: planned
+last_updated: "2026-05-12T00:00:00.000Z"
+last_activity: 2026-05-12 -- Phase 11 typed dataflow composer plan drafted
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 12
+  total_plans: 13
   completed_plans: 10
-  percent: 86
+  percent: 77
 ---
 
 # Project State
@@ -27,7 +27,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-09)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.
-**Current focus:** Phase 10 — cross-platform-executable-packaging-and-install-ux
+**Current focus:** Phase 11 — node-embedded-chat-and-intuitive-graph-editing-ux
 
 ## Artifacts
 
@@ -46,6 +46,6 @@ See: .planning/PROJECT.md (updated 2026-05-09)
 ## Current Position
 
 Phase: 11
-Plan: Not started
-Status: Ready to plan
+Plan: 11-01 drafted
+Status: Ready to implement after review
 Last activity: 2026-05-12
