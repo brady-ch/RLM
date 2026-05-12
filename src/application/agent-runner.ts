@@ -71,7 +71,6 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
           tier: selection.tier,
           estimatedRamMb: selection.estimatedRamMb,
           source: selection.source,
-          evaluatorModel: selection.evaluatorModel,
           hostId: selection.hostId,
           hostKind: selection.hostKind,
           hostEndpoint: selection.hostEndpoint,

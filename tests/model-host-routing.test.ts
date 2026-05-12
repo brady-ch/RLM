@@ -30,9 +30,8 @@ function buildProject(): ProjectConfig {
     models: {
       default: "model-a",
       tiers: {
-        small: { name: "model-a", estimatedRamMb: 1024, alternateModels: [] },
+        small: { name: "model-a", estimatedRamMb: 1024 },
       },
-      rotation: { enabled: false, sampleRate: 0, scorePath: "x.yaml" },
     },
     memory: {
       maxRamMb: "auto",

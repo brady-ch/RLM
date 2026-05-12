@@ -267,8 +267,7 @@ export interface ModelSelectionTrace {
   model: string;
   tier: string;
   estimatedRamMb: number;
-  source?: "configured" | "rotation" | undefined;
-  evaluatorModel?: string | undefined;
+  source?: "configured" | undefined;
   hostId?: string | undefined;
   hostKind?: "ollama" | "http" | undefined;
   hostEndpoint?: string | undefined;

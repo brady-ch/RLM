@@ -38,7 +38,7 @@ flowchart LR
 2. **Single-agent** mode: one agent profile is selected (auto-routed from the prompt or overridden with `--agent`).
 3. **Workflow** mode (`--workflow <id>`): [`src/application/workflow-runner.ts`](src/application/workflow-runner.ts) runs the configured agent list (and optional QA) under RAM-aware dispatch.
 4. [`RecursiveLanguageModel`](src/domain/recursive-language-model.ts) drives the recursive loop and passes a **purpose** into the model port for each completion.
-5. [`PurposeRoutingLanguageModel`](src/application/model-provider.ts) picks the actual Ollama model name from the agent’s YAML `models` map and project `models.tiers`. Optional **rotation** can sample alternates and record scores (see `models.rotation` in YAML).
+5. [`PurposeRoutingLanguageModel`](src/application/model-provider.ts) picks the actual Ollama model name from the agent’s YAML `models` map and project `models.tiers`.
 
 ### Model call budget (important)
 
@@ -90,8 +90,7 @@ High-level sections (validated by [`src/application/project-config.ts`](src/appl
 | Section | Purpose |
 |---------|---------|
 | `models.default` | Fallback model name string. |
-| `models.tiers` | Named tiers (`small`, `medium`, …): each has `name` (Ollama tag), `estimatedRamMb`, optional `alternateModels` for rotation. |
-| `models.rotation` | Optional A/B-style rotation: `enabled`, `sampleRate`, `scorePath`, optional `evaluatorTier`. |
+| `models.tiers` | Named tiers (`small`, `medium`, …): each has `name` (Ollama tag) and `estimatedRamMb`. |
 | `agents.<id>.models` | Maps each **purpose** to a tier name or `dynamic` (tier scales with estimated recursion depth). |
 | `agents.<id>.tools` | Tool ids wired in the CLI (`shell`, `write_file`, `web_search`, `web_fetch`). Unknown names fail at startup. |
 | `workflows.<id>` | `mode: ram_queue`, `agents: [...]`, `continueOnError`, optional `qa` (agent + `validationCommands` + `bugfixQueue`), optional `dispatch` with `strategy: complexity_tiers` to vary agents by estimated prompt depth. |
