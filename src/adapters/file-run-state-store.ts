@@ -190,6 +190,35 @@ function applyPathMutation(state: PersistedRunState, path: string, action: "set"
   if (!root) {
     throw new Error("Mutation path root is required.");
   }
+  if (root === "nodeStatuses" && tail.length === 1) {
+    const nodeId = tail[0];
+    if (!nodeId) {
+      throw new Error("Node status mutation requires a node id.");
+    }
+    const index = state.nodeStatuses.findIndex((item) => item.nodeId === nodeId);
+    if (action === "delete") {
+      if (index >= 0) {
+        state.nodeStatuses.splice(index, 1);
+      }
+      return;
+    }
+    if (!value || typeof value !== "object") {
+      throw new Error("Node status mutation requires an object value.");
+    }
+    const record = value as { nodeId?: unknown; status?: unknown; updatedAt?: unknown };
+    const next = {
+      nodeId,
+      status: String(record.status ?? ""),
+      updatedAt: String(record.updatedAt ?? new Date().toISOString()),
+    };
+    if (index >= 0) {
+      state.nodeStatuses[index] = next;
+    } else {
+      state.nodeStatuses.push(next);
+    }
+    return;
+  }
+
   const target = (state as unknown as Record<string, unknown>)[root];
   if (tail.length === 0) {
     if (action === "delete") {

@@ -80,6 +80,13 @@ export class InteractiveExecutionSession {
   private pendingMutation: { id: string; mutation: PendingMutation; proposal: ChatMutationProposal } | undefined;
   private mutationVersion = 0;
   private pendingClarification: ClarificationQuestion | undefined;
+  private pendingClarificationWaiter:
+    | {
+      questionId: string;
+      resolve: (answer: string) => void;
+      reject: (error: Error) => void;
+    }
+    | undefined;
   private clarificationHistory: ClarificationRecord[] = [];
   private abortSnapshot:
     | {
@@ -105,6 +112,8 @@ export class InteractiveExecutionSession {
     waitForNodeApproval: (node) => this.waitForNodeApprovalInternal(node),
     pauseFutureAutoApprovals: () => this.pauseFutureAutoApprovals(),
     autoApprovalPaused: () => this.autoApprovalPaused(),
+    requestClarification: (input) => this.requestClarification(input),
+    getClarificationHistory: () => [...this.clarificationHistory],
   };
 
   snapshot(): {
@@ -646,6 +655,17 @@ export class InteractiveExecutionSession {
     return question;
   }
 
+  requestClarification(input: { nodeId: string; promptText: string }): Promise<string> {
+    const question = this.raiseClarificationCheckpoint(input);
+    return new Promise((resolve, reject) => {
+      this.pendingClarificationWaiter = {
+        questionId: question.questionId,
+        resolve,
+        reject,
+      };
+    });
+  }
+
   answerClarificationAndContinue(input: { questionId: string; userAnswer: string }): ClarificationRecord {
     const pending = this.pendingClarification;
     if (!pending || pending.questionId !== input.questionId) {
@@ -663,6 +683,10 @@ export class InteractiveExecutionSession {
     });
     this.clarificationHistory.push(record);
     this.pendingClarification = undefined;
+    if (this.pendingClarificationWaiter?.questionId === pending.questionId) {
+      this.pendingClarificationWaiter.resolve(normalizedAnswer);
+      this.pendingClarificationWaiter = undefined;
+    }
     this.updateNodeStatus(pending.nodeId, "approved", {
       message: "clarification answered; resuming",
     });
@@ -688,12 +712,20 @@ export class InteractiveExecutionSession {
       },
       pendingQuestion: pending,
     };
+    if (this.pendingClarificationWaiter?.questionId === pending.questionId) {
+      this.pendingClarificationWaiter.reject(new Error("aborted at clarification checkpoint"));
+      this.pendingClarificationWaiter = undefined;
+    }
     this.stop("aborted at clarification checkpoint");
   }
 
   stop(reason = "stopped by user"): void {
     this.cancellation.cancel(reason);
     if (this.pendingClarification) {
+      if (this.pendingClarificationWaiter) {
+        this.pendingClarificationWaiter.reject(new Error(reason));
+        this.pendingClarificationWaiter = undefined;
+      }
       const blockingNode = this.nodes.get(this.pendingClarification.nodeId);
       if (blockingNode) {
         blockingNode.status = "cancelled";

@@ -1,4 +1,5 @@
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
+import type { RunStateStorePort } from "../ports/run-state-store-port.js";
 import type { ExecutionFailureCategory } from "./execution-failure.js";
 
 export interface RecursiveModelConfig {
@@ -15,11 +16,19 @@ export interface RecursivePromptRequest {
   config: RecursiveModelConfig;
   logger?: RuntimeLogger | undefined;
   execution?: ExecutionControl | undefined;
+  runState?: RuntimeRunState | undefined;
   agent?: {
     id: string;
     source: "auto" | "override";
     systemPrompt: string;
   };
+}
+
+export interface RuntimeRunState {
+  runId: string;
+  store: RunStateStorePort;
+  actor: string;
+  capabilityToken: string;
 }
 
 export interface RecursivePromptResult {
@@ -260,6 +269,8 @@ export interface ExecutionControl {
   waitForNodeApproval?: ((node: ExecutionGraphNode) => Promise<NodeApprovalDecision>) | undefined;
   pauseFutureAutoApprovals?: (() => void) | undefined;
   autoApprovalPaused?: (() => boolean) | undefined;
+  requestClarification?: ((input: { nodeId: string; promptText: string }) => Promise<string>) | undefined;
+  getClarificationHistory?: (() => ClarificationRecord[]) | undefined;
 }
 
 export interface NodeApprovalDecision {

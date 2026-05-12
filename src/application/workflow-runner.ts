@@ -19,6 +19,7 @@ import type { ModelRuntimeSelection } from "./model-provider.js";
 import { MemoryManager } from "./memory-manager.js";
 import { estimatePromptDepth, runConfiguredAgent } from "./agent-runner.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
+import type { RuntimeRunState } from "../domain/types.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -36,6 +37,7 @@ export interface RunWorkflowInput {
   runValidationCommand?: ((command: string) => Promise<ValidationCommandResult>) | undefined;
   logger?: RuntimeLogger | undefined;
   execution?: ExecutionControl | undefined;
+  runState?: RuntimeRunState | undefined;
 }
 
 export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePromptResult> {
@@ -113,6 +115,7 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
         createModel: input.createModel,
         logger: input.logger,
         execution: input.execution,
+        runState: input.runState,
       });
     }),
   );
@@ -191,6 +194,7 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
         createModel: input.createModel,
         logger: input.logger,
         execution: input.execution,
+        runState: input.runState,
       });
     } catch (error: unknown) {
       qaRejected = true;

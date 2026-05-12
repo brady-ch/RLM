@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { OllamaLanguageModelAdapter } from "./adapters/ollama-language-model.js";
 import { HttpLanguageModelAdapter } from "./adapters/http-language-model.js";
+import { FileRunStateStore } from "./adapters/file-run-state-store.js";
 import { runConfiguredAgent } from "./application/agent-runner.js";
 import { createAgentRegistry, selectAgent } from "./application/agent-registry.js";
 import { ExtensionHost } from "./application/extension-host.js";
@@ -13,6 +14,7 @@ import {
   McpSkillRuntime,
 } from "./application/mcp-skill-runtime.js";
 import { MemoryManager } from "./application/memory-manager.js";
+import { createMcpTools, createSkillTool } from "./application/interop-runtime.js";
 import { applyModelOverride, loadProjectConfig, resolveRuntimeConfig, seedProjectRlmStarter } from "./application/project-config.js";
 import { ResourceCleanup } from "./application/resource-cleanup.js";
 import { runWorkflow } from "./application/workflow-runner.js";
@@ -125,6 +127,7 @@ async function main(): Promise<void> {
   });
   const extensionHost = new ExtensionHost();
   const runtimeEventsStore = new InMemoryEventStore();
+  const runId = `run-${Date.now()}`;
   const runtimeEvents = new McpSkillRuntime(
     projectConfig.interop ?? {
       mcp: { servers: [] },
@@ -135,7 +138,7 @@ async function main(): Promise<void> {
         pathPolicies: [],
       },
     },
-    `run-${Date.now()}`,
+    runId,
     new CentralAtomicSequenceAllocator(),
     new CompositeEventSink([
       new EventStoreSink(runtimeEventsStore),
@@ -168,13 +171,26 @@ async function main(): Promise<void> {
 
     await extensionHost.loadExternal(configuredExtensions, extensionOptions);
   }
+  const interopTools = [
+    createSkillTool(runtimeEvents),
+    ...await createMcpTools(projectConfig.interop?.mcp.servers ?? [], runtimeEvents, (child) => {
+      cleanup.track({
+        close: async () => {
+          child.kill();
+        },
+      });
+    }),
+  ];
+  for (const tool of interopTools) {
+    extensionHost.tools.register(tool);
+  }
   const toolsFor = (agentId: string) => {
     const agentConfig = projectConfig.agents[agentId];
     if (!agentConfig) {
       throw new Error(`Missing configuration for agent "${agentId}".`);
     }
 
-    return agentConfig.tools.map((toolName) => {
+    const configuredTools = agentConfig.tools.map((toolName) => {
       const tool = extensionHost.tools.get(toolName);
       if (!tool) {
         throw new Error(`Agent "${agentId}" references unknown tool "${toolName}".`);
@@ -182,6 +198,11 @@ async function main(): Promise<void> {
 
       return tool;
     });
+    const configuredNames = new Set(configuredTools.map((tool) => tool.name));
+    return [
+      ...configuredTools,
+      ...interopTools.filter((tool) => !configuredNames.has(tool.name)),
+    ];
   };
   logger?.log({
     stage: "interop",
@@ -192,6 +213,15 @@ async function main(): Promise<void> {
       skillCache: runtimeEvents.isSkillCacheEnabled(),
     },
   });
+  const runStateStore = new FileRunStateStore({
+    baseDir: join(process.cwd(), ".planning", "runs"),
+  });
+  const runState = {
+    runId,
+    store: runStateStore,
+    actor: "runtime",
+    capabilityToken: `${runId}:runtime`,
+  };
   const registry = createAgentRegistry({
     defaultTools: toolsFor("default"),
     researchTools: toolsFor("research"),
@@ -245,6 +275,7 @@ async function main(): Promise<void> {
       createModel,
       logger,
       execution,
+      runState,
     } as const;
     let result = options.workflow
       ? await runWorkflow({
@@ -263,6 +294,7 @@ async function main(): Promise<void> {
         createModel: runInputBase.createModel,
         logger: runInputBase.logger,
         execution,
+        runState,
       });
     if (options.requireApproval && !options.planOnly) {
       if (!options.approve) {
@@ -279,6 +311,7 @@ async function main(): Promise<void> {
           workflowId: options.workflow,
           hostId: options.host,
           execution: executeControl,
+          runState,
         })
         : await runConfiguredAgent({
           prompt: runInputBase.prompt,
@@ -291,6 +324,7 @@ async function main(): Promise<void> {
           createModel: runInputBase.createModel,
           logger: runInputBase.logger,
           execution: executeControl,
+          runState,
         });
     }
     if (loadedConfig.path) {

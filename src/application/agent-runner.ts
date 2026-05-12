@@ -10,6 +10,7 @@ import type { ModelRuntimeSelection } from "./model-provider.js";
 import { selectedAgentMetadata } from "./agent-registry.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 import type { ExecutionControl } from "../domain/types.js";
+import type { RuntimeRunState } from "../domain/types.js";
 import { resolveRuntimeHostSelection } from "./project-config.js";
 
 export interface RunConfiguredAgentInput {
@@ -25,6 +26,7 @@ export interface RunConfiguredAgentInput {
   createModel: (model: string, runtime: ModelRuntimeSelection) => LanguageModelPort;
   logger?: RuntimeLogger | undefined;
   execution?: ExecutionControl | undefined;
+  runState?: RuntimeRunState | undefined;
 }
 
 export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promise<RecursivePromptResult> {
@@ -87,6 +89,7 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
       agent: selectedAgentMetadata(input.agent, input.agentSource),
       logger: input.logger,
       execution: input.execution,
+      runState: input.runState,
     });
 
     result.metadata.configPath = input.configPath;

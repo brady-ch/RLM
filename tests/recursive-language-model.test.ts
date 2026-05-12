@@ -29,6 +29,7 @@ import { startControlServer } from "../src/application/control-server.js";
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
 import type { RuntimeLogEvent, RuntimeLogger } from "../src/ports/runtime-logger-port.js";
+import { FileRunStateStore } from "../src/adapters/file-run-state-store.js";
 
 type QueueResponse = string | LanguageModelResponse;
 
@@ -601,6 +602,64 @@ test("clarification abort persists pending question snapshot", () => {
   assert.equal(snapshot.status, "cancelled");
   assert.equal(snapshot.chat.abortSnapshot?.pendingQuestion.questionId, question.questionId);
   assert.equal(snapshot.chat.abortSnapshot?.pendingQuestion.promptText, "Need environment details?");
+});
+
+test("runtime model clarification request blocks until answered and records history", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel([
+    "CLARIFY: Which deployment environment should I target?",
+    "Use staging.",
+  ]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  const session = createInteractiveExecutionSession();
+  const run = engine.run({
+    prompt: "Deploy the service",
+    config: { ...config, maxDepth: 0 },
+    execution: session.control,
+  });
+
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.approveNode("task-1");
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  const pending = session.snapshot().chat.pendingClarification;
+  assert.equal(pending?.promptText, "Which deployment environment should I target?");
+  session.answerClarificationAndContinue({
+    questionId: pending?.questionId ?? "",
+    userAnswer: "Use staging credentials.",
+  });
+
+  const result = await run;
+  assert.equal(result.answer, "Use staging.");
+  assert.equal(result.metadata.clarificationHistory?.length, 1);
+  assert.equal(result.metadata.clarificationHistory?.[0]?.user_answer, "Use staging credentials.");
+});
+
+test("recursive execution persists node status updates into run-state store", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-runtime-state-"));
+  try {
+    const trace = new InMemoryTrace();
+    const store = new FileRunStateStore({ baseDir: dir, now: () => "2026-05-11T00:00:00.000Z" });
+    const engine = new RecursiveLanguageModel(new QueueModel(["direct answer"]), trace);
+
+    const result = await engine.run({
+      prompt: "Answer directly",
+      config: { ...config, maxDepth: 0 },
+      runState: {
+        runId: "run-1",
+        store,
+        actor: "runtime",
+        capabilityToken: "tok-runtime",
+      },
+    });
+
+    assert.equal(result.answer, "direct answer");
+    const snapshot = await store.getSnapshot("run-1");
+    assert.equal(snapshot?.metadata["prompt"], "Answer directly");
+    assert.ok(snapshot?.nodeStatuses.some((item) => item.nodeId === "task-1" && item.status === "completed"));
+    assert.ok(snapshot?.mutationLog.some((item) => item.path === "nodeStatuses.task-1" && item.accepted));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("interactive delete_subtree removes target and descendants", () => {
