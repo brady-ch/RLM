@@ -67,6 +67,7 @@ export class InteractiveExecutionSession {
   private readonly pending = new Map<string, PendingApproval>();
   private readonly resolvedApprovalTokens = new Set<string>();
   private readonly statusWaiters = new Map<string, Array<(node: ExecutionGraphNode) => void>>();
+  private readonly statusWaitAbortHandlers = new Map<string, Set<(reason: string) => void>>();
   private readonly subscribers = new Set<(event: ExecutionEvent) => void>();
   private readonly cancellation = new CancellationController();
   private approvalMode: ApprovalMode = "full";
@@ -207,10 +208,37 @@ export class InteractiveExecutionSession {
       return Promise.resolve(existing);
     }
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      if (this.cancellation.isCancelled()) {
+        reject(new Error(this.cancellation.cancelReason() ?? "Session stopped."));
+        return;
+      }
+
+      const abort = (rejectReason: string) => {
+        const bucket = this.statusWaitAbortHandlers.get(nodeId);
+        if (bucket) {
+          bucket.delete(abort);
+          if (bucket.size === 0) {
+            this.statusWaitAbortHandlers.delete(nodeId);
+          }
+        }
+        reject(new Error(rejectReason));
+      };
+
+      const bucket = this.statusWaitAbortHandlers.get(nodeId) ?? new Set<(reason: string) => void>();
+      bucket.add(abort);
+      this.statusWaitAbortHandlers.set(nodeId, bucket);
+
       const waiters = this.statusWaiters.get(nodeId) ?? [];
       waiters.push((node) => {
         if (node.status === status) {
+          const b = this.statusWaitAbortHandlers.get(nodeId);
+          if (b) {
+            b.delete(abort);
+            if (b.size === 0) {
+              this.statusWaitAbortHandlers.delete(nodeId);
+            }
+          }
           resolve(node);
         }
       });
@@ -447,9 +475,9 @@ export class InteractiveExecutionSession {
     }
     const deleted = this.collectDescendants(nodeId);
     for (const id of deleted) {
+      this.clearStatusWaitsForNode(id, `Node "${id}" was removed from the graph.`);
       this.nodes.delete(id);
       this.pending.delete(id);
-      this.statusWaiters.delete(id);
     }
     for (let i = this.edges.length - 1; i >= 0; i -= 1) {
       const edge = this.edges[i];
@@ -721,6 +749,8 @@ export class InteractiveExecutionSession {
 
   stop(reason = "stopped by user"): void {
     this.cancellation.cancel(reason);
+    const haltReason = this.cancellation.cancelReason() ?? reason;
+    this.rejectAllStatusWaits(haltReason);
     if (this.pendingClarification) {
       if (this.pendingClarificationWaiter) {
         this.pendingClarificationWaiter.reject(new Error(reason));
@@ -1082,9 +1112,9 @@ export class InteractiveExecutionSession {
       this.updateDepthsFrom(dependent.id, parent.depth + 1);
       this.edges.push({ from: node.parentId, to: dependent.id });
     }
+    this.clearStatusWaitsForNode(nodeId, `Node "${nodeId}" was removed from the graph.`);
     this.nodes.delete(nodeId);
     this.pending.delete(nodeId);
-    this.statusWaiters.delete(nodeId);
     for (let i = this.edges.length - 1; i >= 0; i -= 1) {
       const edge = this.edges[i];
       if (!edge) {
@@ -1107,6 +1137,26 @@ export class InteractiveExecutionSession {
       }
     }
     this.publish({ type: "execution", status: "ready", nodeId, message: "subtree scheduled for reevaluation" });
+  }
+
+  private clearStatusWaitsForNode(nodeId: string, reason: string): void {
+    const bucket = this.statusWaitAbortHandlers.get(nodeId);
+    if (bucket) {
+      for (const abort of [...bucket]) {
+        abort(reason);
+      }
+    }
+    this.statusWaitAbortHandlers.delete(nodeId);
+    this.statusWaiters.delete(nodeId);
+  }
+
+  private rejectAllStatusWaits(reason: string): void {
+    const aborts = [...this.statusWaitAbortHandlers.values()].flatMap((set) => [...set]);
+    this.statusWaitAbortHandlers.clear();
+    this.statusWaiters.clear();
+    for (const abort of aborts) {
+      abort(reason);
+    }
   }
 
   private notifyStatusWaiters(node: ExecutionGraphNode): void {
