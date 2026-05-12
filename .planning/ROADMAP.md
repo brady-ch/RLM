@@ -18,7 +18,7 @@
 - [ ] **Phase 8: Model Host Extensibility and Constrained Tool Calling** — Make local/remote model endpoints configurable and tool rounds schema-constrained per host.
 - [x] **Phase 8.5: Typed Artifact + Stateful Workflow Runtime** — Add typed artifact contracts and guarded external run-state continuity for long-running, model-chained node workflows. (completed 2026-05-11)
 - [ ] **Phase 9: Chat-First Graph UX and Clarification Stops** — Replace single-shot prompt submission with conversational graph authoring and add explicit human-clarification pause semantics.
-- [ ] **Phase 10: Cross-Platform Executable Packaging and Install UX** — Ship single-executable distribution plus global-install path with zero-doc first-run behavior across macOS/Linux/Windows.
+- [x] **Phase 10: Cross-Platform Executable Packaging and Install UX** — Ship single-executable distribution plus global-install path with zero-doc first-run behavior across macOS/Linux/Windows. (completed 2026-05-12)
 - [ ] **Phase 11: Node-Embedded Chat and Intuitive Graph Editing UX** — Make node-local chat authoring the default editing path with intuitive spawn/delete/drag interactions.
 
 ---
@@ -101,7 +101,7 @@
 3. First-run path requires one command to launch UI session with actionable defaults (no required manual config edits).
 4. Installer/runtime messaging clearly explains next action (UI URL, prompt expectations, stop/restart).
 5. Packaging verification covers platform-specific startup checks and folder-local operation semantics.
-**Plans:** TBD
+**Plans:** 2/2 plans complete
 
 ### Phase 11: Node-Embedded Chat and Intuitive Graph Editing UX
 **Goal:** As a workflow author, I want chat input directly inside nodes and direct graph controls (spawn/delete/drag), so that I can author and refine recursive workflows quickly without context switching.
@@ -169,5 +169,5 @@
 | 8. Model Host Extensibility and Constrained Tool Calling | 0/? | Not started | — |
 | 8.5 Typed Artifact + Stateful Workflow Runtime | 2/2 | Complete | 2026-05-11 |
 | 9. Chat-First Graph UX and Clarification Stops | 0/? | Not started | — |
-| 10. Cross-Platform Executable Packaging and Install UX | 0/? | Not started | — |
+| 10. Cross-Platform Executable Packaging and Install UX | 2/2 | Complete    | 2026-05-12 |
 | 11. Node-Embedded Chat and Intuitive Graph Editing UX | 0/? | Not started | — |

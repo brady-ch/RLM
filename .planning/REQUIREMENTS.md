@@ -112,9 +112,9 @@
 
 ### Distribution and install UX
 
-- [ ] **DIST-01**: System can be distributed as a single executable artifact for macOS, Linux, and Windows.
-- [ ] **DIST-02**: System supports global install usage (`rlm`) and executes in the caller's current folder context.
-- [ ] **DIST-03**: First-run UX is zero-doc: a new user can install, run one command, open UI, edit graph, and start execution without manual config editing.
+- [x] **DIST-01**: System can be distributed as a single executable artifact for macOS, Linux, and Windows.
+- [x] **DIST-02**: System supports global install usage (`rlm`) and executes in the caller's current folder context.
+- [x] **DIST-03**: First-run UX is zero-doc: a new user can install, run one command, open UI, edit graph, and start execution without manual config editing.
 
 ### Graph editing UX
 
@@ -135,9 +135,9 @@
 | QUES-01 | Phase 9 | Pending |
 | TCON-01 | Phase 8 | Pending |
 | ARTF-01 | Phase 8.5 | Complete |
-| DIST-01 | Phase 10 | Pending |
-| DIST-02 | Phase 10 | Pending |
-| DIST-03 | Phase 10 | Pending |
+| DIST-01 | Phase 10 | Complete |
+| DIST-02 | Phase 10 | Complete |
+| DIST-03 | Phase 10 | Complete |
 | UXND-01 | Phase 11 | Pending |
 | UXND-02 | Phase 11 | Pending |
 | UXND-03 | Phase 11 | Pending |
