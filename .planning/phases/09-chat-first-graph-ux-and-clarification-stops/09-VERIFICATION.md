@@ -1,7 +1,7 @@
 ---
 phase: 09-chat-first-graph-ux-and-clarification-stops
-verified: 2026-05-11T02:43:34Z
-status: human_needed
+verified: 2026-05-11T12:00:00Z
+status: verified
 score: 12/12 must-haves verified
 overrides_applied: 0
 re_verification:
@@ -15,16 +15,22 @@ human_verification:
   - test: "UI conversational graph authoring flow"
     expected: "Chat message -> preview mutation -> apply -> graph updates; run remains disabled until explicit confirm."
     why_human: "End-to-end UX and visible interaction quality require manual UI validation."
+    result: passed
+    signed_off: 2026-05-11T12:00:00Z
+    deferral: "Any follow-up UX issues to a later phase."
   - test: "Runtime clarification stop/resume/abort flow in UI"
     expected: "Run pauses on clarification, shows pending question, answer resumes explicitly, abort preserves visible checkpoint context."
     why_human: "User-facing run behavior/timeline comprehension is not fully assertable via static code checks."
+    result: passed
+    signed_off: 2026-05-11T12:00:00Z
+    deferral: "Any follow-up UX issues to a later phase."
 ---
 
 # Phase 9: Chat-First Graph UX and Clarification Stops Verification Report
 
 **Phase Goal:** As a workflow author, I want to build and refine execution graphs through conversation and receive explicit clarification stops during runs, so that no execution continues silently without my input.
-**Verified:** 2026-05-11T02:43:34Z
-**Status:** human_needed
+**Verified:** 2026-05-11T12:00:00Z
+**Status:** verified
 **Re-verification:** Yes — after gap closure
 
 ## Goal Achievement
@@ -97,25 +103,27 @@ Step 7c: SKIPPED (no phase-declared probes and no `scripts/*/tests/probe-*.sh` f
 
 No blocker debt markers (`TBD`, `FIXME`, `XXX`) found in phase-modified files.
 
-### Human Verification Required
+### Human verification (signed off)
 
 ### 1. UI Conversational Graph Authoring
 
 **Test:** In UI, submit a chat mutation request, inspect preview, apply it, and verify run button state before/after confirm.
 **Expected:** Graph changes only after apply; run remains disabled until explicit confirm; reason text is visible in draft state.
 **Why human:** Requires checking end-user interaction flow and visible behavior coherence.
+**Result:** Passed — author sign-off 2026-05-11. Any remaining UX polish or defects deferred to a later phase.
 
 ### 2. Clarification Stop Lifecycle UX
 
 **Test:** Trigger a clarification-required run path, then test answer-and-continue and abort actions from UI.
 **Expected:** Pending clarification visibly blocks continuation; answer appends Q/A history and resumes; abort preserves visible run context.
 **Why human:** Runtime pause/resume user experience and timeline readability need manual confirmation.
+**Result:** Passed — author sign-off 2026-05-11. Any remaining UX polish or defects deferred to a later phase.
 
 ### Gaps Summary
 
-Prior blocker is closed: the Phase 9 MVP goal now validates as a proper user story. All code must-haves verified from artifacts, wiring, and data-flow checks. Final status remains `human_needed` pending manual UX/user-flow validation.
+Prior blocker is closed: the Phase 9 MVP goal validates as a proper user story. All code must-haves verified from artifacts, wiring, and data-flow checks. Human UAT items are signed off; follow-up issues, if any, are intentionally out of scope for Phase 9 closure and will be handled in an upcoming phase.
 
 ---
 
-_Verified: 2026-05-11T02:43:34Z_  
-_Verifier: the agent (gsd-verifier)_
+_Verified: 2026-05-11T12:00:00Z_  
+_Verifier: the agent (gsd-verifier); human sign-off: author_
