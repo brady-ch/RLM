@@ -1,0 +1,59 @@
+<h2>Book-scale context strategy</h2>
+<p class="subtitle">Keep the full book and audio on disk. Pass small, typed context packets through the graph.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Long-running audiobook workflow without context overflow</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start">
+      <div style="border:1px solid #6e7781;border-radius:8px;background:white;overflow:hidden">
+        <div style="background:#6e7781;color:white;padding:7px 9px;font-size:12px">1. Ingest book</div>
+        <div style="padding:10px;font-size:12px">
+          <div class="label">Disk artifact</div>
+          <div>book.txt / epub</div>
+          <div>manifest.json</div>
+          <div>chapter refs</div>
+        </div>
+      </div>
+
+      <div style="border:1px solid #0969da;border-radius:8px;background:#f0f6ff;overflow:hidden">
+        <div style="background:#0969da;color:white;padding:7px 9px;font-size:12px">2. Chunk planner</div>
+        <div style="padding:10px;font-size:12px">
+          <div class="label">Code-only</div>
+          <div>chapter -> scenes</div>
+          <div>token-safe windows</div>
+          <div>stable ordering keys</div>
+        </div>
+      </div>
+
+      <div style="border:1px solid #8250df;border-radius:8px;background:#fbf8ff;overflow:hidden">
+        <div style="background:#8250df;color:white;padding:7px 9px;font-size:12px">3. AI context packet</div>
+        <div style="padding:10px;font-size:12px">
+          <div class="label">Small prompt input</div>
+          <div>current segment</div>
+          <div>speaker bible</div>
+          <div>local summary</div>
+        </div>
+      </div>
+
+      <div style="border:1px solid #1a7f37;border-radius:8px;background:#dafbe1;overflow:hidden">
+        <div style="background:#1a7f37;color:white;padding:7px 9px;font-size:12px">4. Persist outputs</div>
+        <div style="padding:10px;font-size:12px">
+          <div class="label">Artifact refs</div>
+          <div>segments.json</div>
+          <div>clip-001.wav</div>
+          <div>updated memory</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:18px;border:1px solid #d0d7de;border-radius:8px;background:#f6f8fa;padding:12px">
+      <div class="label">Global run state, not model context</div>
+      <div style="font-size:13px">Speaker bible, chapter summaries, segment manifest, audio refs, validation flags, retry state, and splice order live in the run store. Each node receives only the slice it needs.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Composer implication</h3>
+  <p>Each node should show a Context Policy: what inputs it receives, max token/window size, what memory summaries it can read, and what artifacts it writes back.</p>
+</div>
