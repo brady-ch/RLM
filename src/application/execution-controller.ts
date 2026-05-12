@@ -832,10 +832,14 @@ export class InteractiveExecutionSession {
       this.updateNodeStatus(input.id, "awaiting_approval", {
         message: "blocked by unresolved clarification checkpoint",
       });
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         const poll = () => {
+          if (this.cancellation.isCancelled()) {
+            reject(new Error(this.cancellation.cancelReason() ?? "Run was cancelled."));
+            return;
+          }
           if (!this.pendingClarification) {
-            void this.waitForNodeApprovalInternal(input).then(resolve);
+            void this.waitForNodeApprovalInternal(input).then(resolve, reject);
             return;
           }
           setTimeout(poll, 25);
