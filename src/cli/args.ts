@@ -32,6 +32,9 @@ const DEFAULT_CONFIG: RecursiveModelConfig = {
   maxToolRounds: 3,
 };
 
+const DEFAULT_UI_BOOTSTRAP_PROMPT =
+  "Create a concise two-step checklist for testing recursive prompting in this workspace.";
+
 export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env): CliOptions {
   const [commandCandidate, ...rest] = argv;
   if (!commandCandidate || commandCandidate === "help" || commandCandidate === "--help" || commandCandidate === "-h") {
@@ -207,9 +210,15 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     promptParts.push(arg);
   }
 
-  const prompt = promptParts.join(" ").trim();
-  if (!prompt) {
-    throw new Error("Missing prompt. Example: npm run dev -- ask \"Explain recursive prompting\"");
+  const promptInput = promptParts.join(" ").trim();
+  let prompt = promptInput;
+  if (!promptInput) {
+    if (command === "ui") {
+      prompt = DEFAULT_UI_BOOTSTRAP_PROMPT;
+    }
+    else {
+      throw new Error("Missing prompt. Example: npm run dev -- ask \"Explain recursive prompting\"");
+    }
   }
 
   const options: CliOptions = {
@@ -286,6 +295,12 @@ export function helpText(): string {
     "  --approval-mode <mode> Approval behavior: full | initial-plan | initial-plan-recursive",
     "  --approve              Auto-approve a require-approval run (non-interactive)",
     "  --ui-port <n>          Port for local React Flow UI. Default: available port",
+    "",
+    "Environment:",
+    '  RLM_UI_DIST=<dir>         Override packaged UI asset directory.',
+    '  RLM_NON_INTERACTIVE=1     Skip the interactive launcher; defaults to UI mode.',
+    "  RLM_LAUNCH_MODE=cli       Pair with RLM_NON_INTERACTIVE=1 to force CLI mode without a prompt.",
+    '  Working directory is treated as the project root for ./rlm.config.yaml and ./.rlm/',
   ].join("\n");
 }
 

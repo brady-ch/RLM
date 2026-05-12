@@ -23,7 +23,6 @@ import { createAgentRegistry, selectAgent } from "../src/application/agent-regis
 import { loadProjectConfig, resolveRuntimeConfig } from "../src/application/project-config.js";
 import { MemoryManager } from "../src/application/memory-manager.js";
 import { PurposeRoutingLanguageModel, selectDynamicTier } from "../src/application/model-provider.js";
-import { createYamlModelScoreStore } from "../src/application/model-score-store.js";
 import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
 import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
 import { startControlServer } from "../src/application/control-server.js";
@@ -1864,7 +1863,7 @@ test("purpose routing occasionally selects use-case alternates and records yaml 
           rotation: {
             enabled: true,
             sampleRate: 1,
-            scorePath: "rlm.model-scores.yaml",
+            scorePath: join(workspace, "rlm.model-scores.yaml"),
           },
           tiers: {
             small: {
@@ -1916,7 +1915,6 @@ test("purpose routing occasionally selects use-case alternates and records yaml 
         createdModels.set(name, created);
         return created;
       },
-      scoreStore: createYamlModelScoreStore(workspace, "rlm.model-scores.yaml"),
       random: () => 0,
       recordSelection: (selection) => selections.push(`${selection.purpose}:${selection.model}:${selection.source}:${selection.evaluatorModel ?? ""}`),
     });

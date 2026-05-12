@@ -1,0 +1,51 @@
+name: package-smoke
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Packaging smoke (npm run package:build)
+        run: npm run package:build
+
+      - name: List dist/release (POSIX)
+        if: runner.os != 'Windows'
+        run: |
+          ls -la dist/release/*/ || true
+          find dist/release -maxdepth 3 -type f | head
+
+      - name: List dist/release (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Depth 4 dist/release
+
+      - name: Upload staged release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dist-${{ runner.os }}
+          path: dist/release
+          retention-days: 7

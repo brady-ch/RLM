@@ -12,8 +12,10 @@ import type {
   ProjectConfig,
   RuntimeHostSelection,
 } from "./project-config.js";
-import { resolveHostConfig, resolveModelTier } from "./project-config.js";
-import type { ModelScoreStore } from "./model-score-store.js";
+import { resolveModelTier } from "./project-config.js";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, resolve as resolvePath } from "node:path";
+import { parse as parseYamlDocument, stringify as stringifyYamlDocument } from "yaml";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 
 export interface ModelProviderOptions {
@@ -26,7 +28,6 @@ export interface ModelProviderOptions {
     availableHostIds: string[];
   }) => Promise<{ action: "retry" | "switch" | "abort"; hostId?: string }>) | undefined;
   recordSelection?: (selection: ModelSelectionRecord) => void;
-  scoreStore?: ModelScoreStore | undefined;
   random?: (() => number) | undefined;
   logger?: RuntimeLogger | undefined;
 }
@@ -121,7 +122,7 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       kind: selection.hostKind,
       endpoint: selection.hostEndpoint,
     };
-    if (selection.source === "rotation") {
+    if (selection.source === "rotation" && selection.evaluatorModel) {
       try {
         await this.rateRotatedResponse(selection, messages, response, completeOptions);
       } catch {
@@ -139,24 +140,83 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       ? selectDynamicTier(complexityDepth)
       : configuredSelection ?? "small";
     const tier = resolveModelTier(this.options.config, tierName);
-    const evaluatorModel = this.selectEvaluatorModel();
-    const rotatedModel = purpose && this.shouldRotate()
-      ? await this.selectRotatedModel(tierName, tier, purpose)
+
+    const rotateThis = Boolean(purpose && this.shouldRotate());
+    const rotatedCandidate = purpose && rotateThis
+      ? pickAlternateCandidate(tier, purpose, this.options.random)
       : undefined;
+    const evaluatorModelName = rotatedCandidate ? this.pickEvaluatorModel() : undefined;
+    const useRotation = Boolean(rotatedCandidate && evaluatorModelName);
 
     const runtime = await this.resolveRuntimeSelection();
 
     return {
       purpose: normalizedPurpose,
-      model: rotatedModel?.name ?? tier.name,
+      model: useRotation && rotatedCandidate ? rotatedCandidate.name : tier.name,
       tier: tierName,
       estimatedRamMb: tier.estimatedRamMb,
-      source: rotatedModel ? "rotation" : "configured",
-      evaluatorModel: rotatedModel ? evaluatorModel : undefined,
+      source: useRotation ? "rotation" : "configured",
+      evaluatorModel: useRotation ? evaluatorModelName : undefined,
       hostId: runtime.hostId,
       hostKind: runtime.hostKind,
       hostEndpoint: runtime.baseUrl,
     };
+  }
+
+  private shouldRotate(): boolean {
+    const rotation = this.options.config.models.rotation;
+    if (!rotation.enabled || !(rotation.sampleRate > 0)) {
+      return false;
+    }
+
+    const roll = this.options.random?.() ?? Math.random();
+    return roll < rotation.sampleRate;
+  }
+
+  private pickEvaluatorModel(): string | undefined {
+    const tiers = this.options.config.models.tiers;
+    const rotation = this.options.config.models.rotation;
+    const explicitTier = rotation.evaluatorTier?.trim();
+    const tierKey = explicitTier && explicitTier.length > 0 ? explicitTier : "large";
+
+    try {
+      if (!Object.hasOwn(tiers, tierKey)) {
+        return undefined;
+      }
+
+      return resolveModelTier(this.options.config, tierKey).name;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async rateRotatedResponse(
+    selection: ModelSelectionRecord,
+    messages: LanguageModelMessage[],
+    response: LanguageModelResponse,
+    _completeOptions: LanguageModelCompleteOptions,
+  ): Promise<void> {
+    const evaluatorModel = selection.evaluatorModel!;
+    const guideline = [
+      "Rate how well the model answer satisfies the preceding user/developer messages.",
+      "Reply only with:",
+      "score: <number from 1-5>",
+      "reason: <short explanation>",
+      "",
+      "Conversation:",
+      formatMessagesForRating(messages),
+      "",
+      "Assistant response:",
+      response.content ?? "",
+    ].join("\n");
+    const ratingResponse = await this.getModel(evaluatorModel, {
+      hostId: selection.hostId,
+      hostKind: selection.hostKind,
+      baseUrl: selection.hostEndpoint,
+      allowUnconstrainedToolCalls: false,
+    }).complete([{ role: "user", content: guideline }], {});
+    const parsed = parseRating(ratingResponse.content ?? "");
+    await persistModelScore(this.options.config.models.rotation.scorePath, selection.model, parsed);
   }
 
   private getModel(model: string, runtime?: ModelRuntimeSelection): LanguageModelPort {
@@ -219,107 +279,6 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       allowUnconstrainedToolCalls: host.allowUnconstrainedToolCalls ?? false,
     };
   }
-
-  private shouldRotate(): boolean {
-    const rotation = this.options.config.models.rotation;
-    if (!rotation.enabled || !this.options.scoreStore || rotation.sampleRate <= 0) {
-      return false;
-    }
-
-    return (this.options.random ?? Math.random)() < rotation.sampleRate;
-  }
-
-  private async selectRotatedModel(
-    tierName: string,
-    tier: ModelTierConfig,
-    purpose: LanguageModelPurpose,
-  ): Promise<ModelCandidateConfig | undefined> {
-    const candidates = (tier.alternateModels ?? []).filter((candidate) => candidate.useCases.includes(purpose));
-    if (candidates.length === 0) {
-      return undefined;
-    }
-
-    let best: { candidate: ModelCandidateConfig; score: number } | undefined;
-    for (const candidate of candidates) {
-      const score = await this.options.scoreStore?.getAverageScore(candidate.name, tierName, purpose) ?? 0;
-      if (!best || score > best.score) {
-        best = {
-          candidate,
-          score,
-        };
-      }
-    }
-
-    return best?.candidate;
-  }
-
-  private selectEvaluatorModel(): string {
-    const tiers = this.options.config.models.tiers;
-    const preferredTier = this.options.config.models.rotation.evaluatorTier
-      ? tiers[this.options.config.models.rotation.evaluatorTier]
-      : undefined;
-    if (preferredTier) {
-      return preferredTier.name;
-    }
-
-    return Object.values(tiers)
-      .sort((left, right) => right.estimatedRamMb - left.estimatedRamMb)[0]?.name ?? this.options.config.models.default;
-  }
-
-  private async rateRotatedResponse(
-    selection: ModelSelectionRecord,
-    messages: LanguageModelMessage[],
-    response: LanguageModelResponse,
-    completeOptions: LanguageModelCompleteOptions,
-  ): Promise<void> {
-    if (!this.options.scoreStore || !selection.evaluatorModel) {
-      return;
-    }
-
-    const ratingOptions: LanguageModelCompleteOptions = {};
-    if (completeOptions.purpose) {
-      ratingOptions.purpose = completeOptions.purpose;
-    }
-    if (completeOptions.complexityDepth !== undefined) {
-      ratingOptions.complexityDepth = completeOptions.complexityDepth;
-    }
-
-    const ratingRuntime: ModelRuntimeSelection = {
-      hostId: selection.hostId,
-      hostKind: selection.hostKind,
-      baseUrl: selection.hostEndpoint,
-      allowUnconstrainedToolCalls: false,
-    };
-    const ratingResponse = await this.getModel(selection.evaluatorModel, ratingRuntime).complete([
-      {
-        role: "system",
-        content:
-          "Rate the model output for the requested use case. Respond only as YAML with keys score and reason. " +
-          "score must be a number from 1 to 5, where 5 is excellent.",
-      },
-      {
-        role: "user",
-        content: [
-          `Use case: ${selection.purpose}`,
-          "Prompt messages:",
-          formatMessagesForRating(messages),
-          "",
-          "Model output:",
-          response.content,
-        ].join("\n"),
-      },
-    ], ratingOptions);
-    const rating = parseRating(ratingResponse.content);
-
-    await this.options.scoreStore.recordRating({
-      model: selection.model,
-      purpose: selection.purpose,
-      tier: selection.tier,
-      score: rating.score,
-      evaluatorModel: selection.evaluatorModel,
-      reason: rating.reason,
-    });
-  }
 }
 
 export function estimateAgentRamMb(config: ProjectConfig, agent: AgentConfig, complexityDepth: number): number {
@@ -360,4 +319,57 @@ export function selectDynamicTier(complexityDepth: number): string {
   }
 
   return "small";
+}
+
+function resolveScorePath(scorePath: string): string {
+  return isAbsolute(scorePath) ? scorePath : resolvePath(process.cwd(), scorePath);
+}
+
+function pickAlternateCandidate(
+  tier: ModelTierConfig,
+  purpose: LanguageModelPurpose,
+  random?: (() => number) | undefined,
+): ModelCandidateConfig | undefined {
+  const scoped = (tier.alternateModels ?? []).filter((candidate) => candidate.useCases.includes(purpose));
+  if (scoped.length === 0) {
+    return undefined;
+  }
+
+  if (scoped.length === 1) {
+    const only = scoped[0];
+    if (!only) {
+      return undefined;
+    }
+
+    return only;
+  }
+
+  const roll = random?.() ?? Math.random();
+  const index = Math.min(scoped.length - 1, Math.floor(roll * scoped.length));
+  const chosen = scoped[index];
+
+  return chosen;
+}
+
+async function persistModelScore(scorePath: string, modelId: string, parsed: { score: number; reason: string }): Promise<void> {
+  const target = resolveScorePath(scorePath);
+  type ScoreDoc = Record<string, { averageScore: number; reason?: string }>;
+  let doc: ScoreDoc = {};
+
+  try {
+    const parsedYaml = parseYamlDocument(await readFile(target, "utf8")) as unknown;
+    if (parsedYaml && typeof parsedYaml === "object" && parsedYaml !== null && !Array.isArray(parsedYaml)) {
+      doc = parsedYaml as ScoreDoc;
+    }
+  } catch {
+    doc = {};
+  }
+
+  doc[modelId] = {
+    averageScore: parsed.score,
+    reason: parsed.reason,
+  };
+
+  await mkdir(dirname(target), { recursive: true });
+  await writeFile(target, stringifyYamlDocument(doc));
 }

@@ -13,7 +13,7 @@ import {
   McpSkillRuntime,
 } from "./application/mcp-skill-runtime.js";
 import { MemoryManager } from "./application/memory-manager.js";
-import { applyModelOverride, loadProjectConfig, resolveRuntimeConfig } from "./application/project-config.js";
+import { applyModelOverride, loadProjectConfig, resolveRuntimeConfig, seedProjectRlmStarter } from "./application/project-config.js";
 import { ResourceCleanup } from "./application/resource-cleanup.js";
 import { runWorkflow } from "./application/workflow-runner.js";
 import * as guardedShellExtension from "./extensions/tools/guarded-shell.extension.js";
@@ -23,6 +23,14 @@ import * as workspaceFileWriteExtension from "./extensions/tools/workspace-file-
 import { CancellationController, createExecutionControl, createInteractiveExecutionSession } from "./application/execution-controller.js";
 import { startControlServer } from "./application/control-server.js";
 import { helpText, parseArgs } from "./cli/args.js";
+import {
+  formatLaunchModeBanner,
+  injectLaunchArgv,
+  promptLaunchChoice,
+  resolveLaunchMode,
+  shouldSkipLaunchWizard,
+} from "./cli/first-run.js";
+import { resolveUiDistDir } from "./cli/ui-dist-dir.js";
 import { renderResult } from "./cli/render.js";
 import { createStderrRuntimeLogger } from "./cli/runtime-logger.js";
 import { installShutdownHandlers } from "./cli/shutdown.js";
@@ -30,15 +38,55 @@ import type { LanguageModelPort } from "./ports/language-model-port.js";
 import type { ModelRuntimeSelection } from "./application/model-provider.js";
 import type { ExecutionEvent, RecursivePromptResult } from "./domain/types.js";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { constants } from "node:fs";
+import { access } from "node:fs/promises";
+
+async function readablePath(pathLike: string): Promise<boolean> {
+  try {
+    await access(pathLike, constants.R_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function main(): Promise<void> {
-  const options = parseArgs(process.argv.slice(2));
+  let cliArgv = process.argv.slice(2);
+  const ttyCombined = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+
+  if (!shouldSkipLaunchWizard(cliArgv)) {
+    const preliminary = resolveLaunchMode(process.env, ttyCombined);
+    if (preliminary.shouldPrompt) {
+      process.stderr.write(formatLaunchModeBanner());
+      const answer = await promptLaunchChoice();
+      const settled = resolveLaunchMode(process.env, ttyCombined, answer);
+      cliArgv = injectLaunchArgv(cliArgv, settled.mode);
+    }
+    else {
+      cliArgv = injectLaunchArgv(cliArgv, preliminary.mode);
+    }
+  }
+
+  const options = parseArgs(cliArgv);
   if (options.command === "help") {
     console.log(helpText());
     return;
   }
 
-  const loadedConfig = await loadProjectConfig(options.configPath);
+  let loadedConfig = await loadProjectConfig(options.configPath);
+  const legacyMonoConfig = resolve(process.cwd(), "rlm.config.yaml");
+  if (
+    options.command === "ui"
+    && options.configPath === undefined
+    && process.env.RLM_SKIP_STARTER_SEED !== "1"
+    && !(await readablePath(legacyMonoConfig))
+  ) {
+    const seeded = await seedProjectRlmStarter(process.cwd());
+    if (seeded) {
+      loadedConfig = await loadProjectConfig(options.configPath);
+    }
+  }
   const projectConfig = applyModelOverride(loadedConfig.config, options.modelOverride);
   const runtimeConfig = resolveRuntimeConfig(projectConfig, options.configOverrides);
   const logger = options.verbose ? createStderrRuntimeLogger() : undefined;
@@ -171,7 +219,7 @@ async function main(): Promise<void> {
   try {
     if (options.command === "ui") {
       const session = createInteractiveExecutionSession();
-      const uiDistDir = join(process.cwd(), "ui", "dist");
+      const uiDistDir = resolveUiDistDir(fileURLToPath(import.meta.url), process.env);
       const server = await startControlServer({
         session,
         port: options.uiPort,
