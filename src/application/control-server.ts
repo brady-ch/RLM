@@ -1,7 +1,7 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { extname, join, normalize } from "node:path";
+import { extname, join, normalize, relative, resolve, sep } from "node:path";
 import type { AddressInfo } from "node:net";
 import type { InteractiveExecutionSession } from "./execution-controller.js";
 import type { ApprovalMode, DeleteStrategy } from "../domain/types.js";
@@ -271,9 +271,21 @@ async function serveUiAsset(request: IncomingMessage, response: ServerResponse, 
   }
 
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
-  const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
-  const normalized = normalize(requestedPath).replace(/^(\.\.[/\\])+/, "");
-  const filePath = join(uiDistDir, normalized);
+  const root = resolve(uiDistDir);
+  const relativeFromUrl =
+    url.pathname === "/" || url.pathname === "" ? "index.html" : url.pathname.replace(/^\/+/u, "");
+  const normalizedRel = normalize(relativeFromUrl).replace(/^(\.\.[/\\])+/u, "");
+  const filePath = resolve(root, normalizedRel);
+  const underDist = relative(root, filePath);
+  if (
+    underDist.startsWith(`..${sep}`)
+    || underDist === ".."
+    || underDist.split(sep).includes("..")
+  ) {
+    response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+    response.end("Forbidden");
+    return;
+  }
   try {
     const info = await stat(filePath);
     if (!info.isFile()) {
