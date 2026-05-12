@@ -181,6 +181,9 @@ function App() {
 
   const refresh = useCallback(async () => {
     const response = await fetch("/api/session");
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
     setSnapshot(await response.json() as SessionSnapshot);
   }, []);
 
@@ -241,6 +244,7 @@ function App() {
           <span className="meta-pill">{approvalModeLabel(snapshot.approvalMode)}</span>
           <button
             className="icon"
+            aria-label="Confirm graph and run"
             onClick={() => runAction(setErrorMessage, () => post("/api/chat/confirm-run", {}), refresh)}
           >
             Confirm graph and run
@@ -248,6 +252,7 @@ function App() {
           <button
             className="icon"
             title="Pause future auto-approvals"
+            aria-label="Pause future auto-approvals"
             onClick={() => runAction(setErrorMessage, () => post("/api/pause-future-auto-approvals", {}), refresh)}
           >
             Pause future auto
@@ -255,9 +260,10 @@ function App() {
           <button
             className="icon danger"
             title="Stop run"
+            aria-label="Stop run"
             onClick={() => runAction(setErrorMessage, () => post("/api/stop", { reason: "stopped from UI" }), refresh)}
           >
-            <Square size={16} />
+            <Square size={16} aria-hidden />
           </button>
         </header>
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
