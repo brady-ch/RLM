@@ -18,6 +18,7 @@ Recursive local-first CLI for prompt decomposition and multi-agent orchestration
 - `src/cli/`: arg parsing, renderers, runtime logging, shutdown handling.
 - `src/ports/`: interfaces for model/tool/tracing/runtime boundaries.
 - `src/adapters/`: concrete LM and tooling adapters.
+- `ui/`: ReactFlow browser UI for typed node workflow authoring.
 - `tests/`: integration-style and behavior tests.
 
 ## Prerequisites
@@ -71,13 +72,14 @@ Main sections:
 - `agents`: per-agent tools and per-purpose model tier/selection.
 - `workflows`: ordered agent pipelines, optional dispatch tiers, QA validation config.
 
-See [CONFIGURATION](docs/CONFIGURATION.md) and [ARCHITECTURE](docs/ARCHITECTURE.md).
+See [CONFIGURATION](docs/CONFIGURATION.md), [ARCHITECTURE](docs/ARCHITECTURE.md), and [UI](docs/UI.md).
 
 ## Development
 
 ```bash
 npm run typecheck
 npm test
+npm run build:ui
 ```
 
 ## Current Project Planning Context

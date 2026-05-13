@@ -25,6 +25,7 @@ Current `npm test` script runs:
 ```bash
 npm run typecheck
 npm run build
+npm run build:ui
 ```
 
 ## When Adding Features
@@ -32,3 +33,15 @@ npm run build
 - Add tests under `tests/` for new runtime paths.
 - Validate both success and constrained/failure paths.
 - Ensure generated JS tests continue to execute under Node test runner.
+
+## UI Coverage
+
+`tests/recursive-language-model.test.ts` includes control-plane coverage for the UI-facing graph model:
+
+- `ui` command parsing and `--ui-port`
+- typed root composer seeding
+- node-local planning without automatic execution
+- budget exhaustion and explicit extension
+- graph layout, viewport, and typed edge handles
+- dependent-node delete strategy handling
+- approval mode label consistency between CLI/API/UI

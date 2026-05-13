@@ -11,7 +11,9 @@
 
 ```bash
 npm run dev -- ask "summarize src/application"
+npm run dev:ui
 npm run build
+npm run build:ui
 npm run typecheck
 npm test
 ```
@@ -23,7 +25,17 @@ npm test
 - `src/domain/`: recursive core.
 - `src/ports/`: interfaces.
 - `src/adapters/`: implementations.
+- `ui/`: Vite/React browser UI for the graph composer.
 - `tests/`: behavior tests compiled and run from `dist/tests`.
+
+## UI Development
+
+- `ui/src/main.tsx` owns the ReactFlow graph UI and inspector interactions.
+- `ui/src/styles.css` owns hand-authored design tokens, spacing, color, and typography.
+- `src/application/control-server.ts` exposes the browser API.
+- `src/application/execution-controller.ts` is the authoritative graph/session state owner.
+
+Run `npm run build:ui` after UI changes.
 
 ## Extending Tools
 
@@ -40,4 +52,5 @@ npm test
 
 - Preserve deterministic CLI behavior (`src/cli/args.ts`, `src/cli/render.ts`).
 - Keep recursion constraints explicit and test-covered.
+- Keep UI copy, spacing, typography, and control labels aligned with `docs/UI.md` and the Phase 11 UI contract.
 - Avoid hidden side effects in workflow execution paths.

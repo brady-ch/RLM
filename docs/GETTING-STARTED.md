@@ -37,6 +37,13 @@ npx rlm "Plan a feature implementation" --workflow default --verbose
 npm test
 ```
 
+## 7. Build And Launch UI
+
+```bash
+npm run build:ui
+npx rlm ui "Plan a workflow"
+```
+
 ## Common Options
 
 - `--agent <id>` to force a specific agent.
@@ -44,3 +51,4 @@ npm test
 - `--trace` to include recursion trace output.
 - `--config <path>` to use a non-default config file.
 - `--plan-only` or `--require-approval` for gated execution flows.
+- `--ui-port <n>` to choose the local UI control-server port.

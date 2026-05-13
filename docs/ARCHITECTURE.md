@@ -7,7 +7,8 @@
 2. Runtime constructs model adapters, extension host, tool registry, memory manager, and execution controls.
 3. Single-agent path runs `runConfiguredAgent` in `src/application/agent-runner.ts`.
 4. Workflow path runs `runWorkflow` in `src/application/workflow-runner.ts`.
-5. Recursive execution core is `src/domain/recursive-language-model.ts`.
+5. UI path starts a local control server and serves the ReactFlow graph composer.
+6. Recursive execution core is `src/domain/recursive-language-model.ts`.
 
 ## Layering
 
@@ -16,6 +17,7 @@
 - Domain policy: recursion and types under `src/domain/*`.
 - Ports: interfaces in `src/ports/*`.
 - Adapters: implementations in `src/adapters/*` and extension tool modules.
+- UI: React client in `ui/src/main.tsx`, styles in `ui/src/styles.css`, Vite config in `ui/vite.config.ts`.
 
 ## Agent + Model Routing
 
@@ -40,6 +42,13 @@
 - Execution events can stream on stdout (`--json-stream`).
 - Runtime logs go to stderr when verbose mode is enabled.
 - Trace output is optional (`--trace`) and rendered by `src/cli/render.ts`.
+
+## UI Control Plane
+
+- `src/application/control-server.ts` serves `/api/session`, `/api/events`, graph mutation endpoints, node planning endpoints, and static UI assets.
+- `src/application/execution-controller.ts` owns the session graph, typed composer nodes, plan budgets, graph layout, viewport state, and approval/readiness state.
+- `ui/src/main.tsx` renders the graph with `@xyflow/react`, persists layout/viewport changes, and exposes node-local planning, breakdown, budget extension, approvals, and artifact/context inspection.
+- See [UI](UI.md) for the browser composer contract.
 
 ## Key Constraints
 
