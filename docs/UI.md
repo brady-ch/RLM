@@ -16,6 +16,14 @@ Use `--ui-port <n>` to choose a specific control-server port:
 npx rlm ui "Plan a workflow" --ui-port 4545
 ```
 
+In development, run the Vite UI directly with:
+
+```bash
+npm run dev:ui
+```
+
+The packaged CLI serves built assets from the UI dist directory. `RLM_UI_DIST` can override that directory when testing packaged builds or alternate asset locations.
+
 ## Runtime Shape
 
 The CLI starts the control server from `src/application/control-server.ts` when the parsed command is `ui`. Static assets are resolved by `src/cli/ui-dist-dir.ts`, and the browser client is implemented in `ui/src/main.tsx`.
@@ -23,15 +31,33 @@ The CLI starts the control server from `src/application/control-server.ts` when 
 The UI talks to the control server through endpoints such as:
 
 - `GET /api/session`
+- `GET /api/run-mode`
+- `GET /api/graph`
 - `GET /api/events`
 - `POST /api/chat/confirm-run`
 - `POST /api/chat/message`
 - `POST /api/chat/apply`
+- `POST /api/chat/cancel`
+- `POST /api/nodes/add`
+- `POST /api/nodes/:id/edit`
+- `POST /api/nodes/:id/model`
 - `POST /api/nodes/:id/plan`
 - `POST /api/nodes/:id/breakdown`
 - `POST /api/nodes/:id/extend-budget`
+- `POST /api/nodes/:id/approve`
+- `POST /api/nodes/:id/skip`
+- `POST /api/nodes/:id/connect`
+- `POST /api/nodes/:id/delete`
 - `POST /api/graph/layout`
 - `POST /api/graph/viewport`
+- `POST /api/clarifications/ask`
+- `POST /api/clarifications/answer`
+- `POST /api/clarifications/abort`
+- `POST /api/approval-mode`
+- `POST /api/pause-future-auto-approvals`
+- `POST /api/stop`
+
+`GET /api/events` is the server-sent event stream. UI mutations return fresh session snapshots so the client can reconcile graph state after every edit.
 
 ## Composer Model
 
@@ -56,6 +82,8 @@ Each composer node can expose:
 - plan depth/node budget
 - approval state and model routing metadata
 
+Node cards are intentionally dense. The graph is the operational surface, while the inspector carries longer prompt text, artifact details, context policy, and execution controls.
+
 ## Planning Behavior
 
 Node-local planning is explicit and approval-gated:
@@ -67,6 +95,14 @@ Node-local planning is explicit and approval-gated:
 5. `Extend budget` is enabled only when the backend marks the plan budget exhausted.
 
 The control session stores graph layout and viewport state so node positions and zoom can survive refreshes for the same session.
+
+Approval mode labels must remain consistent across CLI output, API responses, and UI controls:
+
+- `full`: every approval checkpoint waits.
+- `initial-plan`: first plan approval can unlock later automatic approvals.
+- `initial-plan-recursive`: recursive initial planning is gated before automatic continuation.
+
+Users can pause future auto-approvals after a run starts. Finished, cancelled, or failed sessions reject new pause requests.
 
 ## Large Artifacts
 
@@ -117,4 +153,10 @@ Build validation:
 
 ```bash
 npm run build:ui
+```
+
+For changes that touch the control server or execution session, also run:
+
+```bash
+npm test
 ```

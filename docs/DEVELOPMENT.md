@@ -18,6 +18,8 @@ npm run typecheck
 npm test
 ```
 
+`npm run dev` runs the TypeScript source with `tsx`. `npm run build` emits the CLI to `dist/`, while `npm run build:ui` emits browser assets through Vite.
+
 ## Code Organization
 
 - `src/index.ts`: process bootstrap and runtime wiring.
@@ -37,6 +39,12 @@ npm test
 
 Run `npm run build:ui` after UI changes.
 
+When changing UI behavior, check both sides of the contract:
+
+- frontend state transitions and copy in `ui/src/main.tsx`
+- API payloads and error handling in `src/application/control-server.ts`
+- graph mutation, approval, and readiness behavior in `src/application/execution-controller.ts`
+
 ## Extending Tools
 
 1. Implement the relevant port/interface for your tool.
@@ -54,3 +62,4 @@ Run `npm run build:ui` after UI changes.
 - Keep recursion constraints explicit and test-covered.
 - Keep UI copy, spacing, typography, and control labels aligned with `docs/UI.md` and the Phase 11 UI contract.
 - Avoid hidden side effects in workflow execution paths.
+- Keep public documentation in sync when adding CLI flags, config keys, API endpoints, or UI controls.

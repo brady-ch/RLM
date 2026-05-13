@@ -19,6 +19,12 @@ npm run build
 npx rlm help
 ```
 
+This confirms the compiled binary is available through the package `bin` entry. During development, the same CLI can be run directly with:
+
+```bash
+npm run dev -- "Explain the orchestration flow in this repository"
+```
+
 ## 4. Run a Prompt
 
 ```bash
@@ -30,6 +36,8 @@ npx rlm "Explain the orchestration flow in this repository"
 ```bash
 npx rlm "Plan a feature implementation" --workflow default --verbose
 ```
+
+Workflow mode dispatches through the agents configured in `rlm.config.yaml`. The default workflow uses research, product design, coding, and QA validation stages depending on estimated complexity.
 
 ## 6. Run Tests
 
@@ -44,11 +52,34 @@ npm run build:ui
 npx rlm ui "Plan a workflow"
 ```
 
+The CLI prints the local browser URL. Use `--ui-port <n>` when you need a stable port:
+
+```bash
+npx rlm ui "Plan a workflow" --ui-port 4545
+```
+
+If no prompt is provided to `rlm ui`, the CLI seeds a default checklist prompt for the session.
+
+## Approval-Gated Runs
+
+Use approval flags when you want to inspect or control planned execution:
+
+```bash
+npx rlm "Plan a release checklist" --plan-only
+npx rlm "Plan a release checklist" --require-approval
+npx rlm "Plan a release checklist" --approval-mode initial-plan
+```
+
+`--approve` can be paired with approval mode for non-interactive environments that still need the approval code path.
+
 ## Common Options
 
 - `--agent <id>` to force a specific agent.
+- `--workflow <id>` to run a configured workflow.
 - `--json` for machine-readable output.
+- `--json-stream` to stream execution events.
 - `--trace` to include recursion trace output.
 - `--config <path>` to use a non-default config file.
+- `--host <id>` or `--base-url <url>` to choose the model host.
 - `--plan-only` or `--require-approval` for gated execution flows.
 - `--ui-port <n>` to choose the local UI control-server port.

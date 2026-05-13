@@ -48,7 +48,16 @@ npx rlm ask "List runtime risks" --agent qa --json
 
 # workflow run
 npx rlm "Plan a small feature" --workflow default --verbose
+
+# browser graph composer
+npx rlm ui "Plan a small feature" --ui-port 4545
 ```
+
+RLM has three command modes:
+
+- `rlm "prompt"` or `rlm ask "prompt"` runs a single prompt through the recursive engine.
+- `rlm "prompt" --workflow <id>` runs a configured multi-agent workflow.
+- `rlm ui "prompt"` starts the local browser composer backed by the same execution graph and approval controls.
 
 ## Core CLI Flags
 
@@ -56,9 +65,17 @@ npx rlm "Plan a small feature" --workflow default --verbose
 - `--workflow <id>`: execute workflow configuration.
 - `--config <path>`: use alternate `rlm.config.yaml`.
 - `--model <name>`: override default model.
+- `--host <id>` and `--base-url <url>`: select the model host or Ollama-compatible endpoint.
 - `--max-depth`, `--branches`, `--max-model-calls`, `--max-tool-rounds`: runtime budget controls.
 - `--plan-only`, `--require-approval`, `--approval-mode`, `--approve`: approval-gated execution controls.
+- `--ui-port <n>`: choose the local browser UI port.
 - `--json`, `--json-stream`, `--compact`, `--trace`, `--verbose`: output and observability options.
+
+Approval modes:
+
+- `full`: every approval checkpoint waits for an explicit decision.
+- `initial-plan`: approve the initial plan, then auto-approve later checkpoints unless paused.
+- `initial-plan-recursive`: approve the initial recursive plan before later automatic execution.
 
 ## Configuration
 
@@ -77,6 +94,7 @@ See [CONFIGURATION](docs/CONFIGURATION.md), [ARCHITECTURE](docs/ARCHITECTURE.md)
 ## Development
 
 ```bash
+npm run build
 npm run typecheck
 npm test
 npm run build:ui

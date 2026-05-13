@@ -23,6 +23,8 @@ Validation and defaults are implemented in `src/application/project-config.ts`.
 - `name`: concrete model identifier.
 - `estimatedRamMb`: memory estimate used by scheduling logic.
 
+Agents can reference either a named tier or a direct model value. Tier references keep workflow scheduling and model routing aligned because the memory manager can use the tier estimate.
+
 ## Runtime
 
 Supported runtime keys:
@@ -52,6 +54,8 @@ Each `agents.<id>` requires:
 
 Model selection values are tier names or direct model values accepted by runtime selection logic.
 
+The configured purpose map lets inexpensive models handle routing/classification work while reserving larger models for answer or synthesis calls when needed.
+
 ## Workflows
 
 Each `workflows.<id>` requires:
@@ -72,9 +76,19 @@ Optional:
 - `OLLAMA_HOST`: default base URL for Ollama host usage.
 - `RLM_VERBOSE`: enables verbose stderr logging (`1` or `true`).
 - `RLM_HOST`: runtime host selector override used by CLI parsing.
+- `RLM_UI_DIST`: override packaged UI asset directory.
+- `RLM_NON_INTERACTIVE`: when set to `1`, skips the interactive launcher and defaults to UI mode.
+- `RLM_LAUNCH_MODE`: pair `cli` with `RLM_NON_INTERACTIVE=1` to force CLI mode without a prompt.
 
 ## Config Resolution Order
 
 1. Built-in defaults (`DEFAULT_PROJECT_CONFIG`).
 2. File config (`rlm.config.yaml` or `--config`).
 3. CLI overrides (`--model`, runtime limit flags, and host selection flags).
+
+For host selection, the CLI help describes this precedence:
+
+1. `RLM_HOST`
+2. `--host`
+3. YAML `runtimeHost`
+4. first configured host

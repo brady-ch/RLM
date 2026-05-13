@@ -10,6 +10,8 @@
 5. UI path starts a local control server and serves the ReactFlow graph composer.
 6. Recursive execution core is `src/domain/recursive-language-model.ts`.
 
+The CLI, workflow runner, and browser UI all converge on the same domain execution model. The UI does not own execution semantics; it edits and observes the graph through `InteractiveExecutionSession`.
+
 ## Layering
 
 - CLI layer: `src/cli/*` and `src/index.ts`.
@@ -31,6 +33,8 @@
 - QA stage can run configured validation commands and prioritize bugfix queue items.
 - Memory admission control is enforced by `src/application/memory-manager.ts`.
 
+Each agent run enforces its own recursive budget. Workflow-level behavior coordinates agent order, admission, QA, validation commands, and aggregate metadata rather than replacing the recursive engine.
+
 ## Interop and Extensions
 
 - Built-in tools are loaded via `ExtensionHost` and extension registrations.
@@ -42,6 +46,7 @@
 - Execution events can stream on stdout (`--json-stream`).
 - Runtime logs go to stderr when verbose mode is enabled.
 - Trace output is optional (`--trace`) and rendered by `src/cli/render.ts`.
+- Run-state persistence under `.planning/runs` is designed to avoid silent failure and preserve workflow status across runtime paths.
 
 ## UI Control Plane
 
@@ -49,6 +54,8 @@
 - `src/application/execution-controller.ts` owns the session graph, typed composer nodes, plan budgets, graph layout, viewport state, and approval/readiness state.
 - `ui/src/main.tsx` renders the graph with `@xyflow/react`, persists layout/viewport changes, and exposes node-local planning, breakdown, budget extension, approvals, and artifact/context inspection.
 - See [UI](UI.md) for the browser composer contract.
+
+Control-server state is session-local. Large artifacts are represented in graph nodes by reference metadata rather than embedded into the graph snapshot.
 
 ## Key Constraints
 

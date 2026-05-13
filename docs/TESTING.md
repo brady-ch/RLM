@@ -28,11 +28,20 @@ npm run build
 npm run build:ui
 ```
 
+Use `npm run check` for the standard combined validation path:
+
+```bash
+npm run check
+```
+
 ## When Adding Features
 
 - Add tests under `tests/` for new runtime paths.
 - Validate both success and constrained/failure paths.
 - Ensure generated JS tests continue to execute under Node test runner.
+- For CLI changes, cover argument parsing and rendered output where behavior changes.
+- For workflow changes, cover dispatch, QA, failure handling, and run-state persistence.
+- For UI control-plane changes, cover the API/session behavior in Node tests and run `npm run build:ui`.
 
 ## UI Coverage
 
