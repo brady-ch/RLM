@@ -89,7 +89,7 @@ export class WebSearchTool implements ToolPort {
         };
       }
 
-      const reduced = await filterHtmlWithSed(html, this.sedPath);
+      const reduced = await filterHtmlForSearchResults(html, this.sedPath);
       const results = parseUddgLines(reduced).slice(0, num).map((row, index) => ({
         position: index + 1,
         title: row.title,
@@ -147,6 +147,14 @@ function filterHtmlWithSed(html: string, sedPath: string): Promise<string> {
     child.stdin.write(html, "utf8");
     child.stdin.end();
   });
+}
+
+async function filterHtmlForSearchResults(html: string, sedPath: string): Promise<string> {
+  try {
+    return await filterHtmlWithSed(html, sedPath);
+  } catch {
+    return html;
+  }
 }
 
 interface UddgRow {

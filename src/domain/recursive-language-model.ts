@@ -12,12 +12,12 @@ import type {
   RecursivePromptMetadata,
   RecursivePromptRequest,
   RecursivePromptResult,
-  RuntimeRunState,
   SolvedTask,
   TaskNode,
   ToolCallRecord,
 } from "./types.js";
 import { EXECUTION_FAILURE_CODES } from "./execution-failure.js";
+import { RunStatePersistence } from "./run-state-persistence.js";
 
 const DIRECT = "DIRECT";
 const RECURSIVE = "RECURSIVE";
@@ -31,7 +31,7 @@ export class RecursiveLanguageModel {
   private metadata: RecursivePromptMetadata = createEmptyMetadata();
   private logger: RuntimeLogger | undefined;
   private execution: RecursivePromptRequest["execution"] | undefined;
-  private runState: RuntimeRunState | undefined;
+  private runStatePersistence: RunStatePersistence | undefined;
   private runStateWrites: Array<Promise<void>> = [];
   private initialApprovalBoundaryPassed = false;
   private executionNodes = new Map<string, NonNullable<RecursivePromptMetadata["executionGraph"]>["nodes"][number]>();
@@ -54,7 +54,9 @@ export class RecursiveLanguageModel {
     this.metadata = createEmptyMetadata();
     this.logger = request.logger;
     this.execution = request.execution;
-    this.runState = request.runState;
+    this.runStatePersistence = request.runState
+      ? new RunStatePersistence(request.runState, (event) => this.emitExecution(event))
+      : undefined;
     this.runStateWrites = [];
     this.initialApprovalBoundaryPassed = false;
     if (request.agent) {
@@ -1058,65 +1060,11 @@ export class RecursiveLanguageModel {
   }
 
   private async initializeRunState(prompt: string): Promise<void> {
-    if (!this.runState) {
-      return;
-    }
-    await this.runState.store.createRun(this.runState.runId, {
-      metadata: {
-        prompt,
-        agent: this.metadata.agent.id,
-      },
-    });
-    await this.runState.store.registerCapabilityToken?.(
-      this.runState.runId,
-      this.runState.actor,
-      this.runState.capabilityToken,
-    );
+    await this.runStatePersistence?.initialize(prompt, this.metadata.agent.id);
   }
 
   private async persistNodeStatus(nodeId: string, status: string): Promise<void> {
-    if (!this.runState) {
-      return;
-    }
-    let result: Awaited<ReturnType<RuntimeRunState["store"]["mutate"]>> | undefined;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const snapshot = await this.runState.store.getSnapshot(this.runState.runId);
-      if (!snapshot) {
-        return;
-      }
-      const updatedAt = new Date().toISOString();
-      result = await this.runState.store.mutate(this.runState.runId, {
-        actor: this.runState.actor,
-        capabilityToken: this.runState.capabilityToken,
-        expectedVersion: snapshot.version,
-        action: "set",
-        path: `nodeStatuses.${nodeId}`,
-        value: {
-          nodeId,
-          status,
-          updatedAt,
-        },
-      });
-      if (result.accepted || !result.reason.includes("etag/version conflict")) {
-        break;
-      }
-    }
-    if (!result) {
-      return;
-    }
-    this.emitExecution({
-      type: "execution",
-      status: status === "completed" || status === "failed" || status === "cancelled" || status === "skipped"
-        ? status
-        : "running",
-      nodeId,
-      artifactValidation: {
-        accepted: result.accepted,
-        policy: "strict",
-        reason: result.reason,
-      },
-      message: result.accepted ? "run-state node status persisted" : `run-state node status rejected: ${result.reason}`,
-    });
+    await this.runStatePersistence?.persistNodeStatus(nodeId, status);
   }
 
   private async flushRunStateWrites(): Promise<void> {

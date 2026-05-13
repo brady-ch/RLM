@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-import { OllamaLanguageModelAdapter } from "./adapters/ollama-language-model.js";
-import { HttpLanguageModelAdapter } from "./adapters/http-language-model.js";
 import { FileRunStateStore } from "./adapters/file-run-state-store.js";
 import { runConfiguredAgent } from "./application/agent-runner.js";
 import { createAgentRegistry, selectAgent } from "./application/agent-registry.js";
@@ -17,6 +15,7 @@ import { MemoryManager } from "./application/memory-manager.js";
 import { createMcpTools, createSkillTool } from "./application/interop-runtime.js";
 import { applyModelOverride, loadProjectConfig, resolveRuntimeConfig, seedProjectRlmStarter } from "./application/project-config.js";
 import { ResourceCleanup } from "./application/resource-cleanup.js";
+import { createModelFactory, createToolsResolver, readablePath } from "./application/runtime-composition.js";
 import { runWorkflow } from "./application/workflow-runner.js";
 import * as guardedShellExtension from "./extensions/tools/guarded-shell.extension.js";
 import * as webFetchExtension from "./extensions/tools/web-fetch.extension.js";
@@ -37,21 +36,9 @@ import { renderResult } from "./cli/render.js";
 import { createStderrRuntimeLogger } from "./cli/runtime-logger.js";
 import { installShutdownHandlers } from "./cli/shutdown.js";
 import type { LanguageModelPort } from "./ports/language-model-port.js";
-import type { ModelRuntimeSelection } from "./application/model-provider.js";
 import type { ExecutionEvent, RecursivePromptResult } from "./domain/types.js";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { constants } from "node:fs";
-import { access } from "node:fs/promises";
-
-async function readablePath(pathLike: string): Promise<boolean> {
-  try {
-    await access(pathLike, constants.R_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 async function main(): Promise<void> {
   let cliArgv = process.argv.slice(2);
@@ -184,26 +171,7 @@ async function main(): Promise<void> {
   for (const tool of interopTools) {
     extensionHost.tools.register(tool);
   }
-  const toolsFor = (agentId: string) => {
-    const agentConfig = projectConfig.agents[agentId];
-    if (!agentConfig) {
-      throw new Error(`Missing configuration for agent "${agentId}".`);
-    }
-
-    const configuredTools = agentConfig.tools.map((toolName) => {
-      const tool = extensionHost.tools.get(toolName);
-      if (!tool) {
-        throw new Error(`Agent "${agentId}" references unknown tool "${toolName}".`);
-      }
-
-      return tool;
-    });
-    const configuredNames = new Set(configuredTools.map((tool) => tool.name));
-    return [
-      ...configuredTools,
-      ...interopTools.filter((tool) => !configuredNames.has(tool.name)),
-    ];
-  };
+  const toolsFor = createToolsResolver({ projectConfig, extensionHost, interopTools });
   const runStateStore = new FileRunStateStore({
     baseDir: join(process.cwd(), ".planning", "runs"),
   });
@@ -231,21 +199,11 @@ async function main(): Promise<void> {
     agentConfigs: projectConfig.agents,
   });
   const createdModels = new Map<string, LanguageModelPort>();
-  const createModel = (model: string, runtime: ModelRuntimeSelection) => {
-    const modelKey = `${runtime.hostId}:${model}`;
-    const existing = createdModels.get(modelKey);
-    if (existing) {
-      return existing;
-    }
-
-    const effectiveBaseUrl = options.baseUrl ?? runtime.baseUrl;
-    const created = runtime.hostKind === "http"
-      ? new HttpLanguageModelAdapter({ model, baseUrl: effectiveBaseUrl })
-      : new OllamaLanguageModelAdapter({ model, baseUrl: effectiveBaseUrl });
-    cleanup.track(created);
-    createdModels.set(modelKey, created);
-    return created;
-  };
+  const createModel = createModelFactory({
+    modelCache: createdModels,
+    baseUrlOverride: options.baseUrl,
+    trackCleanup: (model) => cleanup.track(model),
+  });
   try {
     if (options.command === "ui") {
       const session = createInteractiveExecutionSession({ seedRootPrompt: options.prompt });
