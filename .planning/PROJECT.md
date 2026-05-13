@@ -1,20 +1,16 @@
 # Recursive Language Model CLI
 
-## Current Milestone: v1.1 — Interop, chat-first, plugins, constrained tools
+## Current State
 
-**Goal:** Make the product interoperable with common **skills** and **MCP** setups, support **chat-first** graph authoring in the UI, add a **simple plugin/extension** path for skills, tools, and model hosts, treat **local and remote** models as first-class, pause with explicit **user prompts when clarification** is needed, and ship **schema-constrained tool calling** per `.planning/research/TOOL-CALLING-CONSTRAINED-DECODING.md`.
+**Latest shipped milestone:** v1.1 — Interop, chat-first, plugins, constrained tools  
+**Shipped:** 2026-05-13  
+**Status:** Awaiting next milestone
 
-**Target features:**
-- MCP and skill layouts usable alongside other MCP-capable agents (documented parity / import path).
-- Start app → **conversational UI** drives **node graph creation and refinement** (not only single-shot prompt).
-- **Plugin-style extension** for tools, skills, and additional AI server hosts without rewriting core.
-- **Local and remote** model endpoints supported in configuration and routing.
-- **Question stops:** execution halts with a clear prompt when human answers are required; resumes per policy.
-- **Constrained tool calling:** decode-time / schema-enforced tool selection and arguments where the stack allows (Ollama envelope path per research doc), wired through ports and the recursive tool loop.
+v1.1 shipped plugin/extension foundations, MCP and skill interoperability, configurable local/remote model hosts, constrained tool-calling plumbing, typed artifact/run-state continuity, chat-first graph authoring, runtime clarification stops, cross-platform packaging/startup UX, and a typed node-composer UI for recursive workflow authoring.
 
 ## What This Is
 
-A local recursive language model CLI and UI workflow system for developers in this repo. It accepts a prompt, plans a node graph for recursive execution, lets users review and modify that graph at approval checkpoints, and then runs the AI workflow through to completion with visible execution state. It is intended to support model-aware orchestration where different nodes can run on different models, including final-format handoff nodes.
+A local recursive language model CLI and UI workflow system for developers in this repo. It accepts a prompt, plans a typed node graph for recursive execution, lets users review and modify that graph through chat and direct graph controls, and then runs the AI workflow with visible execution state, explicit model routing, artifact/run-state continuity, and hard stops for approvals or clarification.
 
 ## Core Value
 
@@ -28,41 +24,55 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Interactive execution graph and node inspection UI plumbing exist — existing
 - ✓ Config-driven model tier routing and agent/workflow configuration exist — existing
 - ✓ Tool adapters for shell, file write, web search, and web fetch exist — existing
-- ✓ User can submit a prompt and receive a planning node graph before execution — Phase 1
-- ✓ Approval checkpoints are backend-authoritative with explicit stale/duplicate handling — Phase 1
-- ✓ Checkpoint graph mutations (edit/add/delete/connect) are controller-authoritative and in-memory — Phase 2
-- ✓ Mutation validation failures are explicit and structured for UI/CLI handling — Phase 2
-- ✓ Planned/effective model metadata is captured and surfaced per node — Phase 3
-- ✓ Per-node model overrides at checkpoints route execution model selection — Phase 3
-- ✓ Explicit selected-model failures are strict and user-visible (no silent fallback) — Phase 3
-- ✓ Recursive execution can spawn downstream nodes while honoring approval/run-mode policy — Phase 4
-- ✓ Runtime failures are visible across UI/CLI with aligned vocabulary and non-zero CLI exit on failure — Phase 5
+- ✓ User can submit a prompt and receive a planning node graph before execution — v1.0
+- ✓ Approval checkpoints are backend-authoritative with explicit stale/duplicate handling — v1.0
+- ✓ Checkpoint graph mutations (edit/add/delete/connect) are controller-authoritative — v1.0
+- ✓ Mutation validation failures are explicit and structured for UI/CLI handling — v1.0
+- ✓ Planned/effective model metadata is captured and surfaced per node — v1.0
+- ✓ Per-node model overrides at checkpoints route execution model selection — v1.0
+- ✓ Explicit selected-model failures are strict and user-visible — v1.0
+- ✓ Recursive execution can spawn downstream nodes while honoring approval/run-mode policy — v1.0
+- ✓ Runtime failures are visible across UI/CLI with aligned vocabulary and non-zero CLI exit on failure — v1.0
+- ✓ MCP and skill interoperability path is documented and implemented for reference layouts — v1.1
+- ✓ Chat-first UI session can create and refine execution graphs through conversation — v1.1
+- ✓ Extension/plugin path exists for registering tools, skills, and model host adapters — v1.1
+- ✓ Configuration supports local and remote model endpoints with consistent routing semantics — v1.1
+- ✓ Runtime supports explicit clarification prompts and answer-or-abort continuation — v1.1
+- ✓ Tool rounds support constrained tool selection/argument plumbing through the model port and adapters — v1.1
+- ✓ Typed artifact schema and run-state continuity support long-running node workflows — v1.1
+- ✓ First-run UI and global/project config paths support zero-doc startup — v1.1
+- ✓ Typed node composer exposes ports, artifact refs, complexity, and visible planning budgets — v1.1
 
 ### Active
 
-- [ ] MCP and skill interoperability path documented and implemented for at least one reference layout each.
-- [ ] Chat-first UI session can create and refine the execution graph through conversation.
-- [ ] Extension/plugin path exists for registering tools, skills, and model host adapters (reference plugin or loader).
-- [ ] Configuration supports local and remote model endpoints with consistent routing semantics.
-- [ ] Runtime supports explicit clarification prompts: pause, collect user answer, resume without silent continuation.
-- [ ] Tool rounds support constrained decoding for tool choice and arguments per `TOOL-CALLING-CONSTRAINED-DECODING.md`, integrated with `LanguageModelPort` and recursion.
+- [ ] Define the next milestone requirements with `$gsd-new-milestone`.
+
+### Candidate Next-Milestone Themes
+
+- Release hardening: signed/reproducible single executable artifacts and platform release checks.
+- Provider parity: deepen constrained tool-calling enforcement across non-Ollama hosts.
+- Extension hardening: consume extension-registered model host adapters end to end.
+- UI polish: semantic color tokenization, narrow-width toolbar refinement, and screenshot-based regression coverage.
+- Persistence/collaboration: durable graph edit history, interrupted-plan resume, or shared approval sessions if prioritized.
 
 ### Out of Scope
 
-- Persisting manual graph edits/additions/deletions across process restarts (v1 is in-memory only) — deferred to a later phase after approval/edit flow stabilizes.
-- Multi-user collaboration or shared remote approval sessions — not required for repo-local developer v1.
+- Multi-user collaboration or shared remote approval sessions — still not required for repo-local developer workflow unless selected for a future milestone.
+- Silent auto-fallback behavior — conflicts with explicit error visibility requirement.
 
 ## Context
 
-The repository already has a layered architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`) and an existing React UI execution surface in `ui/` that subscribes to runtime execution events. Interactive approval/control infrastructure in `src/application/execution-controller.ts` and `src/application/control-server.ts` is now aligned with v1 expectations for plan-first execution, checkpoint editing, model-aware routing, recursive spawning policy, and explicit failure surfacing. The product target is any developer using this repository locally, with a strong emphasis on transparent model routing between nodes and explicit failure visibility.
+The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`) and a React/Vite UI execution surface in `ui/`. v1.1 expanded the system into an interoperable recursive workflow authoring tool: extension shims now load built-in tools, MCP/skill runtime paths are exposed as executable tools, model host routing and constrained-tool signals flow through the language model port, run-state persistence records guarded mutations, and the UI supports typed dataflow composition with budgeted recursive planning.
+
+Current verification baseline at v1.1 close: `npm test` passed outside sandbox restrictions with 98/98 tests passing.
 
 ## Constraints
 
-- **Tech stack**: Continue using TypeScript/Node + existing React/Vite UI architecture — minimize disruption to current repo boundaries.
-- **Runtime mode**: Keep recursive agent behavior and dynamic node spawning — core product behavior depends on it.
-- **State scope (v1)**: Node edits are in-memory per run — chosen to reduce initial complexity.
-- **Observability**: No silent failures — all errors must be surfaced in CLI/UI states.
-- **Compatibility**: Changes must preserve existing CLI workflows (`--plan-only`, `--require-approval`, workflow execution).
+- **Tech stack:** Continue using TypeScript/Node + existing React/Vite UI architecture.
+- **Runtime mode:** Keep recursive agent behavior and dynamic node spawning.
+- **Observability:** No silent failures — all errors must surface in CLI/UI states.
+- **Compatibility:** Preserve existing CLI workflows (`--plan-only`, `--require-approval`, workflow execution).
+- **Local-first workflow:** Project-local config and repo-local developer use remain the default unless a future milestone explicitly broadens deployment scope.
 
 ## Key Decisions
 
@@ -72,24 +82,22 @@ The repository already has a layered architecture (`src/application`, `src/domai
 | Show planned model directly on each node card | Model choice is a first-class execution concern, including cross-model handoff | Shipped in v1.0 |
 | v1 graph edits remain in-memory | Faster path to stable approval flow; avoids persistence/versioning complexity initially | Shipped in v1.0 |
 | Add override mode: approve initial plan only, then auto-run | Maintains safety at planning boundary while reducing interaction overhead | Shipped in v1.0 |
-| v1.1 focuses on MCP/skill interop, chat-first graph UX, plugin extensibility, local+remote hosts, clarification stops, constrained tool calling | User direction + research doc for decode-time tool envelopes | — Pending |
+| Built-in tools load through first-party extension shims | Keeps core composition aligned with third-party extension contracts | Shipped in v1.1 |
+| MCP and skill lifecycle events share a deterministic event schema | Makes outages, warnings, and recovery auditable across interop mechanisms | Shipped in v1.1 |
+| Clarification stops are answer-or-abort only | Prevents undocumented silent continuation when human input is required | Shipped in v1.1 |
+| Typed artifact refs stay in graph state while large payloads stay external | Keeps long-running workflows inspectable without context overflow | Shipped in v1.1 |
+| Packaging can ship functionally before full signing/reproducibility | Allows zero-doc first-run UX to land while tracking release hardening separately | Revisit |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
-**After each phase transition** (via `$gsd-transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
-
 **After each milestone** (via `$gsd-complete-milestone`):
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
+1. Review product description and core value.
+2. Move shipped requirements to Validated.
+3. Refresh active requirements for the next milestone.
+4. Record major decisions and known debt.
+5. Update current-state context.
 
 ---
-*Last updated: 2026-05-09 — milestone v1.1 started (interop, chat-first, plugins, constrained tools, clarification stops)*
+*Last updated: 2026-05-13 after v1.1 milestone*
