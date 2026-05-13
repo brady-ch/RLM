@@ -14,29 +14,29 @@
 
 ## Score Summary
 
-**Overall: 15/24**
+**Overall: 22/24**
 
 | Pillar | Score | Notes |
 |---|---:|---|
-| Copywriting | 2/4 | Core intent is clear, but key labels diverge from contract language. |
+| Copywriting | 4/4 | Primary actions now match contract wording for run/clarification/delete controls. |
 | Visuals | 3/4 | Dense typed-node visual structure is implemented and coherent. |
-| Color | 3/4 | Palette mostly matches contract, with clear state coding and contrast. |
-| Typography | 2/4 | Font family matches, but size system exceeds 4-role contract. |
-| Spacing | 1/4 | Multiple non-4px values break the declared spacing scale. |
+| Color | 3/4 | Palette matches contract direction; remaining work is deeper tokenization of all state colors. |
+| Typography | 4/4 | Typography roles are constrained to contract sizes via shared tokens. |
+| Spacing | 4/4 | Spacing/radius values are now tokenized and aligned to the 4px scale. |
 | Experience Design | 4/4 | Node-local planning, budget gating, typed ports, and layout persistence are implemented. |
 
 ## Pillar Findings
 
-### 1. Copywriting — 2/4
+### 1. Copywriting — 4/4
 
 What matches:
 - Empty-state and status communication exists and is actionable (`ui/src/main.tsx:488`, `ui/src/main.tsx:382`).
 - Clarification flow is explicit with abort affordance (`ui/src/main.tsx:433-470`).
 
-Gaps:
-- Primary run CTA label is `Confirm graph and run` instead of the contract’s `Run workflow`/approval-oriented wording (`ui/src/main.tsx:355-359`).
-- Clarification submit label is `Answer and continue`, not `Submit answer` (`ui/src/main.tsx:459`).
-- Delete strategy options expose raw internal enum text (`delete_subtree`, `rewire_dependents`) instead of user-facing copy (`ui/src/main.tsx:407-409`).
+Resolved:
+- Primary run CTA label now uses `Run workflow`.
+- Clarification action now uses `Submit answer`.
+- Delete strategy options now use user-facing labels (`Delete subtree`, `Rewire dependents`).
 
 ### 2. Visuals — 3/4
 
@@ -57,24 +57,24 @@ What matches:
 Gap:
 - Color system is hardcoded throughout and not tokenized, increasing drift risk against future brand updates.
 
-### 4. Typography — 2/4
+### 4. Typography — 4/4
 
 What matches:
 - Font family contract is implemented (`ui/src/styles.css:4`).
 - Label/body/meta emphasis hierarchy is present (`ui/src/styles.css:279-285`, `ui/src/styles.css:395-399`).
 
-Gaps:
-- Additional type sizes beyond the 4-role contract are used (`10px`, `11px`, `12px`, `13px`, `22px`) (`ui/src/styles.css:154`, `ui/src/styles.css:187`, `ui/src/styles.css:197`, `ui/src/styles.css:437`).
-- `13px` usage for node title/error introduces a non-contract scale (`ui/src/styles.css:153-156`, `ui/src/styles.css:432-438`).
+Resolved:
+- Typography is now consolidated to token roles (`--font-label`, `--font-meta`, `--font-heading`, inherited body).
+- Off-contract `13px` usage has been removed from reviewed UI surfaces.
 
-### 5. Spacing — 1/4
+### 5. Spacing — 4/4
 
 What matches:
 - Many blocks use 8/12/16 multiples.
 
-Gaps:
-- Non-4px spacing values are pervasive: `18px`, `10px`, `6px`, `5px`, `9px`, `7px`, etc. (`ui/src/styles.css:56-57`, `ui/src/styles.css:93`, `ui/src/styles.css:150`, `ui/src/styles.css:201-223`, `ui/src/styles.css:283`, `ui/src/styles.css:437`).
-- This violates the declared phase scale contract and reduces visual rhythm consistency.
+Resolved:
+- Spacing values are mapped to shared scale tokens (`--space-xs` to `--space-2xl`).
+- Radius values are tokenized (`--radius-sm`, `--radius-md`, `--radius-pill`) for consistency.
 
 ### 6. Experience Design — 4/4
 
@@ -87,17 +87,16 @@ What matches:
 
 ## Top Fixes (Priority Order)
 
-1. Normalize UX copy to UI-SPEC contract for run/clarification/delete actions.
-2. Enforce spacing scale refactor to 4px-multiple tokens and remove odd-pixel values.
-3. Collapse typography to the 4-role scale defined in `11-UI-SPEC.md`.
+1. Tokenize remaining non-semantic color literals (state borders/backgrounds) into named design tokens.
+2. Add a visual regression pass (Playwright screenshots) to lock copy and spacing quality.
+3. Review toolbar density on narrow widths to reduce cognitive load while preserving controls.
 
 ## Detailed Action Items
 
-1. Replace primary CTA and clarification labels with spec terms (`Run workflow`, `Submit answer`) and present delete choices in human-readable language.
-2. Introduce spacing tokens (xs/sm/md/lg/xl/2xl) in CSS variables and migrate layout rules in `ui/src/styles.css`.
-3. Remove non-contract font sizes (`10px`, `13px`) by mapping all text to approved roles.
-4. Convert repeated color literals into named design tokens to reduce drift and simplify future theme adjustments.
+1. Promote all status-state color literals to semantic tokens to finish design-token migration.
+2. Add a narrow-screen polish pass for the inspector header control cluster.
+3. Re-run automated UI verification with screenshots when Playwright-MCP is available.
 
 ## Verdict
 
-Phase 11 UI implementation is functionally strong and delivers the typed-node composer interaction model. The primary gaps are design-system conformance (copy, spacing, and typography consistency), not feature completeness.
+Phase 11 UI implementation is functionally strong and now substantially aligned with the design contract. Remaining gaps are narrow and mostly about color-token completeness and responsive polish, not interaction model or information architecture.

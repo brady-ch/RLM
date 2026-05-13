@@ -346,16 +346,16 @@ function App() {
               {uiRunStatusLabels[snapshot.status] ?? snapshot.status}
             </span>
             {snapshot.status === "failed" && snapshot.runSummary?.message
-              ? <span className="run-failure-hint">{snapshot.runSummary.message}</span>
+              ? <span className="run-failure-hint">Run stopped: {snapshot.runSummary.message}</span>
               : null}
           </div>
           <span className="meta-pill">{approvalModeLabel(snapshot.approvalMode)}</span>
           <button
             className="icon"
-            aria-label="Confirm graph and run"
+            aria-label="Run workflow"
             onClick={() => runAction(setErrorMessage, () => post("/api/chat/confirm-run", {}), refresh)}
           >
-            Confirm graph and run
+            Run workflow
           </button>
           <button
             className="icon"
@@ -405,7 +405,9 @@ function App() {
                     ? (
                       <div className="actions">
                         <select value={deleteStrategy} onChange={(event) => setDeleteStrategy(event.target.value as "delete_subtree" | "rewire_dependents")}>
-                          {pendingMutation.pendingDeleteChoice.options.map((option) => <option key={option} value={option}>{option}</option>)}
+                          {pendingMutation.pendingDeleteChoice.options.map((option) => (
+                            <option key={option} value={option}>{deleteStrategyLabel(option)}</option>
+                          ))}
                         </select>
                         <button
                           onClick={() => runAction(
@@ -456,7 +458,7 @@ function App() {
                         },
                       )}
                     >
-                      Answer and continue
+                      Submit answer
                     </button>
                     <button
                       className="danger"
@@ -818,4 +820,11 @@ function approvalModeLabel(mode: "full" | "initial-plan" | "initial-plan-recursi
     return "Initial plan + recursive";
   }
   return "Full checkpoints";
+}
+
+function deleteStrategyLabel(strategy: "delete_subtree" | "rewire_dependents"): string {
+  if (strategy === "rewire_dependents") {
+    return "Rewire dependents";
+  }
+  return "Delete subtree";
 }
