@@ -57,6 +57,32 @@ test("file run-state store enforces token + etag and records accepted/rejected m
   }
 });
 
+test("file run-state store serializes concurrent mutations without corrupting JSON", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-runstate-concurrent-"));
+  try {
+    const store = new FileRunStateStore({ baseDir: dir, now: () => "2026-05-11T00:00:00.000Z" });
+    await store.createRun("run-1", { metadata: { title: "demo" } });
+    await store.registerCapabilityToken("run-1", "executor", "tok-1");
+
+    const results = await Promise.all(Array.from({ length: 12 }, (_, index) =>
+      store.mutate("run-1", {
+        actor: "executor",
+        path: `metadata.concurrent_${index}`,
+        action: "set",
+        expectedVersion: 1,
+        value: index,
+        capabilityToken: "tok-1",
+      })
+    ));
+
+    assert.equal(results.filter((result) => result.accepted).length, 1);
+    const snapshot = await store.getSnapshot("run-1");
+    assert.equal(snapshot?.mutationLog.length, 12);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("mutation audit event encodes required metadata", () => {
   const event = createMutationAuditEvent({
     runId: "run-1",
@@ -75,4 +101,3 @@ test("mutation audit event encodes required metadata", () => {
   assert.equal(event.seq, 3);
   assert.match(event.message, /rejected set on metadata\.stage/);
 });
-

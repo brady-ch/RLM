@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import type {
   RunStateMutationRecord,
@@ -21,6 +21,8 @@ interface PersistedRunState extends RunStateSnapshot {
 export class FileRunStateStore implements RunStateStorePort {
   private readonly baseDir: string;
   private readonly now: () => string;
+  private readonly runLocks = new Map<string, Promise<void>>();
+  private writeCounter = 0;
 
   constructor(options: FileRunStateStoreOptions) {
     this.baseDir = resolve(options.baseDir);
@@ -36,43 +38,47 @@ export class FileRunStateStore implements RunStateStorePort {
   }
 
   async createRun(runId: string, seed: Partial<Omit<RunStateSnapshot, "runId" | "version" | "mutationLog">> = {}): Promise<RunStateSnapshot> {
-    const existing = await this.read(runId);
-    if (existing) {
-      return this.publicSnapshot(existing);
-    }
-    const state: PersistedRunState = {
-      runId,
-      version: 1,
-      metadata: seed.metadata ?? {},
-      nodeStatuses: seed.nodeStatuses ?? [],
-      artifactRefs: seed.artifactRefs ?? {},
-      checkpoints: seed.checkpoints ?? [],
-      resumeCursor: seed.resumeCursor,
-      mutationLog: [],
-      aclPrefixes: ["metadata", "nodeStatuses", "artifactRefs", "checkpoints", "resumeCursor"],
-      capabilityTokens: {},
-    };
-    await this.write(runId, state);
-    return this.publicSnapshot(state);
+    return this.withRunLock(runId, async () => {
+      const existing = await this.read(runId);
+      if (existing) {
+        return this.publicSnapshot(existing);
+      }
+      const state: PersistedRunState = {
+        runId,
+        version: 1,
+        metadata: seed.metadata ?? {},
+        nodeStatuses: seed.nodeStatuses ?? [],
+        artifactRefs: seed.artifactRefs ?? {},
+        checkpoints: seed.checkpoints ?? [],
+        resumeCursor: seed.resumeCursor,
+        mutationLog: [],
+        aclPrefixes: ["metadata", "nodeStatuses", "artifactRefs", "checkpoints", "resumeCursor"],
+        capabilityTokens: {},
+      };
+      await this.write(runId, state);
+      return this.publicSnapshot(state);
+    });
   }
 
   async mutate(runId: string, request: RunStateMutationRequest): Promise<RunStateMutationResult> {
-    const state = await this.read(runId);
-    if (!state) {
-      throw new Error(`Unknown run state: ${runId}`);
-    }
+    return this.withRunLock(runId, async () => {
+      const state = await this.read(runId);
+      if (!state) {
+        throw new Error(`Unknown run state: ${runId}`);
+      }
 
-    const deniedReason = this.authorize(state, request);
-    if (deniedReason) {
-      return this.recordAndReturn(state, runId, request, false, deniedReason);
-    }
-    if (request.expectedVersion !== state.version) {
-      return this.recordAndReturn(state, runId, request, false, "etag/version conflict");
-    }
+      const deniedReason = this.authorize(state, request);
+      if (deniedReason) {
+        return this.recordAndReturn(state, runId, request, false, deniedReason);
+      }
+      if (request.expectedVersion !== state.version) {
+        return this.recordAndReturn(state, runId, request, false, "etag/version conflict");
+      }
 
-    applyPathMutation(state, request.path, request.action, request.value);
-    state.version += 1;
-    return this.recordAndReturn(state, runId, request, true, "accepted");
+      applyPathMutation(state, request.path, request.action, request.value);
+      state.version += 1;
+      return this.recordAndReturn(state, runId, request, true, "accepted");
+    });
   }
 
   async listMutations(runId: string): Promise<RunStateMutationRecord[]> {
@@ -108,14 +114,16 @@ export class FileRunStateStore implements RunStateStorePort {
   }
 
   async registerCapabilityToken(runId: string, actor: string, token: string): Promise<void> {
-    const state = await this.read(runId);
-    if (!state) {
-      throw new Error(`Unknown run state: ${runId}`);
-    }
-    const tokens = new Set(state.capabilityTokens[actor] ?? []);
-    tokens.add(token);
-    state.capabilityTokens[actor] = [...tokens];
-    await this.write(runId, state);
+    await this.withRunLock(runId, async () => {
+      const state = await this.read(runId);
+      if (!state) {
+        throw new Error(`Unknown run state: ${runId}`);
+      }
+      const tokens = new Set(state.capabilityTokens[actor] ?? []);
+      tokens.add(token);
+      state.capabilityTokens[actor] = [...tokens];
+      await this.write(runId, state);
+    });
   }
 
   private async recordAndReturn(
@@ -159,7 +167,9 @@ export class FileRunStateStore implements RunStateStorePort {
   private async write(runId: string, state: PersistedRunState): Promise<void> {
     const filePath = this.filePath(runId);
     await mkdir(dirname(filePath), { recursive: true });
-    await writeFile(filePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    const tempPath = `${filePath}.${process.pid}.${this.writeCounter += 1}.tmp`;
+    await writeFile(tempPath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    await rename(tempPath, filePath);
   }
 
   private filePath(runId: string): string {
@@ -177,6 +187,25 @@ export class FileRunStateStore implements RunStateStorePort {
       resumeCursor: state.resumeCursor,
       mutationLog: state.mutationLog,
     };
+  }
+
+  private async withRunLock<T>(runId: string, operation: () => Promise<T>): Promise<T> {
+    const previous = this.runLocks.get(runId) ?? Promise.resolve();
+    let release: () => void = () => undefined;
+    const current = new Promise<void>((resolveLock) => {
+      release = resolveLock;
+    });
+    const next = previous.catch(() => undefined).then(() => current);
+    this.runLocks.set(runId, next);
+    await previous.catch(() => undefined);
+    try {
+      return await operation();
+    } finally {
+      release();
+      if (this.runLocks.get(runId) === next) {
+        this.runLocks.delete(runId);
+      }
+    }
   }
 }
 
