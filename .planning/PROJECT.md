@@ -3,10 +3,21 @@
 ## Current State
 
 **Latest shipped milestone:** v1.1 — Interop, chat-first, plugins, constrained tools  
-**Shipped:** 2026-05-13  
-**Status:** Awaiting next milestone
+**Current milestone:** v1.2 — Answer Quality Loops  
+**Status:** Defining requirements
 
 v1.1 shipped plugin/extension foundations, MCP and skill interoperability, configurable local/remote model hosts, constrained tool-calling plumbing, typed artifact/run-state continuity, chat-first graph authoring, runtime clarification stops, cross-platform packaging/startup UX, and a typed node-composer UI for recursive workflow authoring.
+
+## Current Milestone: v1.2 Answer Quality Loops
+
+**Goal:** Add hybrid refinement loop nodes that improve answer quality through bounded draft, critique, refine, gate, and best-of-progress cycles.
+
+**Target features:**
+- Hybrid loop node shown as one top-level graph node with inspectable internal loop history.
+- Default adaptive rubric for answer quality, code/engineering, planning/architecture, user-facing writing, and structured artifacts.
+- Rubric fit, critique resolution, and best-of-progress selection used together.
+- Phase-specific model overrides for draft, critique, refine, gate, and best-of-progress.
+- Clear stop reasons: pass threshold, critique resolved, no meaningful improvement, max iterations, or human accept.
 
 ## What This Is
 
@@ -45,14 +56,15 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-- [ ] Define the next milestone requirements with `$gsd-new-milestone`.
+- [ ] Hybrid refinement loop nodes improve answer quality through inspectable, bounded draft/critique/refine/gate cycles.
+- [ ] Adaptive rubrics evaluate loop candidates by prompt/task context and support best-of-progress final selection.
 
 ### Candidate Next-Milestone Themes
 
+- Developer launcher and local-folder plugin manager.
+- Local Hugging Face GGUF model browser/installer with llama.cpp compatibility states.
 - Release hardening: signed/reproducible single executable artifacts and platform release checks.
 - Provider parity: deepen constrained tool-calling enforcement across non-Ollama hosts.
-- Extension hardening: consume extension-registered model host adapters end to end.
-- UI polish: semantic color tokenization, narrow-width toolbar refinement, and screenshot-based regression coverage.
 - Persistence/collaboration: durable graph edit history, interrupted-plan resume, or shared approval sessions if prioritized.
 
 ### Out of Scope
@@ -100,4 +112,4 @@ This document evolves at phase transitions and milestone boundaries.
 5. Update current-state context.
 
 ---
-*Last updated: 2026-05-13 after v1.1 milestone*
+*Last updated: 2026-05-14 starting v1.2 milestone*
