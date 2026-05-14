@@ -71,31 +71,31 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LOOP-01 | TBD | Pending |
-| LOOP-02 | TBD | Pending |
-| LOOP-03 | TBD | Pending |
-| RUBR-01 | TBD | Pending |
-| RUBR-02 | TBD | Pending |
-| RUBR-03 | TBD | Pending |
-| REFN-01 | TBD | Pending |
-| REFN-02 | TBD | Pending |
-| REFN-03 | TBD | Pending |
-| MODL-04 | TBD | Pending |
-| MODL-05 | TBD | Pending |
-| MODL-06 | TBD | Pending |
-| UXQL-01 | TBD | Pending |
-| UXQL-02 | TBD | Pending |
-| UXQL-03 | TBD | Pending |
-| UXQL-04 | TBD | Pending |
-| VERF-01 | TBD | Pending |
-| VERF-02 | TBD | Pending |
-| VERF-03 | TBD | Pending |
+| LOOP-01 | Phase 12 | Pending |
+| LOOP-02 | Phase 12 | Pending |
+| LOOP-03 | Phase 12 | Pending |
+| RUBR-01 | Phase 13 | Pending |
+| RUBR-02 | Phase 13 | Pending |
+| RUBR-03 | Phase 13 | Pending |
+| REFN-01 | Phase 14 | Pending |
+| REFN-02 | Phase 14 | Pending |
+| REFN-03 | Phase 14 | Pending |
+| MODL-04 | Phase 15 | Pending |
+| MODL-05 | Phase 15 | Pending |
+| MODL-06 | Phase 15 | Pending |
+| UXQL-01 | Phase 16 | Pending |
+| UXQL-02 | Phase 16 | Pending |
+| UXQL-03 | Phase 16 | Pending |
+| UXQL-04 | Phase 16 | Pending |
+| VERF-01 | Phase 17 | Pending |
+| VERF-02 | Phase 17 | Pending |
+| VERF-03 | Phase 17 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 19 total
-- Mapped to phases: 0
-- Unmapped: 19
+- Mapped to phases: 19
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-14*
-*Last updated: 2026-05-14 after research synthesis*
+*Last updated: 2026-05-14 after roadmap creation*
