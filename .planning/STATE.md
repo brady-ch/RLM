@@ -41,6 +41,12 @@ Plan: —
 Status: Awaiting next milestone
 Last activity: 2026-05-13 — Milestone v1.1 completed and archived
 
+## Accumulated Context
+
+### Pending Todos
+
+- 1 pending todo in `.planning/todos/pending/`
+
 ## Operator Next Steps
 
 - Start the next milestone with `$gsd-new-milestone`
