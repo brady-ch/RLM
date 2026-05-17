@@ -359,22 +359,22 @@ this.emitExecution({
 | A3 | A discriminated terminal metadata helper is the cleanest way to prevent missing stop reasons. | Common Pitfalls | Planner may instead use runtime assertions; tests must still prove terminal reason is present. |
 | A4 | A loop node should likely use a new node kind or loop metadata flag. | Common Pitfalls | UI/API type updates differ depending on chosen representation; the single-node behavior remains required. |
 
-## Open Questions
+## Resolved Planning Decisions
 
-1. **How should users explicitly invoke a quality loop in Phase 12?**
-   - What we know: Ordinary prompts must not be implicitly wrapped in a loop. [VERIFIED: .planning/phases/12-loop-runtime-contract/12-CONTEXT.md]
-   - What's unclear: Whether Phase 12 should expose CLI flags, YAML-only config, or an internal request flag first. [ASSUMED]
-   - Recommendation: Add `runtime.qualityLoop.enabled` in YAML/config and, only if planner scopes it, CLI flags such as `--quality-loop` and `--loop-max-iterations`. [ASSUMED]
+1. **Explicit loop invocation surface**
+   - Decision: Phase 12 should support both YAML runtime config and CLI opt-in flags.
+   - Exact contract: `runtime.qualityLoop.enabled`, `runtime.qualityLoop.maxIterations`, and `runtime.qualityLoop.budgetBehavior` in config; `--quality-loop` and `--quality-loop-max-iterations N` in CLI args.
+   - Reason: Ordinary prompts must not be implicitly wrapped in a loop, but users need an executable Phase 12 entry point to verify the runtime contract. [VERIFIED: .planning/phases/12-loop-runtime-contract/12-CONTEXT.md] [VERIFIED: .planning/phases/12-loop-runtime-contract/12-01-PLAN.md]
 
-2. **Should loop phase purposes extend `LanguageModelPurpose` in Phase 12?**
-   - What we know: Current purposes are `depth`, `classify`, `decompose`, `answer`, `summarize`, and `synthesize`. [VERIFIED: src/ports/language-model-port.ts]
-   - What's unclear: Phase-specific model routing is deferred to Phase 15, so adding `draft`/`critique`/`refine`/`gate`/`best_of_progress` now could create migration work. [VERIFIED: .planning/ROADMAP.md]
-   - Recommendation: Keep Phase 12 phase model fields as strings/effective model snapshots, but defer purpose-routing expansion unless implementation needs it for metadata completeness. [ASSUMED]
+2. **Loop phase model purposes**
+   - Decision: Do not extend `LanguageModelPurpose` in Phase 12.
+   - Exact contract: Loop phases use existing `"answer"` completion purpose and capture effective model snapshots in phase metadata. Dedicated draft/critique/refine/gate/best-of-progress routing is deferred to Phase 15.
+   - Reason: Current purposes are `depth`, `classify`, `decompose`, `answer`, `summarize`, and `synthesize`; changing purpose routing now would pull Phase 15 scope into Phase 12. [VERIFIED: src/ports/language-model-port.ts] [VERIFIED: .planning/ROADMAP.md]
 
-3. **How much candidate text belongs in graph metadata?**
-   - What we know: CONTEXT.md requires concise summaries plus optional artifact refs for full text to avoid bloating state. [VERIFIED: .planning/phases/12-loop-runtime-contract/12-CONTEXT.md]
-   - What's unclear: The exact summary length and artifact persistence mechanism are not specified. [ASSUMED]
-   - Recommendation: Store `summary`, `textPreview`, and optional `artifactRef`; do not build a new artifact store in Phase 12. [ASSUMED]
+3. **Candidate text in graph metadata**
+   - Decision: Store concise candidate summaries/previews capped at 160 characters plus optional `artifactRef`; do not build a new artifact store in Phase 12.
+   - Exact contract: Runtime candidate records should use `summary: preview(output, 160)` or an equivalent 160-character cap, with full text left to future artifact persistence if needed.
+   - Reason: CONTEXT.md requires inspectable graph metadata without bloating state. [VERIFIED: .planning/phases/12-loop-runtime-contract/12-CONTEXT.md] [VERIFIED: .planning/phases/12-loop-runtime-contract/12-02-PLAN.md]
 
 ## Environment Availability
 
