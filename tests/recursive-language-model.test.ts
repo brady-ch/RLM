@@ -11,7 +11,7 @@ import type {
   LanguageModelPort,
   LanguageModelResponse,
 } from "../src/ports/language-model-port.js";
-import type { ExecutionGraphNode, QualityLoopMetadata } from "../src/domain/types.js";
+import type { ExecutionGraphNode, NodeApprovalDecision, QualityLoopMetadata } from "../src/domain/types.js";
 import type { ToolExecutionResult, ToolPort } from "../src/ports/tool-port.js";
 import { InMemoryTrace } from "../src/adapters/in-memory-trace.js";
 import { GuardedShellTool } from "../src/adapters/guarded-shell-tool.js";
@@ -330,7 +330,56 @@ test("quality loop failure records terminal failed metadata", async () => {
   assert.ok(result.metadata.errors.length > 0);
   assert.equal(result.metadata.qualityLoop?.status, "failed");
   assert.equal(result.metadata.qualityLoop?.stopReason, "failed");
-  assert.equal(result.metadata.qualityLoop?.usage.modelCallsTotal, 2);
+  assert.equal(result.metadata.qualityLoop?.usage.modelCallsTotal, 3);
+  const failedPhase = result.metadata.qualityLoop?.iterations[0]?.phases.find((phase) => phase.phase === "refine");
+  assert.equal(failedPhase?.status, "failed");
+  assert.equal(failedPhase?.model, "unknown");
+  assert.ok((failedPhase?.unresolvedIssues?.length ?? 0) > 0);
+});
+
+test("quality loop waits for node approval before model calls", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel([
+    { content: "draft answer", toolCalls: [], model: "draft-model" },
+    { content: "critique notes", toolCalls: [], model: "critique-model" },
+    { content: "refined answer", toolCalls: [], model: "refine-model" },
+    { content: "gate ok", toolCalls: [], model: "gate-model" },
+    { content: "best final answer", toolCalls: [], model: "best-model" },
+  ]);
+  const engine = new RecursiveLanguageModel(model, trace);
+  let pendingNode: ExecutionGraphNode | undefined;
+  let approve!: (prompt: string) => void;
+  const approval = new Promise<NodeApprovalDecision>((resolve) => {
+    approve = (prompt: string) => resolve({ status: "approved", prompt, approvalSource: "manual", approvalReason: "test approval" });
+  });
+
+  const run = engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...dynamicDepthConfig,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+    execution: {
+      approvalMode: "full",
+      isCancelled: () => false,
+      waitForNodeApproval: (node) => {
+        pendingNode = node;
+        return approval;
+      },
+    },
+  });
+
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(pendingNode?.kind, "quality-loop");
+  assert.equal(pendingNode?.status, "awaiting_approval");
+  assert.equal(model.calls.length, 0);
+
+  approve("Approved loop prompt");
+  const result = await run;
+
+  assert.equal(result.answer, "best final answer");
+  assert.equal(model.calls.length, 5);
+  assert.match(model.calls[0]?.messages.at(-1)?.content ?? "", /Approved loop prompt/);
 });
 
 test("quality loop disabled preserves non loop direct execution", async () => {

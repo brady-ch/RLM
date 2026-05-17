@@ -116,7 +116,20 @@ export class RecursiveLanguageModel {
         };
       }
 
-      const answer = await this.runQualityLoop(root, config);
+      const approved = await this.waitForNodeApproval(root);
+      if (approved === "skipped") {
+        await this.flushRunStateWrites();
+        this.metadata.modelCalls = this.modelCalls;
+        this.metadata.executionStatus = "skipped";
+        this.updateExecutionGraph();
+        return {
+          answer: "",
+          trace: this.trace.events(),
+          metadata: this.metadata,
+        };
+      }
+
+      const answer = await this.runQualityLoop(approved, config);
       await this.flushRunStateWrites();
       this.metadata.modelCalls = this.modelCalls;
       this.updateExecutionGraph();
@@ -230,6 +243,7 @@ export class RecursiveLanguageModel {
     };
     const candidateTexts = new Map<string, string>();
     let selectedCandidateId: string | undefined;
+    const loopModelCallsBefore = this.modelCalls;
     this.writeLoopMetadata(task.id, metadata);
     this.markExecutionNodeRunning(task.id);
     this.emitExecution({
@@ -247,7 +261,7 @@ export class RecursiveLanguageModel {
       metadata.status = status;
       metadata.stopReason = stopReason;
       metadata.message = message;
-      metadata.usage = this.summarizeQualityLoopUsage(metadata);
+      metadata.usage = this.summarizeQualityLoopUsage(metadata, this.modelCalls - loopModelCallsBefore);
       if (selectedCandidateId) {
         metadata.selectedCandidateId = selectedCandidateId;
       }
@@ -308,18 +322,43 @@ export class RecursiveLanguageModel {
 
         const phaseOutputs = new Map<QualityLoopPhaseName, string>();
         for (const phase of QUALITY_LOOP_PHASES) {
-          const phaseResult = await this.completeQualityLoopPhase(task, phase, qualityLoopMessages(task.prompt, phase, phaseOutputs));
-          phaseOutputs.set(phase, phaseResult.content);
-          metadata.usage.phaseCallCounts[phase] += phaseResult.modelCallsDelta;
+          const startedAt = new Date().toISOString();
           const phaseRecord: QualityLoopPhaseRecord = {
             phase,
-            status: "completed",
-            startedAt: phaseResult.startedAt,
-            completedAt: phaseResult.completedAt,
-            summary: preview(phaseResult.content),
-            model: phaseResult.model,
-            usage: phaseResult.usageDelta,
+            status: "running",
+            startedAt,
+            model: "unknown",
           };
+          iteration.phases.push(phaseRecord);
+          this.writeLoopMetadata(task.id, metadata);
+
+          let phaseResult: Awaited<ReturnType<typeof this.completeQualityLoopPhase>>;
+          try {
+            phaseResult = await this.completeQualityLoopPhase(task, phase, qualityLoopMessages(task.prompt, phase, phaseOutputs), startedAt);
+          } catch (error: unknown) {
+            phaseRecord.status = "failed";
+            phaseRecord.completedAt = new Date().toISOString();
+            phaseRecord.summary = error instanceof Error ? error.message : String(error);
+            phaseRecord.usage = subtractUsage(this.metadata.tokenUsage, this.metadata.tokenUsage);
+            const issue: QualityLoopIssue = {
+              id: `loop-${task.id}-i${iterationIndex}-${phase}-failed`,
+              severity: "error",
+              text: phaseRecord.summary,
+              sourcePhase: phase,
+            };
+            phaseRecord.unresolvedIssues = [issue];
+            iteration.unresolvedIssues.push(issue);
+            metadata.unresolvedIssues.push(issue);
+            this.writeLoopMetadata(task.id, metadata);
+            throw error;
+          }
+          phaseOutputs.set(phase, phaseResult.content);
+          metadata.usage.phaseCallCounts[phase] += phaseResult.modelCallsDelta;
+          phaseRecord.status = "completed";
+          phaseRecord.completedAt = phaseResult.completedAt;
+          phaseRecord.summary = preview(phaseResult.content);
+          phaseRecord.model = phaseResult.model;
+          phaseRecord.usage = phaseResult.usageDelta;
           if (phase === "draft" || phase === "refine" || phase === "best_of_progress") {
             const candidate: QualityLoopCandidateSummary = {
               id: `loop-${task.id}-i${iterationIndex}-${phase}`,
@@ -336,8 +375,7 @@ export class RecursiveLanguageModel {
             iteration.candidates.push(candidate);
             metadata.candidates.push(candidate);
           }
-          iteration.phases.push(phaseRecord);
-          metadata.usage = this.summarizeQualityLoopUsage(metadata);
+          metadata.usage = this.summarizeQualityLoopUsage(metadata, this.modelCalls - loopModelCallsBefore);
           this.writeLoopMetadata(task.id, metadata);
           this.emitExecution({
             type: "execution",
@@ -388,6 +426,7 @@ export class RecursiveLanguageModel {
     task: TaskNode,
     phase: QualityLoopPhaseName,
     messages: Parameters<LanguageModelPort["complete"]>[0],
+    startedAt = new Date().toISOString(),
   ): Promise<{
     content: string;
     model: string;
@@ -401,7 +440,6 @@ export class RecursiveLanguageModel {
       throw new Error(`model call budget reached before quality loop ${phase}`);
     }
 
-    const startedAt = new Date().toISOString();
     const usageBefore = { ...this.metadata.tokenUsage };
     const modelCallsBefore = this.modelCalls;
     this.modelCalls += 1;
@@ -1163,10 +1201,10 @@ export class RecursiveLanguageModel {
     this.updateExecutionGraph();
   }
 
-  private summarizeQualityLoopUsage(metadata: QualityLoopMetadata): QualityLoopMetadata["usage"] {
+  private summarizeQualityLoopUsage(metadata: QualityLoopMetadata, modelCallsTotal?: number): QualityLoopMetadata["usage"] {
     return {
       ...metadata.usage,
-      modelCallsTotal: Object.values(metadata.usage.phaseCallCounts).reduce((total, count) => total + count, 0),
+      modelCallsTotal: modelCallsTotal ?? Object.values(metadata.usage.phaseCallCounts).reduce((total, count) => total + count, 0),
       inputTokens: this.metadata.tokenUsage.inputTokens,
       outputTokens: this.metadata.tokenUsage.outputTokens,
       totalTokens: this.metadata.tokenUsage.totalTokens,
@@ -1263,15 +1301,16 @@ export class RecursiveLanguageModel {
   }
 
   private async waitForNodeApproval(task: TaskNode): Promise<TaskNode | "skipped"> {
+    const existingNode = this.executionNodes.get(task.id);
     const node: NonNullable<RecursivePromptMetadata["executionGraph"]>["nodes"][number] = {
       id: task.id,
-      kind: "task",
-      label: preview(task.prompt, 80),
-      prompt: task.prompt,
-      originalPrompt: task.prompt,
-      plannedModel: task.modelOverride ?? "resolved-at-runtime",
-      modelOverride: task.modelOverride,
-      modelOverrideSource: task.modelOverride ? "user" : "none",
+      kind: existingNode?.kind ?? "task",
+      label: existingNode?.label ?? preview(task.prompt, 80),
+      prompt: existingNode?.prompt ?? task.prompt,
+      originalPrompt: existingNode?.originalPrompt ?? task.prompt,
+      plannedModel: existingNode?.plannedModel ?? task.modelOverride ?? "resolved-at-runtime",
+      modelOverride: existingNode?.modelOverride ?? task.modelOverride,
+      modelOverrideSource: existingNode?.modelOverrideSource ?? (task.modelOverride ? "user" : "none"),
       editableFields: ["prompt"],
       depth: task.depth,
       status: "awaiting_approval",
