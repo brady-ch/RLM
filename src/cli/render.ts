@@ -40,8 +40,15 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
     `executionStatus: ${result.metadata.executionStatus ?? "completed"}`,
     ...(isRunFailure(result) ? [`errors: ${errCount}`, `errorPreview: ${singleLine(result.metadata.errors[0] ?? "")}`] : []),
     `tokens: input=${result.metadata.tokenUsage.inputTokens} output=${result.metadata.tokenUsage.outputTokens} total=${result.metadata.tokenUsage.totalTokens} unknown=${result.metadata.tokenUsage.unknownCompletions}`,
-    `answer: ${singleLine(result.answer)}`,
   ];
+  if (result.metadata.qualityLoop) {
+    const loop = result.metadata.qualityLoop;
+    lines.push(
+      `qualityLoop: status=${loop.status} stopReason=${loop.stopReason ?? "none"} iterations=${loop.iterations.length} selectedCandidate=${loop.selectedCandidateId ?? "none"}`,
+      `qualityLoopUsage: modelCalls=${loop.usage.modelCallsTotal} input=${loop.usage.inputTokens} output=${loop.usage.outputTokens} total=${loop.usage.totalTokens} unknown=${loop.usage.unknownCompletions}`,
+    );
+  }
+  lines.push(`answer: ${singleLine(result.answer)}`);
   if (result.metadata.executionGraph?.nodes.length) {
     const autoApprovedNodes = result.metadata.executionGraph.nodes.filter((node) => node.approvalSource === "auto").length;
     lines.push(`autoApprovedNodes=${autoApprovedNodes}`);
@@ -80,6 +87,7 @@ function renderJson(result: RecursivePromptResult, options: RenderOptions): stri
     workflowQueues: result.metadata.workflowQueues,
     executionGraph: result.metadata.executionGraph,
     executionStatus: result.metadata.executionStatus,
+    qualityLoop: result.metadata.qualityLoop,
     failureCategory: failure?.category,
     failureLabel: failure?.label,
     depth: result.metadata.depth,

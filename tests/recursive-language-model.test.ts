@@ -352,6 +352,128 @@ test("quality loop disabled preserves non loop direct execution", async () => {
   );
 });
 
+test("renders compact quality loop metadata", () => {
+  const loop: QualityLoopMetadata = {
+    config: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    status: "completed",
+    stopReason: "max_iterations",
+    usage: {
+      iterationsStarted: 1,
+      iterationsCompleted: 1,
+      phaseCallCounts: {
+        draft: 1,
+        critique: 1,
+        refine: 1,
+        gate: 1,
+        best_of_progress: 1,
+      },
+      modelCallsTotal: 5,
+      inputTokens: 10,
+      outputTokens: 20,
+      totalTokens: 30,
+      unknownCompletions: 0,
+    },
+    iterations: [{
+      index: 0,
+      status: "completed",
+      startedAt: "2026-05-17T00:00:00.000Z",
+      completedAt: "2026-05-17T00:00:01.000Z",
+      phases: [],
+      candidates: [],
+      unresolvedIssues: [],
+    }],
+    candidates: [{
+      id: "candidate-1",
+      iteration: 0,
+      phase: "best_of_progress",
+      summary: "answer",
+      isSelected: true,
+    }],
+    selectedCandidateId: "candidate-1",
+    unresolvedIssues: [],
+  };
+
+  const rendered = renderResult({
+    answer: "ok",
+    trace: [],
+    metadata: {
+      agent: { id: "default", source: "auto" },
+      depth: { selected: 0, source: "override" },
+      modelSelections: [],
+      memoryReservations: [],
+      modelCalls: 5,
+      tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
+      toolCalls: [],
+      qualityLoop: loop,
+      errors: [],
+    },
+  }, { compact: true, json: false, includeTrace: false, model: "m" });
+
+  assert.match(rendered, /qualityLoop: status=completed stopReason=max_iterations iterations=1 selectedCandidate=candidate-1/);
+  assert.match(rendered, /qualityLoopUsage: modelCalls=5 input=10 output=20 total=30 unknown=0/);
+});
+
+test("renders json quality loop metadata", () => {
+  const loop: QualityLoopMetadata = {
+    config: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    status: "completed",
+    stopReason: "max_iterations",
+    usage: {
+      iterationsStarted: 1,
+      iterationsCompleted: 1,
+      phaseCallCounts: {
+        draft: 1,
+        critique: 1,
+        refine: 1,
+        gate: 1,
+        best_of_progress: 1,
+      },
+      modelCallsTotal: 5,
+      inputTokens: 10,
+      outputTokens: 20,
+      totalTokens: 30,
+      unknownCompletions: 0,
+    },
+    iterations: [{
+      index: 0,
+      status: "completed",
+      startedAt: "2026-05-17T00:00:00.000Z",
+      completedAt: "2026-05-17T00:00:01.000Z",
+      phases: [],
+      candidates: [],
+      unresolvedIssues: [],
+    }],
+    candidates: [{
+      id: "candidate-1",
+      iteration: 0,
+      phase: "best_of_progress",
+      summary: "answer",
+      isSelected: true,
+    }],
+    selectedCandidateId: "candidate-1",
+    unresolvedIssues: [],
+  };
+
+  const rendered = renderResult({
+    answer: "ok",
+    trace: [],
+    metadata: {
+      agent: { id: "default", source: "auto" },
+      depth: { selected: 0, source: "override" },
+      modelSelections: [],
+      memoryReservations: [],
+      modelCalls: 5,
+      tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
+      toolCalls: [],
+      qualityLoop: loop,
+      errors: [],
+    },
+  }, { compact: false, json: true, includeTrace: false, model: "m" });
+  const parsed = JSON.parse(rendered) as { qualityLoop: QualityLoopMetadata };
+
+  assert.equal(parsed.qualityLoop.stopReason, "max_iterations");
+});
+
 test("emits code_execution trace/event for code-only tasks", async () => {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(new QueueModel(["DIRECT", "done"]), trace);
