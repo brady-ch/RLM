@@ -9,6 +9,100 @@ export interface RecursiveModelConfig {
   maxPromptCharacters: number;
   maxModelCalls: number;
   maxToolRounds: number;
+  qualityLoop?: QualityLoopConfig | undefined;
+}
+
+export type QualityLoopPhaseName = "draft" | "critique" | "refine" | "gate" | "best_of_progress";
+
+export type QualityLoopStopReason =
+  | "passed"
+  | "critique_resolved"
+  | "no_meaningful_improvement"
+  | "max_iterations"
+  | "budget_exhausted"
+  | "human_accepted"
+  | "stopped"
+  | "degraded"
+  | "failed";
+
+export type QualityLoopStatus =
+  | "idle"
+  | "running"
+  | "completed"
+  | "stopped"
+  | "degraded"
+  | "failed"
+  | "cancelled";
+
+export type QualityLoopBudgetBehavior = "stop_before_partial_iteration";
+
+export interface QualityLoopConfig {
+  enabled: boolean;
+  maxIterations: number;
+  budgetBehavior: QualityLoopBudgetBehavior;
+}
+
+export interface QualityLoopUsageSummary {
+  iterationsStarted: number;
+  iterationsCompleted: number;
+  phaseCallCounts: Record<QualityLoopPhaseName, number>;
+  modelCallsTotal: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  unknownCompletions: number;
+}
+
+export interface QualityLoopIssue {
+  id: string;
+  severity: "info" | "warning" | "error";
+  text: string;
+  sourcePhase: QualityLoopPhaseName;
+}
+
+export interface QualityLoopCandidateSummary {
+  id: string;
+  iteration: number;
+  phase: QualityLoopPhaseName;
+  summary: string;
+  score?: number | undefined;
+  artifactRef?: string | undefined;
+  isSelected?: boolean | undefined;
+}
+
+export interface QualityLoopPhaseRecord {
+  phase: QualityLoopPhaseName;
+  status: QualityLoopStatus;
+  startedAt: string;
+  completedAt?: string | undefined;
+  candidateId?: string | undefined;
+  summary?: string | undefined;
+  score?: number | undefined;
+  model?: string | undefined;
+  usage?: TokenUsageTrace | undefined;
+  unresolvedIssues?: QualityLoopIssue[] | undefined;
+}
+
+export interface QualityLoopIterationRecord {
+  index: number;
+  status: QualityLoopStatus;
+  startedAt: string;
+  completedAt?: string | undefined;
+  phases: QualityLoopPhaseRecord[];
+  candidates: QualityLoopCandidateSummary[];
+  unresolvedIssues: QualityLoopIssue[];
+}
+
+export interface QualityLoopMetadata {
+  config: QualityLoopConfig;
+  status: QualityLoopStatus;
+  stopReason?: QualityLoopStopReason | undefined;
+  usage: QualityLoopUsageSummary;
+  iterations: QualityLoopIterationRecord[];
+  candidates: QualityLoopCandidateSummary[];
+  selectedCandidateId?: string | undefined;
+  unresolvedIssues: QualityLoopIssue[];
+  message?: string | undefined;
 }
 
 export interface RecursivePromptRequest {
@@ -176,6 +270,7 @@ export interface RecursivePromptMetadata {
   modelCalls: number;
   tokenUsage: TokenUsageTrace;
   toolCalls: ToolCallRecord[];
+  qualityLoop?: QualityLoopMetadata | undefined;
   clarificationHistory?: ClarificationRecord[] | undefined;
   errors: string[];
 }
@@ -204,7 +299,7 @@ export interface ExecutionBudget {
 export interface ExecutionGraphNode {
   id: string;
   parentId?: string;
-  kind: "task" | "workflow-agent" | "workflow-qa";
+  kind: "task" | "workflow-agent" | "workflow-qa" | "quality-loop";
   /** Authoritative canvas position for the control-server session graph. */
   position?: { x: number; y: number } | undefined;
   composer?: NodeComposer | undefined;
@@ -226,6 +321,7 @@ export interface ExecutionGraphNode {
   approvalReason?: string | undefined;
   spawnedAfterInitialApproval?: boolean | undefined;
   autoApprovalPaused?: boolean | undefined;
+  loop?: QualityLoopMetadata | undefined;
 }
 
 export interface ExecutionGraphEdge {
