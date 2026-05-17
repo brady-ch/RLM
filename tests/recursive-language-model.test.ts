@@ -136,6 +136,24 @@ test("quality loop metadata contract supports graph nodes", () => {
   assert.equal(node.loop?.stopReason, "budget_exhausted");
 });
 
+test("parse args enables quality loop explicitly", () => {
+  const parsed = parseArgs(["ask", "--quality-loop", "Improve this answer"], {});
+
+  assert.equal(parsed.prompt, "Improve this answer");
+  assert.equal(parsed.config.qualityLoop?.enabled, true);
+  assert.equal(parsed.config.qualityLoop?.maxIterations, 3);
+  assert.deepEqual(parsed.configOverrides.qualityLoop, parsed.config.qualityLoop);
+});
+
+test("parse args sets quality loop max iterations", () => {
+  const parsed = parseArgs(["ask", "--quality-loop-max-iterations", "5", "Improve this answer"], {});
+
+  assert.equal(parsed.prompt, "Improve this answer");
+  assert.equal(parsed.config.qualityLoop?.enabled, true);
+  assert.equal(parsed.config.qualityLoop?.maxIterations, 5);
+  assert.deepEqual(parsed.configOverrides.qualityLoop, parsed.config.qualityLoop);
+});
+
 test("answers directly when max depth is zero", async () => {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(new QueueModel(["direct answer"]), trace);
