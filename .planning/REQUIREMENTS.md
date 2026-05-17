@@ -8,9 +8,9 @@
 
 ### Loop Runtime
 
-- [ ] **LOOP-01**: User can run an answer-quality refinement loop as one collapsed top-level execution graph node with inspectable internal `draft -> critique -> refine -> gate -> best-of-progress` history.
-- [ ] **LOOP-02**: User can configure hard loop bounds, including max iterations and model-call budget behavior, and every loop exits with an explicit stop reason.
-- [ ] **LOOP-03**: User can inspect loop history including candidate text summaries, critiques, refinements, scores, unresolved issues, selected candidate, phase model, and token/model-call usage.
+- [x] **LOOP-01**: User can run an answer-quality refinement loop as one collapsed top-level execution graph node with inspectable internal `draft -> critique -> refine -> gate -> best-of-progress` history.
+- [x] **LOOP-02**: User can configure hard loop bounds, including max iterations and model-call budget behavior, and every loop exits with an explicit stop reason.
+- [x] **LOOP-03**: User can inspect loop history including candidate text summaries, critiques, refinements, scores, unresolved issues, selected candidate, phase model, and token/model-call usage.
 
 ### Rubrics and Evaluation
 
@@ -71,9 +71,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LOOP-01 | Phase 12 | Pending |
-| LOOP-02 | Phase 12 | Pending |
-| LOOP-03 | Phase 12 | Pending |
+| LOOP-01 | Phase 12 | Complete |
+| LOOP-02 | Phase 12 | Complete |
+| LOOP-03 | Phase 12 | Complete |
 | RUBR-01 | Phase 13 | Pending |
 | RUBR-02 | Phase 13 | Pending |
 | RUBR-03 | Phase 13 | Pending |

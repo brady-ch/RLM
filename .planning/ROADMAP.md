@@ -57,7 +57,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 **Plans**: 2 plans
 Plans:
 **Wave 1**
-- [ ] 12-01-PLAN.md — Define typed loop metadata, config validation, and explicit CLI opt-in.
+- [x] 12-01-PLAN.md — Define typed loop metadata, config validation, and explicit CLI opt-in.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 12-02-PLAN.md — Implement bounded loop runtime, terminal metadata, renderer output, and fake-model tests.
@@ -127,7 +127,7 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 12. Loop Runtime Contract | v1.2 | 0/TBD | Not started | - |
+| 12. Loop Runtime Contract | v1.2 | 1/2 | In Progress|  |
 | 13. Rubric and Evaluator Contract | v1.2 | 0/TBD | Not started | - |
 | 14. Refine and Best-of-Progress Engine | v1.2 | 0/TBD | Not started | - |
 | 15. Loop Phase Model Routing and Overrides | v1.2 | 0/TBD | Not started | - |
