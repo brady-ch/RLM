@@ -132,6 +132,18 @@ const agentModelsSchema = z.object({
   synthesize: modelSelectionSchema,
 });
 
+const defaultQualityLoopConfig = {
+  enabled: false,
+  maxIterations: 3,
+  budgetBehavior: "stop_before_partial_iteration" as const,
+};
+
+const qualityLoopSchema = z.object({
+  enabled: z.boolean().default(false),
+  maxIterations: z.number().int().positive().default(3),
+  budgetBehavior: z.literal("stop_before_partial_iteration").default("stop_before_partial_iteration"),
+});
+
 const runtimeSchema = z.object({
   maxDepth: z.number().int().nonnegative().optional(),
   maxDynamicDepth: z.number().int().nonnegative().default(4),
@@ -139,6 +151,7 @@ const runtimeSchema = z.object({
   maxPromptCharacters: z.number().int().positive().default(6_000),
   maxModelCalls: z.number().int().nonnegative().default(24),
   maxToolRounds: z.number().int().nonnegative().default(3),
+  qualityLoop: qualityLoopSchema.default(defaultQualityLoopConfig),
 });
 
 const configSchema = z.object({
@@ -161,6 +174,7 @@ const configSchema = z.object({
     maxPromptCharacters: 6_000,
     maxModelCalls: 24,
     maxToolRounds: 3,
+    qualityLoop: defaultQualityLoopConfig,
   }),
   agents: z.record(z.string(), z.object({
     tools: z.array(z.string().min(1)),
@@ -265,6 +279,7 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
     maxPromptCharacters: 6_000,
     maxModelCalls: 24,
     maxToolRounds: 3,
+    qualityLoop: defaultQualityLoopConfig,
   },
   agents: {
     default: {
