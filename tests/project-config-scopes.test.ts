@@ -135,3 +135,70 @@ test("starter seed writes project .rlm once and skips duplicates", async () => {
     await rm(sandbox, { recursive: true, force: true });
   }
 });
+
+test("quality loop config defaults to disabled bounded runtime", async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), "rlm-quality-loop-default-"));
+  try {
+    const configPath = join(sandbox, "rlm.config.yaml");
+    await writeFile(configPath, "", "utf8");
+
+    const loaded = await loadProjectConfig(configPath);
+
+    assert.deepEqual(loaded.config.runtime.qualityLoop, {
+      enabled: false,
+      maxIterations: 3,
+      budgetBehavior: "stop_before_partial_iteration",
+    });
+  }
+  finally {
+    await rm(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("quality loop config accepts explicit bounded runtime", async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), "rlm-quality-loop-explicit-"));
+  try {
+    const configPath = join(sandbox, "rlm.config.yaml");
+    await writeFile(configPath, `
+runtime:
+  qualityLoop:
+    enabled: true
+    maxIterations: 5
+    budgetBehavior: stop_before_partial_iteration
+`, "utf8");
+
+    const loaded = await loadProjectConfig(configPath);
+
+    assert.deepEqual(loaded.config.runtime.qualityLoop, {
+      enabled: true,
+      maxIterations: 5,
+      budgetBehavior: "stop_before_partial_iteration",
+    });
+  }
+  finally {
+    await rm(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("quality loop config rejects invalid max iterations", async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), "rlm-quality-loop-invalid-"));
+  try {
+    const configPath = join(sandbox, "rlm.config.yaml");
+    await writeFile(configPath, `
+runtime:
+  qualityLoop:
+    enabled: true
+    maxIterations: 0
+    budgetBehavior: stop_before_partial_iteration
+`, "utf8");
+
+    await assert.rejects(() => loadProjectConfig(configPath), (error: unknown) => {
+      const message = error instanceof Error ? error.message : "";
+      assert.ok(message.includes("maxIterations"), message);
+      return true;
+    });
+  }
+  finally {
+    await rm(sandbox, { recursive: true, force: true });
+  }
+});
