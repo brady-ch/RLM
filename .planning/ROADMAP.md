@@ -56,7 +56,10 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
   4. Every completed, stopped, degraded, or failed loop reports a clear stop reason and usage summary.
 **Plans**: 2 plans
 Plans:
+**Wave 1**
 - [ ] 12-01-PLAN.md — Define typed loop metadata, config validation, and explicit CLI opt-in.
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 12-02-PLAN.md — Implement bounded loop runtime, terminal metadata, renderer output, and fake-model tests.
 
 ### Phase 13: Rubric and Evaluator Contract
