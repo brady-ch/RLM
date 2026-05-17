@@ -11,6 +11,7 @@ import type {
   LanguageModelPort,
   LanguageModelResponse,
 } from "../src/ports/language-model-port.js";
+import type { ExecutionGraphNode, QualityLoopMetadata } from "../src/domain/types.js";
 import type { ToolExecutionResult, ToolPort } from "../src/ports/tool-port.js";
 import { InMemoryTrace } from "../src/adapters/in-memory-trace.js";
 import { GuardedShellTool } from "../src/adapters/guarded-shell-tool.js";
@@ -93,6 +94,47 @@ const dynamicDepthConfig = {
   maxModelCalls: 100,
   maxToolRounds: 3,
 };
+
+test("quality loop metadata contract supports graph nodes", () => {
+  const loop: QualityLoopMetadata = {
+    config: {
+      enabled: true,
+      maxIterations: 3,
+      budgetBehavior: "stop_before_partial_iteration",
+    },
+    status: "completed",
+    stopReason: "budget_exhausted",
+    usage: {
+      iterationsStarted: 1,
+      iterationsCompleted: 1,
+      phaseCallCounts: {
+        draft: 1,
+        critique: 1,
+        refine: 0,
+        gate: 1,
+        best_of_progress: 1,
+      },
+      modelCallsTotal: 4,
+      inputTokens: 10,
+      outputTokens: 20,
+      totalTokens: 30,
+      unknownCompletions: 0,
+    },
+    iterations: [],
+    candidates: [],
+    unresolvedIssues: [],
+  };
+  const node: ExecutionGraphNode = {
+    id: "loop-1",
+    kind: "quality-loop",
+    label: "Quality loop",
+    depth: 0,
+    status: "completed",
+    loop,
+  };
+
+  assert.equal(node.loop?.stopReason, "budget_exhausted");
+});
 
 test("answers directly when max depth is zero", async () => {
   const trace = new InMemoryTrace();
