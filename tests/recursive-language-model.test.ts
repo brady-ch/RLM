@@ -1893,6 +1893,11 @@ workflows:
       maxPromptCharacters: 3000,
       maxModelCalls: 3,
       maxToolRounds: 1,
+      qualityLoop: {
+        enabled: false,
+        maxIterations: 3,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     });
   } finally {
     await rm(workspace, { recursive: true, force: true });

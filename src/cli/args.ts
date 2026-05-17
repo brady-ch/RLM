@@ -24,12 +24,19 @@ export interface CliOptions {
   uiPort?: number;
 }
 
+const DEFAULT_QUALITY_LOOP_CONFIG = {
+  enabled: false,
+  maxIterations: 3,
+  budgetBehavior: "stop_before_partial_iteration" as const,
+};
+
 const DEFAULT_CONFIG: RecursiveModelConfig = {
   maxDynamicDepth: 4,
   maxBranches: 3,
   maxPromptCharacters: 6_000,
   maxModelCalls: 24,
   maxToolRounds: 3,
+  qualityLoop: DEFAULT_QUALITY_LOOP_CONFIG,
 };
 
 const DEFAULT_UI_BOOTSTRAP_PROMPT =
@@ -166,6 +173,30 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
       continue;
     }
 
+    if (arg === "--quality-loop") {
+      const qualityLoop = {
+        ...(config.qualityLoop ?? DEFAULT_QUALITY_LOOP_CONFIG),
+        enabled: true,
+      };
+      config.qualityLoop = qualityLoop;
+      configOverrides.qualityLoop = qualityLoop;
+      continue;
+    }
+
+    if (arg === "--quality-loop-max-iterations") {
+      const value = parseStrictPositiveInteger(readValue(args, index, arg), arg);
+      const qualityLoop = {
+        ...(config.qualityLoop ?? DEFAULT_QUALITY_LOOP_CONFIG),
+        enabled: true,
+        maxIterations: value,
+        budgetBehavior: "stop_before_partial_iteration" as const,
+      };
+      config.qualityLoop = qualityLoop;
+      configOverrides.qualityLoop = qualityLoop;
+      index += 1;
+      continue;
+    }
+
     if (arg === "--model") {
       model = readValue(args, index, arg);
       modelOverride = model;
@@ -278,6 +309,9 @@ export function helpText(): string {
     "  --max-prompt-chars <n>  Override YAML runtime task prompt truncation",
     "  --max-model-calls <n>   Override YAML runtime total model-call budget",
     "  --max-tool-rounds <n>   Override YAML runtime maximum tool-call rounds per model step",
+    "  --quality-loop          Enable bounded answer quality loop mode",
+    "  --quality-loop-max-iterations <n>",
+    "                          Enable quality loop mode with a positive max iteration bound",
     "  --model <name>          Override YAML default Ollama model",
     "  --agent <id>            Agent override. Default: auto-route. Available: default, coding, product_designer, research",
     "  --workflow <id>         Run configured agent workflow. Default workflow id: default",
@@ -347,6 +381,15 @@ function parsePositiveInteger(value: string, flag: string): number {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed) || parsed < 0) {
     throw new Error(`${flag} must be a non-negative integer.`);
+  }
+
+  return parsed;
+}
+
+function parseStrictPositiveInteger(value: string, flag: string): number {
+  const parsed = parsePositiveInteger(value, flag);
+  if (parsed <= 0) {
+    throw new Error(`${flag} must be a positive integer.`);
   }
 
   return parsed;
