@@ -18,14 +18,14 @@ created: 2026-05-16
 | **Framework** | Node.js built-in test runner |
 | **Config file** | none; package scripts compile with `tsc -p tsconfig.json` and run `node --test dist/tests/*.test.js` |
 | **Quick run command** | `npm run build && node --test dist/tests/recursive-language-model.test.js` |
-| **Full suite command** | `npm test` |
+| **Full suite command** | `npm run build && node --test dist/tests/recursive-language-model.test.js dist/tests/project-config-scopes.test.js` |
 | **Estimated runtime** | ~15 seconds |
 
 ## Sampling Rate
 
 - **After every task commit:** Run `npm run build && node --test dist/tests/recursive-language-model.test.js`
-- **After every plan wave:** Run `npm test`
-- **Before `$gsd-verify-work`:** Full suite must be green
+- **After every plan wave:** Run `npm run build && node --test dist/tests/recursive-language-model.test.js dist/tests/project-config-scopes.test.js`
+- **Before `$gsd-verify-work`:** Targeted local-only suite must be green
 - **Max feedback latency:** 30 seconds
 
 ## Per-Task Verification Map
@@ -35,7 +35,11 @@ created: 2026-05-16
 | 12-01-01 | 01 | 1 | LOOP-01 | T-12-01 | Loop internals do not expand into top-level graph nodes | unit/integration | `npm run build && node --test dist/tests/recursive-language-model.test.js --test-name-pattern='quality loop graph node'` | no - W0 | pending |
 | 12-01-02 | 01 | 1 | LOOP-02 | T-12-02 | Invalid or unbounded loop config cannot create an unbounded run | unit/integration | `npm run build && node --test dist/tests/recursive-language-model.test.js --test-name-pattern='quality loop budget'` | no - W0 | pending |
 | 12-01-03 | 01 | 1 | LOOP-03 | T-12-03 | Terminal loop metadata includes inspectable history, usage, selected candidate, and stop reason | unit/integration | `npm run build && node --test dist/tests/recursive-language-model.test.js --test-name-pattern='quality loop metadata'` | no - W0 | pending |
-| 12-01-04 | 01 | 1 | LOOP-01, LOOP-02, LOOP-03 | T-12-04 | Non-loop recursive execution remains unchanged unless explicitly configured | regression | `npm test` | yes | pending |
+| 12-01-04 | 01 | 1 | LOOP-01, LOOP-02, LOOP-03 | T-12-04 | Non-loop recursive execution remains unchanged unless explicitly configured | regression | `npm run build && node --test dist/tests/recursive-language-model.test.js dist/tests/project-config-scopes.test.js` | yes | pending |
+
+## Testing Constraint
+
+Do not use `npm test` for this phase. In this repository, `npm test` runs every compiled test file, including MCP interoperability and localhost control-server coverage. Phase 12 verification must use targeted local-only `node --test` commands that do not boot MCP servers, dev servers, browser automation, or localhost services.
 
 ## Wave 0 Requirements
 
