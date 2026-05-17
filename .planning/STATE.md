@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Answer Quality Loops
-status: executing
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-05-17T17:31:37.021Z"
+status: verifying
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-05-17T17:39:58.790Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-14)
 
 Phase: 12 (Loop Runtime Contract) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-17
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [█████░░░░░] 50%
 - Trend: n/a
 
 | Phase 12 P01 | 6min | 3 tasks | 6 files |
+| Phase 12 P02 | 6min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 12]: Quality loop state is canonical metadata on RecursivePromptMetadata and ExecutionGraphNode.loop, not trace-only state.
 - [Phase 12]: CLI loop mode is explicit-only through --quality-loop or --quality-loop-max-iterations.
 - [Phase 12]: runtime.qualityLoop defaults to disabled with maxIterations 3 and stop_before_partial_iteration budget behavior.
+- [Phase 12]: Quality loop execution branches before dynamic depth selection so loop runs create no depth selector or ordinary root task node.
+- [Phase 12]: Phase 12 stores full candidate text only in runtime-local state and persists capped candidate summaries in graph metadata.
+- [Phase 12]: Plan-level broad recursive test command was replaced with targeted local-only commands to avoid prohibited localhost control-server tests.
 
 ### Pending Todos
 
@@ -82,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-17T17:31:37.001Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-05-17T17:39:57.802Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
