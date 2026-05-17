@@ -8,12 +8,20 @@ import type { TracePort } from "../ports/trace-port.js";
 import type {
   ExecutionEvent,
   ExecutionStatusUpdateDetail,
+  QualityLoopCandidateSummary,
+  QualityLoopIssue,
+  QualityLoopIterationRecord,
+  QualityLoopMetadata,
+  QualityLoopPhaseName,
+  QualityLoopPhaseRecord,
+  QualityLoopStatus,
   RecursiveModelConfig,
   RecursivePromptMetadata,
   RecursivePromptRequest,
   RecursivePromptResult,
   SolvedTask,
   TaskNode,
+  TokenUsageTrace,
   ToolCallRecord,
 } from "./types.js";
 import { EXECUTION_FAILURE_CODES } from "./execution-failure.js";
@@ -21,6 +29,7 @@ import { RunStatePersistence } from "./run-state-persistence.js";
 
 const DIRECT = "DIRECT";
 const RECURSIVE = "RECURSIVE";
+const QUALITY_LOOP_PHASES: QualityLoopPhaseName[] = ["draft", "critique", "refine", "gate", "best_of_progress"];
 
 export class RecursiveLanguageModel {
   private nextId = 1;
@@ -69,6 +78,63 @@ export class RecursiveLanguageModel {
       this.agentSystemPrompt = "";
     }
     await this.initializeRunState(request.prompt);
+    if (request.config.qualityLoop?.enabled === true) {
+      const config: RecursiveModelConfig = {
+        ...request.config,
+        maxDepth: request.config.maxDepth ?? 0,
+      };
+      const root: TaskNode = {
+        id: this.createId(),
+        prompt: this.limitPrompt(request.prompt, config),
+        depth: 0,
+      };
+      this.ensureExecutionNode(root, "quality-loop", request.prompt);
+      this.metadata.executionStatus = request.execution?.planOnly ? "planned" : "running";
+      this.emitExecution({
+        type: "execution",
+        status: this.metadata.executionStatus,
+        nodeId: root.id,
+        modelCallsUsed: this.modelCalls,
+        modelCallsRemaining: this.remainingModelCalls(),
+        toolCallsUsed: this.metadata.toolCalls.length,
+        message: request.execution?.planOnly ? "quality loop plan created" : "quality loop started",
+      });
+
+      if (request.execution?.planOnly) {
+        this.updateExecutionGraph();
+        this.metadata.budget = {
+          estimatedModelCalls: Math.min(config.maxModelCalls, request.config.qualityLoop.maxIterations * QUALITY_LOOP_PHASES.length),
+          estimatedToolRounds: 0,
+          modelCallsUsed: 0,
+          modelCallsRemaining: this.maxModelCalls,
+          toolCallsUsed: 0,
+        };
+        return {
+          answer: "",
+          trace: this.trace.events(),
+          metadata: this.metadata,
+        };
+      }
+
+      const answer = await this.runQualityLoop(root, config);
+      await this.flushRunStateWrites();
+      this.metadata.modelCalls = this.modelCalls;
+      this.updateExecutionGraph();
+      this.log("run", "completed quality loop run", {
+        modelCalls: this.metadata.modelCalls,
+        inputTokens: this.metadata.tokenUsage.inputTokens,
+        outputTokens: this.metadata.tokenUsage.outputTokens,
+        totalTokens: this.metadata.tokenUsage.totalTokens,
+        unknownCompletions: this.metadata.tokenUsage.unknownCompletions,
+        executionStatus: this.metadata.executionStatus,
+        stopReason: this.metadata.qualityLoop?.stopReason,
+      });
+      return {
+        answer,
+        trace: this.trace.events(),
+        metadata: this.metadata,
+      };
+    }
     const depth = await this.selectDepth(request.prompt, request.config);
     const config: RecursiveModelConfig = {
       ...request.config,
@@ -146,6 +212,234 @@ export class RecursiveLanguageModel {
       await this.flushRunStateWrites();
       throw error;
     }
+  }
+
+  private async runQualityLoop(task: TaskNode, config: RecursiveModelConfig): Promise<string> {
+    const loopConfig = config.qualityLoop;
+    if (!loopConfig?.enabled) {
+      return "";
+    }
+
+    const metadata: QualityLoopMetadata = {
+      config: loopConfig,
+      status: "running",
+      usage: createEmptyLoopUsage(),
+      iterations: [],
+      candidates: [],
+      unresolvedIssues: [],
+    };
+    const candidateTexts = new Map<string, string>();
+    let selectedCandidateId: string | undefined;
+    this.writeLoopMetadata(task.id, metadata);
+    this.markExecutionNodeRunning(task.id);
+    this.emitExecution({
+      type: "execution",
+      status: "running",
+      nodeId: task.id,
+      modelCallsUsed: this.modelCalls,
+      modelCallsRemaining: this.remainingModelCalls(),
+      toolCallsUsed: this.metadata.toolCalls.length,
+      message: "quality loop started",
+    });
+
+    const selectedText = (): string => selectedCandidateId ? candidateTexts.get(selectedCandidateId) ?? "" : "";
+    const finish = (status: QualityLoopStatus, stopReason: NonNullable<QualityLoopMetadata["stopReason"]>, message: string): string => {
+      metadata.status = status;
+      metadata.stopReason = stopReason;
+      metadata.message = message;
+      metadata.usage = this.summarizeQualityLoopUsage(metadata);
+      if (selectedCandidateId) {
+        metadata.selectedCandidateId = selectedCandidateId;
+      }
+      this.writeLoopMetadata(task.id, metadata);
+      if (status === "failed") {
+        this.markExecutionNodeFailed(task.id, "failed", {
+          failureCategory: "model",
+          code: EXECUTION_FAILURE_CODES.model,
+          message,
+        });
+      } else if (status === "cancelled") {
+        this.markExecutionNodeFailed(task.id, "cancelled", {
+          failureCategory: "cancelled",
+          code: EXECUTION_FAILURE_CODES.cancelled,
+          message,
+        });
+      } else {
+        this.markExecutionNodeCompleted(task.id);
+      }
+      const stopEventMessage = qualityLoopStopMessage(stopReason);
+      this.emitExecution({
+        type: "execution",
+        status: status === "failed" ? "failed" : status === "cancelled" ? "cancelled" : "completed",
+        nodeId: task.id,
+        modelCallsUsed: this.modelCalls,
+        modelCallsRemaining: this.remainingModelCalls(),
+        toolCallsUsed: this.metadata.toolCalls.length,
+        message: stopEventMessage,
+      });
+      if (status === "failed") {
+        this.metadata.executionStatus = "failed";
+      } else if (status === "cancelled") {
+        this.metadata.executionStatus = "cancelled";
+      } else {
+        this.metadata.executionStatus = "completed";
+      }
+      return selectedText();
+    };
+
+    try {
+      for (let iterationIndex = 0; iterationIndex < loopConfig.maxIterations; iterationIndex += 1) {
+        if (this.remainingModelCalls() < 5) {
+          return finish("stopped", "budget_exhausted", "quality loop stopped before partial iteration");
+        }
+
+        this.throwIfCancelled(task);
+        const iteration: QualityLoopIterationRecord = {
+          index: iterationIndex,
+          status: "running",
+          startedAt: new Date().toISOString(),
+          phases: [],
+          candidates: [],
+          unresolvedIssues: [],
+        };
+        metadata.iterations.push(iteration);
+        metadata.usage.iterationsStarted += 1;
+        this.writeLoopMetadata(task.id, metadata);
+
+        const phaseOutputs = new Map<QualityLoopPhaseName, string>();
+        for (const phase of QUALITY_LOOP_PHASES) {
+          const phaseResult = await this.completeQualityLoopPhase(task, phase, qualityLoopMessages(task.prompt, phase, phaseOutputs));
+          phaseOutputs.set(phase, phaseResult.content);
+          metadata.usage.phaseCallCounts[phase] += phaseResult.modelCallsDelta;
+          const phaseRecord: QualityLoopPhaseRecord = {
+            phase,
+            status: "completed",
+            startedAt: phaseResult.startedAt,
+            completedAt: phaseResult.completedAt,
+            summary: preview(phaseResult.content),
+            model: phaseResult.model,
+            usage: phaseResult.usageDelta,
+          };
+          if (phase === "draft" || phase === "refine" || phase === "best_of_progress") {
+            const candidate: QualityLoopCandidateSummary = {
+              id: `loop-${task.id}-i${iterationIndex}-${phase}`,
+              iteration: iterationIndex,
+              phase,
+              summary: preview(phaseResult.content, 160),
+            };
+            candidateTexts.set(candidate.id, phaseResult.content);
+            if (phase === "best_of_progress") {
+              selectedCandidateId = candidate.id;
+              candidate.isSelected = true;
+            }
+            phaseRecord.candidateId = candidate.id;
+            iteration.candidates.push(candidate);
+            metadata.candidates.push(candidate);
+          }
+          iteration.phases.push(phaseRecord);
+          metadata.usage = this.summarizeQualityLoopUsage(metadata);
+          this.writeLoopMetadata(task.id, metadata);
+          this.emitExecution({
+            type: "execution",
+            status: "running",
+            nodeId: task.id,
+            modelCallsUsed: this.modelCalls,
+            modelCallsRemaining: this.remainingModelCalls(),
+            toolCallsUsed: this.metadata.toolCalls.length,
+            message: `quality loop phase completed: ${phase}`,
+          });
+        }
+
+        const gateOutput = phaseOutputs.get("gate") ?? "";
+        if (gateOutput.includes("DEGRADED")) {
+          const issue: QualityLoopIssue = {
+            id: `loop-${task.id}-i${iterationIndex}-degraded-1`,
+            severity: "warning",
+            text: preview(gateOutput, 160),
+            sourcePhase: "gate",
+          };
+          iteration.unresolvedIssues.push(issue);
+          iteration.phases.find((phase) => phase.phase === "gate")!.unresolvedIssues = [issue];
+          metadata.unresolvedIssues.push(issue);
+          iteration.status = "degraded";
+          iteration.completedAt = new Date().toISOString();
+          metadata.usage.iterationsCompleted += 1;
+          return finish("degraded", "degraded", "quality loop degraded with unresolved issues");
+        }
+
+        iteration.status = "completed";
+        iteration.completedAt = new Date().toISOString();
+        metadata.usage.iterationsCompleted += 1;
+        this.writeLoopMetadata(task.id, metadata);
+      }
+
+      return finish("completed", "max_iterations", "quality loop reached max iterations");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (this.execution?.isCancelled()) {
+        return finish("cancelled", "stopped", message);
+      }
+      this.metadata.errors.push(message);
+      return finish("failed", "failed", message);
+    }
+  }
+
+  private async completeQualityLoopPhase(
+    task: TaskNode,
+    phase: QualityLoopPhaseName,
+    messages: Parameters<LanguageModelPort["complete"]>[0],
+  ): Promise<{
+    content: string;
+    model: string;
+    usageDelta: TokenUsageTrace;
+    modelCallsDelta: number;
+    startedAt: string;
+    completedAt: string;
+  }> {
+    this.throwIfCancelled(task);
+    if (!this.canSpendAnyModelCall()) {
+      throw new Error(`model call budget reached before quality loop ${phase}`);
+    }
+
+    const startedAt = new Date().toISOString();
+    const usageBefore = { ...this.metadata.tokenUsage };
+    const modelCallsBefore = this.modelCalls;
+    this.modelCalls += 1;
+    const callNumber = this.modelCalls;
+    this.log("completion", "starting quality loop phase", {
+      call: callNumber,
+      task: task.id,
+      phase,
+      prompt: preview(messages.at(-1)?.content ?? ""),
+    });
+    const response = await this.model.complete(this.withAgentSystemPrompt(messages), {
+      tools: [],
+      purpose: "answer",
+      complexityDepth: this.metadata.depth.selected,
+      overrideModel: task.modelOverride,
+      constrainedToolCalling: false,
+    });
+    this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
+    this.recordUsage(response.usage);
+    const completedAt = new Date().toISOString();
+    this.log("completion", "completed quality loop phase", {
+      call: callNumber,
+      task: task.id,
+      phase,
+      model: response.model,
+      inputTokens: response.usage?.inputTokens,
+      outputTokens: response.usage?.outputTokens,
+      totalTokens: response.usage?.totalTokens,
+      output: preview(response.content),
+    });
+    return {
+      content: response.content,
+      model: response.model ?? "unknown",
+      usageDelta: subtractUsage(this.metadata.tokenUsage, usageBefore),
+      modelCallsDelta: this.modelCalls - modelCallsBefore,
+      startedAt,
+      completedAt,
+    };
   }
 
   private async solve(task: TaskNode, config: RecursiveModelConfig): Promise<string> {
@@ -826,7 +1120,7 @@ export class RecursiveLanguageModel {
     throw new Error(reason);
   }
 
-  private ensureExecutionNode(task: TaskNode, kind: "task", label: string): void {
+  private ensureExecutionNode(task: TaskNode, kind: "task" | "quality-loop", label: string): void {
     if (!this.executionNodes.has(task.id)) {
       const node: NonNullable<RecursivePromptMetadata["executionGraph"]>["nodes"][number] = {
         id: task.id,
@@ -858,6 +1152,26 @@ export class RecursiveLanguageModel {
       this.updateExecutionGraph();
       this.execution?.registerNode?.(node);
     }
+  }
+
+  private writeLoopMetadata(nodeId: string, metadata: QualityLoopMetadata): void {
+    this.metadata.qualityLoop = metadata;
+    const node = this.executionNodes.get(nodeId);
+    if (node) {
+      node.loop = metadata;
+    }
+    this.updateExecutionGraph();
+  }
+
+  private summarizeQualityLoopUsage(metadata: QualityLoopMetadata): QualityLoopMetadata["usage"] {
+    return {
+      ...metadata.usage,
+      modelCallsTotal: Object.values(metadata.usage.phaseCallCounts).reduce((total, count) => total + count, 0),
+      inputTokens: this.metadata.tokenUsage.inputTokens,
+      outputTokens: this.metadata.tokenUsage.outputTokens,
+      totalTokens: this.metadata.tokenUsage.totalTokens,
+      unknownCompletions: this.metadata.tokenUsage.unknownCompletions,
+    };
   }
 
   private markExecutionNodeRunning(nodeId: string): void {
@@ -1128,6 +1442,82 @@ function createEmptyMetadata(): RecursivePromptMetadata {
     toolCalls: [],
     errors: [],
   };
+}
+
+function createEmptyLoopUsage(): QualityLoopMetadata["usage"] {
+  return {
+    iterationsStarted: 0,
+    iterationsCompleted: 0,
+    phaseCallCounts: {
+      draft: 0,
+      critique: 0,
+      refine: 0,
+      gate: 0,
+      best_of_progress: 0,
+    },
+    modelCallsTotal: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    unknownCompletions: 0,
+  };
+}
+
+function subtractUsage(after: TokenUsageTrace, before: TokenUsageTrace): TokenUsageTrace {
+  return {
+    inputTokens: after.inputTokens - before.inputTokens,
+    outputTokens: after.outputTokens - before.outputTokens,
+    totalTokens: after.totalTokens - before.totalTokens,
+    unknownCompletions: after.unknownCompletions - before.unknownCompletions,
+  };
+}
+
+function qualityLoopMessages(
+  originalPrompt: string,
+  phase: QualityLoopPhaseName,
+  phaseOutputs: Map<QualityLoopPhaseName, string>,
+): Parameters<LanguageModelPort["complete"]>[0] {
+  const draft = phaseOutputs.get("draft") ?? "";
+  const critique = phaseOutputs.get("critique") ?? "";
+  const refine = phaseOutputs.get("refine") ?? "";
+  const gate = phaseOutputs.get("gate") ?? "";
+  const instructions: Record<QualityLoopPhaseName, string> = {
+    draft: "Draft the best direct answer to the user prompt.",
+    critique: "Critique the draft answer for correctness, clarity, and missing details.",
+    refine: "Refine the draft using the critique while preserving useful content.",
+    gate: "Evaluate whether the refined answer is acceptable. Include DEGRADED only when unresolved issues remain.",
+    best_of_progress: "Return the best final answer available from the draft, critique, refine, and gate context.",
+  };
+  const context = [
+    draft ? `Draft:\n${draft}` : "",
+    critique ? `Critique:\n${critique}` : "",
+    refine ? `Refine:\n${refine}` : "",
+    gate ? `Gate:\n${gate}` : "",
+  ].filter(Boolean).join("\n\n");
+
+  return [
+    {
+      role: "system",
+      content: `${instructions[phase]} Do not call tools.`,
+    },
+    {
+      role: "user",
+      content: context ? `Original prompt:\n${originalPrompt}\n\n${context}` : originalPrompt,
+    },
+  ];
+}
+
+function qualityLoopStopMessage(stopReason: NonNullable<QualityLoopMetadata["stopReason"]>): string {
+  switch (stopReason) {
+    case "budget_exhausted":
+      return "quality loop stopped: budget_exhausted";
+    case "degraded":
+      return "quality loop stopped: degraded";
+    case "failed":
+      return "quality loop stopped: failed";
+    default:
+      return `quality loop stopped: ${stopReason}`;
+  }
 }
 
 function preview(value: string, maxLength = 180): string {
