@@ -54,7 +54,10 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
   2. User can inspect the loop's internal draft, critique, refine, gate, and best-of-progress history without expanding it into top-level nodes.
   3. User can configure max iterations and model-call budget behavior before the loop runs.
   4. Every completed, stopped, degraded, or failed loop reports a clear stop reason and usage summary.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 12-01-PLAN.md — Define typed loop metadata, config validation, and explicit CLI opt-in.
+- [ ] 12-02-PLAN.md — Implement bounded loop runtime, terminal metadata, renderer output, and fake-model tests.
 
 ### Phase 13: Rubric and Evaluator Contract
 **Goal**: Users can trust that loop evaluation is based on visible rubric selection and structured evaluator outputs.
