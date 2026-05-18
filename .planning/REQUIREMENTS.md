@@ -14,9 +14,9 @@
 
 ### Rubrics and Evaluation
 
-- [ ] **RUBR-01**: System selects a visible default adaptive rubric from task context, with rubric types for general answer quality, code/engineering, planning/architecture, user-facing writing, and structured artifacts.
-- [ ] **RUBR-02**: Critique, gate, and best-of-progress outputs are parsed through structured schemas, and parse failures surface as explicit degraded or failed loop states.
-- [ ] **RUBR-03**: Gate decisions combine rubric fit, critique resolution, and meaningful-improvement checks before passing or continuing a loop.
+- [x] **RUBR-01**: System selects a visible default adaptive rubric from task context, with rubric types for general answer quality, code/engineering, planning/architecture, user-facing writing, and structured artifacts.
+- [x] **RUBR-02**: Critique, gate, and best-of-progress outputs are parsed through structured schemas, and parse failures surface as explicit degraded or failed loop states.
+- [x] **RUBR-03**: Gate decisions combine rubric fit, critique resolution, and meaningful-improvement checks before passing or continuing a loop.
 
 ### Refinement and Selection
 
@@ -74,9 +74,9 @@
 | LOOP-01 | Phase 12 | Complete |
 | LOOP-02 | Phase 12 | Complete |
 | LOOP-03 | Phase 12 | Complete |
-| RUBR-01 | Phase 13 | Pending |
-| RUBR-02 | Phase 13 | Pending |
-| RUBR-03 | Phase 13 | Pending |
+| RUBR-01 | Phase 13 | Complete |
+| RUBR-02 | Phase 13 | Complete |
+| RUBR-03 | Phase 13 | Complete |
 | REFN-01 | Phase 14 | Pending |
 | REFN-02 | Phase 14 | Pending |
 | REFN-03 | Phase 14 | Pending |
