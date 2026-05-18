@@ -66,6 +66,9 @@ export interface QualityLoopCandidateSummary {
   phase: QualityLoopPhaseName;
   summary: string;
   score?: number | undefined;
+  selectionScore?: number | undefined;
+  selectionRationale?: string | undefined;
+  sourceIssueIds?: string[] | undefined;
   artifactRef?: string | undefined;
   isSelected?: boolean | undefined;
 }
@@ -111,6 +114,15 @@ export interface QualityLoopBestOfProgressEvaluation {
   comparisonNotes: string[];
 }
 
+export interface QualityLoopSelectionMetadata {
+  selectedCandidateId: string;
+  rationale: string;
+  scoreBasis: string[];
+  comparisonNotes: string[];
+  fallbackReason?: string | undefined;
+  invalidCandidateId?: string | undefined;
+}
+
 export type QualityLoopEvaluatorParseStatus = "parsed" | "degraded" | "failed";
 
 export interface QualityLoopIterationRecord {
@@ -131,6 +143,7 @@ export interface QualityLoopMetadata {
   status: QualityLoopStatus;
   rubric?: QualityLoopRubricSelection | undefined;
   gate?: QualityLoopGateEvaluation | undefined;
+  selection?: QualityLoopSelectionMetadata | undefined;
   stopReason?: QualityLoopStopReason | undefined;
   usage: QualityLoopUsageSummary;
   iterations: QualityLoopIterationRecord[];

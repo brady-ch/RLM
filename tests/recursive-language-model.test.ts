@@ -594,6 +594,97 @@ test("quality loop gate stops with no meaningful improvement", async () => {
   assert.equal(result.metadata.qualityLoop?.iterations.length, 2);
 });
 
+test("quality loop preserves refined candidates for comparison", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "refined answer", toolCalls: [], model: "refine-model" },
+      { content: passingGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("best final answer", "loop-task-1-i0-refine"), toolCalls: [], model: "best-model" },
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...config,
+      maxDepth: 0,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+
+  const candidates = result.metadata.qualityLoop?.candidates ?? [];
+  assert.ok(candidates.some((candidate) => candidate.phase === "draft"));
+  assert.ok(candidates.some((candidate) => candidate.phase === "refine"));
+  assert.ok(candidates.some((candidate) => candidate.phase === "best_of_progress"));
+  assert.equal(result.metadata.qualityLoop?.selectedCandidateId, "loop-task-1-i0-refine");
+  assert.equal(result.answer, "refined answer");
+});
+
+test("quality loop can select earlier candidate as final answer", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "excellent first refinement", toolCalls: [], model: "refine-model" },
+      { content: continuingGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("best final answer", "loop-task-1-i0-refine"), toolCalls: [], model: "best-model" },
+      { content: "weaker draft", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "weaker refinement", toolCalls: [], model: "refine-model" },
+      { content: passingGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("later final answer", "loop-task-1-i0-refine"), toolCalls: [], model: "best-model" },
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...config,
+      maxDepth: 0,
+      qualityLoop: { enabled: true, maxIterations: 2, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+
+  assert.equal(result.metadata.qualityLoop?.selectedCandidateId, "loop-task-1-i0-refine");
+  assert.equal(result.answer, "excellent first refinement");
+});
+
+test("quality loop degrades and falls back on invalid best of progress candidate", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "refined answer", toolCalls: [], model: "refine-model" },
+      { content: continuingGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("best final answer", "missing-candidate"), toolCalls: [], model: "best-model" },
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...config,
+      maxDepth: 0,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+
+  assert.equal(result.metadata.qualityLoop?.status, "degraded");
+  assert.equal(result.metadata.qualityLoop?.stopReason, "degraded");
+  assert.equal(result.metadata.qualityLoop?.selection?.invalidCandidateId, "missing-candidate");
+  assert.ok(result.metadata.qualityLoop?.selectedCandidateId);
+  assert.ok((result.metadata.qualityLoop?.unresolvedIssues.length ?? 0) > 0);
+  assert.notEqual(result.answer, "");
+});
+
 test("quality loop failure records terminal failed metadata", async () => {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(

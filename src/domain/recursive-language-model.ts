@@ -20,6 +20,7 @@ import type {
   QualityLoopRubricCriterion,
   QualityLoopRubricId,
   QualityLoopRubricSelection,
+  QualityLoopSelectionMetadata,
   QualityLoopStatus,
   RecursiveModelConfig,
   RecursivePromptMetadata,
@@ -404,10 +405,6 @@ export class RecursiveLanguageModel {
               summary: preview(phaseResult.content, 160),
             };
             candidateTexts.set(candidate.id, phaseResult.content);
-            if (phase === "best_of_progress") {
-              selectedCandidateId = candidate.id;
-              candidate.isSelected = true;
-            }
             phaseRecord.candidateId = candidate.id;
             iteration.candidates.push(candidate);
             metadata.candidates.push(candidate);
@@ -422,6 +419,7 @@ export class RecursiveLanguageModel {
               phaseRecord.parseStatus = "parsed";
             } else if (phase === "best_of_progress") {
               const candidateId = phaseRecord.candidateId ?? selectedCandidateId ?? `loop-${task.id}-i${iterationIndex}-${phase}`;
+              selectedCandidateId = candidateId;
               const parsed = parseQualityLoopBestOfProgress(phaseResult.content, candidateId);
               iteration.bestOfProgressEvaluation = parsed.evaluation;
               phaseRecord.parseStatus = "parsed";
@@ -431,6 +429,31 @@ export class RecursiveLanguageModel {
                 if (candidate) {
                   candidate.summary = preview(parsed.answerText, 160);
                 }
+              }
+              const selection = selectBestQualityLoopCandidate(metadata, parsed.evaluation, iteration.gateEvaluation);
+              selectedCandidateId = selection.selectedCandidateId;
+              metadata.selection = selection;
+              for (const candidate of metadata.candidates) {
+                candidate.isSelected = candidate.id === selectedCandidateId;
+                if (candidate.isSelected) {
+                  candidate.selectionRationale = selection.rationale;
+                }
+              }
+              if (selection.invalidCandidateId) {
+                const issue: QualityLoopIssue = {
+                  id: `loop-${task.id}-i${iterationIndex}-invalid-selection`,
+                  severity: "warning",
+                  text: `best_of_progress selected invalid candidate id: ${selection.invalidCandidateId}`,
+                  sourcePhase: "best_of_progress",
+                };
+                phaseRecord.unresolvedIssues = [...(phaseRecord.unresolvedIssues ?? []), issue];
+                iteration.unresolvedIssues.push(issue);
+                metadata.unresolvedIssues.push(issue);
+                iteration.status = "degraded";
+                iteration.completedAt = new Date().toISOString();
+                metadata.usage.iterationsCompleted += 1;
+                this.writeLoopMetadata(task.id, metadata);
+                return finish("degraded", "degraded", "quality loop best-of-progress selected an invalid candidate");
               }
             }
           } catch (error: unknown) {
@@ -1749,6 +1772,74 @@ function hasMeaningfulImprovement(
   const unresolvedCount = (evaluation: QualityLoopGateEvaluation): number =>
     evaluation.unresolvedIssues.filter((issue) => issue.severity === "warning" || issue.severity === "error").length;
   return current.score - previous.score >= 0.05 || unresolvedCount(current) < unresolvedCount(previous);
+}
+
+function selectBestQualityLoopCandidate(
+  metadata: QualityLoopMetadata,
+  evaluation: QualityLoopBestOfProgressEvaluation,
+  gate: QualityLoopGateEvaluation | undefined,
+): QualityLoopSelectionMetadata {
+  const validSelected = metadata.candidates.find((candidate) => candidate.id === evaluation.selectedCandidateId);
+  if (validSelected) {
+    validSelected.score = evaluation.score;
+    validSelected.selectionScore = scoreQualityLoopCandidate(validSelected, metadata, gate);
+    return {
+      selectedCandidateId: validSelected.id,
+      rationale: evaluation.rationale,
+      scoreBasis: [
+        `best_of_progress_score:${evaluation.score}`,
+        gate ? `gate_score:${gate.score}` : "gate_score:none",
+        "valid_best_of_progress_selection",
+      ],
+      comparisonNotes: evaluation.comparisonNotes,
+    };
+  }
+
+  const fallback = [...metadata.candidates]
+    .map((candidate) => {
+      const selectionScore = scoreQualityLoopCandidate(candidate, metadata, gate);
+      candidate.selectionScore = selectionScore;
+      return { candidate, selectionScore };
+    })
+    .sort((a, b) => b.selectionScore - a.selectionScore || b.candidate.iteration - a.candidate.iteration)[0]?.candidate;
+
+  if (!fallback) {
+    throw new Error(`best_of_progress selected invalid candidate id ${evaluation.selectedCandidateId} and no fallback candidate exists`);
+  }
+
+  return {
+    selectedCandidateId: fallback.id,
+    rationale: `Selected fallback candidate ${fallback.id} because best_of_progress referenced an invalid candidate id.`,
+    scoreBasis: [
+      `fallback_selection_score:${fallback.selectionScore ?? 0}`,
+      gate ? `gate_score:${gate.score}` : "gate_score:none",
+      "invalid_best_of_progress_selection",
+    ],
+    comparisonNotes: evaluation.comparisonNotes,
+    fallbackReason: "invalid_best_of_progress_candidate",
+    invalidCandidateId: evaluation.selectedCandidateId,
+  };
+}
+
+function scoreQualityLoopCandidate(
+  candidate: QualityLoopCandidateSummary,
+  metadata: QualityLoopMetadata,
+  gate: QualityLoopGateEvaluation | undefined,
+): number {
+  const candidateScore = candidate.score ?? (candidate.phase === "best_of_progress" ? metadata.selection ? undefined : gate?.score : undefined) ?? 0;
+  const iteration = metadata.iterations.find((item) => item.index === candidate.iteration);
+  const issuePenalty = (iteration?.unresolvedIssues ?? []).reduce((total, issue) => {
+    if (issue.severity === "error") {
+      return total + 0.3;
+    }
+    if (issue.severity === "warning") {
+      return total + 0.15;
+    }
+    return total + 0.03;
+  }, 0);
+  const phaseBonus = candidate.phase === "refine" ? 0.03 : candidate.phase === "best_of_progress" ? 0.02 : 0;
+  const recencyBonus = candidate.iteration * 0.001;
+  return candidateScore + phaseBonus + recencyBonus - issuePenalty;
 }
 
 function asRecord(value: unknown, label: string): Record<string, unknown> {
