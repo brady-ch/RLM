@@ -20,9 +20,9 @@
 
 ### Refinement and Selection
 
-- [ ] **REFN-01**: System produces refined candidates from the original prompt plus structured critique while preserving prior candidates for comparison.
-- [ ] **REFN-02**: System returns the best-of-progress candidate rather than blindly returning the final iteration.
-- [ ] **REFN-03**: System can stop early when critique is resolved, pass threshold is reached, or no meaningful improvement is detected.
+- [x] **REFN-01**: System produces refined candidates from the original prompt plus structured critique while preserving prior candidates for comparison.
+- [x] **REFN-02**: System returns the best-of-progress candidate rather than blindly returning the final iteration.
+- [x] **REFN-03**: System can stop early when critique is resolved, pass threshold is reached, or no meaningful improvement is detected.
 
 ### Model Routing and Overrides
 
@@ -77,9 +77,9 @@
 | RUBR-01 | Phase 13 | Complete |
 | RUBR-02 | Phase 13 | Complete |
 | RUBR-03 | Phase 13 | Complete |
-| REFN-01 | Phase 14 | Pending |
-| REFN-02 | Phase 14 | Pending |
-| REFN-03 | Phase 14 | Pending |
+| REFN-01 | Phase 14 | Complete |
+| REFN-02 | Phase 14 | Complete |
+| REFN-03 | Phase 14 | Complete |
 | MODL-04 | Phase 15 | Pending |
 | MODL-05 | Phase 15 | Pending |
 | MODL-06 | Phase 15 | Pending |
