@@ -271,6 +271,76 @@ test("quality loop metadata includes terminal reason usage and selected candidat
   assert.ok(result.metadata.qualityLoop?.iterations[0]?.phases.some((phase) => phase.model === "unknown"));
 });
 
+async function runQualityLoopForRubric(prompt: string) {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: "critique notes", toolCalls: [], model: "critique-model" },
+      { content: "refined answer", toolCalls: [], model: "refine-model" },
+      { content: "gate ok", toolCalls: [], model: "gate-model" },
+      { content: "best final answer", toolCalls: [], model: "best-model" },
+    ]),
+    trace,
+  );
+
+  return engine.run({
+    prompt,
+    config: {
+      ...config,
+      maxDepth: 0,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+}
+
+test("quality loop selects general answer quality rubric by default", async () => {
+  const result = await runQualityLoopForRubric("Explain why the sky changes color at sunset.");
+
+  assert.equal(result.metadata.qualityLoop?.rubric?.id, "general_answer_quality");
+  assert.equal(result.metadata.qualityLoop?.rubric?.confidence, 0.4);
+  assert.equal(result.metadata.qualityLoop?.rubric?.criteria.length, 3);
+});
+
+test("quality loop selects code engineering rubric", async () => {
+  const result = await runQualityLoopForRubric("Fix the failing TypeScript test in src/domain/types.ts.");
+
+  assert.equal(result.metadata.qualityLoop?.rubric?.id, "code_engineering");
+  assert.ok((result.metadata.qualityLoop?.rubric?.matchedSignals.length ?? 0) > 0);
+  assert.equal(result.metadata.qualityLoop?.rubric?.criteria.length, 3);
+});
+
+test("quality loop selects planning architecture rubric", async () => {
+  const result = await runQualityLoopForRubric("Create an architecture plan with system tradeoffs for the next phase.");
+
+  assert.equal(result.metadata.qualityLoop?.rubric?.id, "planning_architecture");
+  assert.ok((result.metadata.qualityLoop?.rubric?.matchedSignals.length ?? 0) > 0);
+  assert.equal(result.metadata.qualityLoop?.rubric?.criteria.length, 3);
+});
+
+test("quality loop selects user facing writing rubric", async () => {
+  const result = await runQualityLoopForRubric("Rewrite this announcement email with a warmer tone.");
+
+  assert.equal(result.metadata.qualityLoop?.rubric?.id, "user_facing_writing");
+  assert.ok((result.metadata.qualityLoop?.rubric?.matchedSignals.length ?? 0) > 0);
+  assert.equal(result.metadata.qualityLoop?.rubric?.criteria.length, 3);
+});
+
+test("quality loop selects structured artifact rubric", async () => {
+  const result = await runQualityLoopForRubric("Return a YAML checklist with the required fields.");
+
+  assert.equal(result.metadata.qualityLoop?.rubric?.id, "structured_artifact");
+  assert.ok((result.metadata.qualityLoop?.rubric?.matchedSignals.length ?? 0) > 0);
+  assert.equal(result.metadata.qualityLoop?.rubric?.criteria.length, 3);
+});
+
+test("quality loop mirrors selected rubric onto graph node metadata", async () => {
+  const result = await runQualityLoopForRubric("Fix the bug in src/domain/recursive-language-model.ts.");
+  const node = result.metadata.executionGraph?.nodes[0];
+
+  assert.deepEqual(node?.loop?.rubric, result.metadata.qualityLoop?.rubric);
+});
+
 test("quality loop degraded returns best available candidate with unresolved issues", async () => {
   const trace = new InMemoryTrace();
   const fullCandidateText = "best final answer ".repeat(20).trim();

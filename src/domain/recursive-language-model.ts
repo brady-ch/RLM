@@ -14,6 +14,9 @@ import type {
   QualityLoopMetadata,
   QualityLoopPhaseName,
   QualityLoopPhaseRecord,
+  QualityLoopRubricCriterion,
+  QualityLoopRubricId,
+  QualityLoopRubricSelection,
   QualityLoopStatus,
   RecursiveModelConfig,
   RecursivePromptMetadata,
@@ -236,6 +239,7 @@ export class RecursiveLanguageModel {
     const metadata: QualityLoopMetadata = {
       config: loopConfig,
       status: "running",
+      rubric: selectQualityLoopRubric(task.prompt, task),
       usage: createEmptyLoopUsage(),
       iterations: [],
       candidates: [],
@@ -1480,6 +1484,99 @@ function createEmptyMetadata(): RecursivePromptMetadata {
     },
     toolCalls: [],
     errors: [],
+  };
+}
+
+const QUALITY_LOOP_RUBRICS: Record<QualityLoopRubricId, {
+  label: string;
+  criteria: QualityLoopRubricCriterion[];
+}> = {
+  general_answer_quality: {
+    label: "General Answer Quality",
+    criteria: [
+      { id: "directness", label: "Directness", description: "Answers the user prompt without unnecessary detours." },
+      { id: "correctness", label: "Correctness", description: "Avoids unsupported claims and factual mistakes." },
+      { id: "completeness", label: "Completeness", description: "Covers the important parts of the request." },
+    ],
+  },
+  code_engineering: {
+    label: "Code and Engineering",
+    criteria: [
+      { id: "behavior", label: "Behavior", description: "Implements the requested behavior without regressions." },
+      { id: "integration", label: "Integration", description: "Fits existing code structure, types, and tests." },
+      { id: "verification", label: "Verification", description: "Includes concrete checks for changed behavior." },
+    ],
+  },
+  planning_architecture: {
+    label: "Planning and Architecture",
+    criteria: [
+      { id: "scope", label: "Scope", description: "Defines clear boundaries and dependencies." },
+      { id: "tradeoffs", label: "Tradeoffs", description: "Surfaces relevant alternatives and consequences." },
+      { id: "sequence", label: "Sequence", description: "Orders work so each step is executable and verifiable." },
+    ],
+  },
+  user_facing_writing: {
+    label: "User-Facing Writing",
+    criteria: [
+      { id: "audience", label: "Audience Fit", description: "Matches the user's audience and context." },
+      { id: "clarity", label: "Clarity", description: "Uses clear language and structure." },
+      { id: "tone", label: "Tone", description: "Maintains the requested tone and level of polish." },
+    ],
+  },
+  structured_artifact: {
+    label: "Structured Artifact",
+    criteria: [
+      { id: "schema", label: "Schema Fit", description: "Uses the requested structure and fields." },
+      { id: "parseability", label: "Parseability", description: "Can be consumed by downstream tools." },
+      { id: "coverage", label: "Coverage", description: "Includes all required items without extra ambiguity." },
+    ],
+  },
+};
+
+function selectQualityLoopRubric(prompt: string, task: TaskNode): QualityLoopRubricSelection {
+  const source = `${prompt}\n${task.kind ?? ""}\n${task.artifactContract?.outputSchema ?? ""}`.toLowerCase();
+  const candidates: Array<{ id: QualityLoopRubricId; patterns: RegExp[] }> = [
+    {
+      id: "code_engineering",
+      patterns: [/```/, /\bsrc\//, /\.[cm]?[tj]sx?\b/, /\btest\b/, /\bbug\b/, /\bfix\b/, /\brefactor\b/, /\bimplement\b/, /\btypescript\b/, /\bnode\b/],
+    },
+    {
+      id: "planning_architecture",
+      patterns: [/\bplan\b/, /\barchitecture\b/, /\broadmap\b/, /\bdesign\b/, /\btradeoff\b/, /\bsystem\b/, /\bphase\b/],
+    },
+    {
+      id: "user_facing_writing",
+      patterns: [/\brewrite\b/, /\bcopy\b/, /\bemail\b/, /\btone\b/, /\bblog\b/, /\bheadline\b/, /\bannouncement\b/, /\buser documentation\b/],
+    },
+    {
+      id: "structured_artifact",
+      patterns: [/\bjson\b/, /\byaml\b/, /\bschema\b/, /\btable\b/, /\bchecklist\b/, /\bfrontmatter\b/, /\bxml\b/, /\bcsv\b/],
+    },
+  ];
+
+  let selected: QualityLoopRubricId = "general_answer_quality";
+  let matchedSignals: string[] = [];
+  for (const candidate of candidates) {
+    const signals = candidate.patterns
+      .filter((pattern) => pattern.test(source))
+      .map((pattern) => pattern.source);
+    if (signals.length > matchedSignals.length) {
+      selected = candidate.id;
+      matchedSignals = signals;
+    }
+  }
+
+  const definition = QUALITY_LOOP_RUBRICS[selected];
+  const fallback = selected === "general_answer_quality";
+  return {
+    id: selected,
+    label: definition.label,
+    rationale: fallback
+      ? "Selected the general answer quality rubric because no more specific task signals were detected."
+      : `Selected ${definition.label} because the prompt matched ${matchedSignals.length} task signal(s).`,
+    matchedSignals,
+    confidence: fallback ? 0.4 : Math.min(1, 0.45 + matchedSignals.length * 0.1),
+    criteria: definition.criteria,
   };
 }
 

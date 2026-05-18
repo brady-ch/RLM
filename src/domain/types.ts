@@ -96,6 +96,7 @@ export interface QualityLoopIterationRecord {
 export interface QualityLoopMetadata {
   config: QualityLoopConfig;
   status: QualityLoopStatus;
+  rubric?: QualityLoopRubricSelection | undefined;
   stopReason?: QualityLoopStopReason | undefined;
   usage: QualityLoopUsageSummary;
   iterations: QualityLoopIterationRecord[];
@@ -103,6 +104,28 @@ export interface QualityLoopMetadata {
   selectedCandidateId?: string | undefined;
   unresolvedIssues: QualityLoopIssue[];
   message?: string | undefined;
+}
+
+export type QualityLoopRubricId =
+  | "general_answer_quality"
+  | "code_engineering"
+  | "planning_architecture"
+  | "user_facing_writing"
+  | "structured_artifact";
+
+export interface QualityLoopRubricCriterion {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export interface QualityLoopRubricSelection {
+  id: QualityLoopRubricId;
+  label: string;
+  rationale: string;
+  matchedSignals: string[];
+  confidence: number;
+  criteria: QualityLoopRubricCriterion[];
 }
 
 export interface RecursivePromptRequest {
