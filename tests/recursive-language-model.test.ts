@@ -503,6 +503,7 @@ test("quality loop fails on malformed evaluator output before candidate", async 
   assert.equal(result.metadata.executionStatus, "failed");
   assert.equal(result.metadata.qualityLoop?.status, "failed");
   assert.equal(result.metadata.qualityLoop?.stopReason, "failed");
+  assert.equal(result.metadata.qualityLoop?.usage.iterationsCompleted, 0);
   assert.equal(failedPhase?.parseStatus, "failed");
   assert.ok((failedPhase?.unresolvedIssues?.length ?? 0) > 0);
 });

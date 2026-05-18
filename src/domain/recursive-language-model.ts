@@ -329,7 +329,9 @@ export class RecursiveLanguageModel {
       metadata.unresolvedIssues.push(issue);
       iteration.status = selectedCandidateId ? "degraded" : "failed";
       iteration.completedAt = new Date().toISOString();
-      metadata.usage.iterationsCompleted += 1;
+      if (selectedCandidateId) {
+        metadata.usage.iterationsCompleted += 1;
+      }
       this.writeLoopMetadata(task.id, metadata);
       return selectedCandidateId
         ? finish("degraded", "degraded", `quality loop evaluator parse degraded: ${message}`)
