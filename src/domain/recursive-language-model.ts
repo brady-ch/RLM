@@ -8,7 +8,10 @@ import type { TracePort } from "../ports/trace-port.js";
 import type {
   ExecutionEvent,
   ExecutionStatusUpdateDetail,
+  QualityLoopBestOfProgressEvaluation,
   QualityLoopCandidateSummary,
+  QualityLoopCritiqueEvaluation,
+  QualityLoopGateEvaluation,
   QualityLoopIssue,
   QualityLoopIterationRecord,
   QualityLoopMetadata,
@@ -304,6 +307,34 @@ export class RecursiveLanguageModel {
       }
       return selectedText();
     };
+    let previousGateEvaluation: QualityLoopGateEvaluation | undefined;
+
+    const failEvaluatorParse = (
+      iteration: QualityLoopIterationRecord,
+      phaseRecord: QualityLoopPhaseRecord,
+      phase: QualityLoopPhaseName,
+      error: unknown,
+    ): string => {
+      const message = error instanceof Error ? error.message : String(error);
+      const issue: QualityLoopIssue = {
+        id: `loop-${task.id}-i${iteration.index}-${phase}-parse-failed`,
+        severity: "error",
+        text: message,
+        sourcePhase: phase,
+      };
+      phaseRecord.parseStatus = selectedCandidateId ? "degraded" : "failed";
+      phaseRecord.parseError = message;
+      phaseRecord.unresolvedIssues = [...(phaseRecord.unresolvedIssues ?? []), issue];
+      iteration.unresolvedIssues.push(issue);
+      metadata.unresolvedIssues.push(issue);
+      iteration.status = selectedCandidateId ? "degraded" : "failed";
+      iteration.completedAt = new Date().toISOString();
+      metadata.usage.iterationsCompleted += 1;
+      this.writeLoopMetadata(task.id, metadata);
+      return selectedCandidateId
+        ? finish("degraded", "degraded", `quality loop evaluator parse degraded: ${message}`)
+        : finish("failed", "failed", `quality loop evaluator parse failed: ${message}`);
+    };
 
     try {
       for (let iterationIndex = 0; iterationIndex < loopConfig.maxIterations; iterationIndex += 1) {
@@ -379,6 +410,30 @@ export class RecursiveLanguageModel {
             iteration.candidates.push(candidate);
             metadata.candidates.push(candidate);
           }
+          try {
+            if (phase === "critique") {
+              iteration.critiqueEvaluation = parseQualityLoopCritique(phaseResult.content, phase);
+              phaseRecord.parseStatus = "parsed";
+            } else if (phase === "gate") {
+              iteration.gateEvaluation = parseQualityLoopGate(phaseResult.content);
+              metadata.gate = iteration.gateEvaluation;
+              phaseRecord.parseStatus = "parsed";
+            } else if (phase === "best_of_progress") {
+              const candidateId = phaseRecord.candidateId ?? selectedCandidateId ?? `loop-${task.id}-i${iterationIndex}-${phase}`;
+              const parsed = parseQualityLoopBestOfProgress(phaseResult.content, candidateId);
+              iteration.bestOfProgressEvaluation = parsed.evaluation;
+              phaseRecord.parseStatus = "parsed";
+              if (parsed.answerText) {
+                candidateTexts.set(candidateId, parsed.answerText);
+                const candidate = iteration.candidates.find((item) => item.id === candidateId);
+                if (candidate) {
+                  candidate.summary = preview(parsed.answerText, 160);
+                }
+              }
+            }
+          } catch (error: unknown) {
+            return failEvaluatorParse(iteration, phaseRecord, phase, error);
+          }
           metadata.usage = this.summarizeQualityLoopUsage(metadata, this.modelCalls - loopModelCallsBefore);
           this.writeLoopMetadata(task.id, metadata);
           this.emitExecution({
@@ -392,27 +447,23 @@ export class RecursiveLanguageModel {
           });
         }
 
-        const gateOutput = phaseOutputs.get("gate") ?? "";
-        if (gateOutput.includes("DEGRADED")) {
-          const issue: QualityLoopIssue = {
-            id: `loop-${task.id}-i${iterationIndex}-degraded-1`,
-            severity: "warning",
-            text: preview(gateOutput, 160),
-            sourcePhase: "gate",
-          };
-          iteration.unresolvedIssues.push(issue);
-          iteration.phases.find((phase) => phase.phase === "gate")!.unresolvedIssues = [issue];
-          metadata.unresolvedIssues.push(issue);
-          iteration.status = "degraded";
-          iteration.completedAt = new Date().toISOString();
-          metadata.usage.iterationsCompleted += 1;
-          return finish("degraded", "degraded", "quality loop degraded with unresolved issues");
-        }
-
         iteration.status = "completed";
         iteration.completedAt = new Date().toISOString();
         metadata.usage.iterationsCompleted += 1;
         this.writeLoopMetadata(task.id, metadata);
+        const gateEvaluation = iteration.gateEvaluation;
+        if (gateEvaluation) {
+          if (gatePasses(gateEvaluation)) {
+            return finish("completed", "passed", "quality loop passed gate");
+          }
+          if (critiqueResolved(gateEvaluation)) {
+            return finish("completed", "critique_resolved", "quality loop critique resolved");
+          }
+          if (!hasMeaningfulImprovement(gateEvaluation, previousGateEvaluation)) {
+            return finish("completed", "no_meaningful_improvement", "quality loop stopped with no meaningful improvement");
+          }
+          previousGateEvaluation = gateEvaluation;
+        }
       }
 
       return finish("completed", "max_iterations", "quality loop reached max iterations");
@@ -1608,6 +1659,157 @@ function subtractUsage(after: TokenUsageTrace, before: TokenUsageTrace): TokenUs
   };
 }
 
+function extractJsonObject(value: string): unknown {
+  const start = value.indexOf("{");
+  const end = value.lastIndexOf("}");
+  if (start < 0 || end <= start) {
+    throw new Error("expected JSON object in evaluator output");
+  }
+
+  try {
+    return JSON.parse(value.slice(start, end + 1));
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`invalid evaluator JSON: ${message}`);
+  }
+}
+
+function parseQualityLoopCritique(value: string, phase: QualityLoopPhaseName): QualityLoopCritiqueEvaluation {
+  const parsed = asRecord(extractJsonObject(value), "critique evaluator output");
+  const summary = requireString(parsed, "summary");
+  const resolved = requireBoolean(parsed, "resolved");
+  const issues = parseIssueArray(parsed["issues"], phase);
+  const suggestedImprovements = parseStringArray(parsed["suggestedImprovements"], "suggestedImprovements");
+  return { summary, issues, resolved, suggestedImprovements };
+}
+
+function parseQualityLoopGate(value: string): QualityLoopGateEvaluation {
+  const parsed = asRecord(extractJsonObject(value), "gate evaluator output");
+  const decision = requireString(parsed, "decision");
+  if (decision !== "pass" && decision !== "continue") {
+    throw new Error("gate decision must be pass or continue");
+  }
+
+  return {
+    decision,
+    score: requireNumber(parsed, "score"),
+    passThreshold: requireNumber(parsed, "passThreshold"),
+    rubricFit: requireBoolean(parsed, "rubricFit"),
+    critiqueResolved: requireBoolean(parsed, "critiqueResolved"),
+    meaningfulImprovement: requireBoolean(parsed, "meaningfulImprovement"),
+    rationale: requireString(parsed, "rationale"),
+    failedConditions: parseStringArray(parsed["failedConditions"], "failedConditions"),
+    unresolvedIssues: parseIssueArray(parsed["unresolvedIssues"], "gate"),
+  };
+}
+
+function parseQualityLoopBestOfProgress(
+  value: string,
+  fallbackCandidateId: string,
+): { evaluation: QualityLoopBestOfProgressEvaluation; answerText?: string | undefined } {
+  const parsed = asRecord(extractJsonObject(value), "best-of-progress evaluator output");
+  const selectedCandidateId = optionalString(parsed["selectedCandidateId"]) ?? fallbackCandidateId;
+  const answerText = optionalString(parsed["answer"]);
+  return {
+    evaluation: {
+      selectedCandidateId,
+      rationale: requireString(parsed, "rationale"),
+      score: requireNumber(parsed, "score"),
+      comparisonNotes: parseStringArray(parsed["comparisonNotes"], "comparisonNotes"),
+    },
+    answerText,
+  };
+}
+
+function gatePasses(evaluation: QualityLoopGateEvaluation): boolean {
+  return evaluation.decision === "pass"
+    && evaluation.score >= evaluation.passThreshold
+    && evaluation.rubricFit
+    && evaluation.critiqueResolved
+    && evaluation.meaningfulImprovement
+    && !evaluation.unresolvedIssues.some((issue) => issue.severity === "error");
+}
+
+function critiqueResolved(evaluation: QualityLoopGateEvaluation): boolean {
+  return evaluation.score >= evaluation.passThreshold
+    && evaluation.critiqueResolved
+    && evaluation.unresolvedIssues.every((issue) => issue.severity === "info");
+}
+
+function hasMeaningfulImprovement(
+  current: QualityLoopGateEvaluation,
+  previous: QualityLoopGateEvaluation | undefined,
+): boolean {
+  if (!previous) {
+    return true;
+  }
+
+  const unresolvedCount = (evaluation: QualityLoopGateEvaluation): number =>
+    evaluation.unresolvedIssues.filter((issue) => issue.severity === "warning" || issue.severity === "error").length;
+  return current.score - previous.score >= 0.05 || unresolvedCount(current) < unresolvedCount(previous);
+}
+
+function asRecord(value: unknown, label: string): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be a JSON object`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function requireString(record: Record<string, unknown>, key: string): string {
+  const value = record[key];
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`${key} must be a non-empty string`);
+  }
+  return value;
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
+function requireNumber(record: Record<string, unknown>, key: string): number {
+  const value = record[key];
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${key} must be a finite number`);
+  }
+  return value;
+}
+
+function requireBoolean(record: Record<string, unknown>, key: string): boolean {
+  const value = record[key];
+  if (typeof value !== "boolean") {
+    throw new Error(`${key} must be a boolean`);
+  }
+  return value;
+}
+
+function parseStringArray(value: unknown, key: string): string[] {
+  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
+    throw new Error(`${key} must be a string array`);
+  }
+  return value;
+}
+
+function parseIssueArray(value: unknown, sourcePhase: QualityLoopPhaseName): QualityLoopIssue[] {
+  if (!Array.isArray(value)) {
+    throw new Error("issues must be an array");
+  }
+  return value.map((item, index): QualityLoopIssue => {
+    const record = asRecord(item, "issue");
+    const severity = requireString(record, "severity");
+    if (severity !== "info" && severity !== "warning" && severity !== "error") {
+      throw new Error("issue severity must be info, warning, or error");
+    }
+    return {
+      id: optionalString(record["id"]) ?? `${sourcePhase}-issue-${index + 1}`,
+      severity,
+      text: requireString(record, "text"),
+      sourcePhase,
+    };
+  });
+}
+
 function qualityLoopMessages(
   originalPrompt: string,
   phase: QualityLoopPhaseName,
@@ -1619,10 +1821,10 @@ function qualityLoopMessages(
   const gate = phaseOutputs.get("gate") ?? "";
   const instructions: Record<QualityLoopPhaseName, string> = {
     draft: "Draft the best direct answer to the user prompt.",
-    critique: "Critique the draft answer for correctness, clarity, and missing details.",
+    critique: "Return JSON only with summary, resolved, issues, and suggestedImprovements after critiquing the draft.",
     refine: "Refine the draft using the critique while preserving useful content.",
-    gate: "Evaluate whether the refined answer is acceptable. Include DEGRADED only when unresolved issues remain.",
-    best_of_progress: "Return the best final answer available from the draft, critique, refine, and gate context.",
+    gate: "Return JSON only with decision, score, passThreshold, rubricFit, critiqueResolved, meaningfulImprovement, rationale, failedConditions, and unresolvedIssues.",
+    best_of_progress: "Return JSON only with selectedCandidateId, answer, rationale, score, and comparisonNotes for the best final answer.",
   };
   const context = [
     draft ? `Draft:\n${draft}` : "",

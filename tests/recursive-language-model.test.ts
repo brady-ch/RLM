@@ -98,6 +98,47 @@ const dynamicDepthConfig = {
   maxToolRounds: 3,
 };
 
+const structuredCritique = JSON.stringify({
+  summary: "critique notes",
+  resolved: false,
+  issues: [],
+  suggestedImprovements: ["clarify the answer"],
+});
+
+const continuingGate = JSON.stringify({
+  decision: "continue",
+  score: 0.6,
+  passThreshold: 0.8,
+  rubricFit: true,
+  critiqueResolved: false,
+  meaningfulImprovement: true,
+  rationale: "Needs another pass.",
+  failedConditions: ["score_below_threshold"],
+  unresolvedIssues: [],
+});
+
+const passingGate = JSON.stringify({
+  decision: "pass",
+  score: 0.92,
+  passThreshold: 0.8,
+  rubricFit: true,
+  critiqueResolved: true,
+  meaningfulImprovement: true,
+  rationale: "Meets the rubric.",
+  failedConditions: [],
+  unresolvedIssues: [],
+});
+
+function bestOfProgress(answer: string, selectedCandidateId?: string): string {
+  return JSON.stringify({
+    ...(selectedCandidateId ? { selectedCandidateId } : {}),
+    answer,
+    rationale: "Best candidate by score and issue resolution.",
+    score: 0.9,
+    comparisonNotes: ["Best available answer."],
+  });
+}
+
 test("quality loop metadata contract supports graph nodes", () => {
   const loop: QualityLoopMetadata = {
     config: {
@@ -182,10 +223,10 @@ test("quality loop graph node stays collapsed with nested phase history", async 
   const engine = new RecursiveLanguageModel(
     new QueueModel([
       { content: "draft answer", toolCalls: [], model: "draft-model" },
-      { content: "critique notes", toolCalls: [], model: "critique-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
       { content: "refined answer", toolCalls: [], model: "refine-model" },
-      { content: "gate ok", toolCalls: [], model: "gate-model" },
-      { content: "best final answer", toolCalls: [], model: "best-model" },
+      { content: continuingGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("best final answer"), toolCalls: [], model: "best-model" },
     ]),
     trace,
   );
@@ -246,10 +287,10 @@ test("quality loop metadata includes terminal reason usage and selected candidat
   const engine = new RecursiveLanguageModel(
     new QueueModel([
       { content: "draft answer", toolCalls: [], model: "draft-model" },
-      { content: "critique notes", toolCalls: [], model: "critique-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
       { content: "refined answer", toolCalls: [], model: "refine-model" },
-      { content: "gate ok", toolCalls: [], model: "gate-model" },
-      { content: "best final answer", toolCalls: [] },
+      { content: continuingGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("best final answer"), toolCalls: [] },
     ]),
     trace,
   );
@@ -271,15 +312,15 @@ test("quality loop metadata includes terminal reason usage and selected candidat
   assert.ok(result.metadata.qualityLoop?.iterations[0]?.phases.some((phase) => phase.model === "unknown"));
 });
 
-async function runQualityLoopForRubric(prompt: string) {
+async function runQualityLoopForRubric(prompt: string, gate = continuingGate) {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(
     new QueueModel([
       { content: "draft answer", toolCalls: [], model: "draft-model" },
-      { content: "critique notes", toolCalls: [], model: "critique-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
       { content: "refined answer", toolCalls: [], model: "refine-model" },
-      { content: "gate ok", toolCalls: [], model: "gate-model" },
-      { content: "best final answer", toolCalls: [], model: "best-model" },
+      { content: gate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("best final answer"), toolCalls: [], model: "best-model" },
     ]),
     trace,
   );
@@ -347,9 +388,9 @@ test("quality loop degraded returns best available candidate with unresolved iss
   const engine = new RecursiveLanguageModel(
     new QueueModel([
       { content: "draft answer", toolCalls: [], model: "draft-model" },
-      { content: "critique notes", toolCalls: [], model: "critique-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
       { content: "refined answer", toolCalls: [], model: "refine-model" },
-      { content: "DEGRADED: unresolved factual gap", toolCalls: [], model: "gate-model" },
+      { content: continuingGate, toolCalls: [], model: "gate-model" },
       { content: fullCandidateText, toolCalls: [], model: "best-model" },
     ]),
     trace,
@@ -376,12 +417,188 @@ test("quality loop degraded returns best available candidate with unresolved iss
   assert.ok(selected.summary.length <= 160);
 });
 
+test("quality loop parses structured evaluator outputs", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "refined answer", toolCalls: [], model: "refine-model" },
+      { content: passingGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("best final answer"), toolCalls: [], model: "best-model" },
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this TypeScript answer",
+    config: {
+      ...config,
+      maxDepth: 0,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+
+  const iteration = result.metadata.qualityLoop?.iterations[0];
+  assert.equal(iteration?.critiqueEvaluation?.summary, "critique notes");
+  assert.equal(iteration?.gateEvaluation?.decision, "pass");
+  assert.equal(iteration?.bestOfProgressEvaluation?.rationale, "Best candidate by score and issue resolution.");
+  assert.equal(iteration?.phases.find((phase) => phase.phase === "critique")?.parseStatus, "parsed");
+  assert.equal(iteration?.phases.find((phase) => phase.phase === "gate")?.parseStatus, "parsed");
+  assert.equal(iteration?.phases.find((phase) => phase.phase === "best_of_progress")?.parseStatus, "parsed");
+  assert.equal(result.metadata.qualityLoop?.gate?.decision, "pass");
+  assert.equal(result.answer, "best final answer");
+});
+
+test("quality loop degraded on malformed evaluator output with candidate", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "refined answer", toolCalls: [], model: "refine-model" },
+      { content: continuingGate, toolCalls: [], model: "gate-model" },
+      { content: "not json but still a candidate", toolCalls: [], model: "best-model" },
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...config,
+      maxDepth: 0,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+
+  const failedPhase = result.metadata.qualityLoop?.iterations[0]?.phases.find((phase) => phase.phase === "best_of_progress");
+  assert.equal(result.metadata.qualityLoop?.status, "degraded");
+  assert.equal(result.metadata.qualityLoop?.stopReason, "degraded");
+  assert.equal(failedPhase?.parseStatus, "degraded");
+  assert.ok((result.metadata.qualityLoop?.unresolvedIssues.length ?? 0) > 0);
+  assert.equal(result.answer, "not json but still a candidate");
+});
+
+test("quality loop fails on malformed evaluator output before candidate", async () => {
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: "not json", toolCalls: [], model: "critique-model" },
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...config,
+      maxDepth: 0,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+
+  const failedPhase = result.metadata.qualityLoop?.iterations[0]?.phases.find((phase) => phase.phase === "critique");
+  assert.equal(result.metadata.executionStatus, "failed");
+  assert.equal(result.metadata.qualityLoop?.status, "failed");
+  assert.equal(result.metadata.qualityLoop?.stopReason, "failed");
+  assert.equal(failedPhase?.parseStatus, "failed");
+  assert.ok((failedPhase?.unresolvedIssues?.length ?? 0) > 0);
+});
+
+test("quality loop gate stops with passed", async () => {
+  const result = await runQualityLoopForRubric("Improve this answer", passingGate);
+
+  assert.equal(result.metadata.qualityLoop?.stopReason, "passed");
+  assert.equal(result.metadata.qualityLoop?.gate?.decision, "pass");
+});
+
+test("quality loop gate stops with critique resolved", async () => {
+  const trace = new InMemoryTrace();
+  const critiqueResolvedGate = JSON.stringify({
+    decision: "continue",
+    score: 0.85,
+    passThreshold: 0.8,
+    rubricFit: true,
+    critiqueResolved: true,
+    meaningfulImprovement: false,
+    rationale: "Critique is resolved even though the gate did not mark pass.",
+    failedConditions: ["decision_continue"],
+    unresolvedIssues: [],
+  });
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "refined answer", toolCalls: [], model: "refine-model" },
+      { content: critiqueResolvedGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("best final answer"), toolCalls: [], model: "best-model" },
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...config,
+      maxDepth: 0,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+
+  assert.equal(result.metadata.qualityLoop?.stopReason, "critique_resolved");
+  assert.equal(result.metadata.qualityLoop?.gate?.critiqueResolved, true);
+});
+
+test("quality loop gate stops with no meaningful improvement", async () => {
+  const trace = new InMemoryTrace();
+  const unchangedGate = JSON.stringify({
+    decision: "continue",
+    score: 0.6,
+    passThreshold: 0.8,
+    rubricFit: true,
+    critiqueResolved: false,
+    meaningfulImprovement: true,
+    rationale: "Still below threshold.",
+    failedConditions: ["score_below_threshold"],
+    unresolvedIssues: [{ severity: "warning", text: "Still too vague." }],
+  });
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "refined answer", toolCalls: [], model: "refine-model" },
+      { content: unchangedGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("best final answer"), toolCalls: [], model: "best-model" },
+      { content: "draft answer again", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "refined answer again", toolCalls: [], model: "refine-model" },
+      { content: unchangedGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("best final answer again"), toolCalls: [], model: "best-model" },
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...config,
+      maxDepth: 0,
+      qualityLoop: { enabled: true, maxIterations: 2, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+
+  assert.equal(result.metadata.qualityLoop?.stopReason, "no_meaningful_improvement");
+  assert.equal(result.metadata.qualityLoop?.iterations.length, 2);
+});
+
 test("quality loop failure records terminal failed metadata", async () => {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(
     new QueueModel([
       { content: "draft answer", toolCalls: [], model: "draft-model" },
-      { content: "critique notes", toolCalls: [], model: "critique-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
       new Error("loop phase failed"),
     ]),
     trace,
@@ -411,10 +628,10 @@ test("quality loop waits for node approval before model calls", async () => {
   const trace = new InMemoryTrace();
   const model = new QueueModel([
     { content: "draft answer", toolCalls: [], model: "draft-model" },
-    { content: "critique notes", toolCalls: [], model: "critique-model" },
+    { content: structuredCritique, toolCalls: [], model: "critique-model" },
     { content: "refined answer", toolCalls: [], model: "refine-model" },
-    { content: "gate ok", toolCalls: [], model: "gate-model" },
-    { content: "best final answer", toolCalls: [], model: "best-model" },
+    { content: passingGate, toolCalls: [], model: "gate-model" },
+    { content: bestOfProgress("best final answer"), toolCalls: [], model: "best-model" },
   ]);
   const engine = new RecursiveLanguageModel(model, trace);
   let pendingNode: ExecutionGraphNode | undefined;

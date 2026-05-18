@@ -81,7 +81,37 @@ export interface QualityLoopPhaseRecord {
   model?: string | undefined;
   usage?: TokenUsageTrace | undefined;
   unresolvedIssues?: QualityLoopIssue[] | undefined;
+  parseStatus?: QualityLoopEvaluatorParseStatus | undefined;
+  parseError?: string | undefined;
 }
+
+export interface QualityLoopCritiqueEvaluation {
+  summary: string;
+  issues: QualityLoopIssue[];
+  resolved: boolean;
+  suggestedImprovements: string[];
+}
+
+export interface QualityLoopGateEvaluation {
+  decision: "pass" | "continue";
+  score: number;
+  passThreshold: number;
+  rubricFit: boolean;
+  critiqueResolved: boolean;
+  meaningfulImprovement: boolean;
+  rationale: string;
+  failedConditions: string[];
+  unresolvedIssues: QualityLoopIssue[];
+}
+
+export interface QualityLoopBestOfProgressEvaluation {
+  selectedCandidateId: string;
+  rationale: string;
+  score: number;
+  comparisonNotes: string[];
+}
+
+export type QualityLoopEvaluatorParseStatus = "parsed" | "degraded" | "failed";
 
 export interface QualityLoopIterationRecord {
   index: number;
@@ -91,12 +121,16 @@ export interface QualityLoopIterationRecord {
   phases: QualityLoopPhaseRecord[];
   candidates: QualityLoopCandidateSummary[];
   unresolvedIssues: QualityLoopIssue[];
+  critiqueEvaluation?: QualityLoopCritiqueEvaluation | undefined;
+  gateEvaluation?: QualityLoopGateEvaluation | undefined;
+  bestOfProgressEvaluation?: QualityLoopBestOfProgressEvaluation | undefined;
 }
 
 export interface QualityLoopMetadata {
   config: QualityLoopConfig;
   status: QualityLoopStatus;
   rubric?: QualityLoopRubricSelection | undefined;
+  gate?: QualityLoopGateEvaluation | undefined;
   stopReason?: QualityLoopStopReason | undefined;
   usage: QualityLoopUsageSummary;
   iterations: QualityLoopIterationRecord[];
