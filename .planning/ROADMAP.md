@@ -39,7 +39,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 - [x] **Phase 12: Loop Runtime Contract** - Make quality loops first-class, bounded execution graph nodes with explicit internal state and stop reasons. (completed 2026-05-17)
 - [x] **Phase 13: Rubric and Evaluator Contract** - Select visible adaptive rubrics and parse critique/gate outputs through strict schemas. (completed 2026-05-18)
 - [x] **Phase 14: Refine and Best-of-Progress Engine** - Run bounded draft/critique/refine/gate cycles and return the best candidate seen so far. (completed 2026-05-18)
-- [ ] **Phase 15: Loop Phase Model Routing and Overrides** - Route and override draft, critique, refine, gate, and best-of-progress models independently.
+- [x] **Phase 15: Loop Phase Model Routing and Overrides** - Route and override draft, critique, refine, gate, and best-of-progress models independently. (completed 2026-05-18)
 - [ ] **Phase 16: Inspectable UI, CLI, and Human Loop Control** - Surface loop summaries, timelines, CLI metadata, and manual accept/stop controls.
 - [ ] **Phase 17: Quality Verification and Regression Harness** - Prove loops stay bounded, observable, and non-silent across runtime, UI, CLI, trace, and state outputs.
 
@@ -130,7 +130,7 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17
 | 12. Loop Runtime Contract | v1.2 | 2/2 | Complete   | 2026-05-17 |
 | 13. Rubric and Evaluator Contract | v1.2 | 3/3 | Complete    | 2026-05-18 |
 | 14. Refine and Best-of-Progress Engine | v1.2 | 1/1 | Complete    | 2026-05-18 |
-| 15. Loop Phase Model Routing and Overrides | v1.2 | 0/TBD | Not started | - |
+| 15. Loop Phase Model Routing and Overrides | v1.2 | 1/1 | Complete    | 2026-05-18 |
 | 16. Inspectable UI, CLI, and Human Loop Control | v1.2 | 0/TBD | Not started | - |
 | 17. Quality Verification and Regression Harness | v1.2 | 0/TBD | Not started | - |
 | v1.1 Interop, chat-first, plugins, constrained tools | v1.1 | 13/13 | Complete | 2026-05-13 |

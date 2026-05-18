@@ -26,9 +26,9 @@
 
 ### Model Routing and Overrides
 
-- [ ] **MODL-04**: System supports phase-specific model routing for draft, critique, refine, gate, and best-of-progress loop phases.
-- [ ] **MODL-05**: User can override models separately for draft, critique, refine, gate, and best-of-progress phases before execution resumes.
-- [ ] **MODL-06**: UI/CLI trace shows planned and effective model assignment per loop phase, with explicit failure when a selected phase model is unavailable.
+- [x] **MODL-04**: System supports phase-specific model routing for draft, critique, refine, gate, and best-of-progress loop phases.
+- [x] **MODL-05**: User can override models separately for draft, critique, refine, gate, and best-of-progress phases before execution resumes.
+- [x] **MODL-06**: UI/CLI trace shows planned and effective model assignment per loop phase, with explicit failure when a selected phase model is unavailable.
 
 ### UI, CLI, and Human Control
 
@@ -80,9 +80,9 @@
 | REFN-01 | Phase 14 | Complete |
 | REFN-02 | Phase 14 | Complete |
 | REFN-03 | Phase 14 | Complete |
-| MODL-04 | Phase 15 | Pending |
-| MODL-05 | Phase 15 | Pending |
-| MODL-06 | Phase 15 | Pending |
+| MODL-04 | Phase 15 | Complete |
+| MODL-05 | Phase 15 | Complete |
+| MODL-06 | Phase 15 | Complete |
 | UXQL-01 | Phase 16 | Pending |
 | UXQL-02 | Phase 16 | Pending |
 | UXQL-03 | Phase 16 | Pending |
