@@ -15,10 +15,22 @@ export interface LanguageModelCompleteOptions {
   purpose?: LanguageModelPurpose | undefined;
   complexityDepth?: number;
   overrideModel?: string | undefined;
+  overrideModelSelection?: string | undefined;
   constrainedToolCalling?: boolean | undefined;
 }
 
-export type LanguageModelPurpose = "depth" | "classify" | "decompose" | "answer" | "summarize" | "synthesize";
+export type LanguageModelPurpose =
+  | "depth"
+  | "classify"
+  | "decompose"
+  | "answer"
+  | "summarize"
+  | "synthesize"
+  | "quality_loop_draft"
+  | "quality_loop_critique"
+  | "quality_loop_refine"
+  | "quality_loop_gate"
+  | "quality_loop_best_of_progress";
 
 export interface LanguageModelResponse {
   content: string;

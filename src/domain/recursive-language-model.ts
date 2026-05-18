@@ -1,4 +1,4 @@
-import type { LanguageModelPort } from "../ports/language-model-port.js";
+import type { LanguageModelCompleteOptions, LanguageModelPort } from "../ports/language-model-port.js";
 import type { LanguageModelPurpose } from "../ports/language-model-port.js";
 import type { LanguageModelUsage } from "../ports/language-model-port.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
@@ -10,11 +10,13 @@ import type {
   ExecutionStatusUpdateDetail,
   QualityLoopBestOfProgressEvaluation,
   QualityLoopCandidateSummary,
+  QualityLoopConfig,
   QualityLoopCritiqueEvaluation,
   QualityLoopGateEvaluation,
   QualityLoopIssue,
   QualityLoopIterationRecord,
   QualityLoopMetadata,
+  QualityLoopPhaseModelAssignment,
   QualityLoopPhaseName,
   QualityLoopPhaseRecord,
   QualityLoopRubricCriterion,
@@ -372,7 +374,13 @@ export class RecursiveLanguageModel {
 
           let phaseResult: Awaited<ReturnType<typeof this.completeQualityLoopPhase>>;
           try {
-            phaseResult = await this.completeQualityLoopPhase(task, phase, qualityLoopMessages(task.prompt, phase, phaseOutputs), startedAt);
+            phaseResult = await this.completeQualityLoopPhase(
+              task,
+              phase,
+              qualityLoopMessages(task.prompt, phase, phaseOutputs),
+              loopConfig,
+              startedAt,
+            );
           } catch (error: unknown) {
             phaseRecord.status = "failed";
             phaseRecord.completedAt = new Date().toISOString();
@@ -396,7 +404,15 @@ export class RecursiveLanguageModel {
           phaseRecord.completedAt = phaseResult.completedAt;
           phaseRecord.summary = preview(phaseResult.content);
           phaseRecord.model = phaseResult.model;
+          phaseRecord.plannedModel = phaseResult.modelAssignment.plannedModel;
+          phaseRecord.modelPurpose = phaseResult.modelAssignment.purpose;
+          phaseRecord.modelSelection = phaseResult.modelAssignment.plannedSelection;
+          phaseRecord.modelSource = phaseResult.modelAssignment.source;
           phaseRecord.usage = phaseResult.usageDelta;
+          metadata.phaseModels = {
+            ...(metadata.phaseModels ?? {}),
+            [phase]: phaseResult.modelAssignment,
+          };
           if (phase === "draft" || phase === "refine" || phase === "best_of_progress") {
             const candidate: QualityLoopCandidateSummary = {
               id: `loop-${task.id}-i${iterationIndex}-${phase}`,
@@ -506,10 +522,12 @@ export class RecursiveLanguageModel {
     task: TaskNode,
     phase: QualityLoopPhaseName,
     messages: Parameters<LanguageModelPort["complete"]>[0],
+    loopConfig: QualityLoopConfig,
     startedAt = new Date().toISOString(),
   ): Promise<{
     content: string;
     model: string;
+    modelAssignment: QualityLoopPhaseModelAssignment;
     usageDelta: TokenUsageTrace;
     modelCallsDelta: number;
     startedAt: string;
@@ -522,6 +540,14 @@ export class RecursiveLanguageModel {
 
     const usageBefore = { ...this.metadata.tokenUsage };
     const modelCallsBefore = this.modelCalls;
+    const purpose = qualityLoopPhasePurpose(phase);
+    const phaseOverride = loopConfig.phaseModels?.[phase]?.trim();
+    const source: QualityLoopPhaseModelAssignment["source"] = phaseOverride
+      ? "phase_override"
+      : task.modelOverride
+        ? "node_override"
+        : "configured";
+    const planned = await this.resolvePlannedModelAssignment(phase, purpose, phaseOverride, task.modelOverride);
     this.modelCalls += 1;
     const callNumber = this.modelCalls;
     this.log("completion", "starting quality loop phase", {
@@ -532,9 +558,10 @@ export class RecursiveLanguageModel {
     });
     const response = await this.model.complete(this.withAgentSystemPrompt(messages), {
       tools: [],
-      purpose: "answer",
+      purpose,
       complexityDepth: this.metadata.depth.selected,
-      overrideModel: task.modelOverride,
+      overrideModel: phaseOverride ? undefined : task.modelOverride,
+      overrideModelSelection: phaseOverride,
       constrainedToolCalling: false,
     });
     this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
@@ -553,10 +580,72 @@ export class RecursiveLanguageModel {
     return {
       content: response.content,
       model: response.model ?? "unknown",
+      modelAssignment: {
+        ...planned,
+        source,
+        effectiveModel: response.model ?? planned.plannedModel,
+        hostId: response.host?.id ?? planned.hostId,
+        hostKind: response.host?.kind ?? planned.hostKind,
+        hostEndpoint: response.host?.endpoint ?? planned.hostEndpoint,
+      },
       usageDelta: subtractUsage(this.metadata.tokenUsage, usageBefore),
       modelCallsDelta: this.modelCalls - modelCallsBefore,
       startedAt,
       completedAt,
+    };
+  }
+
+  private async resolvePlannedModelAssignment(
+    phase: QualityLoopPhaseName,
+    purpose: LanguageModelPurpose,
+    phaseOverride: string | undefined,
+    nodeOverride: string | undefined,
+  ): Promise<Omit<QualityLoopPhaseModelAssignment, "source" | "effectiveModel">> {
+    const selectableModel = this.model as LanguageModelPort & {
+      selectModel?: (purpose: LanguageModelPurpose | undefined, complexityDepth?: number) => Promise<{
+        model: string;
+        tier: string;
+        hostId?: string | undefined;
+        hostKind?: "ollama" | "http" | undefined;
+        hostEndpoint?: string | undefined;
+      }>;
+      resolveOverrideSelection?: (options: LanguageModelCompleteOptions) => {
+        model: string;
+        tier: string;
+      };
+    };
+
+    if (phaseOverride) {
+      const resolved = selectableModel.resolveOverrideSelection?.({ purpose, overrideModelSelection: phaseOverride });
+      return {
+        phase,
+        purpose,
+        plannedSelection: phaseOverride,
+        plannedModel: resolved?.model ?? phaseOverride,
+        tier: resolved?.tier ?? "override",
+      };
+    }
+
+    if (nodeOverride) {
+      return {
+        phase,
+        purpose,
+        plannedSelection: nodeOverride,
+        plannedModel: nodeOverride,
+        tier: "override",
+      };
+    }
+
+    const selection = await selectableModel.selectModel?.(purpose, this.metadata.depth.selected);
+    return {
+      phase,
+      purpose,
+      plannedSelection: selection?.tier ?? purpose,
+      plannedModel: selection?.model ?? "resolved-at-runtime",
+      tier: selection?.tier ?? "unknown",
+      hostId: selection?.hostId,
+      hostKind: selection?.hostKind,
+      hostEndpoint: selection?.hostEndpoint,
     };
   }
 
@@ -1948,6 +2037,21 @@ function qualityLoopStopMessage(stopReason: NonNullable<QualityLoopMetadata["sto
       return "quality loop stopped: failed";
     default:
       return `quality loop stopped: ${stopReason}`;
+  }
+}
+
+function qualityLoopPhasePurpose(phase: QualityLoopPhaseName): LanguageModelPurpose {
+  switch (phase) {
+    case "draft":
+      return "quality_loop_draft";
+    case "critique":
+      return "quality_loop_critique";
+    case "refine":
+      return "quality_loop_refine";
+    case "gate":
+      return "quality_loop_gate";
+    case "best_of_progress":
+      return "quality_loop_best_of_progress";
   }
 }
 

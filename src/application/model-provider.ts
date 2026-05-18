@@ -49,8 +49,9 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
     messages: LanguageModelMessage[],
     completeOptions: LanguageModelCompleteOptions = {},
   ): Promise<LanguageModelResponse> {
-    if (completeOptions.overrideModel) {
-      const model = completeOptions.overrideModel;
+    if (completeOptions.overrideModel || completeOptions.overrideModelSelection) {
+      const override = this.resolveOverrideSelection(completeOptions);
+      const model = override.model;
       const runtime = await this.resolveRuntimeSelection();
       const response = await this.getModel(model, runtime).complete(messages, completeOptions);
       response.model ??= model;
@@ -62,8 +63,8 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       this.options.recordSelection?.({
         purpose: completeOptions.purpose ?? "default",
         model,
-        tier: "override",
-        estimatedRamMb: 0,
+        tier: override.tier,
+        estimatedRamMb: override.estimatedRamMb,
         source: "configured",
         hostId: runtime.hostId,
         hostKind: runtime.hostKind,
@@ -75,8 +76,8 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
         data: {
           purpose: completeOptions.purpose ?? "default",
           model,
-          tier: "override",
-          estimatedRamMb: 0,
+          tier: override.tier,
+          estimatedRamMb: override.estimatedRamMb,
           source: "configured",
           hostId: runtime.hostId,
           hostKind: runtime.hostKind,
@@ -113,6 +114,30 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
     };
 
     return response;
+  }
+
+  resolveOverrideSelection(completeOptions: LanguageModelCompleteOptions): { model: string; tier: string; estimatedRamMb: number } {
+    const selection = completeOptions.overrideModelSelection ?? completeOptions.overrideModel;
+    if (!selection) {
+      throw new Error("override model selection is required");
+    }
+
+    if (completeOptions.overrideModelSelection) {
+      const tier = this.options.config.models.tiers[selection];
+      if (tier) {
+        return {
+          model: tier.name,
+          tier: selection,
+          estimatedRamMb: tier.estimatedRamMb,
+        };
+      }
+    }
+
+    return {
+      model: selection,
+      tier: "override",
+      estimatedRamMb: 0,
+    };
   }
 
   async selectModel(purpose: LanguageModelPurpose | undefined, complexityDepth = 0): Promise<ModelSelectionRecord> {

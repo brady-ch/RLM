@@ -262,6 +262,191 @@ test("quality loop graph node stays collapsed with nested phase history", async 
   assert.ok(events.some((event) => event.message?.includes("quality loop stopped")));
 });
 
+test("quality loop routes internal phases through distinct model purposes", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel([
+    { content: "draft answer", toolCalls: [], model: "draft-model" },
+    { content: structuredCritique, toolCalls: [], model: "critique-model" },
+    { content: "refined answer", toolCalls: [], model: "refine-model" },
+    { content: continuingGate, toolCalls: [], model: "gate-model" },
+    { content: bestOfProgress("best final answer"), toolCalls: [], model: "best-model" },
+  ]);
+  const engine = new RecursiveLanguageModel(model, trace);
+
+  await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...dynamicDepthConfig,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+
+  assert.deepEqual(
+    model.calls.map((call) => call.options.purpose),
+    [
+      "quality_loop_draft",
+      "quality_loop_critique",
+      "quality_loop_refine",
+      "quality_loop_gate",
+      "quality_loop_best_of_progress",
+    ],
+  );
+});
+
+test("quality loop phase model override resolves tier and records planned effective models", async () => {
+  const trace = new InMemoryTrace();
+  const routedModel = new PurposeRoutingLanguageModel({
+    config: {
+      models: {
+        default: "small-model",
+        tiers: {
+          small: { name: "small-model", estimatedRamMb: 512 },
+          medium: { name: "medium-model", estimatedRamMb: 1024 },
+          large: { name: "large-model", estimatedRamMb: 2048 },
+        },
+      },
+      memory: {
+        maxRamMb: 4096,
+        reserveSystemRamMb: 0,
+        waitForCapacity: false,
+        capacityCheckIntervalMs: 1,
+      },
+      runtime: config,
+      agents: {},
+      workflows: {},
+    },
+    agent: {
+      tools: [],
+      models: {
+        depth: "small",
+        classify: "small",
+        decompose: "small",
+        answer: "small",
+        summarize: "small",
+        synthesize: "small",
+        quality_loop_draft: "small",
+        quality_loop_critique: "medium",
+        quality_loop_refine: "small",
+        quality_loop_gate: "small",
+        quality_loop_best_of_progress: "small",
+      },
+    },
+    createModel: (modelName) => ({
+      complete: async (_messages, options = {}) => {
+        switch (options.purpose) {
+          case "quality_loop_critique":
+            return { content: structuredCritique, toolCalls: [], model: modelName };
+          case "quality_loop_gate":
+            return { content: continuingGate, toolCalls: [], model: modelName };
+          case "quality_loop_best_of_progress":
+            return { content: bestOfProgress("best final answer"), toolCalls: [], model: modelName };
+          default:
+            return { content: `${modelName} answer`, toolCalls: [], model: modelName };
+        }
+      },
+    }),
+  });
+  const engine = new RecursiveLanguageModel(routedModel, trace);
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...dynamicDepthConfig,
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+        phaseModels: { gate: "large" },
+      },
+    },
+  });
+
+  const loop = result.metadata.qualityLoop;
+  assert.equal(loop?.phaseModels?.critique?.plannedSelection, "medium");
+  assert.equal(loop?.phaseModels?.critique?.effectiveModel, "medium-model");
+  assert.equal(loop?.phaseModels?.gate?.plannedSelection, "large");
+  assert.equal(loop?.phaseModels?.gate?.plannedModel, "large-model");
+  assert.equal(loop?.phaseModels?.gate?.effectiveModel, "large-model");
+  assert.equal(loop?.phaseModels?.gate?.source, "phase_override");
+  assert.equal(loop?.iterations[0]?.phases.find((phase) => phase.phase === "gate")?.modelSelection, "large");
+});
+
+test("quality loop selected unavailable phase model fails explicitly without fallback", async () => {
+  const trace = new InMemoryTrace();
+  let defaultCalls = 0;
+  const routedModel = new PurposeRoutingLanguageModel({
+    config: {
+      models: {
+        default: "small-model",
+        tiers: {
+          small: { name: "small-model", estimatedRamMb: 512 },
+          medium: { name: "medium-model", estimatedRamMb: 1024 },
+          large: { name: "large-model", estimatedRamMb: 2048 },
+        },
+      },
+      memory: {
+        maxRamMb: 4096,
+        reserveSystemRamMb: 0,
+        waitForCapacity: false,
+        capacityCheckIntervalMs: 1,
+      },
+      runtime: config,
+      agents: {},
+      workflows: {},
+    },
+    agent: {
+      tools: [],
+      models: {
+        depth: "small",
+        classify: "small",
+        decompose: "small",
+        answer: "small",
+        summarize: "small",
+        synthesize: "small",
+        quality_loop_draft: "small",
+        quality_loop_critique: "small",
+        quality_loop_refine: "small",
+        quality_loop_gate: "small",
+        quality_loop_best_of_progress: "small",
+      },
+    },
+    createModel: (modelName) => {
+      if (modelName === "missing-model") {
+        return new ThrowingModel("selected quality loop phase model unavailable: phase=critique requested=missing-model available=small,medium,large");
+      }
+      return {
+        complete: async (_messages, options = {}) => {
+          defaultCalls += 1;
+          return {
+            content: options.purpose === "quality_loop_critique" ? structuredCritique : `${modelName} answer`,
+            toolCalls: [],
+            model: modelName,
+          };
+        },
+      };
+    },
+  });
+  const engine = new RecursiveLanguageModel(routedModel, trace);
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...dynamicDepthConfig,
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+        phaseModels: { critique: "missing-model" },
+      },
+    },
+  });
+
+  assert.equal(result.metadata.qualityLoop?.status, "failed");
+  assert.equal(result.metadata.qualityLoop?.stopReason, "failed");
+  assert.match(result.metadata.errors.join("\n"), /phase=critique requested=missing-model/);
+  assert.equal(defaultCalls, 1);
+});
+
 test("quality loop budget stops before partial iteration", async () => {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(new QueueModel([]), trace);
@@ -817,6 +1002,17 @@ test("renders compact quality loop metadata", () => {
       summary: "answer",
       isSelected: true,
     }],
+    phaseModels: {
+      gate: {
+        phase: "gate",
+        purpose: "quality_loop_gate",
+        plannedSelection: "large",
+        plannedModel: "large-model",
+        effectiveModel: "large-model",
+        tier: "large",
+        source: "phase_override",
+      },
+    },
     selectedCandidateId: "candidate-1",
     unresolvedIssues: [],
   };
@@ -839,6 +1035,7 @@ test("renders compact quality loop metadata", () => {
 
   assert.match(rendered, /qualityLoop: status=completed stopReason=max_iterations iterations=1 selectedCandidate=candidate-1/);
   assert.match(rendered, /qualityLoopUsage: modelCalls=5 input=10 output=20 total=30 unknown=0/);
+  assert.match(rendered, /qualityLoopModels: gate:large->large-model/);
 });
 
 test("renders json quality loop metadata", () => {
@@ -2817,6 +3014,61 @@ test("purpose routing model selects per-purpose and dynamic tiers", async () => 
   assert.equal((await model.complete([], { purpose: "answer", complexityDepth: 3 })).content, "large-model response");
   assert.equal((await model.complete([], { purpose: "decompose", complexityDepth: 1 })).content, "medium-model response");
   assert.deepEqual(calls, ["answer:large-model", "decompose:medium-model"]);
+});
+
+test("project config parses quality loop phase model routes and defaults old agent configs", async () => {
+  const workspace = await mkdtemp(join(tmpdir(), "rlm-config-quality-loop-"));
+  const configPath = join(workspace, "rlm.config.yaml");
+  await writeFile(configPath, `
+models:
+  default: small-model
+  tiers:
+    small:
+      name: small-model
+      estimatedRamMb: 512
+    large:
+      name: large-model
+      estimatedRamMb: 2048
+memory:
+  maxRamMb: 4096
+  reserveSystemRamMb: 0
+  waitForCapacity: false
+  capacityCheckIntervalMs: 1
+runtime:
+  maxDynamicDepth: 2
+  maxBranches: 2
+  maxPromptCharacters: 3000
+  maxModelCalls: 8
+  maxToolRounds: 1
+  qualityLoop:
+    enabled: true
+    maxIterations: 2
+    budgetBehavior: stop_before_partial_iteration
+    phaseModels:
+      gate: large
+agents:
+  default:
+    tools: []
+    models:
+      depth: small
+      classify: small
+      decompose: small
+      answer: small
+      summarize: small
+      synthesize: small
+workflows: {}
+`, "utf8");
+
+  try {
+    const loaded = await loadProjectConfig(configPath);
+    const runtime = resolveRuntimeConfig(loaded.config);
+
+    assert.equal(runtime.qualityLoop?.phaseModels?.gate, "large");
+    assert.equal(loaded.config.agents["default"]?.models.quality_loop_gate, "small");
+    assert.equal(loaded.config.agents["default"]?.models.quality_loop_best_of_progress, "small");
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
 });
 
 test("memory manager reserves, releases, and rejects over-capacity requests", async () => {

@@ -53,6 +53,12 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
     if (loop.gate) {
       lines.push(`qualityLoopGate: decision=${loop.gate.decision} score=${loop.gate.score} threshold=${loop.gate.passThreshold} failedConditions=${loop.gate.failedConditions.length}`);
     }
+    if (loop.phaseModels) {
+      const phaseModels = Object.values(loop.phaseModels)
+        .map((assignment) => `${assignment.phase}:${assignment.plannedSelection}->${assignment.effectiveModel}`)
+        .join(" ");
+      lines.push(`qualityLoopModels: ${phaseModels}`);
+    }
   }
   lines.push(`answer: ${singleLine(result.answer)}`);
   if (result.metadata.executionGraph?.nodes.length) {

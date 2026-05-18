@@ -8,9 +8,24 @@ import type { RecursiveModelConfig } from "../domain/types.js";
 import type { ExtensionRegistryEntry } from "../ports/extension-port.js";
 import type { LanguageModelPurpose } from "../ports/language-model-port.js";
 
-export const MODEL_PURPOSES = ["depth", "classify", "decompose", "answer", "summarize", "synthesize"] as const satisfies readonly LanguageModelPurpose[];
+export const MODEL_PURPOSES = [
+  "depth",
+  "classify",
+  "decompose",
+  "answer",
+  "summarize",
+  "synthesize",
+  "quality_loop_draft",
+  "quality_loop_critique",
+  "quality_loop_refine",
+  "quality_loop_gate",
+  "quality_loop_best_of_progress",
+] as const satisfies readonly LanguageModelPurpose[];
+
+export const CORE_MODEL_PURPOSES = ["depth", "classify", "decompose", "answer", "summarize", "synthesize"] as const satisfies readonly LanguageModelPurpose[];
 
 export type ModelPurpose = typeof MODEL_PURPOSES[number];
+export type CoreModelPurpose = typeof CORE_MODEL_PURPOSES[number];
 export type MemoryMode = "auto" | number;
 export type ModelSelection = string | "dynamic";
 
@@ -21,7 +36,7 @@ export interface ModelTierConfig {
 
 export interface AgentConfig {
   tools: string[];
-  models: Record<ModelPurpose, ModelSelection>;
+  models: Record<CoreModelPurpose, ModelSelection> & Partial<Record<ModelPurpose, ModelSelection>>;
 }
 
 export interface WorkflowDispatchConfig {
@@ -130,7 +145,19 @@ const agentModelsSchema = z.object({
   answer: modelSelectionSchema,
   summarize: modelSelectionSchema,
   synthesize: modelSelectionSchema,
-});
+  quality_loop_draft: modelSelectionSchema.optional(),
+  quality_loop_critique: modelSelectionSchema.optional(),
+  quality_loop_refine: modelSelectionSchema.optional(),
+  quality_loop_gate: modelSelectionSchema.optional(),
+  quality_loop_best_of_progress: modelSelectionSchema.optional(),
+}).transform((models) => ({
+  ...models,
+  quality_loop_draft: models.quality_loop_draft ?? models.answer,
+  quality_loop_critique: models.quality_loop_critique ?? models.answer,
+  quality_loop_refine: models.quality_loop_refine ?? models.answer,
+  quality_loop_gate: models.quality_loop_gate ?? models.answer,
+  quality_loop_best_of_progress: models.quality_loop_best_of_progress ?? models.answer,
+}));
 
 const defaultQualityLoopConfig = {
   enabled: false,
@@ -142,6 +169,13 @@ const qualityLoopSchema = z.object({
   enabled: z.boolean().default(false),
   maxIterations: z.number().int().positive().default(3),
   budgetBehavior: z.literal("stop_before_partial_iteration").default("stop_before_partial_iteration"),
+  phaseModels: z.object({
+    draft: modelSelectionSchema.optional(),
+    critique: modelSelectionSchema.optional(),
+    refine: modelSelectionSchema.optional(),
+    gate: modelSelectionSchema.optional(),
+    best_of_progress: modelSelectionSchema.optional(),
+  }).optional(),
 });
 
 const runtimeSchema = z.object({
@@ -756,7 +790,7 @@ export function resolveModelTier(config: ProjectConfig, selection: string): Mode
   };
 }
 
-function defaultAgentModels(): Record<ModelPurpose, ModelSelection> {
+function defaultAgentModels(): AgentConfig["models"] {
   return {
     depth: "small",
     classify: "small",
@@ -764,6 +798,11 @@ function defaultAgentModels(): Record<ModelPurpose, ModelSelection> {
     answer: "dynamic",
     summarize: "small",
     synthesize: "medium",
+    quality_loop_draft: "dynamic",
+    quality_loop_critique: "dynamic",
+    quality_loop_refine: "dynamic",
+    quality_loop_gate: "dynamic",
+    quality_loop_best_of_progress: "dynamic",
   };
 }
 

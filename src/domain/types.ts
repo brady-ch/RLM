@@ -40,6 +40,20 @@ export interface QualityLoopConfig {
   enabled: boolean;
   maxIterations: number;
   budgetBehavior: QualityLoopBudgetBehavior;
+  phaseModels?: Partial<Record<QualityLoopPhaseName, string>> | undefined;
+}
+
+export interface QualityLoopPhaseModelAssignment {
+  phase: QualityLoopPhaseName;
+  purpose: string;
+  plannedSelection: string;
+  plannedModel: string;
+  effectiveModel: string;
+  tier: string;
+  source: "configured" | "phase_override" | "node_override";
+  hostId?: string | undefined;
+  hostKind?: "ollama" | "http" | undefined;
+  hostEndpoint?: string | undefined;
 }
 
 export interface QualityLoopUsageSummary {
@@ -82,6 +96,10 @@ export interface QualityLoopPhaseRecord {
   summary?: string | undefined;
   score?: number | undefined;
   model?: string | undefined;
+  plannedModel?: string | undefined;
+  modelPurpose?: string | undefined;
+  modelSelection?: string | undefined;
+  modelSource?: QualityLoopPhaseModelAssignment["source"] | undefined;
   usage?: TokenUsageTrace | undefined;
   unresolvedIssues?: QualityLoopIssue[] | undefined;
   parseStatus?: QualityLoopEvaluatorParseStatus | undefined;
@@ -144,6 +162,7 @@ export interface QualityLoopMetadata {
   rubric?: QualityLoopRubricSelection | undefined;
   gate?: QualityLoopGateEvaluation | undefined;
   selection?: QualityLoopSelectionMetadata | undefined;
+  phaseModels?: Partial<Record<QualityLoopPhaseName, QualityLoopPhaseModelAssignment>> | undefined;
   stopReason?: QualityLoopStopReason | undefined;
   usage: QualityLoopUsageSummary;
   iterations: QualityLoopIterationRecord[];
