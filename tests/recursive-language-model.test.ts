@@ -810,6 +810,138 @@ test("renders json quality loop metadata", () => {
   assert.equal(parsed.qualityLoop.stopReason, "max_iterations");
 });
 
+function renderableStructuredLoop(): QualityLoopMetadata {
+  return {
+    config: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    status: "completed",
+    stopReason: "passed",
+    rubric: {
+      id: "code_engineering",
+      label: "Code and Engineering",
+      rationale: "Selected from code signals.",
+      matchedSignals: ["typescript", "test"],
+      confidence: 0.65,
+      criteria: [
+        { id: "behavior", label: "Behavior", description: "Implements requested behavior." },
+        { id: "integration", label: "Integration", description: "Fits existing code." },
+        { id: "verification", label: "Verification", description: "Includes tests." },
+      ],
+    },
+    gate: {
+      decision: "pass",
+      score: 0.91,
+      passThreshold: 0.8,
+      rubricFit: true,
+      critiqueResolved: true,
+      meaningfulImprovement: true,
+      rationale: "Meets rubric.",
+      failedConditions: [],
+      unresolvedIssues: [],
+    },
+    usage: {
+      iterationsStarted: 1,
+      iterationsCompleted: 1,
+      phaseCallCounts: {
+        draft: 1,
+        critique: 1,
+        refine: 1,
+        gate: 1,
+        best_of_progress: 1,
+      },
+      modelCallsTotal: 5,
+      inputTokens: 10,
+      outputTokens: 20,
+      totalTokens: 30,
+      unknownCompletions: 0,
+    },
+    iterations: [{
+      index: 0,
+      status: "completed",
+      startedAt: "2026-05-18T00:00:00.000Z",
+      completedAt: "2026-05-18T00:00:01.000Z",
+      phases: [],
+      candidates: [],
+      unresolvedIssues: [],
+      critiqueEvaluation: {
+        summary: "critique",
+        issues: [],
+        resolved: true,
+        suggestedImprovements: [],
+      },
+      gateEvaluation: {
+        decision: "pass",
+        score: 0.91,
+        passThreshold: 0.8,
+        rubricFit: true,
+        critiqueResolved: true,
+        meaningfulImprovement: true,
+        rationale: "Meets rubric.",
+        failedConditions: [],
+        unresolvedIssues: [],
+      },
+      bestOfProgressEvaluation: {
+        selectedCandidateId: "candidate-1",
+        rationale: "Best candidate.",
+        score: 0.91,
+        comparisonNotes: ["Strongest candidate."],
+      },
+    }],
+    candidates: [{
+      id: "candidate-1",
+      iteration: 0,
+      phase: "best_of_progress",
+      summary: "answer",
+      isSelected: true,
+    }],
+    selectedCandidateId: "candidate-1",
+    unresolvedIssues: [],
+  };
+}
+
+test("renders compact quality loop rubric and gate metadata", () => {
+  const rendered = renderResult({
+    answer: "ok",
+    trace: [],
+    metadata: {
+      agent: { id: "default", source: "auto" },
+      depth: { selected: 0, source: "override" },
+      modelSelections: [],
+      memoryReservations: [],
+      modelCalls: 5,
+      tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
+      toolCalls: [],
+      qualityLoop: renderableStructuredLoop(),
+      errors: [],
+    },
+  }, { compact: true, json: false, includeTrace: false, model: "m" });
+
+  assert.match(rendered, /qualityLoopRubric: id=code_engineering confidence=0\.65 signals=2/);
+  assert.match(rendered, /qualityLoopGate: decision=pass score=0\.91 threshold=0\.8 failedConditions=0/);
+});
+
+test("renders json quality loop rubric and evaluator metadata", () => {
+  const rendered = renderResult({
+    answer: "ok",
+    trace: [],
+    metadata: {
+      agent: { id: "default", source: "auto" },
+      depth: { selected: 0, source: "override" },
+      modelSelections: [],
+      memoryReservations: [],
+      modelCalls: 5,
+      tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
+      toolCalls: [],
+      qualityLoop: renderableStructuredLoop(),
+      errors: [],
+    },
+  }, { compact: false, json: true, includeTrace: false, model: "m" });
+  const parsed = JSON.parse(rendered) as { qualityLoop: QualityLoopMetadata };
+
+  assert.equal(parsed.qualityLoop.rubric?.id, "code_engineering");
+  assert.equal(parsed.qualityLoop.gate?.decision, "pass");
+  assert.equal(parsed.qualityLoop.iterations[0]?.gateEvaluation?.decision, "pass");
+});
+
 test("emits code_execution trace/event for code-only tasks", async () => {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(new QueueModel(["DIRECT", "done"]), trace);
