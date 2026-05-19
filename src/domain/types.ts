@@ -56,6 +56,13 @@ export interface QualityLoopPhaseModelAssignment {
   hostEndpoint?: string | undefined;
 }
 
+export interface QualityLoopManualDecision {
+  action: "accept" | "stop";
+  reason: string;
+  requestedAt: string;
+  source: "user";
+}
+
 export interface QualityLoopUsageSummary {
   iterationsStarted: number;
   iterationsCompleted: number;
@@ -470,6 +477,7 @@ export interface ExecutionControl {
   autoApprovalPaused?: (() => boolean) | undefined;
   requestClarification?: ((input: { nodeId: string; promptText: string }) => Promise<string>) | undefined;
   getClarificationHistory?: (() => ClarificationRecord[]) | undefined;
+  getQualityLoopDecision?: ((nodeId: string) => QualityLoopManualDecision | undefined) | undefined;
 }
 
 export interface NodeApprovalDecision {

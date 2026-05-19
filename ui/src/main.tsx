@@ -29,11 +29,72 @@ type ExecutionStatus =
   | "failed"
   | "cancelled";
 
+type QualityLoopPhaseName = "draft" | "critique" | "refine" | "gate" | "best_of_progress";
+
+type QualityLoopIssue = {
+  id: string;
+  severity: "info" | "warning" | "error";
+  text: string;
+  sourcePhase: QualityLoopPhaseName;
+};
+
+type QualityLoopPhaseRecord = {
+  phase: QualityLoopPhaseName;
+  status: ExecutionStatus | "idle" | "stopped" | "degraded";
+  startedAt: string;
+  completedAt?: string;
+  candidateId?: string;
+  summary?: string;
+  score?: number;
+  model?: string;
+  plannedModel?: string;
+  modelPurpose?: string;
+  modelSelection?: string;
+  modelSource?: "configured" | "phase_override" | "node_override";
+  parseStatus?: "parsed" | "degraded" | "failed";
+  parseError?: string;
+  unresolvedIssues?: QualityLoopIssue[];
+};
+
+type QualityLoopIteration = {
+  index: number;
+  status: ExecutionStatus | "idle" | "stopped" | "degraded";
+  startedAt: string;
+  completedAt?: string;
+  phases: QualityLoopPhaseRecord[];
+  unresolvedIssues: QualityLoopIssue[];
+  critiqueEvaluation?: { summary: string; resolved: boolean; suggestedImprovements: string[] };
+  gateEvaluation?: {
+    decision: "pass" | "continue";
+    score: number;
+    passThreshold: number;
+    critiqueResolved: boolean;
+    meaningfulImprovement: boolean;
+    rationale: string;
+    failedConditions: string[];
+  };
+};
+
+type QualityLoopMetadata = {
+  status: "idle" | "running" | "completed" | "stopped" | "degraded" | "failed" | "cancelled";
+  stopReason?: string;
+  rubric?: { id: string; label: string; rationale: string; confidence: number; matchedSignals: string[] };
+  gate?: { decision: "pass" | "continue"; score: number; passThreshold: number; rationale: string; failedConditions: string[] };
+  selection?: { selectedCandidateId: string; rationale: string; scoreBasis: string[]; comparisonNotes: string[]; fallbackReason?: string; invalidCandidateId?: string };
+  phaseModels?: Record<string, { phase: QualityLoopPhaseName; plannedSelection: string; plannedModel: string; effectiveModel: string; source: string }>;
+  usage: { iterationsStarted: number; iterationsCompleted: number; modelCallsTotal: number };
+  iterations: QualityLoopIteration[];
+  candidates: Array<{ id: string; iteration: number; phase: QualityLoopPhaseName; summary: string; isSelected?: boolean; selectionRationale?: string }>;
+  selectedCandidateId?: string;
+  unresolvedIssues: QualityLoopIssue[];
+  message?: string;
+};
+
 type ExecutionNode = {
   id: string;
   parentId?: string;
   position?: { x: number; y: number };
-  kind: "task" | "workflow-agent" | "workflow-qa";
+  kind: "task" | "workflow-agent" | "workflow-qa" | "quality-loop";
   composer?: {
     type: "AI" | "Code" | "TTS" | "Splitter" | "Joiner" | "Validator";
     runtime: "model" | "code" | "tts";
@@ -98,6 +159,7 @@ type ExecutionNode = {
   autoApprovalPaused?: boolean;
   depth: number;
   status: ExecutionStatus;
+  loop?: QualityLoopMetadata;
 };
 
 type ExecutionGraph = {
@@ -518,6 +580,7 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
         <span className={`complexity ${composer?.complexity ?? "low"}`}>{composer?.complexity ?? "low"}</span>
       </div>
       <div className="node-title">{node.label}</div>
+      {node.loop ? <QualityLoopCardSummary loop={node.loop} /> : null}
       {composer
         ? (
           <>
@@ -557,6 +620,24 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
             />
           ))
         : <Handle className="node-port node-port-output" id="out" type="source" position={Position.Right} />}
+    </div>
+  );
+}
+
+function QualityLoopCardSummary({ loop }: { loop: QualityLoopMetadata }) {
+  const score = loop.gate?.score ?? scoreFromSelection(loop.selection?.scoreBasis);
+  const selected = loop.selectedCandidateId ?? "none";
+  const issueCount = loop.unresolvedIssues.length;
+  return (
+    <div className={`loop-card-summary ${loop.status}`}>
+      <div className="loop-summary-grid">
+        <span>Status</span><b>{loop.status}</b>
+        <span>Score</span><b>{score ?? "none"}</b>
+        <span>Iterations</span><b>{loop.usage.iterationsCompleted}/{loop.usage.iterationsStarted}</b>
+        <span>Stop</span><b>{loop.stopReason ?? "pending"}</b>
+      </div>
+      <div className="loop-selected">Selected: {selected}</div>
+      {issueCount > 0 ? <div className="loop-alert">{issueCount} unresolved issue{issueCount === 1 ? "" : "s"}</div> : null}
     </div>
   );
 }
@@ -668,6 +749,9 @@ function NodeInspector(
         <div className="meta-row">Source: {node.approvalSource ?? "none"}</div>
         <div className="meta-row">Spawned after initial approval: {String(node.spawnedAfterInitialApproval ?? false)}</div>
       </div>
+      {node.loop
+        ? <QualityLoopInspector node={node} loop={node.loop} refresh={refresh} setErrorMessage={setErrorMessage} />
+        : null}
       <div>
         <label>Model Override</label>
         <input
@@ -759,6 +843,121 @@ function NodeInspector(
   );
 }
 
+function QualityLoopInspector(
+  { node, loop, refresh, setErrorMessage }: { node: ExecutionNode; loop: QualityLoopMetadata; refresh: () => Promise<void>; setErrorMessage: (message: string | undefined) => void },
+) {
+  const score = loop.gate?.score ?? scoreFromSelection(loop.selection?.scoreBasis);
+  const running = node.status === "running" || loop.status === "running";
+  return (
+    <div className="quality-loop-panel">
+      <label>Quality Loop</label>
+      <div className="loop-inspector-grid">
+        <div className="meta-row strong">Status: {loop.status}</div>
+        <div className="meta-row strong">Score: {score ?? "none"}</div>
+        <div className="meta-row">Iterations: {loop.usage.iterationsCompleted}/{loop.usage.iterationsStarted}</div>
+        <div className="meta-row">Stop reason: {loop.stopReason ?? "pending"}</div>
+        <div className="meta-row">Selected: {loop.selectedCandidateId ?? "none"}</div>
+        <div className="meta-row">Issues: {loop.unresolvedIssues.length}</div>
+      </div>
+      {loop.rubric
+        ? (
+          <div className="loop-detail-block">
+            <b>{loop.rubric.label}</b>
+            <span>{loop.rubric.id} · confidence {loop.rubric.confidence}</span>
+            <p>{loop.rubric.rationale}</p>
+          </div>
+        )
+        : null}
+      {loop.gate
+        ? (
+          <div className="loop-detail-block">
+            <b>Gate: {loop.gate.decision}</b>
+            <span>score {loop.gate.score} / threshold {loop.gate.passThreshold}</span>
+            <p>{loop.gate.rationale}</p>
+          </div>
+        )
+        : null}
+      {loop.selection
+        ? (
+          <div className="loop-detail-block">
+            <b>Selection</b>
+            <span>{loop.selection.selectedCandidateId}</span>
+            <p>{loop.selection.rationale}</p>
+          </div>
+        )
+        : null}
+      {loop.phaseModels
+        ? (
+          <div>
+            <label>Loop Model Trail</label>
+            {Object.values(loop.phaseModels).map((assignment) => (
+              <div className="phase-row" key={assignment.phase}>
+                <b>{phaseLabel(assignment.phase)}</b>
+                <span>{assignment.plannedSelection} {"->"} {assignment.effectiveModel}</span>
+                <span>{assignment.source}</span>
+              </div>
+            ))}
+          </div>
+        )
+        : null}
+      <div>
+        <label>Iterations</label>
+        {loop.iterations.length === 0
+          ? <div className="meta-row">No iterations yet.</div>
+          : loop.iterations.map((iteration) => (
+            <details className="loop-iteration" key={iteration.index} open={iteration.index === loop.iterations.length - 1}>
+              <summary>Iteration {iteration.index + 1}: {iteration.status}</summary>
+              {iteration.critiqueEvaluation
+                ? <div className="meta-row">Critique resolved: {String(iteration.critiqueEvaluation.resolved)} · {iteration.critiqueEvaluation.summary}</div>
+                : null}
+              {iteration.gateEvaluation
+                ? <div className="meta-row">Gate: {iteration.gateEvaluation.decision} · score {iteration.gateEvaluation.score} · critique resolved {String(iteration.gateEvaluation.critiqueResolved)}</div>
+                : null}
+              {iteration.phases.map((phase) => (
+                <div className="phase-row" key={`${iteration.index}-${phase.phase}`}>
+                  <b>{phaseLabel(phase.phase)}</b>
+                  <span>{phase.status}</span>
+                  <span>{phase.modelSelection ?? phase.plannedModel ?? "resolved"} {"->"} {phase.model ?? "pending"}</span>
+                  {phase.parseStatus ? <span>{phase.parseStatus}</span> : null}
+                  {phase.summary ? <p>{phase.summary}</p> : null}
+                </div>
+              ))}
+            </details>
+          ))}
+      </div>
+      {loop.unresolvedIssues.length > 0
+        ? (
+          <div>
+            <label>Loop Issues</label>
+            {loop.unresolvedIssues.map((issue) => (
+              <div className={`loop-issue ${issue.severity}`} key={issue.id}>
+                <b>{issue.severity}</b>
+                <span>{phaseLabel(issue.sourcePhase)}</span>
+                <p>{issue.text}</p>
+              </div>
+            ))}
+          </div>
+        )
+        : null}
+      <div className="actions">
+        <button
+          disabled={!running}
+          onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/quality-loop/accept`, { reason: "accepted from quality-loop inspector" }), refresh)}
+        >
+          <Check size={16} /> Accept loop
+        </button>
+        <button
+          disabled={!running}
+          className="danger"
+          onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/quality-loop/stop`, { reason: "stopped from quality-loop inspector" }), refresh)}
+        >
+          <Square size={16} /> Stop loop
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function PortRows({ title, ports }: { title: string; ports: NonNullable<ExecutionNode["composer"]>["inputs"] }) {
   return (
     <div className="port-row-group">
@@ -820,6 +1019,15 @@ function approvalModeLabel(mode: "full" | "initial-plan" | "initial-plan-recursi
     return "Initial plan + recursive";
   }
   return "Full checkpoints";
+}
+
+function phaseLabel(phase: QualityLoopPhaseName): string {
+  return phase.replaceAll("_", " ");
+}
+
+function scoreFromSelection(scoreBasis: string[] | undefined): string | undefined {
+  const score = scoreBasis?.find((item) => item.startsWith("best_of_progress_score:"))?.split(":")[1];
+  return score && score.trim().length > 0 ? score : undefined;
 }
 
 function deleteStrategyLabel(strategy: "delete_subtree" | "rewire_dependents"): string {

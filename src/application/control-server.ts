@@ -145,6 +145,18 @@ async function routeRequest(
       const result = session.skipNode(nodeId, token);
       return sendJson(response, { ...session.snapshot(), duplicate: result.duplicate });
     }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/quality-loop\/accept$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const body = await readJsonBody(request);
+      session.acceptQualityLoop(nodeId, typeof body["reason"] === "string" ? body["reason"] : undefined);
+      return sendJson(response, session.snapshot());
+    }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/quality-loop\/stop$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const body = await readJsonBody(request);
+      session.stopQualityLoop(nodeId, typeof body["reason"] === "string" ? body["reason"] : undefined);
+      return sendJson(response, session.snapshot());
+    }
     if (request.method === "POST" && url.pathname === "/api/nodes/add") {
       const body = await readJsonBody(request);
       const parentId = String(body["parentId"] ?? "");

@@ -447,6 +447,80 @@ test("quality loop selected unavailable phase model fails explicitly without fal
   assert.equal(defaultCalls, 1);
 });
 
+test("quality loop manual accept stops with human accepted reason", async () => {
+  const trace = new InMemoryTrace();
+  let acceptLoop = false;
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "refined answer", toolCalls: [], model: "refine-model" },
+      { content: continuingGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("accepted answer"), toolCalls: [], model: "best-model" },
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...dynamicDepthConfig,
+      qualityLoop: { enabled: true, maxIterations: 2, budgetBehavior: "stop_before_partial_iteration" },
+    },
+    execution: {
+      isCancelled: () => false,
+      getQualityLoopDecision: () => acceptLoop
+        ? { action: "accept", reason: "accepted by test", requestedAt: "2026-05-18T00:00:00.000Z", source: "user" }
+        : undefined,
+      onEvent: (event) => {
+        if (event.message === "quality loop phase completed: best_of_progress") {
+          acceptLoop = true;
+        }
+      },
+    },
+  });
+
+  assert.equal(result.answer, "accepted answer");
+  assert.equal(result.metadata.qualityLoop?.stopReason, "human_accepted");
+  assert.equal(result.metadata.qualityLoop?.message, "accepted by test");
+});
+
+test("quality loop manual stop uses stopped reason without approval semantics", async () => {
+  const trace = new InMemoryTrace();
+  let stopLoop = false;
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...dynamicDepthConfig,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+    execution: {
+      isCancelled: () => false,
+      getQualityLoopDecision: () => stopLoop
+        ? { action: "stop", reason: "stopped by test", requestedAt: "2026-05-18T00:00:00.000Z", source: "user" }
+        : undefined,
+      onEvent: (event) => {
+        if (event.message === "quality loop phase completed: draft") {
+          stopLoop = true;
+        }
+      },
+    },
+  });
+
+  assert.equal(result.answer, "");
+  assert.equal(result.metadata.qualityLoop?.status, "stopped");
+  assert.equal(result.metadata.qualityLoop?.stopReason, "stopped");
+  assert.equal(result.metadata.qualityLoop?.message, "stopped by test");
+});
+
 test("quality loop budget stops before partial iteration", async () => {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(new QueueModel([]), trace);
@@ -1035,6 +1109,7 @@ test("renders compact quality loop metadata", () => {
 
   assert.match(rendered, /qualityLoop: status=completed stopReason=max_iterations iterations=1 selectedCandidate=candidate-1/);
   assert.match(rendered, /qualityLoopUsage: modelCalls=5 input=10 output=20 total=30 unknown=0/);
+  assert.match(rendered, /qualityLoopQuality: score=none issues=0 status=completed/);
   assert.match(rendered, /qualityLoopModels: gate:large->large-model/);
 });
 
@@ -2061,6 +2136,9 @@ test("approval mode contract is consistent across cli api and ui labels", async 
   assert.match(uiSource, /Full checkpoints/);
   assert.match(uiSource, /Initial plan/);
   assert.match(uiSource, /Initial plan \+ recursive/);
+  assert.match(uiSource, /QualityLoopInspector/);
+  assert.match(uiSource, /quality-loop\/accept/);
+  assert.match(uiSource, /quality-loop\/stop/);
   const rendered = renderResult({
     answer: "ok",
     trace: [],
@@ -2077,6 +2155,56 @@ test("approval mode contract is consistent across cli api and ui labels", async 
     },
   }, { compact: true, json: false, includeTrace: false, model: "m" });
   assert.match(rendered, /approvalMode=initial-plan-recursive/);
+});
+
+test("quality loop control api records loop scoped accept and stop decisions", async () => {
+  const session = createInteractiveExecutionSession();
+  session.control.registerNode?.({
+    id: "task-1",
+    kind: "quality-loop",
+    label: "Improve answer",
+    prompt: "Improve answer",
+    depth: 0,
+    status: "running",
+    loop: {
+      config: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      status: "running",
+      usage: {
+        iterationsStarted: 1,
+        iterationsCompleted: 0,
+        phaseCallCounts: { draft: 1, critique: 0, refine: 0, gate: 0, best_of_progress: 0 },
+        modelCallsTotal: 1,
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        unknownCompletions: 0,
+      },
+      iterations: [],
+      candidates: [],
+      unresolvedIssues: [],
+    },
+  });
+  const server = await startControlServer({ session });
+  try {
+    const acceptResponse = await fetch(`${server.url}/api/nodes/task-1/quality-loop/accept`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: "accepted through api" }),
+    });
+    assert.equal(acceptResponse.status, 200);
+    assert.equal(session.control.getQualityLoopDecision?.("task-1")?.action, "accept");
+
+    const stopResponse = await fetch(`${server.url}/api/nodes/task-1/quality-loop/stop`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: "stopped through api" }),
+    });
+    assert.equal(stopResponse.status, 200);
+    assert.equal(session.control.getQualityLoopDecision?.("task-1")?.action, "stop");
+    assert.equal(session.snapshot().graph.nodes[0]?.loop?.stopReason, "stopped");
+  } finally {
+    await server.close();
+  }
 });
 
 test("initial-plan modes differ only on spawned branch auto approval", async () => {

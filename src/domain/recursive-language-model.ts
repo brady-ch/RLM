@@ -16,6 +16,7 @@ import type {
   QualityLoopIssue,
   QualityLoopIterationRecord,
   QualityLoopMetadata,
+  QualityLoopManualDecision,
   QualityLoopPhaseModelAssignment,
   QualityLoopPhaseName,
   QualityLoopPhaseRecord,
@@ -310,6 +311,21 @@ export class RecursiveLanguageModel {
       }
       return selectedText();
     };
+    const applyManualDecision = (decision: QualityLoopManualDecision | undefined): string | undefined => {
+      if (!decision) {
+        return undefined;
+      }
+      if (decision.action === "stop") {
+        return finish("stopped", "stopped", decision.reason);
+      }
+      if (selectedCandidateId) {
+        return finish("completed", "human_accepted", decision.reason);
+      }
+      metadata.message = `${decision.reason}; waiting for a candidate to accept`;
+      this.writeLoopMetadata(task.id, metadata);
+      return undefined;
+    };
+    const checkManualDecision = (): string | undefined => applyManualDecision(this.execution?.getQualityLoopDecision?.(task.id));
     let previousGateEvaluation: QualityLoopGateEvaluation | undefined;
 
     const failEvaluatorParse = (
@@ -343,6 +359,10 @@ export class RecursiveLanguageModel {
 
     try {
       for (let iterationIndex = 0; iterationIndex < loopConfig.maxIterations; iterationIndex += 1) {
+        const manualBeforeIteration = checkManualDecision();
+        if (manualBeforeIteration !== undefined) {
+          return manualBeforeIteration;
+        }
         if (this.remainingModelCalls() < 5) {
           return finish("stopped", "budget_exhausted", "quality loop stopped before partial iteration");
         }
@@ -486,6 +506,10 @@ export class RecursiveLanguageModel {
             toolCallsUsed: this.metadata.toolCalls.length,
             message: `quality loop phase completed: ${phase}`,
           });
+          const manualAfterPhase = checkManualDecision();
+          if (manualAfterPhase !== undefined) {
+            return manualAfterPhase;
+          }
         }
 
         iteration.status = "completed";
@@ -494,6 +518,10 @@ export class RecursiveLanguageModel {
         this.writeLoopMetadata(task.id, metadata);
         const gateEvaluation = iteration.gateEvaluation;
         if (gateEvaluation) {
+          const manualBeforeGateDecision = checkManualDecision();
+          if (manualBeforeGateDecision !== undefined) {
+            return manualBeforeGateDecision;
+          }
           if (gatePasses(gateEvaluation)) {
             return finish("completed", "passed", "quality loop passed gate");
           }

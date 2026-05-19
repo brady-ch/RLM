@@ -16,6 +16,7 @@ import type {
   ExecutionStatusUpdateDetail,
   GraphMutationError,
   ExecutionStatus,
+  QualityLoopManualDecision,
   NodeApprovalDecision,
 } from "../domain/types.js";
 import { EXECUTION_FAILURE_CODES, summarizeRunFromNodes } from "../domain/execution-failure.js";
@@ -90,6 +91,7 @@ export class InteractiveExecutionSession {
     }
     | undefined;
   private clarificationHistory: ClarificationRecord[] = [];
+  private readonly qualityLoopDecisions = new Map<string, QualityLoopManualDecision>();
   private abortSnapshot:
     | {
       graph: ExecutionGraph;
@@ -116,6 +118,7 @@ export class InteractiveExecutionSession {
     autoApprovalPaused: () => this.autoApprovalPaused(),
     requestClarification: (input) => this.requestClarification(input),
     getClarificationHistory: () => [...this.clarificationHistory],
+    getQualityLoopDecision: (nodeId) => this.qualityLoopDecisions.get(nodeId),
   };
 
   snapshot(): {
@@ -792,6 +795,48 @@ export class InteractiveExecutionSession {
     this.stop("aborted at clarification checkpoint");
   }
 
+  acceptQualityLoop(nodeId: string, reason = "quality loop manually accepted"): void {
+    const node = this.requireQualityLoopNode(nodeId);
+    const decision: QualityLoopManualDecision = {
+      action: "accept",
+      reason,
+      requestedAt: new Date().toISOString(),
+      source: "user",
+    };
+    this.qualityLoopDecisions.set(nodeId, decision);
+    if (node.loop) {
+      node.loop.message = reason;
+    }
+    this.publish({
+      type: "execution",
+      status: node.status,
+      nodeId,
+      message: reason,
+    });
+  }
+
+  stopQualityLoop(nodeId: string, reason = "quality loop manually stopped"): void {
+    const node = this.requireQualityLoopNode(nodeId);
+    const decision: QualityLoopManualDecision = {
+      action: "stop",
+      reason,
+      requestedAt: new Date().toISOString(),
+      source: "user",
+    };
+    this.qualityLoopDecisions.set(nodeId, decision);
+    if (node.loop) {
+      node.loop.status = "stopped";
+      node.loop.stopReason = "stopped";
+      node.loop.message = reason;
+    }
+    this.publish({
+      type: "execution",
+      status: node.status,
+      nodeId,
+      message: reason,
+    });
+  }
+
   stop(reason = "stopped by user"): void {
     this.cancellation.cancel(reason);
     const haltReason = this.cancellation.cancelReason() ?? reason;
@@ -827,6 +872,17 @@ export class InteractiveExecutionSession {
       failureCategory: "cancelled",
       code: EXECUTION_FAILURE_CODES.cancelled,
     });
+  }
+
+  private requireQualityLoopNode(nodeId: string): ExecutionGraphNode {
+    const node = this.nodes.get(nodeId);
+    if (!node) {
+      throw new MutationError("unknown_node", `Unknown node "${nodeId}".`, [nodeId]);
+    }
+    if (node.kind !== "quality-loop") {
+      throw new MutationError("not_quality_loop", `Node "${nodeId}" is not a quality-loop node.`, [nodeId]);
+    }
+    return node;
   }
 
   pauseFutureAutoApprovals(): void {

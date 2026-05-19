@@ -46,6 +46,7 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
     lines.push(
       `qualityLoop: status=${loop.status} stopReason=${loop.stopReason ?? "none"} iterations=${loop.iterations.length} selectedCandidate=${loop.selectedCandidateId ?? "none"}`,
       `qualityLoopUsage: modelCalls=${loop.usage.modelCallsTotal} input=${loop.usage.inputTokens} output=${loop.usage.outputTokens} total=${loop.usage.totalTokens} unknown=${loop.usage.unknownCompletions}`,
+      `qualityLoopQuality: score=${loop.gate?.score ?? loop.selection?.scoreBasis.find((item) => item.startsWith("best_of_progress_score:"))?.split(":")[1] ?? "none"} issues=${loop.unresolvedIssues.length} status=${loop.status}`,
     );
     if (loop.rubric) {
       lines.push(`qualityLoopRubric: id=${loop.rubric.id} confidence=${loop.rubric.confidence} signals=${loop.rubric.matchedSignals.length}`);
