@@ -32,10 +32,10 @@
 
 ### UI, CLI, and Human Control
 
-- [ ] **UXQL-01**: UI node cards summarize loop status, score, iteration count, selected candidate, and stop reason without expanding the graph into many top-level nodes.
-- [ ] **UXQL-02**: UI inspector shows an expandable timeline of loop iterations, critique resolution, rubric details, phase model trail, and candidate selection rationale.
-- [ ] **UXQL-03**: CLI and JSON output include loop metadata: rubric id, score, iterations, stop reason, selected candidate, and degraded/failure details.
-- [ ] **UXQL-04**: User can manually accept or stop a paused quality loop without conflating human approval with the automatic quality gate.
+- [x] **UXQL-01**: UI node cards summarize loop status, score, iteration count, selected candidate, and stop reason without expanding the graph into many top-level nodes.
+- [x] **UXQL-02**: UI inspector shows an expandable timeline of loop iterations, critique resolution, rubric details, phase model trail, and candidate selection rationale.
+- [x] **UXQL-03**: CLI and JSON output include loop metadata: rubric id, score, iterations, stop reason, selected candidate, and degraded/failure details.
+- [x] **UXQL-04**: User can manually accept or stop a paused quality loop without conflating human approval with the automatic quality gate.
 
 ### Verification
 
@@ -83,10 +83,10 @@
 | MODL-04 | Phase 15 | Complete |
 | MODL-05 | Phase 15 | Complete |
 | MODL-06 | Phase 15 | Complete |
-| UXQL-01 | Phase 16 | Pending |
-| UXQL-02 | Phase 16 | Pending |
-| UXQL-03 | Phase 16 | Pending |
-| UXQL-04 | Phase 16 | Pending |
+| UXQL-01 | Phase 16 | Complete |
+| UXQL-02 | Phase 16 | Complete |
+| UXQL-03 | Phase 16 | Complete |
+| UXQL-04 | Phase 16 | Complete |
 | VERF-01 | Phase 17 | Pending |
 | VERF-02 | Phase 17 | Pending |
 | VERF-03 | Phase 17 | Pending |
