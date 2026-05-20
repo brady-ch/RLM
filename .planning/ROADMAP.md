@@ -51,7 +51,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 - Provider parity: deepen constrained tool-calling enforcement across non-Ollama hosts.
 - Persistence/collaboration: durable graph edit history, interrupted-plan resume, or shared approval sessions if prioritized.
 - Save graph as fixed workflow — see **Proposed Phase 19** (explore A; `.planning/notes/graph-workflow-export.md`).
-- Expert team + per-agent constrained tool suites (explore C).
+- Expert team — see **Proposed Phase 20** (explore C; `.planning/notes/expert-team-architecture.md`).
 
 ## Proposed Phase 18: Dynamic Graph Authoring (plan-from-node)
 
@@ -70,6 +70,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 **Scope (out):**
 
 - Graph workflow export & replay (Phase 19).
+- Expert team node assignment (Phase 20).
 - HF installer, multi-server catalog, temperature controls in UI.
 - Replacing runtime recursion in `RecursiveLanguageModel` — graph planning is authoring-time; execution-time recursion unchanged unless explicitly linked.
 
@@ -122,3 +123,39 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 2. Save/import API and UI dialog.
 3. `runGraphWorkflow` executor + CLI wiring + smart variant default.
 4. Round-trip and failure-path tests.
+
+## Proposed Phase 20: Expert Team & Node Assignment
+
+**Goal:** Graph nodes run as **visible experts** (small-model presets, tool allowlists, tier maps) with planner assignment, user override, and plan-time RLM for high-complexity nodes.
+
+**Requirements:** `.planning/REQUIREMENTS.md` (`TEAM-01` … `TEAM-08`)
+
+**Design note:** `.planning/notes/expert-team-architecture.md`
+
+**Depends on:** Phase 18 (planner + node metadata); Phase 19 should include expert fields in export (TEAM-08 may ship with 19 or 20).
+
+**Scope (in):**
+
+- Planner emits `agentId`, complexity, `runtime: single | rlm` per node.
+- UI: Expert preset + custom badge when tools/tiers diverge; overrides protected for replan.
+- Execution: constrained tools per node allowlist; purpose routing from expert config.
+- Allowlist-only tools (no new role-specific adapters in v1).
+
+**Scope (out):**
+
+- Specialized tool surfaces (seed: `.planning/seeds/specialized-tool-surfaces.md`).
+- UI for creating new expert presets (YAML edit OK for v1).
+- Silent runtime complexity escalation.
+
+**Success criteria:**
+
+- Planned graph shows expert per node; user switches one node to Custom tools; approve + run respects allowlist.
+- High-complexity node marked RLM at plan time runs recursive path with same expert policy; trace shows mode.
+- Export/import preserves expert + custom + runtime fields.
+
+**Suggested plans (for `$gsd-plan-phase`):**
+
+1. Node schema + planner output (`agentId`, `runtime`, `assignmentMode`).
+2. Execution binding (tools + tiers + RLM per node).
+3. UI expert/custom inspector.
+4. Tests + EXPORT field alignment with Phase 19.
