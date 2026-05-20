@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { loadProjectConfig, seedProjectRlmStarter } from "../src/application/project-config.js";
+import { loadProjectConfig, resolveRuntimeConfig, seedProjectRlmStarter } from "../src/application/project-config.js";
 import { resolveLaunchMode } from "../src/cli/first-run.js";
 
 test("layered config lets project agent override global agent with same id", async () => {
@@ -196,6 +196,74 @@ runtime:
       const message = error instanceof Error ? error.message : "";
       assert.ok(message.includes("maxIterations"), message);
       return true;
+    });
+  }
+  finally {
+    await rm(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("resolveRuntimeConfig deep-merges qualityLoop.phaseModels with CLI overrides", async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), "rlm-quality-loop-phase-merge-"));
+  try {
+    const configPath = join(sandbox, "rlm.config.yaml");
+    await writeFile(configPath, `
+runtime:
+  qualityLoop:
+    enabled: false
+    maxIterations: 5
+    budgetBehavior: stop_before_partial_iteration
+    phaseModels:
+      gate: large
+      critique: small
+`, "utf8");
+
+    const loaded = await loadProjectConfig(configPath);
+    const runtime = resolveRuntimeConfig(loaded.config, {
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 3,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
+    });
+    assert.deepEqual(runtime.qualityLoop, {
+      enabled: true,
+      maxIterations: 3,
+      budgetBehavior: "stop_before_partial_iteration",
+      phaseModels: {
+        gate: "large",
+        critique: "small",
+      },
+    });
+  }
+  finally {
+    await rm(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("resolveRuntimeConfig merges phaseModels from YAML and partial CLI phaseModels", async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), "rlm-quality-loop-phase-both-"));
+  try {
+    const configPath = join(sandbox, "rlm.config.yaml");
+    await writeFile(configPath, `
+runtime:
+  qualityLoop:
+    phaseModels:
+      gate: large
+`, "utf8");
+
+    const loaded = await loadProjectConfig(configPath);
+    const runtime = resolveRuntimeConfig(loaded.config, {
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 3,
+        budgetBehavior: "stop_before_partial_iteration",
+        phaseModels: { refine: "medium" },
+      },
+    });
+    assert.deepEqual(runtime.qualityLoop?.phaseModels, {
+      gate: "large",
+      refine: "medium",
     });
   }
   finally {
