@@ -16,9 +16,10 @@ export async function startControlServer(input: {
   session: InteractiveExecutionSession;
   port?: number | undefined;
   uiDistDir?: string | undefined;
+  onConfirmRun?: ((session: InteractiveExecutionSession) => void | Promise<void>) | undefined;
 }): Promise<ControlServer> {
   const server = createServer((request, response) => {
-    void routeRequest(request, response, input.session, input.uiDistDir);
+    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun);
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -44,6 +45,7 @@ async function routeRequest(
   response: ServerResponse,
   session: InteractiveExecutionSession,
   uiDistDir: string | undefined,
+  onConfirmRun?: ((session: InteractiveExecutionSession) => void | Promise<void>) | undefined,
 ): Promise<void> {
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
   try {
@@ -217,6 +219,12 @@ async function routeRequest(
     }
     if (request.method === "POST" && url.pathname === "/api/chat/confirm-run") {
       const readiness = session.confirmGraphAndRun();
+      if (readiness.state === "ready_to_run" && onConfirmRun && !session.isConfirmedExecutionRunning()) {
+        void Promise.resolve(onConfirmRun(session)).catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error);
+          session.stop(typeof message === "string" ? message : "UI execution failed");
+        });
+      }
       return sendJson(response, { ...session.snapshot(), readiness });
     }
     if (request.method === "POST" && url.pathname === "/api/clarifications/ask") {

@@ -92,6 +92,8 @@ export class InteractiveExecutionSession {
     | undefined;
   private clarificationHistory: ClarificationRecord[] = [];
   private readonly qualityLoopDecisions = new Map<string, QualityLoopManualDecision>();
+  private runLifecycle: "idle" | "running" = "idle";
+  private autoApproveNextRootExecution = false;
   private abortSnapshot:
     | {
       graph: ExecutionGraph;
@@ -614,6 +616,13 @@ export class InteractiveExecutionSession {
   }
 
   confirmGraphAndRun(): ChatRunReadiness {
+    if (this.runLifecycle === "running") {
+      this.chatReadiness = {
+        state: "ready_to_run",
+        reason: "Execution is already running.",
+      };
+      return this.chatReadiness;
+    }
     const reasons: string[] = [];
     if (this.nodes.size === 0) {
       reasons.push("No graph nodes are available.");
@@ -630,6 +639,29 @@ export class InteractiveExecutionSession {
       reason: "Graph confirmed. Run can start.",
     };
     return this.chatReadiness;
+  }
+
+  beginConfirmedExecution(): void {
+    this.initialPlanAccepted = true;
+    this.autoApproveNextRootExecution = true;
+    this.runLifecycle = "running";
+    this.chatReadiness = {
+      state: "ready_to_run",
+      reason: "Execution running in this UI session.",
+    };
+  }
+
+  finishConfirmedExecution(): void {
+    this.runLifecycle = "idle";
+    this.autoApproveNextRootExecution = false;
+    this.chatReadiness = {
+      state: "draft",
+      reason: "Draft graph: confirm graph and run to start execution.",
+    };
+  }
+
+  isConfirmedExecutionRunning(): boolean {
+    return this.runLifecycle === "running";
   }
 
   approveNode(nodeId: string, token?: string): { duplicate: boolean } {
@@ -807,7 +839,10 @@ export class InteractiveExecutionSession {
     };
     this.qualityLoopDecisions.set(nodeId, decision);
     if (node.loop) {
-      node.loop.message = reason;
+      const hasCandidate = (node.loop.candidates?.length ?? 0) > 0 || Boolean(node.loop.selection?.selectedCandidateId);
+      node.loop.message = hasCandidate
+        ? reason
+        : `${reason}; waiting for first candidate before human acceptance applies`;
     }
     this.publish({
       type: "execution",
@@ -827,9 +862,13 @@ export class InteractiveExecutionSession {
     };
     this.qualityLoopDecisions.set(nodeId, decision);
     if (node.loop) {
-      node.loop.status = "stopped";
-      node.loop.stopReason = "stopped";
-      node.loop.message = reason;
+      if (node.loop.status === "running") {
+        node.loop.message = `${reason}; stop applies after the current phase finishes`;
+      } else {
+        node.loop.status = "stopped";
+        node.loop.stopReason = "stopped";
+        node.loop.message = reason;
+      }
     }
     this.publish({
       type: "execution",
@@ -1036,6 +1075,14 @@ export class InteractiveExecutionSession {
   }
 
   private shouldAutoApprove(node: ExecutionGraphNode): { auto: boolean; reason: string } {
+    if (this.autoApproveNextRootExecution && node.depth === 0 && !node.spawnedAfterInitialApproval) {
+      this.autoApproveNextRootExecution = false;
+      return {
+        auto: true,
+        reason: "graph confirmed for run",
+      };
+    }
+
     if (this.approvalMode === "full" || this.futureAutoApprovalsPaused) {
       return {
         auto: false,

@@ -28,6 +28,8 @@ The packaged CLI serves built assets from the UI dist directory. `RLM_UI_DIST` c
 
 The CLI starts the control server from `src/application/control-server.ts` when the parsed command is `ui`. Static assets are resolved by `src/cli/ui-dist-dir.ts`, and the browser client is implemented in `ui/src/main.tsx`.
 
+When you click **Run workflow** (or call `POST /api/chat/confirm-run`), the server validates the graph and starts agent execution in the same Node process through `createUiExecutionRunner` in `src/application/ui-execution-runner.ts`. The interactive session's `session.control` handle is passed to `runConfiguredAgent`, so quality-loop metadata, approvals, clarifications, and manual loop decisions share one session between the browser and the runtime engine.
+
 The UI talks to the control server through endpoints such as:
 
 - `GET /api/session`
@@ -46,6 +48,8 @@ The UI talks to the control server through endpoints such as:
 - `POST /api/nodes/:id/extend-budget`
 - `POST /api/nodes/:id/approve`
 - `POST /api/nodes/:id/skip`
+- `POST /api/nodes/:id/quality-loop/accept`
+- `POST /api/nodes/:id/quality-loop/stop`
 - `POST /api/nodes/:id/connect`
 - `POST /api/nodes/:id/delete`
 - `POST /api/graph/layout`
@@ -58,6 +62,13 @@ The UI talks to the control server through endpoints such as:
 - `POST /api/stop`
 
 `GET /api/events` is the server-sent event stream. UI mutations return fresh session snapshots so the client can reconcile graph state after every edit.
+
+Quality-loop controls are scoped to `quality-loop` nodes:
+
+- `POST /api/nodes/:id/quality-loop/accept` records a human acceptance decision. If no candidate exists yet, the loop keeps running until a candidate is available.
+- `POST /api/nodes/:id/quality-loop/stop` records a human stop decision. The runtime honors it at quality-loop checkpoints, including after the current in-flight phase completes when a model call is active.
+
+Use CLI flags such as `--quality-loop` and `--quality-loop-max-iterations` with `rlm ui` to opt into bounded quality loops for the confirmed run. YAML `runtime.qualityLoop.phaseModels` remain in effect when combined with those flags.
 
 ## Composer Model
 

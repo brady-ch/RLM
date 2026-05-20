@@ -41,6 +41,13 @@ const DIRECT = "DIRECT";
 const RECURSIVE = "RECURSIVE";
 const QUALITY_LOOP_PHASES: QualityLoopPhaseName[] = ["draft", "critique", "refine", "gate", "best_of_progress"];
 
+class QualityLoopManualExit extends Error {
+  constructor(public readonly answer: string) {
+    super("quality loop manual exit");
+    this.name = "QualityLoopManualExit";
+  }
+}
+
 export class RecursiveLanguageModel {
   private nextId = 1;
   private modelCalls = 0;
@@ -321,7 +328,7 @@ export class RecursiveLanguageModel {
       if (selectedCandidateId) {
         return finish("completed", "human_accepted", decision.reason);
       }
-      metadata.message = `${decision.reason}; waiting for a candidate to accept`;
+      metadata.message = `${decision.reason}; waiting for first candidate before human acceptance applies`;
       this.writeLoopMetadata(task.id, metadata);
       return undefined;
     };
@@ -400,8 +407,12 @@ export class RecursiveLanguageModel {
               qualityLoopMessages(task.prompt, phase, phaseOutputs),
               loopConfig,
               startedAt,
+              checkManualDecision,
             );
           } catch (error: unknown) {
+            if (error instanceof QualityLoopManualExit) {
+              return error.answer;
+            }
             phaseRecord.status = "failed";
             phaseRecord.completedAt = new Date().toISOString();
             phaseRecord.summary = error instanceof Error ? error.message : String(error);
@@ -552,6 +563,7 @@ export class RecursiveLanguageModel {
     messages: Parameters<LanguageModelPort["complete"]>[0],
     loopConfig: QualityLoopConfig,
     startedAt = new Date().toISOString(),
+    checkManualDecision?: () => string | undefined,
   ): Promise<{
     content: string;
     model: string;
@@ -584,14 +596,34 @@ export class RecursiveLanguageModel {
       phase,
       prompt: preview(messages.at(-1)?.content ?? ""),
     });
-    const response = await this.model.complete(this.withAgentSystemPrompt(messages), {
-      tools: [],
-      purpose,
-      complexityDepth: this.metadata.depth.selected,
-      overrideModel: phaseOverride ? undefined : task.modelOverride,
-      overrideModelSelection: phaseOverride,
-      constrainedToolCalling: false,
-    });
+    let manualOutcome: string | undefined;
+    const manualPoll = checkManualDecision
+      ? setInterval(() => {
+        const outcome = checkManualDecision();
+        if (outcome !== undefined) {
+          manualOutcome = outcome;
+        }
+      }, 50)
+      : undefined;
+    let response: Awaited<ReturnType<LanguageModelPort["complete"]>>;
+    try {
+      response = await this.model.complete(this.withAgentSystemPrompt(messages), {
+        tools: [],
+        purpose,
+        complexityDepth: this.metadata.depth.selected,
+        overrideModel: phaseOverride ? undefined : task.modelOverride,
+        overrideModelSelection: phaseOverride,
+        constrainedToolCalling: false,
+      });
+    } finally {
+      if (manualPoll) {
+        clearInterval(manualPoll);
+      }
+    }
+    const resolvedManualOutcome = checkManualDecision?.() ?? manualOutcome;
+    if (resolvedManualOutcome !== undefined) {
+      throw new QualityLoopManualExit(resolvedManualOutcome);
+    }
     this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
     this.recordUsage(response.usage);
     const completedAt = new Date().toISOString();
@@ -1394,6 +1426,7 @@ export class RecursiveLanguageModel {
     const node = this.executionNodes.get(nodeId);
     if (node) {
       node.loop = metadata;
+      this.execution?.registerNode?.({ ...node });
     }
     this.updateExecutionGraph();
   }

@@ -23,6 +23,7 @@ import * as webSearchExtension from "./extensions/tools/web-search.extension.js"
 import * as workspaceFileWriteExtension from "./extensions/tools/workspace-file-write.extension.js";
 import { CancellationController, createExecutionControl, createInteractiveExecutionSession } from "./application/execution-controller.js";
 import { startControlServer } from "./application/control-server.js";
+import { createUiExecutionRunner } from "./application/ui-execution-runner.js";
 import { helpText, parseArgs } from "./cli/args.js";
 import {
   formatLaunchModeBanner,
@@ -207,19 +208,32 @@ async function main(): Promise<void> {
   try {
     if (options.command === "ui") {
       const session = createInteractiveExecutionSession({ seedRootPrompt: options.prompt });
+      const uiRunner = createUiExecutionRunner({
+        projectConfig,
+        runtimeConfig,
+        configPath: loadedConfig.path,
+        selectAgent: (prompt) => selectAgent(registry, prompt, options.agent),
+        agentSource: options.agent ? "override" : "auto",
+        memoryManager,
+        hostId: options.host,
+        createModel,
+        logger,
+        runState,
+      });
       const uiDistDir = resolveUiDistDir(fileURLToPath(import.meta.url), process.env);
       const server = await startControlServer({
         session,
         port: options.uiPort,
         uiDistDir,
+        onConfirmRun: (activeSession) => uiRunner.start(activeSession),
       });
       cleanup.track({
         close: () => server.close(),
       });
       console.error(`RLM UI listening at ${server.url}`);
       await new Promise<void>(() => {
-        // UI mode is an authoring session. Execution must be triggered by an
-        // explicit graph-confirmed action, not by merely opening the browser.
+        // UI mode keeps the control server alive. Execution starts when the user
+        // confirms the graph through POST /api/chat/confirm-run.
       });
       return;
     }

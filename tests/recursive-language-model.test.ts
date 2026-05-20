@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 import { RecursiveLanguageModel } from "../src/domain/recursive-language-model.js";
+import type { AgentProfile } from "../src/domain/agents.js";
 import type {
   LanguageModelCompleteOptions,
   LanguageModelMessage,
@@ -23,6 +24,7 @@ import { PurposeRoutingLanguageModel, selectDynamicTier } from "../src/applicati
 import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
 import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
 import { startControlServer } from "../src/application/control-server.js";
+import { createUiExecutionRunner } from "../src/application/ui-execution-runner.js";
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
 import type { RuntimeLogEvent, RuntimeLogger } from "../src/ports/runtime-logger-port.js";
@@ -40,6 +42,32 @@ class QueueModel implements LanguageModelPort {
     options: LanguageModelCompleteOptions = {},
   ): Promise<LanguageModelResponse> {
     this.calls.push({ messages, options });
+    const response = this.responses.shift();
+    if (response === undefined) {
+      throw new Error("No queued response");
+    }
+    if (response instanceof Error) {
+      throw response;
+    }
+
+    return typeof response === "string" ? { content: response, toolCalls: [] } : response;
+  }
+}
+
+class DelayedQueueModel implements LanguageModelPort {
+  readonly calls: Array<{ messages: LanguageModelMessage[]; options: LanguageModelCompleteOptions }> = [];
+
+  constructor(
+    private readonly responses: QueueResponse[],
+    private readonly delayMs = 200,
+  ) {}
+
+  async complete(
+    messages: LanguageModelMessage[],
+    options: LanguageModelCompleteOptions = {},
+  ): Promise<LanguageModelResponse> {
+    this.calls.push({ messages, options });
+    await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     const response = this.responses.shift();
     if (response === undefined) {
       throw new Error("No queued response");
@@ -536,6 +564,70 @@ test("quality loop manual stop uses stopped reason without approval semantics", 
   assert.equal(result.metadata.qualityLoop?.status, "stopped");
   assert.equal(result.metadata.qualityLoop?.stopReason, "stopped");
   assert.equal(result.metadata.qualityLoop?.message, "stopped by test");
+});
+
+test("quality loop manual stop applies during in-flight phase completion", async () => {
+  const trace = new InMemoryTrace();
+  let stopLoop = false;
+  setTimeout(() => {
+    stopLoop = true;
+  }, 50);
+  const engine = new RecursiveLanguageModel(
+    new DelayedQueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "refined answer", toolCalls: [], model: "refine-model" },
+    ], 250),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...dynamicDepthConfig,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+    execution: {
+      isCancelled: () => false,
+      getQualityLoopDecision: () => stopLoop
+        ? { action: "stop", reason: "stopped during phase", requestedAt: "2026-05-18T00:00:00.000Z", source: "user" }
+        : undefined,
+    },
+  });
+
+  assert.equal(result.metadata.qualityLoop?.status, "stopped");
+  assert.equal(result.metadata.qualityLoop?.stopReason, "stopped");
+  assert.equal(result.metadata.qualityLoop?.message, "stopped during phase");
+});
+
+test("quality loop metadata syncs to interactive session nodes", async () => {
+  const session = createInteractiveExecutionSession();
+  session.beginConfirmedExecution();
+  const trace = new InMemoryTrace();
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "refined answer", toolCalls: [], model: "refine-model" },
+      { content: passingGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("final answer"), toolCalls: [], model: "best-model" },
+    ]),
+    trace,
+  );
+
+  await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...dynamicDepthConfig,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+    execution: session.control,
+  });
+
+  const loopNode = session.snapshot().graph.nodes.find((node) => node.kind === "quality-loop");
+  assert.ok(loopNode?.loop);
+  assert.equal(loopNode.loop?.stopReason, "passed");
+  assert.equal(loopNode.loop?.iterations.length, 1);
 });
 
 test("quality loop budget stops before partial iteration", async () => {
@@ -2365,7 +2457,100 @@ test("quality loop control api records loop scoped accept and stop decisions", a
     });
     assert.equal(stopResponse.status, 200);
     assert.equal(session.control.getQualityLoopDecision?.("task-1")?.action, "stop");
-    assert.equal(session.snapshot().graph.nodes[0]?.loop?.stopReason, "stopped");
+    assert.match(
+      session.snapshot().graph.nodes[0]?.loop?.message ?? "",
+      /stop applies after the current phase finishes/,
+    );
+  } finally {
+    await server.close();
+  }
+});
+
+test("ui confirm run executes quality loop in the shared session", async () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Improve this answer" });
+  const queue = new QueueModel([
+    { content: "draft answer", toolCalls: [], model: "draft-model" },
+    { content: structuredCritique, toolCalls: [], model: "critique-model" },
+    { content: "refined answer", toolCalls: [], model: "refine-model" },
+    { content: passingGate, toolCalls: [], model: "gate-model" },
+    { content: bestOfProgress("final answer"), toolCalls: [], model: "best-model" },
+  ]);
+  const agentModels = {
+    depth: "small" as const,
+    classify: "small" as const,
+    decompose: "small" as const,
+    answer: "small" as const,
+    summarize: "small" as const,
+    synthesize: "small" as const,
+  };
+  const projectConfig = {
+    models: {
+      default: "small-model",
+      tiers: {
+        small: {
+          name: "small-model",
+          estimatedRamMb: 512,
+        },
+      },
+    },
+    memory: {
+      maxRamMb: 2048 as const,
+      reserveSystemRamMb: 0,
+      waitForCapacity: false,
+      capacityCheckIntervalMs: 1,
+    },
+    runtime: dynamicDepthConfig,
+    agents: {
+      default: {
+        tools: [] as string[],
+        models: agentModels,
+      },
+    },
+    workflows: {},
+  };
+  const defaultAgent: AgentProfile = {
+    id: "default",
+    description: "Test default agent",
+    systemPrompt: "Test agent",
+    tools: [],
+    routingHints: [],
+    config: projectConfig.agents.default,
+  };
+  const runner = createUiExecutionRunner({
+    projectConfig,
+    runtimeConfig: {
+      ...dynamicDepthConfig,
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
+    },
+    selectAgent: () => defaultAgent,
+    agentSource: "auto",
+    memoryManager: new MemoryManager({ config: projectConfig.memory }),
+    createModel: () => queue,
+  });
+  const server = await startControlServer({
+    session,
+    onConfirmRun: (activeSession) => runner.start(activeSession),
+  });
+  try {
+    const response = await fetch(`${server.url}/api/chat/confirm-run`, { method: "POST" });
+    assert.equal(response.status, 200);
+
+    let loopNode: ExecutionGraphNode | undefined;
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      loopNode = session.snapshot().graph.nodes.find((node) => node.kind === "quality-loop");
+      if (loopNode?.loop?.status === "completed") {
+        break;
+      }
+    }
+
+    assert.ok(loopNode?.loop);
+    assert.equal(loopNode.loop?.stopReason, "passed");
+    assert.equal(loopNode.loop?.candidates.length, 3);
   } finally {
     await server.close();
   }
