@@ -39,9 +39,9 @@
 
 ### Verification
 
-- [ ] **VERF-01**: Fake-model tests cover pass threshold, critique resolved, no meaningful improvement, max iterations, budget exhaustion, parse failure, cancellation, and best-of-progress selection.
-- [ ] **VERF-02**: UI/API tests cover loop metadata rendering, phase override updates, human accept/stop actions, and stale-loop invalidation after prompt/model/rubric edits.
-- [ ] **VERF-03**: Regression fixtures verify loops remain bounded, observable, and non-silent across CLI, UI, trace, and run-state outputs.
+- [x] **VERF-01**: Fake-model tests cover pass threshold, critique resolved, no meaningful improvement, max iterations, budget exhaustion, parse failure, cancellation, and best-of-progress selection.
+- [x] **VERF-02**: UI/API tests cover loop metadata rendering, phase override updates, human accept/stop actions, and stale-loop invalidation after prompt/model/rubric edits.
+- [x] **VERF-03**: Regression fixtures verify loops remain bounded, observable, and non-silent across CLI, UI, trace, and run-state outputs.
 
 ## Future Requirements
 
@@ -87,9 +87,9 @@
 | UXQL-02 | Phase 16 | Complete |
 | UXQL-03 | Phase 16 | Complete |
 | UXQL-04 | Phase 16 | Complete |
-| VERF-01 | Phase 17 | Pending |
-| VERF-02 | Phase 17 | Pending |
-| VERF-03 | Phase 17 | Pending |
+| VERF-01 | Phase 17 | Complete |
+| VERF-02 | Phase 17 | Complete |
+| VERF-03 | Phase 17 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 19 total
