@@ -40,7 +40,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 
 - [x] **Phase 21: Runner Registry and Sampling Cascade** - Formalize runners as adapters and implement global, model, and node sampling merge before product UI work.
 - [x] **Phase 22: Model Library** - Build curated and Hugging Face-backed model installation, progress, compatibility, and installed-model selection.
-- [ ] **Phase 23: Tauri Shell and Cross-Platform Installers** - Ship an installable desktop app that launches the UI, manages the control server and Ollama lifecycle, and passes first-run smoke.
+- [x] **Phase 23: Tauri Shell and Cross-Platform Installers** - Ship an installable desktop app that launches the UI, manages the control server and Ollama lifecycle, and passes first-run smoke.
 
 ## Phase Details
 
@@ -86,8 +86,11 @@ Plans:
   3. App quit stops RLM-managed child processes cleanly and does not kill a separately managed user Ollama.
   4. Per-OS installer or packaged build artifacts exist for Windows, macOS, and Linux.
   5. Clean-machine smoke path works: launch app, see model library, install a curated model, and run a workflow without terminal setup.
-**Plans**: TBD
+**Plans**: 1 plan
 **UI hint**: yes
+
+Plans:
+- [x] 23-01-PLAN.md — Stage desktop release artifacts, Ollama helper, package smoke, and documentation.
 
 ## Candidate Future Themes
 
@@ -106,7 +109,7 @@ Phases execute in numeric order: 21 -> 22 -> 23
 |-------|-----------|----------------|--------|-----------|
 | 21. Runner Registry and Sampling Cascade | v1.3 | 1/1 | Complete | 2026-05-20 |
 | 22. Model Library | v1.3 | 1/1 | Complete | 2026-05-20 |
-| 23. Tauri Shell and Cross-Platform Installers | v1.3 | 0/TBD | Not Started | - |
+| 23. Tauri Shell and Cross-Platform Installers | v1.3 | 1/1 | Complete | 2026-05-20 |
 | v1.2 Answer Quality Loops | v1.2 | archived | Complete | 2026-05-20 |
 | v1.1 Interop, chat-first, plugins, constrained tools | v1.1 | archived | Complete | 2026-05-13 |
 | v1.0 MVP | v1.0 | archived | Complete | 2026-05-08 |

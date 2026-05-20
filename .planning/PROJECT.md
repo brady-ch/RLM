@@ -58,8 +58,8 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-- [ ] Desktop app installers launch RLM on Windows, macOS, and Linux without requiring Node/npm or manual runner setup - v1.3
-- [ ] Ollama is treated as a managed runner adapter with explicit availability and failure states - v1.3
+- [x] Desktop app installers launch RLM on Windows, macOS, and Linux without requiring Node/npm or manual runner setup - v1.3
+- [x] Ollama is treated as a managed runner adapter with explicit availability and failure states - v1.3
 - [x] Model library supports curated recommendations, Hugging Face search, download progress, and installed model selection - v1.3
 - [x] Sampling controls resolve through global defaults, per-model profiles, and per-node overrides with traceable effective values - v1.3
 
@@ -111,6 +111,7 @@ Current verification baseline at v1.2 close: `npm test` passed with 141/141 test
 | v1.3 bundles or manages Ollama only, while preserving adapter boundaries | Keeps the first desktop product installable and testable without multiplying runner lifecycle complexity | Active in v1.3 |
 | Sampling configuration resolves by cascade: global -> model -> node | Gives simple defaults and precise per-node control while preserving auditability | Active in v1.3 |
 | Model library installs curated Ollama models first and treats Hugging Face as search/compatibility discovery | Keeps Phase 22 useful while avoiding silent unsupported imports | Active in v1.3 |
+| Desktop release staging is the v1.3 installer input | Gives a smoke-tested launch bundle now while leaving signed native distribution for later hardening | Active in v1.3 |
 
 ## Evolution
 
@@ -124,4 +125,4 @@ This document evolves at phase transitions and milestone boundaries.
 5. Update current-state context.
 
 ---
-*Last updated: 2026-05-20 after Phase 22 verification*
+*Last updated: 2026-05-20 after Phase 23 verification*
