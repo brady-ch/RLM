@@ -50,7 +50,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 - Release hardening: signed/reproducible single executable artifacts and platform release checks.
 - Provider parity: deepen constrained tool-calling enforcement across non-Ollama hosts.
 - Persistence/collaboration: durable graph edit history, interrupted-plan resume, or shared approval sessions if prioritized.
-- Save graph as fixed workflow (explore A; seed: `.planning/seeds/save-graph-as-workflow.md`).
+- Save graph as fixed workflow — see **Proposed Phase 19** (explore A; `.planning/notes/graph-workflow-export.md`).
 - Expert team + per-agent constrained tool suites (explore C).
 
 ## Proposed Phase 18: Dynamic Graph Authoring (plan-from-node)
@@ -69,7 +69,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 
 **Scope (out):**
 
-- Workflow YAML export (follow-on seed / later phase).
+- Graph workflow export & replay (Phase 19).
 - HF installer, multi-server catalog, temperature controls in UI.
 - Replacing runtime recursion in `RecursiveLanguageModel` — graph planning is authoring-time; execution-time recursion unchanged unless explicitly linked.
 
@@ -86,3 +86,39 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 2. Model-driven planner adapter + budget integration.
 3. Replan gating (protected detection, Replace / Merge / Cancel).
 4. UI polish + regression tests.
+
+## Proposed Phase 19: Graph Workflow Export & Replay
+
+**Goal:** Freeze an approved graph as **playbook** and/or **pipeline** variants; run headlessly or from UI without replan; import back for edits.
+
+**Requirements:** `.planning/REQUIREMENTS.md` (`EXPORT-01` … `EXPORT-07`)
+
+**Design note:** `.planning/notes/graph-workflow-export.md`
+
+**Depends on:** Phase 18 (stable plan-from-node graphs and node metadata).
+
+**Scope (in):**
+
+- `kind: graph` sidecar under `.rlm/workflows/` (+ optional `rlm.config.yaml` pointer).
+- Save dialog: Playbook / Pipeline / Both (default Both).
+- Graph executor: topological run, literal vs `{{input}}` substitution, smart variant default + override.
+- Import → `InteractiveExecutionSession`; CLI `rlm --workflow <id>` for graph kind.
+
+**Scope (out):**
+
+- Lossy export to agent-list `workflows.*` only.
+- n8n scheduling, triggers, credentials.
+- Per-node template flags beyond root (defer unless needed in v1).
+
+**Success criteria:**
+
+- User saves Both from UI, runs pipeline with new CLI prompt and playbook without prompt; variant shown in output.
+- Import → edit one node prompt → re-export preserves topology.
+- Tests: playbook literal replay, pipeline substitution, variant override, missing agent failure.
+
+**Suggested plans (for `$gsd-plan-phase`):**
+
+1. Graph workflow file schema + snapshot/export from session.
+2. Save/import API and UI dialog.
+3. `runGraphWorkflow` executor + CLI wiring + smart variant default.
+4. Round-trip and failure-path tests.
