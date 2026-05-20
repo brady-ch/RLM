@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Desktop Product
-status: planning
+status: ready
 last_updated: "2026-05-20T06:49:37.657Z"
 last_activity: 2026-05-20
 progress:
@@ -20,14 +20,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-20)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** v1.3 Desktop Product - defining requirements and roadmap.
+**Current focus:** v1.3 Desktop Product — ready to execute Phase 21.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 21 — Runner Registry and Sampling Cascade (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-20 — Milestone v1.3 started
+Status: Roadmap approved — ready to plan/execute
+Last activity: 2026-05-20 — Milestone v1.3 initialized (Phases 21–23)
 
 ## Recently Completed
 
