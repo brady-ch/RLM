@@ -260,6 +260,7 @@ export class InteractiveExecutionSession {
 
     node.prompt = normalized;
     node.label = preview(normalized, 80);
+    this.invalidateQualityLoopMetadata(node, "node prompt edited; quality loop metadata invalidated");
     this.publish({ type: "execution", status: node.status, nodeId, message: "node prompt edited" });
   }
 
@@ -271,6 +272,7 @@ export class InteractiveExecutionSession {
     }
     node.modelOverride = normalized;
     node.modelOverrideSource = "user";
+    this.invalidateQualityLoopMetadata(node, "node model override set; quality loop metadata invalidated");
     this.publish({ type: "execution", status: node.status, nodeId, message: "node model override set" });
   }
 
@@ -883,6 +885,20 @@ export class InteractiveExecutionSession {
       throw new MutationError("not_quality_loop", `Node "${nodeId}" is not a quality-loop node.`, [nodeId]);
     }
     return node;
+  }
+
+  private invalidateQualityLoopMetadata(node: ExecutionGraphNode, message: string): void {
+    if (node.kind !== "quality-loop" || !node.loop) {
+      return;
+    }
+    node.loop = undefined;
+    this.qualityLoopDecisions.delete(node.id);
+    this.publish({
+      type: "execution",
+      status: node.status,
+      nodeId: node.id,
+      message,
+    });
   }
 
   pauseFutureAutoApprovals(): void {

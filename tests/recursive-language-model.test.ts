@@ -139,6 +139,23 @@ function bestOfProgress(answer: string, selectedCandidateId?: string): string {
   });
 }
 
+function assertQualityLoopTerminal(
+  loop: QualityLoopMetadata | undefined,
+  expected: { status: QualityLoopMetadata["status"]; stopReason: NonNullable<QualityLoopMetadata["stopReason"]>; issueText?: RegExp },
+) {
+  assert.equal(loop?.status, expected.status);
+  assert.equal(loop?.stopReason, expected.stopReason);
+  assert.ok(loop?.message !== undefined || loop?.unresolvedIssues.length !== 0 || loop?.gate !== undefined || loop?.selection !== undefined);
+  if (expected.issueText) {
+    const diagnostic = [
+      loop?.message,
+      ...(loop?.unresolvedIssues.map((issue) => issue.text) ?? []),
+      ...(loop?.iterations.flatMap((iteration) => iteration.unresolvedIssues.map((issue) => issue.text)) ?? []),
+    ].filter(Boolean).join("\n");
+    assert.match(diagnostic, expected.issueText);
+  }
+}
+
 test("quality loop metadata contract supports graph nodes", () => {
   const loop: QualityLoopMetadata = {
     config: {
@@ -973,6 +990,112 @@ test("quality loop failure records terminal failed metadata", async () => {
   assert.equal(failedPhase?.status, "failed");
   assert.equal(failedPhase?.model, "unknown");
   assert.ok((failedPhase?.unresolvedIssues?.length ?? 0) > 0);
+});
+
+test("quality loop strict failure regression matrix exposes diagnostics", async () => {
+  const malformed = await new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: "not json", toolCalls: [], model: "critique-model" },
+    ]),
+    new InMemoryTrace(),
+  ).run({
+    prompt: "Improve this answer",
+    config: {
+      ...dynamicDepthConfig,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+  assertQualityLoopTerminal(malformed.metadata.qualityLoop, {
+    status: "failed",
+    stopReason: "failed",
+    issueText: /expected JSON object in evaluator output/,
+  });
+
+  const budget = await new RecursiveLanguageModel(new QueueModel([]), new InMemoryTrace()).run({
+    prompt: "Improve this answer",
+    config: {
+      ...config,
+      maxDepth: 0,
+      maxModelCalls: 4,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+  });
+  assertQualityLoopTerminal(budget.metadata.qualityLoop, {
+    status: "stopped",
+    stopReason: "budget_exhausted",
+    issueText: /partial iteration/,
+  });
+
+  let cancelAfterDraft = false;
+  const cancelled = await new RecursiveLanguageModel(
+    new QueueModel([{ content: "draft answer", toolCalls: [], model: "draft-model" }]),
+    new InMemoryTrace(),
+  ).run({
+    prompt: "Improve this answer",
+    config: {
+      ...dynamicDepthConfig,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+    execution: {
+      isCancelled: () => cancelAfterDraft,
+      cancelReason: () => "cancelled before loop work",
+      onEvent: (event) => {
+        if (event.message === "quality loop phase completed: draft") {
+          cancelAfterDraft = true;
+        }
+      },
+    },
+  });
+  assertQualityLoopTerminal(cancelled.metadata.qualityLoop, {
+    status: "cancelled",
+    stopReason: "stopped",
+    issueText: /cancelled before loop work/,
+  });
+});
+
+test("quality loop observability regression spans events graph and render surfaces", async () => {
+  const trace = new InMemoryTrace();
+  const events: string[] = [];
+  const engine = new RecursiveLanguageModel(
+    new QueueModel([
+      { content: "draft answer", toolCalls: [], model: "draft-model" },
+      { content: structuredCritique, toolCalls: [], model: "critique-model" },
+      { content: "refined answer", toolCalls: [], model: "refine-model" },
+      { content: passingGate, toolCalls: [], model: "gate-model" },
+      { content: bestOfProgress("observable answer"), toolCalls: [], model: "best-model" },
+    ]),
+    trace,
+  );
+
+  const result = await engine.run({
+    prompt: "Improve this answer",
+    config: {
+      ...dynamicDepthConfig,
+      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    },
+    execution: {
+      isCancelled: () => false,
+      onEvent: (event) => {
+        if (event.message) {
+          events.push(event.message);
+        }
+      },
+    },
+  });
+
+  assert.equal(result.metadata.executionGraph?.nodes[0]?.loop?.stopReason, "passed");
+  assert.ok(events.some((message) => message === "quality loop started"));
+  assert.ok(events.some((message) => message === "quality loop phase completed: gate"));
+  assert.ok(events.some((message) => message === "quality loop stopped: passed"));
+
+  const compact = renderResult(result, { compact: true, json: false, includeTrace: false, model: "m" });
+  assert.match(compact, /qualityLoop: status=completed stopReason=passed/);
+  assert.match(compact, /qualityLoopQuality: score=0\.92 issues=0 status=completed/);
+  assert.match(compact, /qualityLoopRubric: id=/);
+  const parsed = JSON.parse(renderResult(result, { compact: false, json: true, includeTrace: false, model: "m" })) as { qualityLoop: QualityLoopMetadata };
+  assert.equal(parsed.qualityLoop.stopReason, "passed");
+  assert.equal(parsed.qualityLoop.iterations[0]?.phases.length, 5);
 });
 
 test("quality loop waits for node approval before model calls", async () => {
@@ -1874,6 +1997,47 @@ test("recursive execution persists node status updates into run-state store", as
   }
 });
 
+test("run-state replay exposes quality loop terminal status regression", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-runtime-quality-loop-state-"));
+  try {
+    const store = new FileRunStateStore({ baseDir: dir, now: () => "2026-05-19T00:00:00.000Z" });
+    const engine = new RecursiveLanguageModel(
+      new QueueModel([
+        { content: "draft answer", toolCalls: [], model: "draft-model" },
+        { content: structuredCritique, toolCalls: [], model: "critique-model" },
+        { content: "refined answer", toolCalls: [], model: "refine-model" },
+        { content: passingGate, toolCalls: [], model: "gate-model" },
+        { content: bestOfProgress("state answer"), toolCalls: [], model: "best-model" },
+      ]),
+      new InMemoryTrace(),
+    );
+
+    const result = await engine.run({
+      prompt: "Improve this answer",
+      config: {
+        ...dynamicDepthConfig,
+        qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      },
+      runState: {
+        runId: "loop-run-1",
+        store,
+        actor: "runtime",
+        capabilityToken: "tok-runtime",
+      },
+    });
+
+    assert.equal(result.metadata.qualityLoop?.stopReason, "passed");
+    const replay = await store.buildOperationalReplay("loop-run-1");
+    assert.ok(replay.some((entry) => entry.path === "nodeStatuses.task-1" && entry.accepted));
+    const mutations = await store.listMutations("loop-run-1");
+    assert.ok(mutations.some((entry) => entry.path === "nodeStatuses.task-1" && entry.action === "set" && entry.accepted));
+    const snapshot = await store.getSnapshot("loop-run-1");
+    assert.ok(snapshot?.nodeStatuses.some((item) => item.nodeId === "task-1" && item.status === "completed"));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("interactive delete_subtree removes target and descendants", () => {
   const session = createInteractiveExecutionSession();
   session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
@@ -2205,6 +2369,52 @@ test("quality loop control api records loop scoped accept and stop decisions", a
   } finally {
     await server.close();
   }
+});
+
+test("stale quality loop metadata invalidates after prompt and model edits", () => {
+  const session = createInteractiveExecutionSession();
+  const loop: QualityLoopMetadata = {
+    config: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+    status: "completed",
+    stopReason: "passed",
+    usage: {
+      iterationsStarted: 1,
+      iterationsCompleted: 1,
+      phaseCallCounts: { draft: 1, critique: 1, refine: 1, gate: 1, best_of_progress: 1 },
+      modelCallsTotal: 5,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      unknownCompletions: 0,
+    },
+    iterations: [],
+    candidates: [],
+    unresolvedIssues: [],
+  };
+  session.control.registerNode?.({
+    id: "task-1",
+    kind: "quality-loop",
+    label: "Improve answer",
+    prompt: "Improve answer",
+    depth: 0,
+    status: "ready",
+    loop,
+  });
+
+  session.editNodePrompt("task-1", "Improve a different answer");
+  assert.equal(session.snapshot().graph.nodes[0]?.loop, undefined);
+
+  session.control.registerNode?.({
+    id: "task-2",
+    kind: "quality-loop",
+    label: "Improve answer",
+    prompt: "Improve answer",
+    depth: 0,
+    status: "ready",
+    loop,
+  });
+  session.setNodeModelOverride("task-2", "large-model");
+  assert.equal(session.snapshot().graph.nodes.find((node) => node.id === "task-2")?.loop, undefined);
 });
 
 test("initial-plan modes differ only on spawned branch auto approval", async () => {
