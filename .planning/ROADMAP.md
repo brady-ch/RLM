@@ -102,7 +102,7 @@ Plans:
   3. Ollama readiness is integrated into the native first-launch path with explicit errors for unavailable runner state.
   4. Native packaging command is executed or blocked with documented platform dependency gaps.
   5. Clean-machine smoke path is executed for at least one OS or documented as deferred with exact remaining blockers.
-**Plans**: 0 plans
+**Plans**: 1 plan
 **UI hint**: yes
 
 Plans:
