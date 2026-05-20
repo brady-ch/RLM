@@ -24,6 +24,7 @@ import { PurposeRoutingLanguageModel, selectDynamicTier, type ModelSelectionReco
 import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
 import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
 import { startControlServer } from "../src/application/control-server.js";
+import { ModelLibraryService } from "../src/application/model-library.js";
 import { createUiExecutionRunner } from "../src/application/ui-execution-runner.js";
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
@@ -2556,6 +2557,79 @@ test("ui confirm run executes quality loop in the shared session", async () => {
     assert.equal(loopNode.loop?.stopReason, "passed");
     assert.equal(loopNode.loop?.candidates.length, 3);
   } finally {
+    await server.close();
+  }
+});
+
+test("control server exposes model library catalog install search and tier selection", async () => {
+  const pulls: string[] = [];
+  const fakeFetch: typeof fetch = async (input, init) => {
+    const url = new URL(input instanceof URL ? input.href : String(input));
+    if (url.pathname === "/api/tags") {
+      return new Response(JSON.stringify({ models: [{ name: "granite4.1:3b" }] }), { status: 200 });
+    }
+    if (url.pathname === "/api/pull") {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { name?: string };
+      pulls.push(body.name ?? "");
+      return new Response(JSON.stringify({ status: "success" }), { status: 200 });
+    }
+    if (url.hostname === "huggingface.co") {
+      return new Response(JSON.stringify([{ modelId: "org/model-gguf", tags: ["gguf", "text-generation"] }]), { status: 200 });
+    }
+    return new Response("not found", { status: 404 });
+  };
+  const projectConfig = {
+    models: {
+      default: "granite4.1:3b",
+      tiers: {
+        small: { name: "granite4.1:3b", estimatedRamMb: 4096 },
+        medium: { name: "llama3.1:8b", estimatedRamMb: 8192 },
+      },
+    },
+    memory: {
+      maxRamMb: 4096,
+      reserveSystemRamMb: 0,
+      waitForCapacity: false,
+      capacityCheckIntervalMs: 1,
+    },
+    runtime: config,
+    agents: {},
+    workflows: {},
+  };
+  const session = createInteractiveExecutionSession();
+  const modelLibrary = new ModelLibraryService({
+    config: projectConfig,
+    ollamaBaseUrl: "http://127.0.0.1:11434",
+    fetch: fakeFetch,
+  });
+  const server = await startControlServer({ session, modelLibrary });
+  try {
+    const catalog = await (await fetch(`${server.url}/api/model-library`)).json() as { curated: Array<{ id: string; status: string }>; installed: Array<{ id: string }> };
+    assert.equal(catalog.curated.find((entry) => entry.id === "granite4.1:3b")?.status, "installed");
+    assert.equal(catalog.installed[0]?.id, "granite4.1:3b");
+
+    const search = await (await fetch(`${server.url}/api/model-library/search?q=gguf`)).json() as { results: Array<{ id: string; status: string }> };
+    assert.equal(search.results[0]?.id, "org/model-gguf");
+    assert.equal(search.results[0]?.status, "unsupported");
+
+    const install = await fetch(`${server.url}/api/model-library/install`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: "llama3.1:8b" }),
+    });
+    assert.equal(install.ok, true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual(pulls, ["llama3.1:8b"]);
+
+    const select = await fetch(`${server.url}/api/model-library/select-tier`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tier: "medium", model: "granite4.1:3b" }),
+    });
+    assert.equal(select.ok, true);
+    assert.equal(projectConfig.models.tiers.medium.name, "granite4.1:3b");
+  }
+  finally {
     await server.close();
   }
 });

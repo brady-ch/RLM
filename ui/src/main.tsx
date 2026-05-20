@@ -15,7 +15,7 @@ import {
   type OnConnect,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Check, GitBranchPlus, Scissors, Square, Trash2, X } from "lucide-react";
+import { Check, Download, GitBranchPlus, RefreshCw, Scissors, Search, Square, Trash2, X } from "lucide-react";
 import "./styles.css";
 
 type ExecutionStatus =
@@ -224,6 +224,33 @@ type SessionSnapshot = {
   };
 };
 
+type ModelLibraryEntry = {
+  id: string;
+  label: string;
+  source: "curated" | "huggingface" | "installed";
+  ollamaModel?: string;
+  description: string;
+  tags: string[];
+  estimatedRamMb?: number;
+  status: "available" | "installed" | "installing" | "failed" | "unsupported";
+  reason?: string;
+};
+
+type ModelInstallJob = {
+  id: string;
+  model: string;
+  status: "queued" | "running" | "ready" | "failed";
+  progress: number;
+  message: string;
+};
+
+type ModelLibrarySnapshot = {
+  curated: ModelLibraryEntry[];
+  installed: ModelLibraryEntry[];
+  jobs: ModelInstallJob[];
+  tiers: Record<string, string>;
+};
+
 /** Mirror `labelForCategory` / status strings in `src/domain/execution-failure.ts` for header copy. */
 const uiRunStatusLabels: Record<ExecutionStatus, string> = {
   planned: "Planned",
@@ -285,6 +312,9 @@ function App() {
   const [chatMessage, setChatMessage] = useState("");
   const [deleteStrategy, setDeleteStrategy] = useState<"delete_subtree" | "rewire_dependents">("delete_subtree");
   const [clarificationAnswer, setClarificationAnswer] = useState("");
+  const [modelLibrary, setModelLibrary] = useState<ModelLibrarySnapshot | undefined>();
+  const [modelSearch, setModelSearch] = useState("");
+  const [modelSearchResults, setModelSearchResults] = useState<ModelLibraryEntry[]>([]);
   const selectedNode = snapshot.graph.nodes.find((node) => node.id === selectedNodeId) ?? snapshot.graph.nodes[0];
   const readiness = snapshot.chat?.readiness ?? {
     state: "draft" as const,
@@ -303,17 +333,27 @@ function App() {
     setSnapshot(await response.json() as SessionSnapshot);
   }, []);
 
+  const refreshModelLibrary = useCallback(async () => {
+    const response = await fetch("/api/model-library");
+    if (!response.ok) {
+      return;
+    }
+    setModelLibrary(await response.json() as ModelLibrarySnapshot);
+  }, []);
+
   useEffect(() => {
     void refresh();
+    void refreshModelLibrary();
     const events = new EventSource("/api/events");
     events.addEventListener("snapshot", (event) => {
       setSnapshot(JSON.parse((event as MessageEvent).data) as SessionSnapshot);
     });
     events.addEventListener("execution", () => {
       void refresh();
+      void refreshModelLibrary();
     });
     return () => events.close();
-  }, [refresh]);
+  }, [refresh, refreshModelLibrary]);
 
   useEffect(() => {
     if (draggingRef.current) {
@@ -452,6 +492,15 @@ function App() {
           </button>
         </header>
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
+        <ModelLibraryPanel
+          library={modelLibrary}
+          search={modelSearch}
+          setSearch={setModelSearch}
+          searchResults={modelSearchResults}
+          setSearchResults={setModelSearchResults}
+          refresh={refreshModelLibrary}
+          setErrorMessage={setErrorMessage}
+        />
         <div className="node-inspector">
           <div>
             <label>Run control</label>
@@ -635,6 +684,119 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
             />
           ))
         : <Handle className="node-port node-port-output" id="out" type="source" position={Position.Right} />}
+    </div>
+  );
+}
+
+function ModelLibraryPanel({
+  library,
+  search,
+  setSearch,
+  searchResults,
+  setSearchResults,
+  refresh,
+  setErrorMessage,
+}: {
+  library?: ModelLibrarySnapshot;
+  search: string;
+  setSearch: (value: string) => void;
+  searchResults: ModelLibraryEntry[];
+  setSearchResults: (value: ModelLibraryEntry[]) => void;
+  refresh: () => Promise<void>;
+  setErrorMessage: (message: string | undefined) => void;
+}) {
+  const tierEntries = Object.entries(library?.tiers ?? {});
+  return (
+    <div className="model-library-panel">
+      <div className="panel-heading">
+        <label>Model Library</label>
+        <button className="icon" title="Refresh models" onClick={() => runAction(setErrorMessage, refresh, refresh)}>
+          <RefreshCw size={16} />
+        </button>
+      </div>
+      <div className="model-search">
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Hugging Face" />
+        <button
+          disabled={search.trim().length === 0}
+          onClick={() => runAction(setErrorMessage, async () => {
+            const response = await fetch(`/api/model-library/search?q=${encodeURIComponent(search)}`);
+            if (!response.ok) {
+              throw new Error(await response.text());
+            }
+            const payload = await response.json() as { results: ModelLibraryEntry[] };
+            setSearchResults(payload.results);
+          }, refresh)}
+        >
+          <Search size={16} /> Search
+        </button>
+      </div>
+      <div className="tier-grid">
+        {tierEntries.map(([tier, model]) => (
+          <div className="meta-row" key={tier}>{tier}: {model}</div>
+        ))}
+      </div>
+      <div className="model-list">
+        {(library?.curated ?? []).map((entry) => (
+          <ModelLibraryRow key={entry.id} entry={entry} library={library} refresh={refresh} setErrorMessage={setErrorMessage} />
+        ))}
+      </div>
+      {searchResults.length > 0
+        ? (
+          <div className="model-list">
+            <label>Hugging Face Results</label>
+            {searchResults.map((entry) => <ModelLibraryRow key={entry.id} entry={entry} library={library} refresh={refresh} setErrorMessage={setErrorMessage} />)}
+          </div>
+        )
+        : null}
+      {(library?.jobs ?? []).map((job) => (
+        <div className={`meta-row model-job ${job.status}`} key={job.id}>
+          {job.model}: {job.status} {Math.round(job.progress * 100)}% - {job.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ModelLibraryRow({ entry, library, refresh, setErrorMessage }: {
+  entry: ModelLibraryEntry;
+  library?: ModelLibrarySnapshot;
+  refresh: () => Promise<void>;
+  setErrorMessage: (message: string | undefined) => void;
+}) {
+  const selectableModel = entry.ollamaModel ?? entry.id;
+  return (
+    <div className={`model-row ${entry.status}`}>
+      <div>
+        <b>{entry.label}</b>
+        <p>{entry.description}</p>
+        <div className="tag-row">{entry.tags.slice(0, 4).map((tag) => <span key={tag}>{tag}</span>)}</div>
+        {entry.reason ? <div className="meta-row warning">{entry.reason}</div> : null}
+      </div>
+      <div className="actions model-actions">
+        <button
+          disabled={entry.source !== "curated" || entry.status === "installed" || entry.status === "installing"}
+          onClick={() => runAction(setErrorMessage, () => post("/api/model-library/install", { model: selectableModel }), refresh)}
+        >
+          <Download size={16} /> Install
+        </button>
+        <select
+          disabled={entry.status !== "installed" || !library}
+          onChange={(event) => {
+            if (!event.target.value) {
+              return;
+            }
+            void runAction(setErrorMessage, () => post("/api/model-library/select-tier", {
+              tier: event.target.value,
+              model: selectableModel,
+            }), refresh);
+            event.target.value = "";
+          }}
+          defaultValue=""
+        >
+          <option value="">Assign tier</option>
+          {Object.keys(library?.tiers ?? {}).map((tier) => <option key={tier} value={tier}>{tier}</option>)}
+        </select>
+      </div>
     </div>
   );
 }

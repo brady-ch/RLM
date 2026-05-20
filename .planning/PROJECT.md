@@ -60,8 +60,8 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 - [ ] Desktop app installers launch RLM on Windows, macOS, and Linux without requiring Node/npm or manual runner setup - v1.3
 - [ ] Ollama is treated as a managed runner adapter with explicit availability and failure states - v1.3
-- [ ] Model library supports curated recommendations, Hugging Face search, download progress, and installed model selection - v1.3
-- [ ] Sampling controls resolve through global defaults, per-model profiles, and per-node overrides with traceable effective values - v1.3
+- [x] Model library supports curated recommendations, Hugging Face search, download progress, and installed model selection - v1.3
+- [x] Sampling controls resolve through global defaults, per-model profiles, and per-node overrides with traceable effective values - v1.3
 
 ### Candidate Next-Milestone Themes
 
@@ -110,6 +110,7 @@ Current verification baseline at v1.2 close: `npm test` passed with 141/141 test
 | Browser-level interactive UAT can follow regression coverage | Fake-model, API/UI source, render, trace, and run-state tests cover the milestone objective; browser UAT remains useful before public release | Revisit |
 | v1.3 bundles or manages Ollama only, while preserving adapter boundaries | Keeps the first desktop product installable and testable without multiplying runner lifecycle complexity | Active in v1.3 |
 | Sampling configuration resolves by cascade: global -> model -> node | Gives simple defaults and precise per-node control while preserving auditability | Active in v1.3 |
+| Model library installs curated Ollama models first and treats Hugging Face as search/compatibility discovery | Keeps Phase 22 useful while avoiding silent unsupported imports | Active in v1.3 |
 
 ## Evolution
 
@@ -123,4 +124,4 @@ This document evolves at phase transitions and milestone boundaries.
 5. Update current-state context.
 
 ---
-*Last updated: 2026-05-20 starting v1.3 milestone*
+*Last updated: 2026-05-20 after Phase 22 verification*

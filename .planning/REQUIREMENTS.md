@@ -24,9 +24,9 @@
 
 ### Model Library
 
-- [ ] **PROD-05**: Model library UI shows a curated catalog with use-case tags, RAM hints, and one-click download with progress and Ready state.
-- [ ] **PROD-06**: Model library supports Hugging Face search; results are filtered to v1-compatible models with explicit unsupported or warning states before download.
-- [ ] **PROD-07**: User can install multiple models into a local library; installed models are selectable for tiers and node overrides without re-download per session.
+- [x] **PROD-05**: Model library UI shows a curated catalog with use-case tags, RAM hints, and one-click download with progress and Ready state.
+- [x] **PROD-06**: Model library supports Hugging Face search; results are filtered to v1-compatible models with explicit unsupported or warning states before download.
+- [x] **PROD-07**: User can install multiple models into a local library; installed models are selectable for tiers and node overrides without re-download per session.
 
 ## Future Requirements
 
@@ -94,9 +94,9 @@
 | PROD-10 | Phase 21 | Complete |
 | PROD-11 | Phase 21 | Complete |
 | PROD-12 | Phase 21 | Complete |
-| PROD-05 | Phase 22 | Pending |
-| PROD-06 | Phase 22 | Pending |
-| PROD-07 | Phase 22 | Pending |
+| PROD-05 | Phase 22 | Complete |
+| PROD-06 | Phase 22 | Complete |
+| PROD-07 | Phase 22 | Complete |
 | PROD-01 | Phase 23 | Pending |
 | PROD-02 | Phase 23 | Pending |
 | PROD-03 | Phase 23 | Pending |
@@ -108,4 +108,4 @@
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after Phase 21 verification*
+*Last updated: 2026-05-20 after Phase 22 verification*

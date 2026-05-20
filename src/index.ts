@@ -13,7 +13,14 @@ import {
 } from "./application/mcp-skill-runtime.js";
 import { MemoryManager } from "./application/memory-manager.js";
 import { createMcpTools, createSkillTool } from "./application/interop-runtime.js";
-import { applyModelOverride, loadProjectConfig, resolveRuntimeConfig, seedProjectRlmStarter } from "./application/project-config.js";
+import {
+  applyModelOverride,
+  loadProjectConfig,
+  resolveHostConfig,
+  resolveRuntimeConfig,
+  resolveRuntimeHostSelection,
+  seedProjectRlmStarter,
+} from "./application/project-config.js";
 import { ResourceCleanup } from "./application/resource-cleanup.js";
 import { createModelFactory, createToolsResolver, readablePath } from "./application/runtime-composition.js";
 import { runWorkflow } from "./application/workflow-runner.js";
@@ -23,6 +30,7 @@ import * as webSearchExtension from "./extensions/tools/web-search.extension.js"
 import * as workspaceFileWriteExtension from "./extensions/tools/workspace-file-write.extension.js";
 import { CancellationController, createExecutionControl, createInteractiveExecutionSession } from "./application/execution-controller.js";
 import { startControlServer } from "./application/control-server.js";
+import { ModelLibraryService } from "./application/model-library.js";
 import { createUiExecutionRunner } from "./application/ui-execution-runner.js";
 import { helpText, parseArgs } from "./cli/args.js";
 import {
@@ -208,6 +216,15 @@ async function main(): Promise<void> {
   try {
     if (options.command === "ui") {
       const session = createInteractiveExecutionSession({ seedRootPrompt: options.prompt });
+      const runtimeHost = resolveRuntimeHostSelection(projectConfig, {
+        cliHostId: options.host,
+        env: process.env,
+      });
+      const hostConfig = resolveHostConfig(projectConfig, runtimeHost.hostId);
+      const modelLibrary = new ModelLibraryService({
+        config: projectConfig,
+        ollamaBaseUrl: options.baseUrl ?? hostConfig.baseUrl,
+      });
       const uiRunner = createUiExecutionRunner({
         projectConfig,
         runtimeConfig,
@@ -225,6 +242,7 @@ async function main(): Promise<void> {
         session,
         port: options.uiPort,
         uiDistDir,
+        modelLibrary,
         onConfirmRun: (activeSession) => uiRunner.start(activeSession),
       });
       cleanup.track({

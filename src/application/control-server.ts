@@ -4,6 +4,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { extname, join, normalize, relative, resolve, sep } from "node:path";
 import type { AddressInfo } from "node:net";
 import type { InteractiveExecutionSession } from "./execution-controller.js";
+import type { ModelLibraryService } from "./model-library.js";
 import type { ApprovalMode, DeleteStrategy } from "../domain/types.js";
 
 export interface ControlServer {
@@ -16,10 +17,11 @@ export async function startControlServer(input: {
   session: InteractiveExecutionSession;
   port?: number | undefined;
   uiDistDir?: string | undefined;
+  modelLibrary?: ModelLibraryService | undefined;
   onConfirmRun?: ((session: InteractiveExecutionSession) => void | Promise<void>) | undefined;
 }): Promise<ControlServer> {
   const server = createServer((request, response) => {
-    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun);
+    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun, input.modelLibrary);
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -46,6 +48,7 @@ async function routeRequest(
   session: InteractiveExecutionSession,
   uiDistDir: string | undefined,
   onConfirmRun?: ((session: InteractiveExecutionSession) => void | Promise<void>) | undefined,
+  modelLibrary?: ModelLibraryService | undefined,
 ): Promise<void> {
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
   try {
@@ -62,6 +65,36 @@ async function routeRequest(
     }
     if (request.method === "GET" && url.pathname === "/api/graph") {
       return sendJson(response, session.snapshot().graph);
+    }
+    if (request.method === "GET" && url.pathname === "/api/model-library") {
+      if (!modelLibrary) {
+        return sendJson(response, { error: "Model library is not configured." }, 404);
+      }
+      return sendJson(response, await modelLibrary.snapshot());
+    }
+    if (request.method === "GET" && url.pathname === "/api/model-library/search") {
+      if (!modelLibrary) {
+        return sendJson(response, { error: "Model library is not configured." }, 404);
+      }
+      return sendJson(response, await modelLibrary.searchHuggingFace(url.searchParams.get("q") ?? ""));
+    }
+    if (request.method === "POST" && url.pathname === "/api/model-library/install") {
+      if (!modelLibrary) {
+        return sendJson(response, { error: "Model library is not configured." }, 404);
+      }
+      const body = await readJsonBody(request);
+      return sendJson(response, { job: modelLibrary.startInstall(String(body["model"] ?? "")), library: await modelLibrary.snapshot() });
+    }
+    if (request.method === "POST" && url.pathname === "/api/model-library/select-tier") {
+      if (!modelLibrary) {
+        return sendJson(response, { error: "Model library is not configured." }, 404);
+      }
+      const body = await readJsonBody(request);
+      const tiers = modelLibrary.selectTier({
+        tier: String(body["tier"] ?? ""),
+        model: String(body["model"] ?? ""),
+      });
+      return sendJson(response, { tiers, library: await modelLibrary.snapshot() });
     }
     if (request.method === "POST" && url.pathname === "/api/graph/layout") {
       const body = await readJsonBody(request);

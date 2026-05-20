@@ -39,7 +39,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 </details>
 
 - [x] **Phase 21: Runner Registry and Sampling Cascade** - Formalize runners as adapters and implement global, model, and node sampling merge before product UI work.
-- [ ] **Phase 22: Model Library** - Build curated and Hugging Face-backed model installation, progress, compatibility, and installed-model selection.
+- [x] **Phase 22: Model Library** - Build curated and Hugging Face-backed model installation, progress, compatibility, and installed-model selection.
 - [ ] **Phase 23: Tauri Shell and Cross-Platform Installers** - Ship an installable desktop app that launches the UI, manages the control server and Ollama lifecycle, and passes first-run smoke.
 
 ## Phase Details
@@ -70,8 +70,11 @@ Plans:
   3. User can search Hugging Face and see only v1-compatible actions, with explicit unsupported or warning states where needed.
   4. Installed models appear in the local library and are selectable for tiers and node overrides.
   5. Download, runner, network, and disk failures surface actionable UI/API errors.
-**Plans**: TBD
+**Plans**: 1 plan
 **UI hint**: yes
+
+Plans:
+- [x] 22-01-PLAN.md — Implement model library service, control API, UI panel, and tests.
 
 ### Phase 23: Tauri Shell and Cross-Platform Installers
 **Goal**: Ship installable Windows, macOS, and Linux app builds that launch a Tauri webview, manage RLM child processes, ensure Ollama availability, and pass first-run smoke on clean machines.
@@ -102,7 +105,7 @@ Phases execute in numeric order: 21 -> 22 -> 23
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 21. Runner Registry and Sampling Cascade | v1.3 | 1/1 | Complete | 2026-05-20 |
-| 22. Model Library | v1.3 | 0/TBD | Not Started | - |
+| 22. Model Library | v1.3 | 1/1 | Complete | 2026-05-20 |
 | 23. Tauri Shell and Cross-Platform Installers | v1.3 | 0/TBD | Not Started | - |
 | v1.2 Answer Quality Loops | v1.2 | archived | Complete | 2026-05-20 |
 | v1.1 Interop, chat-first, plugins, constrained tools | v1.1 | archived | Complete | 2026-05-13 |
