@@ -2,22 +2,11 @@
 
 ## Current State
 
-**Latest shipped milestone:** v1.1 — Interop, chat-first, plugins, constrained tools  
-**Current milestone:** v1.2 — Answer Quality Loops  
-**Status:** Defining requirements
+**Latest shipped milestone:** v1.2 — Answer Quality Loops  
+**Current milestone:** None selected  
+**Status:** Ready for next milestone selection
 
-v1.1 shipped plugin/extension foundations, MCP and skill interoperability, configurable local/remote model hosts, constrained tool-calling plumbing, typed artifact/run-state continuity, chat-first graph authoring, runtime clarification stops, cross-platform packaging/startup UX, and a typed node-composer UI for recursive workflow authoring.
-
-## Current Milestone: v1.2 Answer Quality Loops
-
-**Goal:** Add hybrid refinement loop nodes that improve answer quality through bounded draft, critique, refine, gate, and best-of-progress cycles.
-
-**Target features:**
-- Hybrid loop node shown as one top-level graph node with inspectable internal loop history.
-- Default adaptive rubric for answer quality, code/engineering, planning/architecture, user-facing writing, and structured artifacts.
-- Rubric fit, critique resolution, and best-of-progress selection used together.
-- Phase-specific model overrides for draft, critique, refine, gate, and best-of-progress.
-- Clear stop reasons: pass threshold, critique resolved, no meaningful improvement, max iterations, or human accept.
+v1.2 shipped bounded answer-quality refinement loops with visible rubrics, structured evaluator contracts, best-of-progress selection, phase-specific model routing, inspectable UI/CLI output, manual loop controls, and regression coverage across runtime, API/UI, trace, render, and run-state surfaces.
 
 ## What This Is
 
@@ -53,11 +42,14 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Typed artifact schema and run-state continuity support long-running node workflows — v1.1
 - ✓ First-run UI and global/project config paths support zero-doc startup — v1.1
 - ✓ Typed node composer exposes ports, artifact refs, complexity, and visible planning budgets — v1.1
+- ✓ Hybrid refinement loop nodes improve answer quality through inspectable, bounded draft/critique/refine/gate cycles — v1.2
+- ✓ Adaptive rubrics evaluate loop candidates by prompt/task context and support best-of-progress final selection — v1.2
+- ✓ Quality-loop model routing and overrides are visible and strict per loop phase — v1.2
+- ✓ Quality-loop UI, CLI, JSON, trace, and run-state surfaces expose bounded, non-silent loop outcomes — v1.2
 
 ### Active
 
-- [ ] Hybrid refinement loop nodes improve answer quality through inspectable, bounded draft/critique/refine/gate cycles.
-- [ ] Adaptive rubrics evaluate loop candidates by prompt/task context and support best-of-progress final selection.
+No active milestone requirements. Start the next milestone with `$gsd-new-milestone`.
 
 ### Candidate Next-Milestone Themes
 
@@ -74,9 +66,9 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ## Context
 
-The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`) and a React/Vite UI execution surface in `ui/`. v1.1 expanded the system into an interoperable recursive workflow authoring tool: extension shims now load built-in tools, MCP/skill runtime paths are exposed as executable tools, model host routing and constrained-tool signals flow through the language model port, run-state persistence records guarded mutations, and the UI supports typed dataflow composition with budgeted recursive planning.
+The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`) and a React/Vite UI execution surface in `ui/`. v1.2 expanded the system with answer-quality loops that preserve the existing recursive graph model while adding bounded draft, critique, refine, gate, and best-of-progress cycles.
 
-Current verification baseline at v1.1 close: `npm test` passed outside sandbox restrictions with 98/98 tests passing.
+Current verification baseline at v1.2 close: `npm test` passed with 141/141 tests passing. `npm run build` and `npm run build:ui` also passed during final phase verification.
 
 ## Constraints
 
@@ -98,7 +90,9 @@ Current verification baseline at v1.1 close: `npm test` passed outside sandbox r
 | MCP and skill lifecycle events share a deterministic event schema | Makes outages, warnings, and recovery auditable across interop mechanisms | Shipped in v1.1 |
 | Clarification stops are answer-or-abort only | Prevents undocumented silent continuation when human input is required | Shipped in v1.1 |
 | Typed artifact refs stay in graph state while large payloads stay external | Keeps long-running workflows inspectable without context overflow | Shipped in v1.1 |
-| Packaging can ship functionally before full signing/reproducibility | Allows zero-doc first-run UX to land while tracking release hardening separately | Revisit |
+| Quality loops remain collapsed top-level graph nodes with inspectable internal history | Preserves graph readability while exposing loop internals where users need them | Shipped in v1.2 |
+| Quality-loop model routing is phase-specific and strict | Users need to audit and override draft, critique, refine, gate, and best-of-progress independently without silent fallback | Shipped in v1.2 |
+| Browser-level interactive UAT can follow regression coverage | Fake-model, API/UI source, render, trace, and run-state tests cover the milestone objective; browser UAT remains useful before public release | Revisit |
 
 ## Evolution
 
@@ -112,4 +106,4 @@ This document evolves at phase transitions and milestone boundaries.
 5. Update current-state context.
 
 ---
-*Last updated: 2026-05-14 starting v1.2 milestone*
+*Last updated: 2026-05-20 after v1.2 milestone completion*
