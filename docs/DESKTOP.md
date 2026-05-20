@@ -19,11 +19,14 @@ dist/release/<platform>-<arch>/
 
 Contents:
 
+- `bin/node` or `bin/node.exe` - Node runtime copied from the packaging host for this platform.
 - `dist/src/index.js` - packaged CLI/control-server entry.
 - `ui-dist/` - static UI assets.
-- `rlm` and `rlm.cmd` - Unix and Windows launch shims.
+- `rlm` and `rlm.cmd` - Unix and Windows launch shims that prefer the bundled runtime.
 - `ensure-ollama.mjs` - readiness helper for an existing or managed Ollama endpoint.
-- `desktop-manifest.json` - platform, launch, UI, and Ollama metadata for installer tooling.
+- `desktop-manifest.json` - platform, bundled runtime, launch, UI, and Ollama metadata for installer tooling.
+
+The staged launcher does not require a user-installed Node/npm on the same platform it was packaged for. Set `NODE_BINARY` only when intentionally overriding the bundled runtime during development.
 
 Ollama behavior:
 
