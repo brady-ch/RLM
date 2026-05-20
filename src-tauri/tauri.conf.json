@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Recursive Language Model",
+  "version": "1.0.0",
+  "identifier": "dev.rlm.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev:ui",
+    "devUrl": "http://127.0.0.1:5173",
+    "beforeBuildCommand": "npm run build:ui",
+    "frontendDist": "../ui/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Recursive Language Model",
+        "width": 1280,
+        "height": 860,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "msi", "deb"],
+    "externalBin": [],
+    "resources": {
+      "../scripts/desktop/ensure-ollama.mjs": "ensure-ollama.mjs"
+    }
+  }
+}

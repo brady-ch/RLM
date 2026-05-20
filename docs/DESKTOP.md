@@ -2,6 +2,15 @@
 
 `npm run package:smoke` builds the TypeScript CLI, builds the React UI, stages a desktop-ready release folder, and verifies required launch assets.
 
+Native shell entry points:
+
+```bash
+npm run tauri:dev
+npm run tauri:build
+```
+
+The Tauri config lives under `src-tauri/` and uses the React UI build as its frontend bundle.
+
 The staged release is written to:
 
 ```text
