@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Desktop Product
-status: complete
-stopped_at: v1.3 milestone phases complete; ready for milestone audit
-last_updated: "2026-05-20T16:05:00.000Z"
-last_activity: 2026-05-20 -- Phase 23 desktop release staging completed
+status: gaps_found
+stopped_at: v1.3 milestone audit found desktop runtime lifecycle gaps
+last_updated: "2026-05-20T17:10:00.000Z"
+last_activity: 2026-05-20 -- v1.3 milestone audit found Phase 23 desktop closure gaps
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
-  total_plans: 3
+  total_plans: 4
   completed_plans: 3
-  percent: 100
+  percent: 75
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-20)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 21 — Runner Registry and Sampling Cascade
+**Current focus:** v1.3 desktop runtime lifecycle closure
 
 ## Current Position
 
-Phase: v1.3 Desktop Product — COMPLETE
-Plan: All phase plans complete
-Status: Ready for milestone audit
-Last activity: 2026-05-20 -- Phase 23 desktop release staging completed
+Phase: v1.3 Desktop Product — AUDIT GAPS FOUND
+Plan: Closure phase needed for native desktop runtime lifecycle
+Status: Do not archive v1.3 until PROD-01, PROD-02, and PROD-03 are closed or explicitly deferred
+Last activity: 2026-05-20 -- v1.3 milestone audit found Phase 23 desktop closure gaps
 
 ## Recently Completed
 
@@ -43,7 +43,7 @@ Last activity: 2026-05-20 -- Phase 23 desktop release staging completed
 
 ## Blockers/Concerns
 
-- None.
+- v1.3 milestone audit found partial coverage for PROD-01, PROD-02, and PROD-03. See `.planning/v1.3-MILESTONE-AUDIT.md`.
 
 ## Deferred Items
 

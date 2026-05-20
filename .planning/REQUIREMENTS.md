@@ -9,9 +9,9 @@
 
 ### Desktop Shell and Installers
 
-- [x] **PROD-01**: Windows, macOS, and Linux installers ship a launchable desktop app without requiring Node/npm or manual runner setup.
-- [x] **PROD-02**: Tauri shell opens the graph UI in an embedded webview; app quit stops RLM-managed child processes cleanly.
-- [x] **PROD-03**: Installer bundles Ollama or detects a compatible existing install; app ensures a listening Ollama endpoint on first launch.
+- [ ] **PROD-01**: Windows, macOS, and Linux installers ship a launchable desktop app without requiring Node/npm or manual runner setup.
+- [ ] **PROD-02**: Tauri shell opens the graph UI in an embedded webview; app quit stops RLM-managed child processes cleanly.
+- [ ] **PROD-03**: Installer bundles Ollama or detects a compatible existing install; app ensures a listening Ollama endpoint on first launch.
 
 ### Runner Registry and Sampling
 
@@ -97,15 +97,17 @@
 | PROD-05 | Phase 22 | Complete |
 | PROD-06 | Phase 22 | Complete |
 | PROD-07 | Phase 22 | Complete |
-| PROD-01 | Phase 23 | Complete |
-| PROD-02 | Phase 23 | Complete |
-| PROD-03 | Phase 23 | Complete |
+| PROD-01 | Phase 24 | Partial |
+| PROD-02 | Phase 24 | Partial |
+| PROD-03 | Phase 24 | Partial |
 
 **Coverage:**
 - v1.3 requirements: 12 total
+- Complete: 9
+- Partial: 3
 - Mapped to phases: 12
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after Phase 23 verification*
+*Last updated: 2026-05-20 after v1.3 milestone audit*
