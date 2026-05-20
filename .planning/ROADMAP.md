@@ -38,7 +38,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 
 </details>
 
-- [ ] **Phase 21: Runner Registry and Sampling Cascade** - Formalize runners as adapters and implement global, model, and node sampling merge before product UI work.
+- [x] **Phase 21: Runner Registry and Sampling Cascade** - Formalize runners as adapters and implement global, model, and node sampling merge before product UI work.
 - [ ] **Phase 22: Model Library** - Build curated and Hugging Face-backed model installation, progress, compatibility, and installed-model selection.
 - [ ] **Phase 23: Tauri Shell and Cross-Platform Installers** - Ship an installable desktop app that launches the UI, manages the control server and Ollama lifecycle, and passes first-run smoke.
 
@@ -58,7 +58,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 **UI hint**: yes
 
 Plans:
-- [ ] 21-01-PLAN.md — Implement runner registry and sampling cascade across config, model provider, adapters, node metadata, UI, and tests.
+- [x] 21-01-PLAN.md — Implement runner registry and sampling cascade across config, model provider, adapters, node metadata, UI, and tests.
 
 ### Phase 22: Model Library
 **Goal**: Build an in-app model catalog with curated recommendations, Hugging Face search, download progress, and installed-model library state tied to Ollama pull/import.
@@ -101,7 +101,7 @@ Phases execute in numeric order: 21 -> 22 -> 23
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 21. Runner Registry and Sampling Cascade | v1.3 | 0/1 | Not Started | - |
+| 21. Runner Registry and Sampling Cascade | v1.3 | 1/1 | Complete | 2026-05-20 |
 | 22. Model Library | v1.3 | 0/TBD | Not Started | - |
 | 23. Tauri Shell and Cross-Platform Installers | v1.3 | 0/TBD | Not Started | - |
 | v1.2 Answer Quality Loops | v1.2 | archived | Complete | 2026-05-20 |

@@ -6,6 +6,7 @@ import type {
   LanguageModelMessage,
   LanguageModelPort,
   LanguageModelResponse,
+  LanguageModelSamplingOptions,
   LanguageModelUsage,
 } from "../ports/language-model-port.js";
 
@@ -19,13 +20,15 @@ export class OllamaLanguageModelAdapter implements LanguageModelPort {
   private readonly client: ChatOllama;
   private readonly modelName: string;
   private readonly baseUrl: string;
+  private readonly defaultTemperature: number;
 
   constructor(options: OllamaLanguageModelOptions) {
     this.modelName = options.model;
     this.baseUrl = options.baseUrl ?? "http://127.0.0.1:11434";
+    this.defaultTemperature = options.temperature ?? 0.2;
     const fields: ConstructorParameters<typeof ChatOllama>[0] = {
       model: options.model,
-      temperature: options.temperature ?? 0.2,
+      temperature: this.defaultTemperature,
     };
     if (options.baseUrl) {
       fields.baseUrl = options.baseUrl;
@@ -35,18 +38,19 @@ export class OllamaLanguageModelAdapter implements LanguageModelPort {
   }
 
   async complete(messages: LanguageModelMessage[], options: LanguageModelCompleteOptions = {}): Promise<LanguageModelResponse> {
+    const client = this.createClient(options.sampling);
     let response: Awaited<ReturnType<typeof this.client.invoke>>;
     if (options.tools && options.tools.length > 0 && options.constrainedToolCalling) {
       // Ollama cannot combine strict format constraints and executable tool-calls in a single pass.
       // Run an explicit two-step protocol: constrained selection, then executable tool call.
-      const selectionPass = await this.client.invoke(messages.map(toLangChainMessage));
+      const selectionPass = await client.invoke(messages.map(toLangChainMessage));
       const selectedToolCalls = (selectionPass.tool_calls ?? []).map((toolCall, index) => ({
         id: toolCall.id ?? `tool-call-${index + 1}`,
         name: toolCall.name,
         args: toolCall.args,
       }));
       if (selectedToolCalls.length > 0) {
-        const toolRunnable = this.client.bindTools(options.tools);
+        const toolRunnable = client.bindTools(options.tools);
         const toolMessages: LanguageModelMessage[] = [
           ...messages,
           {
@@ -60,7 +64,7 @@ export class OllamaLanguageModelAdapter implements LanguageModelPort {
         response = selectionPass;
       }
     } else {
-      const runnable = options.tools && options.tools.length > 0 ? this.client.bindTools(options.tools) : this.client;
+      const runnable = options.tools && options.tools.length > 0 ? client.bindTools(options.tools) : client;
       response = await runnable.invoke(messages.map(toLangChainMessage));
     }
     const content = typeof response.content === "string"
@@ -101,6 +105,23 @@ export class OllamaLanguageModelAdapter implements LanguageModelPort {
     if (!response.ok) {
       throw new Error(`Ollama unload failed for ${this.modelName}: HTTP ${response.status}`);
     }
+  }
+
+  private createClient(sampling?: LanguageModelSamplingOptions | undefined): ChatOllama {
+    if (!sampling) {
+      return this.client;
+    }
+    const fields: ConstructorParameters<typeof ChatOllama>[0] = {
+      model: this.modelName,
+      baseUrl: this.baseUrl,
+      temperature: sampling.temperature ?? this.defaultTemperature,
+    };
+    if (sampling.topP !== undefined) fields.topP = sampling.topP;
+    if (sampling.topK !== undefined) fields.topK = sampling.topK;
+    if (sampling.repeatPenalty !== undefined) fields.repeatPenalty = sampling.repeatPenalty;
+    if (sampling.maxTokens !== undefined) fields.numPredict = sampling.maxTokens;
+    if (sampling.seed !== undefined) fields.seed = sampling.seed;
+    return new ChatOllama(fields);
   }
 }
 

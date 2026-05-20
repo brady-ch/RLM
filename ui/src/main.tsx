@@ -152,6 +152,12 @@ type ExecutionNode = {
   effectiveModel?: string;
   modelOverride?: string;
   modelOverrideSource?: "user" | "none";
+  samplingOverride?: SamplingOptions;
+  effectiveSampling?: {
+    values: SamplingOptions;
+    sources: Partial<Record<keyof SamplingOptions, "adapter_default" | "global" | "model_profile" | "node">>;
+    warnings?: string[];
+  };
   approvalMode?: "full" | "initial-plan" | "initial-plan-recursive";
   approvalSource?: "manual" | "auto" | "none";
   approvalReason?: string;
@@ -160,6 +166,15 @@ type ExecutionNode = {
   depth: number;
   status: ExecutionStatus;
   loop?: QualityLoopMetadata;
+};
+
+type SamplingOptions = {
+  temperature?: number;
+  topP?: number;
+  topK?: number;
+  repeatPenalty?: number;
+  maxTokens?: number;
+  seed?: number;
 };
 
 type ExecutionGraph = {
@@ -642,18 +657,55 @@ function QualityLoopCardSummary({ loop }: { loop: QualityLoopMetadata }) {
   );
 }
 
+function SamplingRows({ sampling, override }: {
+  sampling?: ExecutionNode["effectiveSampling"];
+  override?: SamplingOptions;
+}) {
+  const values = sampling?.values ?? {};
+  const sources = sampling?.sources ?? {};
+  const keys = ["temperature", "topP", "maxTokens"] as const;
+  if (!sampling && !override) {
+    return <div className="meta-row">Effective values pending.</div>;
+  }
+  return (
+    <div className="sampling-rows">
+      {keys.map((key) => (
+        <div className="meta-row" key={key}>
+          {key}: {values[key] ?? override?.[key] ?? "unset"} ({sources[key] ?? (override?.[key] !== undefined ? "node" : "pending")})
+        </div>
+      ))}
+      {(sampling?.warnings ?? []).map((warning) => <div className="meta-row warning" key={warning}>{warning}</div>)}
+    </div>
+  );
+}
+
+function toInputValue(value: number | undefined): string {
+  return value === undefined ? "" : String(value);
+}
+
+function parseOptionalNumber(value: string): number | undefined {
+  const trimmed = value.trim();
+  return trimmed === "" ? undefined : Number(trimmed);
+}
+
 function NodeInspector(
   { node, refresh, setErrorMessage }: { node: ExecutionNode; refresh: () => Promise<void>; setErrorMessage: (message: string | undefined) => void },
 ) {
   const [prompt, setPrompt] = useState(node.prompt ?? node.label);
   const [modelOverride, setModelOverride] = useState(node.modelOverride ?? "");
+  const [temperature, setTemperature] = useState(toInputValue(node.samplingOverride?.temperature));
+  const [topP, setTopP] = useState(toInputValue(node.samplingOverride?.topP));
+  const [maxTokens, setMaxTokens] = useState(toInputValue(node.samplingOverride?.maxTokens));
   const [newChildPrompt, setNewChildPrompt] = useState("");
   const [connectParentId, setConnectParentId] = useState("");
 
   useEffect(() => {
     setPrompt(node.prompt ?? node.label);
     setModelOverride(node.modelOverride ?? "");
-  }, [node.id, node.label, node.prompt]);
+    setTemperature(toInputValue(node.samplingOverride?.temperature));
+    setTopP(toInputValue(node.samplingOverride?.topP));
+    setMaxTokens(toInputValue(node.samplingOverride?.maxTokens));
+  }, [node.id, node.label, node.prompt, node.samplingOverride?.maxTokens, node.samplingOverride?.temperature, node.samplingOverride?.topP]);
 
   const editable = node.status === "planned" || node.status === "ready" || node.status === "awaiting_approval";
   const waiting = node.status === "awaiting_approval";
@@ -744,6 +796,10 @@ function NodeInspector(
         <div className="meta-row">Override Source: {node.modelOverrideSource ?? "none"}</div>
       </div>
       <div>
+        <label>Sampling</label>
+        <SamplingRows sampling={node.effectiveSampling} override={node.samplingOverride} />
+      </div>
+      <div>
         <label>Approval</label>
         <div className="meta-row">Mode: {approvalModeLabel(node.approvalMode ?? "full")}</div>
         <div className="meta-row">Source: {node.approvalSource ?? "none"}</div>
@@ -766,6 +822,44 @@ function NodeInspector(
             onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/model`, { model: modelOverride }), refresh)}
           >
             Set model
+          </button>
+        </div>
+      </div>
+      <div>
+        <label>Sampling Override</label>
+        <div className="sampling-grid">
+          <input
+            value={temperature}
+            disabled={!editable}
+            onChange={(event) => setTemperature(event.target.value)}
+            placeholder="temperature"
+            inputMode="decimal"
+          />
+          <input
+            value={topP}
+            disabled={!editable}
+            onChange={(event) => setTopP(event.target.value)}
+            placeholder="top-p"
+            inputMode="decimal"
+          />
+          <input
+            value={maxTokens}
+            disabled={!editable}
+            onChange={(event) => setMaxTokens(event.target.value)}
+            placeholder="max tokens"
+            inputMode="numeric"
+          />
+        </div>
+        <div className="actions">
+          <button
+            disabled={!editable}
+            onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/sampling`, {
+              temperature: parseOptionalNumber(temperature),
+              topP: parseOptionalNumber(topP),
+              maxTokens: parseOptionalNumber(maxTokens),
+            }), refresh)}
+          >
+            Set sampling
           </button>
         </div>
       </div>

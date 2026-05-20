@@ -108,6 +108,12 @@ async function routeRequest(
       session.setNodeModelOverride(nodeId, String(body["model"] ?? ""));
       return sendJson(response, session.snapshot());
     }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/sampling$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const body = await readJsonBody(request);
+      session.setNodeSamplingOverride(nodeId, body);
+      return sendJson(response, session.snapshot());
+    }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/plan$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const result = session.planNode(nodeId);

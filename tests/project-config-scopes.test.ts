@@ -270,3 +270,39 @@ runtime:
     await rm(sandbox, { recursive: true, force: true });
   }
 });
+
+test("project config accepts optional sampling defaults and model profiles", async () => {
+  const sandbox = await mkdtemp(join(tmpdir(), "rlm-sampling-config-"));
+  try {
+    const configPath = join(sandbox, "rlm.config.yaml");
+    await writeFile(configPath, `
+models:
+  sampling:
+    defaults:
+      temperature: 0.4
+      topP: 0.9
+    modelProfiles:
+      granite4.1:3b:
+        temperature: 0.2
+        maxTokens: 512
+`, "utf8");
+
+    const loaded = await loadProjectConfig(configPath);
+
+    assert.deepEqual(loaded.config.models.sampling, {
+      defaults: {
+        temperature: 0.4,
+        topP: 0.9,
+      },
+      modelProfiles: {
+        "granite4.1:3b": {
+          temperature: 0.2,
+          maxTokens: 512,
+        },
+      },
+    });
+  }
+  finally {
+    await rm(sandbox, { recursive: true, force: true });
+  }
+});

@@ -35,6 +35,7 @@ export class HttpLanguageModelAdapter implements LanguageModelPort {
       toolCalls: payload.toolCalls ?? [],
       usage: payload.usage,
       model: payload.model ?? this.options.model,
+      sampling: payload.sampling,
       host: payload.host,
     };
   }

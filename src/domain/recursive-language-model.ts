@@ -1,4 +1,4 @@
-import type { LanguageModelCompleteOptions, LanguageModelPort } from "../ports/language-model-port.js";
+import type { EffectiveSamplingMetadata, LanguageModelCompleteOptions, LanguageModelPort } from "../ports/language-model-port.js";
 import type { LanguageModelPurpose } from "../ports/language-model-port.js";
 import type { LanguageModelUsage } from "../ports/language-model-port.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
@@ -614,6 +614,7 @@ export class RecursiveLanguageModel {
         overrideModel: phaseOverride ? undefined : task.modelOverride,
         overrideModelSelection: phaseOverride,
         constrainedToolCalling: false,
+        sampling: task.samplingOverride,
       });
     } finally {
       if (manualPoll) {
@@ -624,7 +625,7 @@ export class RecursiveLanguageModel {
     if (resolvedManualOutcome !== undefined) {
       throw new QualityLoopManualExit(resolvedManualOutcome);
     }
-    this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
+    this.updateExecutionNodeModel(task.id, response.model, task.modelOverride, response.sampling);
     this.recordUsage(response.usage);
     const completedAt = new Date().toISOString();
     this.log("completion", "completed quality loop phase", {
@@ -1029,8 +1030,9 @@ export class RecursiveLanguageModel {
         complexityDepth: this.metadata.depth.selected,
         overrideModel: task.modelOverride,
         constrainedToolCalling: allowTools && this.toolsByName.size > 0,
+        sampling: task.samplingOverride,
       });
-      this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
+      this.updateExecutionNodeModel(task.id, response.model, task.modelOverride, response.sampling);
       this.recordUsage(response.usage);
       this.log("completion", "completed model completion", {
         call: callNumber,
@@ -1196,8 +1198,9 @@ export class RecursiveLanguageModel {
       complexityDepth: this.metadata.depth.selected,
       overrideModel: task.modelOverride,
       constrainedToolCalling: false,
+      sampling: task.samplingOverride,
     });
-    this.updateExecutionNodeModel(task.id, response.model, task.modelOverride);
+    this.updateExecutionNodeModel(task.id, response.model, task.modelOverride, response.sampling);
     this.recordUsage(response.usage);
     this.log("completion", "completed model completion", {
       call: callNumber,
@@ -1398,6 +1401,7 @@ export class RecursiveLanguageModel {
         plannedModel: task.modelOverride ?? "resolved-at-runtime",
         modelOverride: task.modelOverride,
         modelOverrideSource: task.modelOverride ? "user" : "none",
+        samplingOverride: task.samplingOverride,
         editableFields: ["prompt"],
         depth: task.depth,
         status: "ready",
@@ -1541,6 +1545,7 @@ export class RecursiveLanguageModel {
       plannedModel: existingNode?.plannedModel ?? task.modelOverride ?? "resolved-at-runtime",
       modelOverride: existingNode?.modelOverride ?? task.modelOverride,
       modelOverrideSource: existingNode?.modelOverrideSource ?? (task.modelOverride ? "user" : "none"),
+      samplingOverride: existingNode?.samplingOverride ?? task.samplingOverride,
       editableFields: ["prompt"],
       depth: task.depth,
       status: "awaiting_approval",
@@ -1571,10 +1576,18 @@ export class RecursiveLanguageModel {
           this.updateExecutionGraph();
         }
       }
+      if (decision?.samplingOverride) {
+        const overrideNode = this.executionNodes.get(task.id);
+        if (overrideNode) {
+          overrideNode.samplingOverride = decision.samplingOverride;
+          this.updateExecutionGraph();
+        }
+      }
       return {
         ...task,
         prompt: decision?.prompt ?? task.prompt,
         modelOverride: decision?.modelOverride ?? task.modelOverride,
+        samplingOverride: decision?.samplingOverride ?? task.samplingOverride,
       };
     }
     if (decision.status === "skipped") {
@@ -1608,7 +1621,12 @@ export class RecursiveLanguageModel {
     };
   }
 
-  private updateExecutionNodeModel(nodeId: string, effectiveModel: string | undefined, overrideModel: string | undefined): void {
+  private updateExecutionNodeModel(
+    nodeId: string,
+    effectiveModel: string | undefined,
+    overrideModel: string | undefined,
+    effectiveSampling?: EffectiveSamplingMetadata | undefined,
+  ): void {
     const node = this.executionNodes.get(nodeId);
     if (!node) {
       return;
@@ -1622,6 +1640,9 @@ export class RecursiveLanguageModel {
     }
     if (effectiveModel) {
       node.effectiveModel = effectiveModel;
+    }
+    if (effectiveSampling) {
+      node.effectiveSampling = effectiveSampling;
     }
     this.updateExecutionGraph();
   }

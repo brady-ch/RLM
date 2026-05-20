@@ -20,7 +20,7 @@ import { WorkspaceFileWriteTool } from "../src/adapters/workspace-file-write-too
 import { createAgentRegistry, selectAgent } from "../src/application/agent-registry.js";
 import { loadProjectConfig, resolveRuntimeConfig } from "../src/application/project-config.js";
 import { MemoryManager } from "../src/application/memory-manager.js";
-import { PurposeRoutingLanguageModel, selectDynamicTier } from "../src/application/model-provider.js";
+import { PurposeRoutingLanguageModel, selectDynamicTier, type ModelSelectionRecord } from "../src/application/model-provider.js";
 import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
 import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
 import { startControlServer } from "../src/application/control-server.js";
@@ -2195,6 +2195,7 @@ test("interactive execution applies model override to current node only", async 
 
   await session.waitForNodeStatus("task-2", "awaiting_approval");
   session.setNodeModelOverride("task-2", "override-model");
+  session.setNodeSamplingOverride("task-2", { temperature: 0.15, topP: 0.7, maxTokens: 128 });
   session.approveNode("task-2");
 
   await session.waitForNodeStatus("task-3", "awaiting_approval");
@@ -2203,8 +2204,10 @@ test("interactive execution applies model override to current node only", async 
   const result = await run;
   assert.equal(result.answer, "combined");
   const overrideCalls = model.calls.filter((call) => call.options.overrideModel === "override-model");
+  const sampledCalls = model.calls.filter((call) => call.options.sampling?.temperature === 0.15);
   const nonOverrideCalls = model.calls.filter((call) => call.options.overrideModel === undefined);
   assert.ok(overrideCalls.length >= 1);
+  assert.ok(sampledCalls.length >= 1);
   assert.ok(nonOverrideCalls.length >= 1);
 
   const childWithOverride = result.metadata.executionGraph?.nodes.find((node) => node.id === "task-2");
@@ -2212,6 +2215,7 @@ test("interactive execution applies model override to current node only", async 
   assert.equal(childWithOverride?.plannedModel, "override-model");
   assert.equal(childWithOverride?.effectiveModel, "override-model");
   assert.equal(childWithOverride?.modelOverrideSource, "user");
+  assert.deepEqual(childWithOverride?.samplingOverride, { temperature: 0.15, topP: 0.7, maxTokens: 128 });
   assert.equal(siblingNode?.modelOverride, undefined);
 });
 
@@ -3537,6 +3541,90 @@ test("purpose routing model selects per-purpose and dynamic tiers", async () => 
   assert.equal((await model.complete([], { purpose: "answer", complexityDepth: 3 })).content, "large-model response");
   assert.equal((await model.complete([], { purpose: "decompose", complexityDepth: 1 })).content, "medium-model response");
   assert.deepEqual(calls, ["answer:large-model", "decompose:medium-model"]);
+});
+
+test("purpose routing resolves sampling cascade with source metadata", async () => {
+  let capturedModel: QueueModel | undefined;
+  const selections: ModelSelectionRecord[] = [];
+  const model = new PurposeRoutingLanguageModel({
+    config: {
+      models: {
+        default: "small-model",
+        tiers: {
+          small: {
+            name: "small-model",
+            estimatedRamMb: 512,
+          },
+        },
+        sampling: {
+          defaults: {
+            temperature: 0.4,
+            topP: 0.8,
+          },
+          modelProfiles: {
+            "small-model": {
+              temperature: 0.25,
+              maxTokens: 512,
+            },
+          },
+        },
+      },
+      memory: {
+        maxRamMb: 4096,
+        reserveSystemRamMb: 0,
+        waitForCapacity: false,
+        capacityCheckIntervalMs: 1,
+      },
+      runtime: config,
+      agents: {},
+      workflows: {},
+      hosts: {
+        local_ollama: {
+          kind: "ollama",
+          baseUrl: "http://127.0.0.1:11434",
+          available: true,
+        },
+      },
+    },
+    agent: {
+      tools: [],
+      models: {
+        depth: "small",
+        classify: "small",
+        decompose: "small",
+        answer: "small",
+        summarize: "small",
+        synthesize: "small",
+      },
+    },
+    createModel: () => {
+      capturedModel = new QueueModel([{ content: "sampled", toolCalls: [] }]);
+      return capturedModel;
+    },
+    recordSelection: (selection) => {
+      selections.push(selection);
+    },
+  });
+
+  const response = await model.complete([], {
+    purpose: "answer",
+    sampling: {
+      temperature: 0.1,
+    },
+  });
+
+  assert.equal(response.content, "sampled");
+  assert.deepEqual(capturedModel?.calls[0]?.options.sampling, {
+    temperature: 0.1,
+    topP: 0.8,
+    maxTokens: 512,
+  });
+  assert.deepEqual(response.sampling?.sources, {
+    temperature: "node",
+    topP: "global",
+    maxTokens: "model_profile",
+  });
+  assert.equal(selections[0]?.sampling?.sources.temperature, "node");
 });
 
 test("project config parses quality loop phase model routes and defaults old agent configs", async () => {

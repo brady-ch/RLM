@@ -278,6 +278,14 @@ export class InteractiveExecutionSession {
     this.publish({ type: "execution", status: node.status, nodeId, message: "node model override set" });
   }
 
+  setNodeSamplingOverride(nodeId: string, sampling: Record<string, unknown>): void {
+    const node = this.requireEditableNode(nodeId);
+    const normalized = normalizeSamplingOverride(sampling);
+    node.samplingOverride = Object.keys(normalized).length > 0 ? normalized : undefined;
+    this.invalidateQualityLoopMetadata(node, "node sampling override set; quality loop metadata invalidated");
+    this.publish({ type: "execution", status: node.status, nodeId, message: "node sampling override set" });
+  }
+
   planNode(nodeId: string): { plannedNodeIds: string[]; budget: ComposerPlanBudget; exhausted: boolean } {
     const node = this.requireEditableNode(nodeId);
     this.ensureNodePosition(node);
@@ -692,6 +700,7 @@ export class InteractiveExecutionSession {
       status: "approved",
       prompt: node.prompt ?? node.label,
       modelOverride: node.modelOverride,
+      samplingOverride: node.samplingOverride,
       approvalSource: "manual",
       approvalReason: node.approvalReason,
     });
@@ -730,6 +739,7 @@ export class InteractiveExecutionSession {
       status: "skipped",
       prompt: node.prompt ?? node.label,
       modelOverride: node.modelOverride,
+      samplingOverride: node.samplingOverride,
     });
     return { duplicate: false };
   }
@@ -1060,6 +1070,7 @@ export class InteractiveExecutionSession {
         status: "approved",
         prompt: node.prompt ?? node.label,
         modelOverride: node.modelOverride,
+        samplingOverride: node.samplingOverride,
         approvalSource: "auto",
         approvalReason: node.approvalReason,
       });
@@ -1588,6 +1599,22 @@ function contextPolicyForType(type: ComposerNodeType): NonNullable<ExecutionGrap
     limits: ["bounded context packet", "schema-constrained output"],
     memoryScopes: ["speaker-bible", "chapter-summary"],
   };
+}
+
+function normalizeSamplingOverride(input: Record<string, unknown>): NonNullable<ExecutionGraphNode["samplingOverride"]> {
+  const sampling: NonNullable<ExecutionGraphNode["samplingOverride"]> = {};
+  for (const key of ["temperature", "topP", "topK", "repeatPenalty", "maxTokens", "seed"] as const) {
+    const raw = input[key];
+    if (raw === undefined || raw === null || raw === "") {
+      continue;
+    }
+    const value = Number(raw);
+    if (!Number.isFinite(value)) {
+      throw new MutationError("invalid_sampling", `Sampling value "${key}" must be a number.`, [], undefined, "Use numeric sampling values.");
+    }
+    sampling[key] = value;
+  }
+  return sampling;
 }
 
 function plannedChildrenFor(node: ExecutionGraphNode): Array<{

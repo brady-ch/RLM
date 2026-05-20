@@ -1,6 +1,7 @@
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 import type { RunStateStorePort } from "../ports/run-state-store-port.js";
 import type { ExecutionFailureCategory } from "./execution-failure.js";
+import type { EffectiveSamplingMetadata, LanguageModelSamplingOptions } from "../ports/language-model-port.js";
 
 export interface RecursiveModelConfig {
   maxDepth?: number;
@@ -254,6 +255,7 @@ export interface TaskNode {
   kind?: "task" | "code" | undefined;
   artifactContract?: ArtifactContract | undefined;
   modelOverride?: string | undefined;
+  samplingOverride?: LanguageModelSamplingOptions | undefined;
 }
 
 export interface ArtifactContract {
@@ -407,6 +409,8 @@ export interface ExecutionGraphNode {
   effectiveModel?: string | undefined;
   modelOverride?: string | undefined;
   modelOverrideSource?: "user" | "none" | undefined;
+  samplingOverride?: LanguageModelSamplingOptions | undefined;
+  effectiveSampling?: EffectiveSamplingMetadata | undefined;
   editableFields?: Array<"prompt"> | undefined;
   depth: number;
   status: ExecutionStatus;
@@ -484,6 +488,7 @@ export interface NodeApprovalDecision {
   status: "approved" | "skipped" | "cancelled";
   prompt: string;
   modelOverride?: string | undefined;
+  samplingOverride?: LanguageModelSamplingOptions | undefined;
   approvalSource?: "manual" | "auto" | "none" | undefined;
   approvalReason?: string | undefined;
 }

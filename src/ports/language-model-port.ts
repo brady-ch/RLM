@@ -17,6 +17,7 @@ export interface LanguageModelCompleteOptions {
   overrideModel?: string | undefined;
   overrideModelSelection?: string | undefined;
   constrainedToolCalling?: boolean | undefined;
+  sampling?: LanguageModelSamplingOptions | undefined;
 }
 
 export type LanguageModelPurpose =
@@ -37,6 +38,7 @@ export interface LanguageModelResponse {
   toolCalls: LanguageModelToolCall[];
   usage?: LanguageModelUsage | undefined;
   model?: string | undefined;
+  sampling?: EffectiveSamplingMetadata | undefined;
   host?: {
     id: string;
     kind: "ollama" | "http";
@@ -44,6 +46,24 @@ export interface LanguageModelResponse {
     constrainedToolCalling?: boolean | undefined;
     degradedToolCalling?: boolean | undefined;
   } | undefined;
+}
+
+export interface LanguageModelSamplingOptions {
+  temperature?: number | undefined;
+  topP?: number | undefined;
+  topK?: number | undefined;
+  repeatPenalty?: number | undefined;
+  maxTokens?: number | undefined;
+  seed?: number | undefined;
+}
+
+export type SamplingParameterName = keyof LanguageModelSamplingOptions;
+export type SamplingSourceLayer = "adapter_default" | "global" | "model_profile" | "node";
+
+export interface EffectiveSamplingMetadata {
+  values: LanguageModelSamplingOptions;
+  sources: Partial<Record<SamplingParameterName, SamplingSourceLayer>>;
+  warnings?: string[] | undefined;
 }
 
 export interface LanguageModelUsage {

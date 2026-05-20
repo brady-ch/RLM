@@ -15,12 +15,12 @@
 
 ### Runner Registry and Sampling
 
-- [ ] **PROD-04**: Runner integration uses an adapter pattern through `LanguageModelPort`; Ollama is one adapter, not hard-coded in domain or UI layers.
-- [ ] **PROD-08**: Global sampling defaults, including temperature, top-p, and related supported parameters, are editable in app settings.
-- [ ] **PROD-09**: Each installed model may store a profile that overrides global sampling defaults.
-- [ ] **PROD-10**: Node inspector supports per-node sampling overrides that take precedence over model profile and global defaults.
-- [ ] **PROD-11**: Execution trace or node metadata shows effective sampling values and which cascade layer supplied each value.
-- [ ] **PROD-12**: Runner unavailability, download failure, and insufficient-RAM conditions surface explicit UI errors with no silent fallback to a different model or runner.
+- [x] **PROD-04**: Runner integration uses an adapter pattern through `LanguageModelPort`; Ollama is one adapter, not hard-coded in domain or UI layers.
+- [x] **PROD-08**: Global sampling defaults, including temperature, top-p, and related supported parameters, are editable in app settings.
+- [x] **PROD-09**: Each installed model may store a profile that overrides global sampling defaults.
+- [x] **PROD-10**: Node inspector supports per-node sampling overrides that take precedence over model profile and global defaults.
+- [x] **PROD-11**: Execution trace or node metadata shows effective sampling values and which cascade layer supplied each value.
+- [x] **PROD-12**: Runner unavailability, download failure, and insufficient-RAM conditions surface explicit UI errors with no silent fallback to a different model or runner.
 
 ### Model Library
 
@@ -88,12 +88,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROD-04 | Phase 21 | Pending |
-| PROD-08 | Phase 21 | Pending |
-| PROD-09 | Phase 21 | Pending |
-| PROD-10 | Phase 21 | Pending |
-| PROD-11 | Phase 21 | Pending |
-| PROD-12 | Phase 21 | Pending |
+| PROD-04 | Phase 21 | Complete |
+| PROD-08 | Phase 21 | Complete |
+| PROD-09 | Phase 21 | Complete |
+| PROD-10 | Phase 21 | Complete |
+| PROD-11 | Phase 21 | Complete |
+| PROD-12 | Phase 21 | Complete |
 | PROD-05 | Phase 22 | Pending |
 | PROD-06 | Phase 22 | Pending |
 | PROD-07 | Phase 22 | Pending |
@@ -108,4 +108,4 @@
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after milestone creation*
+*Last updated: 2026-05-20 after Phase 21 verification*

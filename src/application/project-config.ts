@@ -6,7 +6,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { z } from "zod";
 import type { QualityLoopConfig, QualityLoopPhaseName, RecursiveModelConfig } from "../domain/types.js";
 import type { ExtensionRegistryEntry } from "../ports/extension-port.js";
-import type { LanguageModelPurpose } from "../ports/language-model-port.js";
+import type { LanguageModelPurpose, LanguageModelSamplingOptions } from "../ports/language-model-port.js";
 
 export const MODEL_PURPOSES = [
   "depth",
@@ -32,6 +32,11 @@ export type ModelSelection = string | "dynamic";
 export interface ModelTierConfig {
   name: string;
   estimatedRamMb: number;
+}
+
+export interface SamplingConfig {
+  defaults?: LanguageModelSamplingOptions | undefined;
+  modelProfiles?: Record<string, LanguageModelSamplingOptions> | undefined;
 }
 
 export interface AgentConfig {
@@ -113,6 +118,7 @@ export interface ProjectConfig {
   models: {
     default: string;
     tiers: Record<string, ModelTierConfig>;
+    sampling?: SamplingConfig | undefined;
   };
   memory: {
     maxRamMb: MemoryMode;
@@ -138,6 +144,15 @@ export interface LoadedProjectConfig {
 }
 
 const modelSelectionSchema = z.string().min(1);
+const samplingOptionsSchema = z.object({
+  temperature: z.number().optional(),
+  topP: z.number().optional(),
+  topK: z.number().int().positive().optional(),
+  repeatPenalty: z.number().positive().optional(),
+  maxTokens: z.number().int().positive().optional(),
+  seed: z.number().int().optional(),
+});
+
 const agentModelsSchema = z.object({
   depth: modelSelectionSchema,
   classify: modelSelectionSchema,
@@ -195,6 +210,10 @@ const configSchema = z.object({
       name: z.string().min(1),
       estimatedRamMb: z.number().int().positive(),
     })),
+    sampling: z.object({
+      defaults: samplingOptionsSchema.optional(),
+      modelProfiles: z.record(z.string().min(1), samplingOptionsSchema).default({}),
+    }).optional(),
   }),
   memory: z.object({
     maxRamMb: z.union([z.literal("auto"), z.number().int().positive()]),
@@ -458,15 +477,30 @@ function mergeYamlLayers(left: Record<string, unknown>, right: Record<string, un
       const leftTiersRaw = prior["tiers"];
       const incomingModels = incoming as Record<string, unknown>;
       const rightTiersRaw = incomingModels["tiers"];
+      const leftSamplingRaw = prior["sampling"];
+      const rightSamplingRaw = incomingModels["sampling"];
       const leftTiers = isPlainRecord(leftTiersRaw)
         ? (leftTiersRaw as Record<string, unknown>)
         : {};
       const rightTiers = isPlainRecord(rightTiersRaw)
         ? (rightTiersRaw as Record<string, unknown>)
         : {};
+      const leftSampling = isPlainRecord(leftSamplingRaw)
+        ? (leftSamplingRaw as Record<string, unknown>)
+        : {};
+      const rightSampling = isPlainRecord(rightSamplingRaw)
+        ? (rightSamplingRaw as Record<string, unknown>)
+        : {};
+      const leftProfiles = isPlainRecord(leftSampling["modelProfiles"])
+        ? leftSampling["modelProfiles"] as Record<string, unknown>
+        : {};
+      const rightProfiles = isPlainRecord(rightSampling["modelProfiles"])
+        ? rightSampling["modelProfiles"] as Record<string, unknown>
+        : {};
 
       const incomingWithoutTiers = { ...incomingModels };
       delete incomingWithoutTiers["tiers"];
+      delete incomingWithoutTiers["sampling"];
 
       out["models"] = {
         ...prior,
@@ -474,6 +508,14 @@ function mergeYamlLayers(left: Record<string, unknown>, right: Record<string, un
         tiers: {
           ...leftTiers,
           ...rightTiers,
+        },
+        sampling: {
+          ...leftSampling,
+          ...rightSampling,
+          modelProfiles: {
+            ...leftProfiles,
+            ...rightProfiles,
+          },
         },
       };
       continue;

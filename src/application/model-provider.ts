@@ -1,9 +1,13 @@
 import type {
+  EffectiveSamplingMetadata,
   LanguageModelCompleteOptions,
   LanguageModelMessage,
   LanguageModelPort,
   LanguageModelPurpose,
   LanguageModelResponse,
+  LanguageModelSamplingOptions,
+  SamplingParameterName,
+  SamplingSourceLayer,
 } from "../ports/language-model-port.js";
 import type { AgentConfig, ProjectConfig, RuntimeHostSelection } from "./project-config.js";
 import { resolveModelTier } from "./project-config.js";
@@ -31,6 +35,7 @@ export interface ModelSelectionRecord {
   hostId: string;
   hostKind: "ollama" | "http";
   hostEndpoint: string;
+  sampling?: EffectiveSamplingMetadata | undefined;
 }
 
 export interface ModelRuntimeSelection {
@@ -39,6 +44,14 @@ export interface ModelRuntimeSelection {
   baseUrl: string;
   allowUnconstrainedToolCalls: boolean;
 }
+
+const SAMPLING_KEYS = ["temperature", "topP", "topK", "repeatPenalty", "maxTokens", "seed"] as const satisfies readonly SamplingParameterName[];
+
+const ADAPTER_DEFAULT_SAMPLING: Partial<Record<ModelRuntimeSelection["hostKind"], LanguageModelSamplingOptions>> = {
+  ollama: {
+    temperature: 0.2,
+  },
+};
 
 export class PurposeRoutingLanguageModel implements LanguageModelPort {
   private readonly cache = new Map<string, LanguageModelPort>();
@@ -53,8 +66,13 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       const override = this.resolveOverrideSelection(completeOptions);
       const model = override.model;
       const runtime = await this.resolveRuntimeSelection();
-      const response = await this.getModel(model, runtime).complete(messages, completeOptions);
+      const sampling = this.resolveSampling(model, runtime.hostKind, completeOptions.sampling);
+      const response = await this.getModel(model, runtime).complete(messages, {
+        ...completeOptions,
+        sampling: sampling.values,
+      });
       response.model ??= model;
+      response.sampling = mergeSamplingMetadata(sampling, response.sampling);
       response.host ??= {
         id: runtime.hostId,
         kind: runtime.hostKind,
@@ -69,6 +87,7 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
         hostId: runtime.hostId,
         hostKind: runtime.hostKind,
         hostEndpoint: runtime.baseUrl,
+        sampling: response.sampling,
       });
       this.options.logger?.log({
         stage: "model",
@@ -82,13 +101,22 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
           hostId: runtime.hostId,
           hostKind: runtime.hostKind,
           hostEndpoint: runtime.baseUrl,
+          sampling: response.sampling,
         },
       });
       return response;
     }
 
     const selection = await this.selectModel(completeOptions.purpose, completeOptions.complexityDepth);
-    this.options.recordSelection?.(selection);
+    const runtime: ModelRuntimeSelection = {
+      hostId: selection.hostId,
+      hostKind: selection.hostKind,
+      baseUrl: selection.hostEndpoint,
+      allowUnconstrainedToolCalls: false,
+    };
+    const sampling = this.resolveSampling(selection.model, selection.hostKind, completeOptions.sampling);
+    const selectionWithSampling: ModelSelectionRecord = { ...selection, sampling };
+    this.options.recordSelection?.(selectionWithSampling);
     this.options.logger?.log({
       stage: "model",
       message: "selected model",
@@ -98,15 +126,15 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
         tier: selection.tier,
         estimatedRamMb: selection.estimatedRamMb,
         source: selection.source,
+        sampling,
       },
     });
-    const response = await this.getModel(selection.model, {
-      hostId: selection.hostId,
-      hostKind: selection.hostKind,
-      baseUrl: selection.hostEndpoint,
-      allowUnconstrainedToolCalls: false,
-    }).complete(messages, completeOptions);
+    const response = await this.getModel(selection.model, runtime).complete(messages, {
+      ...completeOptions,
+      sampling: sampling.values,
+    });
     response.model ??= selection.model;
+    response.sampling = mergeSamplingMetadata(sampling, response.sampling);
     response.host ??= {
       id: selection.hostId,
       kind: selection.hostKind,
@@ -160,6 +188,19 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       hostKind: runtime.hostKind,
       hostEndpoint: runtime.baseUrl,
     };
+  }
+
+  private resolveSampling(
+    model: string,
+    hostKind: ModelRuntimeSelection["hostKind"],
+    nodeOverride?: LanguageModelSamplingOptions | undefined,
+  ): EffectiveSamplingMetadata {
+    return mergeSamplingLayers([
+      { source: "adapter_default", values: ADAPTER_DEFAULT_SAMPLING[hostKind] },
+      { source: "global", values: this.options.config.models.sampling?.defaults },
+      { source: "model_profile", values: this.options.config.models.sampling?.modelProfiles?.[model] },
+      { source: "node", values: nodeOverride },
+    ]);
   }
 
   private getModel(model: string, runtime?: ModelRuntimeSelection): LanguageModelPort {
@@ -243,4 +284,47 @@ export function selectDynamicTier(complexityDepth: number): string {
   }
 
   return "small";
+}
+
+function mergeSamplingLayers(
+  layers: Array<{ source: SamplingSourceLayer; values?: LanguageModelSamplingOptions | undefined }>,
+): EffectiveSamplingMetadata {
+  const values: LanguageModelSamplingOptions = {};
+  const sources: EffectiveSamplingMetadata["sources"] = {};
+
+  for (const layer of layers) {
+    if (!layer.values) {
+      continue;
+    }
+    for (const key of SAMPLING_KEYS) {
+      const value = layer.values[key];
+      if (value === undefined) {
+        continue;
+      }
+      values[key] = value;
+      sources[key] = layer.source;
+    }
+  }
+
+  return { values, sources };
+}
+
+function mergeSamplingMetadata(
+  resolved: EffectiveSamplingMetadata,
+  adapterMetadata?: EffectiveSamplingMetadata | undefined,
+): EffectiveSamplingMetadata {
+  return {
+    values: {
+      ...resolved.values,
+      ...adapterMetadata?.values,
+    },
+    sources: {
+      ...resolved.sources,
+      ...adapterMetadata?.sources,
+    },
+    warnings: [
+      ...(resolved.warnings ?? []),
+      ...(adapterMetadata?.warnings ?? []),
+    ],
+  };
 }

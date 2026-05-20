@@ -67,8 +67,13 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
     lines.push(`autoApprovedNodes=${autoApprovedNodes}`);
     lines.push("nodeModels:");
     for (const node of result.metadata.executionGraph.nodes) {
+      const sampling = node.effectiveSampling
+        ? Object.entries(node.effectiveSampling.values)
+          .map(([key, value]) => `${key}=${value}(${node.effectiveSampling?.sources[key as keyof typeof node.effectiveSampling.values] ?? "unknown"})`)
+          .join(",")
+        : "pending";
       lines.push(
-        `- ${node.id} planned=${node.plannedModel ?? "resolved-at-runtime"} override=${node.modelOverride ?? "none"} source=${node.modelOverrideSource ?? "none"} effective=${node.effectiveModel ?? "pending"} approvalMode=${node.approvalMode ?? "full"} approvalSource=${node.approvalSource ?? "none"} spawnedAfterInitialApproval=${String(node.spawnedAfterInitialApproval ?? false)}`,
+        `- ${node.id} planned=${node.plannedModel ?? "resolved-at-runtime"} override=${node.modelOverride ?? "none"} source=${node.modelOverrideSource ?? "none"} effective=${node.effectiveModel ?? "pending"} sampling=${sampling} approvalMode=${node.approvalMode ?? "full"} approvalSource=${node.approvalSource ?? "none"} spawnedAfterInitialApproval=${String(node.spawnedAfterInitialApproval ?? false)}`,
       );
     }
   }
