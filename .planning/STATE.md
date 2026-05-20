@@ -2,13 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Desktop Product
-status: ready
-last_updated: "2026-05-20T06:49:37.657Z"
-last_activity: 2026-05-20
+status: blocked
+stopped_at: v1.2 milestone archived after passing audit
+last_updated: "2026-05-20T14:32:17.063Z"
+last_activity: 2026-05-20 -- Phase 21 blocked by overlapping uncommitted runtime/UI edits
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
-  total_plans: 0
+  total_plans: 1
   completed_plans: 0
   percent: 0
 ---
@@ -20,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-20)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** v1.3 Desktop Product — ready to execute Phase 21.
+**Current focus:** Phase 21 — Runner Registry and Sampling Cascade
 
 ## Current Position
 
-Phase: 21 — Runner Registry and Sampling Cascade (not started)
-Plan: —
-Status: Roadmap approved — ready to plan/execute
-Last activity: 2026-05-20 — Milestone v1.3 initialized (Phases 21–23)
+Phase: 21 (Runner Registry and Sampling Cascade) — EXECUTING
+Plan: 1 of 1
+Status: Blocked before implementation
+Last activity: 2026-05-20 -- Phase 21 blocked by overlapping uncommitted runtime/UI edits
 
 ## Recently Completed
 
@@ -39,7 +40,7 @@ v1.2 Answer Quality Loops shipped on 2026-05-20 after milestone audit passed.
 
 ## Blockers/Concerns
 
-None.
+- Phase 21 implementation touches runtime/UI/test files that already have uncommitted edits from another thread. Resolve, commit, or explicitly include those edits before continuing autonomous execution.
 
 ## Deferred Items
 
