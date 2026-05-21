@@ -2,7 +2,7 @@
 
 ## Milestones
 
-- 🚧 **v1.4 Session Memory** — Phases 25-29 (Phase 28 complete)
+- ✅ **v1.4 Session Memory** — Phases 25-29 (shipped 2026-05-21; summary: `.planning/milestones/v1.4-MILESTONE-SUMMARY.md`)
 - ✅ **v1.3 Desktop Product** — Phases 21-24 (shipped 2026-05-21; archive: `.planning/milestones/v1.3-ROADMAP.md`)
 - ✅ **v1.2 Answer Quality Loops** — Phases 12-17 (shipped 2026-05-20; archive: `.planning/milestones/v1.2-ROADMAP.md`)
 - ✅ **v1.1 Interop, chat-first, plugins, constrained tools** — Phases 6-11, including inserted Phase 8.5 (shipped 2026-05-13; archive: `.planning/milestones/v1.1-ROADMAP.md`)
@@ -29,7 +29,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 - [x] **Phase 26: Structured Memory Store and Resolver** - Persist structured memory scopes, episodic logs, ACL/audit records, and bounded context packets.
 - [x] **Phase 27: Memory Preferences and Inspection Surfaces** - Add project/user preference memory plus CLI, API, and UI inspection/edit controls.
 - [x] **Phase 28: Semantic Retrieval Pipeline** - Add local embeddings, async indexing, scoped retrieval, visible retrieval hits, and degraded index states.
-- [ ] **Phase 29: End-to-End Memory Hardening** - Verify integrated save/reopen, memory injection, preferences, retrieval, packaging, and no-silent-loss behavior.
+- [x] **Phase 29: End-to-End Memory Hardening** - Verify integrated save/reopen, memory injection, preferences, retrieval, packaging, and no-silent-loss behavior.
 
 ## Phase Details
 
@@ -107,8 +107,11 @@ Plans:
   3. Retrieval/index failures degrade visibly while structured session restore still succeeds.
   4. Preference application is source-attributed and can be removed without stale effects.
   5. Automated tests cover the main CLI/API/UI memory paths and existing `npm test` passes.
-**Plans**: 0 plans
+**Plans**: 1 plan
 **UI hint**: yes
+
+Plans:
+- [x] 29-01-PLAN.md — Verify integrated memory flows and no-silent-loss degraded states.
 
 ## Candidate Future Themes
 
@@ -129,7 +132,7 @@ Phases execute in numeric order: 25 -> 26 -> 27 -> 28 -> 29
 | 26. Structured Memory Store and Resolver | v1.4 | 1/1 | Complete | 2026-05-21 |
 | 27. Memory Preferences and Inspection Surfaces | v1.4 | 1/1 | Complete | 2026-05-21 |
 | 28. Semantic Retrieval Pipeline | v1.4 | 1/1 | Complete | 2026-05-21 |
-| 29. End-to-End Memory Hardening | v1.4 | 0/0 | Not Started | — |
+| 29. End-to-End Memory Hardening | v1.4 | 1/1 | Complete | 2026-05-21 |
 | v1.3 Desktop Product | v1.3 | archived | Complete | 2026-05-21 |
 | v1.2 Answer Quality Loops | v1.2 | archived | Complete | 2026-05-20 |
 | v1.1 Interop, chat-first, plugins, constrained tools | v1.1 | archived | Complete | 2026-05-13 |

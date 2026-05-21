@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Session Memory
-status: executing
-last_updated: "2026-05-21T03:05:00.000Z"
+status: complete
+last_updated: "2026-05-21T03:25:00.000Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 4
-  completed_plans: 4
-  percent: 80
+  completed_phases: 5
+  total_plans: 5
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-21)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 29 End-to-End Memory Hardening
+**Current focus:** v1.4 Session Memory complete
 
 ## Current Position
 
-Phase: 29 End-to-End Memory Hardening
+Phase: —
 Plan: —
-Status: Ready for context gathering
-Last activity: 2026-05-21 — Phase 28 Semantic Retrieval Pipeline completed
+Status: v1.4 complete
+Last activity: 2026-05-21 — Phase 29 End-to-End Memory Hardening completed
 
 ## Recently Completed
 
@@ -35,6 +35,7 @@ Last activity: 2026-05-21 — Phase 28 Semantic Retrieval Pipeline completed
 - Phase 26 Structured Memory Store and Resolver completed on 2026-05-21.
 - Phase 27 Memory Preferences and Inspection Surfaces completed on 2026-05-21.
 - Phase 28 Semantic Retrieval Pipeline completed on 2026-05-21.
+- Phase 29 End-to-End Memory Hardening completed on 2026-05-21.
 - Phase 23 Desktop Release Staging completed on 2026-05-20.
 - Phase 24 Desktop Runtime Lifecycle Closure completed on 2026-05-21.
 - v1.3 Desktop Product shipped on 2026-05-21 after milestone audit passed.
@@ -68,4 +69,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Continue v1.4 with Phase 29 End-to-End Memory Hardening.
+- Start the next milestone with `$gsd-new-milestone` when ready.

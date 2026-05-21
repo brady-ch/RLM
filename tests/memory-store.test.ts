@@ -20,6 +20,12 @@ class KeywordEmbedding implements EmbeddingPort {
   }
 }
 
+class FailingEmbedding implements EmbeddingPort {
+  async embed(): Promise<number[]> {
+    throw new Error("embedding provider unavailable");
+  }
+}
+
 test("file memory store enforces scope ACLs and version conflicts", async () => {
   const dir = await mkdtemp(join(tmpdir(), "rlm-memory-"));
   try {
@@ -202,6 +208,47 @@ test("semantic memory retrieval injects scoped vector hits", async () => {
     assert.match(packet.text, /TypeScript memory resolver/);
     assert.doesNotMatch(packet.text, /release packaging/);
     assert.equal(packet.metadata.retrievalHits?.[0]?.scopeId, "project-facts");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("semantic retrieval degrades visibly when embeddings fail", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-memory-"));
+  try {
+    const store = new FileMemoryStore({ baseDir: dir, now: () => "2026-05-20T00:00:00.000Z" });
+    await store.patchScope({
+      sessionId: "run-4",
+      scopeId: "project-facts",
+      actor: "setup",
+      expectedVersion: 0,
+      allowedScopes: ["project-facts"],
+      writes: ["memory updates"],
+      patch: { fact: "memory survives retrieval failure" },
+    });
+    const retrieval = new SemanticMemoryIndex({
+      sessionId: "run-4",
+      store,
+      embeddings: new FailingEmbedding(),
+      index: new FileVectorIndex({ path: join(dir, "vector-index.json") }),
+    });
+    const resolver = new MemoryResolver(store, { sessionId: "run-4", now: () => "2026-05-20T00:00:00.000Z" }, retrieval);
+
+    const packet = await resolver.buildPacket({
+      nodeId: "task-degraded",
+      prompt: "memory",
+      policy: {
+        reads: ["relevant memory entries"],
+        writes: ["memory updates"],
+        limits: ["2000 characters"],
+        memoryScopes: ["project-facts"],
+      },
+    });
+
+    assert.ok(packet);
+    assert.equal(packet.metadata.degraded, true);
+    assert.match(packet.metadata.reasons.join("\n"), /embedding provider unavailable/);
+    assert.match(packet.text, /memory survives retrieval failure/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
