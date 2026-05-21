@@ -119,6 +119,33 @@ export class FileMemoryStore implements MemoryStorePort {
     return packets.findLast((packet) => packet.nodeId === nodeId);
   }
 
+  async restoreSessionData(
+    sessionId: string,
+    data: {
+      scopes: MemoryScopeDocument[];
+      episodic: EpisodicMemoryEntry[];
+      audit?: MemoryAuditRecord[];
+      packets?: MemoryPacketMetadata[];
+    },
+  ): Promise<void> {
+    await this.withSessionLock(sessionId, async () => {
+      for (const scope of data.scopes) {
+        const normalized: MemoryScopeDocument = {
+          ...scope,
+          sessionId,
+        };
+        await this.writeJson(this.scopePathForLifetime(sessionId, normalized.scopeId, normalized.lifetime), normalized);
+      }
+      await this.writeJson(this.episodicPath(sessionId), data.episodic.slice(-500));
+      if (data.audit) {
+        await this.writeJson(this.auditPath(sessionId), data.audit);
+      }
+      if (data.packets) {
+        await this.writeJson(this.packetPath(sessionId), data.packets.slice(-200));
+      }
+    });
+  }
+
   private authorize(request: MemoryScopePatchRequest): string | undefined {
     if (!request.allowedScopes.includes(request.scopeId)) {
       return "memory scope ACL denied";

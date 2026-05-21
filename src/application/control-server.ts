@@ -8,6 +8,20 @@ import type { ModelLibraryService } from "./model-library.js";
 import type { MemoryResolver } from "./memory-resolver.js";
 import type { ApprovalMode, DeleteStrategy } from "../domain/types.js";
 import type { SavedSessionPayload, SessionStorePort } from "../ports/session-store-port.js";
+import type { FileMemoryStore } from "../adapters/file-memory-store.js";
+import type { FileVectorIndex } from "../adapters/file-vector-index.js";
+import { buildSavedSessionPayload, restoreSessionMemory } from "./session-memory-bridge.js";
+
+export interface SessionRuntimeRef {
+  getRunId: () => string;
+  setRunId: (runId: string) => void;
+  memoryStore: FileMemoryStore;
+  vectorIndex: FileVectorIndex;
+  getMemory: () => MemoryResolver;
+  setMemory: (memory: MemoryResolver) => void;
+  createMemory: (runId: string) => MemoryResolver;
+  embedProvider?: string | null;
+}
 
 export interface ControlServer {
   url: string;
@@ -22,10 +36,11 @@ export async function startControlServer(input: {
   modelLibrary?: ModelLibraryService | undefined;
   memory?: MemoryResolver | undefined;
   sessionStore?: SessionStorePort | undefined;
+  sessionRuntime?: SessionRuntimeRef | undefined;
   onConfirmRun?: ((session: InteractiveExecutionSession) => void | Promise<void>) | undefined;
 }): Promise<ControlServer> {
   const server = createServer((request, response) => {
-    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun, input.modelLibrary, input.sessionStore, input.memory);
+    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun, input.modelLibrary, input.sessionStore, input.memory, input.sessionRuntime);
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -55,8 +70,10 @@ async function routeRequest(
   modelLibrary?: ModelLibraryService | undefined,
   sessionStore?: SessionStorePort | undefined,
   memory?: MemoryResolver | undefined,
+  sessionRuntime?: SessionRuntimeRef | undefined,
 ): Promise<void> {
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
+  const activeMemory = () => sessionRuntime?.getMemory() ?? memory;
   try {
     if (request.method === "GET" && url.pathname === "/api/session") {
       return sendJson(response, session.snapshot());
@@ -79,31 +96,34 @@ async function routeRequest(
       return sendJson(response, { sessions: await sessionStore.list() });
     }
     if (request.method === "GET" && url.pathname === "/api/memory") {
-      if (!memory) {
+      const resolvedMemory = activeMemory();
+      if (!resolvedMemory) {
         return sendJson(response, { error: "Memory inspection is not configured." }, 404);
       }
-      return sendJson(response, await memory.inspect());
+      return sendJson(response, await resolvedMemory.inspect());
     }
     if (request.method === "POST" && url.pathname === "/api/memory/preferences") {
-      if (!memory) {
+      const resolvedMemory = activeMemory();
+      if (!resolvedMemory) {
         return sendJson(response, { error: "Memory inspection is not configured." }, 404);
       }
       const body = await readJsonBody(request);
-      await memory.setPreference({
+      await resolvedMemory.setPreference({
         key: String(body["key"] ?? ""),
         value: String(body["value"] ?? ""),
         source: "ui",
         lifetime: body["lifetime"] === "permanent" ? "permanent" : "project",
       });
-      return sendJson(response, await memory.inspect());
+      return sendJson(response, await resolvedMemory.inspect());
     }
     if (request.method === "DELETE" && url.pathname.match(/^\/api\/memory\/preferences\/[^/]+$/)) {
-      if (!memory) {
+      const resolvedMemory = activeMemory();
+      if (!resolvedMemory) {
         return sendJson(response, { error: "Memory inspection is not configured." }, 404);
       }
       const key = decodeURIComponent(url.pathname.split("/")[4] ?? "");
-      await memory.deletePreference({ key });
-      return sendJson(response, await memory.inspect());
+      await resolvedMemory.deletePreference({ key });
+      return sendJson(response, await resolvedMemory.inspect());
     }
     if (request.method === "POST" && url.pathname === "/api/saved-sessions/save") {
       if (!sessionStore) {
@@ -111,10 +131,19 @@ async function routeRequest(
       }
       const body = await readJsonBody(request);
       const snapshot = session.snapshot();
+      const payload = sessionRuntime
+        ? await buildSavedSessionPayload({
+          snapshot,
+          runId: sessionRuntime.getRunId(),
+          memoryStore: sessionRuntime.memoryStore,
+          vectorIndex: sessionRuntime.vectorIndex,
+          embedProvider: sessionRuntime.embedProvider ?? null,
+        })
+        : legacySavedSessionPayload(snapshot);
       const saved = await sessionStore.save({
         id: typeof body["id"] === "string" ? body["id"] : undefined,
         name: typeof body["name"] === "string" ? body["name"] : undefined,
-        payload: savedSessionPayload(snapshot),
+        payload,
       });
       return sendJson(response, saved);
     }
@@ -136,6 +165,15 @@ async function routeRequest(
           error: "Saved session restore is unsafe.",
           savedSession: saved,
         }, 409);
+      }
+      if (sessionRuntime) {
+        const runId = await restoreSessionMemory({
+          payload: saved.payload,
+          memoryStore: sessionRuntime.memoryStore,
+          vectorIndex: sessionRuntime.vectorIndex,
+        });
+        sessionRuntime.setRunId(runId);
+        sessionRuntime.setMemory(sessionRuntime.createMemory(runId));
       }
       session.restoreSnapshot(saved.payload.session as ReturnType<InteractiveExecutionSession["snapshot"]>);
       return sendJson(response, { ...session.snapshot(), savedSession: saved });
@@ -423,7 +461,7 @@ async function routeRequest(
   }
 }
 
-function savedSessionPayload(snapshot: ReturnType<InteractiveExecutionSession["snapshot"]>): SavedSessionPayload {
+function legacySavedSessionPayload(snapshot: ReturnType<InteractiveExecutionSession["snapshot"]>): SavedSessionPayload {
   const artifactRefs: Array<{ nodeId: string; ref: unknown }> = [];
   for (const node of snapshot.graph.nodes) {
     for (const ref of node.composer?.artifactRefs ?? []) {

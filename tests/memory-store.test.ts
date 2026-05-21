@@ -190,6 +190,7 @@ test("semantic memory retrieval injects scoped vector hits", async () => {
       index: new FileVectorIndex({ path: join(dir, "vector-index.json") }),
       now: () => "2026-05-20T00:00:01.000Z",
     });
+    await retrieval.rebuild();
     const resolver = new MemoryResolver(store, { sessionId: "run-3", now: () => "2026-05-20T00:00:02.000Z" }, retrieval);
 
     const packet = await resolver.buildPacket({
@@ -226,11 +227,21 @@ test("semantic retrieval degrades visibly when embeddings fail", async () => {
       writes: ["memory updates"],
       patch: { fact: "memory survives retrieval failure" },
     });
+    const vectorIndex = new FileVectorIndex({ path: join(dir, "vector-index.json") });
+    await vectorIndex.replace([{
+      id: "scope:session:project-facts",
+      sessionId: "run-4",
+      scopeId: "project-facts",
+      source: "scope",
+      text: "Scope project-facts: {\"fact\":\"memory survives retrieval failure\"}",
+      embedding: [1, 0, 0],
+      updatedAt: "2026-05-20T00:00:00.000Z",
+    }]);
     const retrieval = new SemanticMemoryIndex({
       sessionId: "run-4",
       store,
       embeddings: new FailingEmbedding(),
-      index: new FileVectorIndex({ path: join(dir, "vector-index.json") }),
+      index: vectorIndex,
     });
     const resolver = new MemoryResolver(store, { sessionId: "run-4", now: () => "2026-05-20T00:00:00.000Z" }, retrieval);
 

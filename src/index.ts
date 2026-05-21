@@ -35,7 +35,8 @@ import * as webFetchExtension from "./extensions/tools/web-fetch.extension.js";
 import * as webSearchExtension from "./extensions/tools/web-search.extension.js";
 import * as workspaceFileWriteExtension from "./extensions/tools/workspace-file-write.extension.js";
 import { CancellationController, createExecutionControl, createInteractiveExecutionSession } from "./application/execution-controller.js";
-import { startControlServer } from "./application/control-server.js";
+import { startControlServer, type SessionRuntimeRef } from "./application/control-server.js";
+import { restoreSessionMemory } from "./application/session-memory-bridge.js";
 import { ModelLibraryService } from "./application/model-library.js";
 import { createUiExecutionRunner } from "./application/ui-execution-runner.js";
 import { helpText, parseArgs } from "./cli/args.js";
@@ -162,7 +163,7 @@ async function main(): Promise<void> {
   });
   const extensionHost = new ExtensionHost();
   const runtimeEventsStore = new InMemoryEventStore();
-  const runId = `run-${Date.now()}`;
+  let runId = `run-${Date.now()}`;
   const runtimeEvents = new McpSkillRuntime(
     projectConfig.interop ?? {
       mcp: { servers: [] },
@@ -256,16 +257,22 @@ async function main(): Promise<void> {
       lifetime: "project",
     });
   }
-  const semanticMemoryIndex = new SemanticMemoryIndex({
-    sessionId: runId,
-    store: memoryStore,
-    embeddings: new OllamaEmbeddingModel({
-      ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
-      ...(process.env.RLM_EMBED_MODEL ? { model: process.env.RLM_EMBED_MODEL } : {}),
-    }),
-    index: new FileVectorIndex({ path: join(process.cwd(), ".rlm", "memory", "vector-index.json") }),
+  const vectorIndex = new FileVectorIndex({ path: join(process.cwd(), ".rlm", "memory", "vector-index.json") });
+  const embeddingModel = new OllamaEmbeddingModel({
+    ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
+    ...(process.env.RLM_EMBED_MODEL ? { model: process.env.RLM_EMBED_MODEL } : {}),
   });
-  const runtimeMemory = new MemoryResolver(memoryStore, { sessionId: runId }, semanticMemoryIndex);
+  const createMemoryForRun = (sessionId: string): MemoryResolver => new MemoryResolver(
+    memoryStore,
+    { sessionId },
+    new SemanticMemoryIndex({
+      sessionId,
+      store: memoryStore,
+      embeddings: embeddingModel,
+      index: vectorIndex,
+    }),
+  );
+  let runtimeMemory = createMemoryForRun(runId);
   logger?.log({
     stage: "interop",
     message: "mcp+skill runtime initialized",
@@ -294,11 +301,37 @@ async function main(): Promise<void> {
       const session = createInteractiveExecutionSession({ seedRootPrompt: options.prompt });
       if (options.openSession) {
         const saved = await sessionStore.load(options.openSession);
-        session.restoreSnapshot(saved.payload.session as ReturnType<typeof session.snapshot>);
         if (saved.verification.status !== "complete") {
-          console.error(`Saved session ${saved.id} restored with ${saved.verification.status} verification; unsafe continuation is blocked.`);
+          console.error(`Saved session ${saved.id} has ${saved.verification.status} verification; unsafe continuation is blocked.`);
+          process.exitCode = 1;
+          return;
         }
+        runId = await restoreSessionMemory({
+          payload: saved.payload,
+          memoryStore,
+          vectorIndex,
+        });
+        runState.runId = runId;
+        runState.capabilityToken = `${runId}:runtime`;
+        runtimeMemory = createMemoryForRun(runId);
+        session.restoreSnapshot(saved.payload.session as ReturnType<typeof session.snapshot>);
       }
+      const sessionRuntime: SessionRuntimeRef = {
+        getRunId: () => runId,
+        setRunId: (nextRunId) => {
+          runId = nextRunId;
+          runState.runId = nextRunId;
+          runState.capabilityToken = `${nextRunId}:runtime`;
+        },
+        memoryStore,
+        vectorIndex,
+        getMemory: () => runtimeMemory,
+        setMemory: (memory) => {
+          runtimeMemory = memory;
+        },
+        createMemory: createMemoryForRun,
+        embedProvider: process.env.RLM_EMBED_MODEL ?? "ollama",
+      };
       const runtimeHost = resolveRuntimeHostSelection(projectConfig, {
         cliHostId: options.host,
         env: process.env,
@@ -319,7 +352,7 @@ async function main(): Promise<void> {
         createModel,
         logger,
         runState,
-        memory: runtimeMemory,
+        resolveMemory: () => runtimeMemory,
       });
       const uiDistDir = resolveUiDistDir(fileURLToPath(import.meta.url), process.env);
       const server = await startControlServer({
@@ -329,6 +362,7 @@ async function main(): Promise<void> {
         modelLibrary,
         sessionStore,
         memory: runtimeMemory,
+        sessionRuntime,
         onConfirmRun: (activeSession) => uiRunner.start(activeSession),
       });
       cleanup.track({

@@ -36,4 +36,10 @@ export class FileVectorIndex {
     await writeFile(temp, `${JSON.stringify(records, null, 2)}\n`, "utf8");
     await rename(temp, this.path);
   }
+
+  async mergeSessionRecords(sessionId: string, records: VectorIndexRecord[]): Promise<void> {
+    const existing = await this.read();
+    const others = existing.filter((record) => record.sessionId !== sessionId);
+    await this.replace([...others, ...records.map((record) => ({ ...record, sessionId }))]);
+  }
 }

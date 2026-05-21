@@ -113,6 +113,7 @@ export class MemoryResolver {
       timestamp: this.input.now?.() ?? new Date().toISOString(),
     };
     await this.store.appendEpisodic(entry);
+    this.retrieval?.enqueueRebuild();
   }
 
   async inspect(): Promise<MemoryInspectionSnapshot> {
@@ -148,6 +149,7 @@ export class MemoryResolver {
         },
       },
     });
+    this.retrieval?.enqueueRebuild();
   }
 
   async deletePreference(input: { key: string; expectedVersion?: number }): Promise<void> {
@@ -168,6 +170,7 @@ export class MemoryResolver {
         [key]: null,
       },
     });
+    this.retrieval?.enqueueRebuild();
   }
 }
 

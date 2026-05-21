@@ -19,6 +19,7 @@ export interface UiExecutionRunnerInput {
   createModel: (model: string, runtime: ModelRuntimeSelection) => LanguageModelPort;
   logger?: RuntimeLogger | undefined;
   runState?: Parameters<typeof runConfiguredAgent>[0]["runState"];
+  resolveMemory?: () => RuntimeMemory | undefined;
   memory?: RuntimeMemory | undefined;
 }
 
@@ -72,7 +73,7 @@ export function createUiExecutionRunner(input: UiExecutionRunnerInput): UiExecut
             logger: input.logger,
             execution: session.control,
             runState: input.runState,
-            memory: input.memory,
+            memory: input.resolveMemory?.() ?? input.memory,
           });
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : String(error);

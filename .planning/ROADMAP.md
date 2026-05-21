@@ -133,7 +133,18 @@ Phases execute in numeric order: 25 -> 26 -> 27 -> 28 -> 29
 | 27. Memory Preferences and Inspection Surfaces | v1.4 | 1/1 | Complete | 2026-05-21 |
 | 28. Semantic Retrieval Pipeline | v1.4 | 1/1 | Complete | 2026-05-21 |
 | 29. End-to-End Memory Hardening | v1.4 | 1/1 | Complete | 2026-05-21 |
+| 29.1. Close gap: session save/reopen memory binding | v1.4 | 1/1 | Complete | 2026-05-21 |
 | v1.3 Desktop Product | v1.3 | archived | Complete | 2026-05-21 |
 | v1.2 Answer Quality Loops | v1.2 | archived | Complete | 2026-05-20 |
 | v1.1 Interop, chat-first, plugins, constrained tools | v1.1 | archived | Complete | 2026-05-13 |
 | v1.0 MVP | v1.0 | archived | Complete | 2026-05-08 |
+
+### Phase 29.1: Close gap: session save/reopen memory binding (INSERTED)
+
+**Goal:** Wire session save/reopen to export and restore live memory, vector index metadata, and runId binding; align CLI unsafe-open gate with API; make vector indexing non-blocking.
+**Depends on:** Phase 29
+**Requirements**: SESS-01, SESS-04, MEM-04, SURF-01, SURF-02, SURF-03, RETR-02, RETR-05
+**Plans:** 1 plan
+
+Plans:
+- [x] 29.1-01-PLAN.md — Wire session save/reopen memory binding and async vector indexing.

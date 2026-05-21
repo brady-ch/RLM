@@ -17,6 +17,8 @@ export interface RetrievalResult {
 }
 
 export class SemanticMemoryIndex {
+  private rebuildPending = false;
+
   constructor(
     private readonly input: {
       sessionId: string;
@@ -27,11 +29,23 @@ export class SemanticMemoryIndex {
     },
   ) {}
 
+  enqueueRebuild(): void {
+    if (this.rebuildPending) {
+      return;
+    }
+    this.rebuildPending = true;
+    void this.rebuild()
+      .catch(() => undefined)
+      .finally(() => {
+        this.rebuildPending = false;
+      });
+  }
+
   async search(input: { query: string; scopeIds: string[]; limit?: number }): Promise<RetrievalResult> {
     try {
-      let records = await this.input.index.read();
+      const records = await this.input.index.read();
       if (records.length === 0) {
-        records = await this.rebuild();
+        return { hits: [], status: "empty", reason: "index empty; rebuild scheduled asynchronously" };
       }
       const allowed = new Set(input.scopeIds);
       const eligible = records.filter((record) => allowed.has(record.scopeId));
@@ -91,7 +105,7 @@ export class SemanticMemoryIndex {
         updatedAt: now,
       });
     }
-    await this.input.index.replace(records);
+    await this.input.index.mergeSessionRecords(this.input.sessionId, records);
     return records;
   }
 }
