@@ -121,12 +121,12 @@ export class FileSessionStore implements SessionStorePort {
     const manifest = await this.readManifest(id);
     const verification = await this.verifyManifest(manifest);
     const payload: SavedSessionPayload = {
-      session: await this.readSection(manifest, "session"),
-      runState: await this.readSection(manifest, "runState"),
-      artifacts: await this.readSection(manifest, "artifacts"),
-      memory: await this.readSection(manifest, "memory"),
-      preferences: await this.readSection(manifest, "preferences"),
-      vectorIndex: await this.readSection(manifest, "vectorIndex"),
+      session: await this.safeReadSection(manifest, "session"),
+      runState: await this.safeReadSection(manifest, "runState"),
+      artifacts: await this.safeReadSection(manifest, "artifacts"),
+      memory: await this.safeReadSection(manifest, "memory"),
+      preferences: await this.safeReadSection(manifest, "preferences"),
+      vectorIndex: await this.safeReadSection(manifest, "vectorIndex"),
     };
     return {
       id: manifest.id,
@@ -201,6 +201,14 @@ export class FileSessionStore implements SessionStorePort {
     const raw = await readFile(join(this.sessionDir(manifest.id), section.file), "utf8");
     const parsed = JSON.parse(raw) as SectionEnvelope;
     return parsed.data;
+  }
+
+  private async safeReadSection(manifest: SavedSessionManifest, name: SectionName): Promise<unknown> {
+    try {
+      return await this.readSection(manifest, name);
+    } catch {
+      return null;
+    }
   }
 
   private async readManifest(id: string): Promise<SavedSessionManifest> {

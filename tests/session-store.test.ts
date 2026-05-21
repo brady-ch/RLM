@@ -91,6 +91,10 @@ test("file session store reports degraded restore when a section is missing", as
     assert.equal(verification.status, "degraded");
     assert.deepEqual(verification.missing, ["memory"]);
     assert.equal(verification.unsafeToContinue, true);
+
+    const loaded = await store.load("demo");
+    assert.equal(loaded.verification.status, "degraded");
+    assert.equal(loaded.payload.memory, null);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

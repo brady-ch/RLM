@@ -101,6 +101,12 @@ async function routeRequest(
       }
       const sessionId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const saved = await sessionStore.load(sessionId);
+      if (saved.verification.status !== "complete") {
+        return sendJson(response, {
+          error: "Saved session restore is unsafe.",
+          savedSession: saved,
+        }, 409);
+      }
       session.restoreSnapshot(saved.payload.session as ReturnType<InteractiveExecutionSession["snapshot"]>);
       return sendJson(response, { ...session.snapshot(), savedSession: saved });
     }

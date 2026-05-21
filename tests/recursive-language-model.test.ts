@@ -2670,6 +2670,34 @@ test("control server saves and opens interactive session snapshots", async () =>
   }
 });
 
+test("control server refuses unsafe saved-session open with verification details", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-control-sessions-unsafe-"));
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "persist this workflow" });
+  const sessionStore = new FileSessionStore({ baseDir: dir, now: () => "2026-05-21T00:00:00.000Z" });
+  await sessionStore.save({
+    id: "bad",
+    payload: {
+      session: session.snapshot(),
+      artifacts: {},
+      memory: {},
+      preferences: {},
+      vectorIndex: {},
+    },
+  });
+  await writeFile(join(dir, "bad", "memory.json"), "{bad-json", "utf8");
+  const server = await startControlServer({ session, sessionStore });
+  try {
+    const open = await fetch(`${server.url}/api/saved-sessions/bad/open`, { method: "POST" });
+    assert.equal(open.status, 409);
+    const payload = await open.json() as { savedSession: { verification: { status: string; corrupt: Array<{ section: string }> } } };
+    assert.equal(payload.savedSession.verification.status, "failed");
+    assert.equal(payload.savedSession.verification.corrupt[0]?.section, "memory");
+  } finally {
+    await server.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("stale quality loop metadata invalidates after prompt and model edits", () => {
   const session = createInteractiveExecutionSession();
   const loop: QualityLoopMetadata = {
