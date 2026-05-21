@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev:ui",
     "devUrl": "http://127.0.0.1:5173",
-    "beforeBuildCommand": "npm run build:ui",
+    "beforeBuildCommand": "npm run package:build",
     "frontendDist": "../ui/dist"
   },
   "app": {
@@ -27,7 +27,7 @@
     "targets": ["app", "dmg", "msi", "deb"],
     "externalBin": [],
     "resources": {
-      "../scripts/desktop/ensure-ollama.mjs": "ensure-ollama.mjs"
+      "../dist/release": "release"
     }
   }
 }

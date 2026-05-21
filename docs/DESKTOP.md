@@ -10,6 +10,7 @@ npm run tauri:build
 ```
 
 The Tauri config lives under `src-tauri/` and uses the React UI build as its frontend bundle.
+For native builds, Tauri also bundles the staged release folder from `dist/release/` and starts the packaged `rlm ui` runtime as an app-managed child process. Closing the native window stops that RLM-managed child process.
 
 The staged release is written to:
 
