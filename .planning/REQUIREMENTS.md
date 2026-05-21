@@ -66,33 +66,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SESS-01 | TBD | Pending |
-| SESS-02 | TBD | Pending |
-| SESS-03 | TBD | Pending |
-| SESS-04 | TBD | Pending |
-| MEM-01 | TBD | Pending |
-| MEM-02 | TBD | Pending |
-| MEM-03 | TBD | Pending |
-| MEM-04 | TBD | Pending |
-| MEM-05 | TBD | Pending |
-| PREF-01 | TBD | Pending |
-| PREF-02 | TBD | Pending |
-| PREF-03 | TBD | Pending |
-| SURF-01 | TBD | Pending |
-| SURF-02 | TBD | Pending |
-| SURF-03 | TBD | Pending |
-| SURF-04 | TBD | Pending |
-| RETR-01 | TBD | Pending |
-| RETR-02 | TBD | Pending |
-| RETR-03 | TBD | Pending |
-| RETR-04 | TBD | Pending |
-| RETR-05 | TBD | Pending |
+| SESS-01 | Phase 25 | Pending |
+| SESS-02 | Phase 25 | Pending |
+| SESS-03 | Phase 25 | Pending |
+| SESS-04 | Phase 25 | Pending |
+| MEM-01 | Phase 26 | Pending |
+| MEM-02 | Phase 26 | Pending |
+| MEM-03 | Phase 26 | Pending |
+| MEM-04 | Phase 26 | Pending |
+| MEM-05 | Phase 26 | Pending |
+| PREF-01 | Phase 27 | Pending |
+| PREF-02 | Phase 27 | Pending |
+| PREF-03 | Phase 27 | Pending |
+| SURF-01 | Phase 25 | Pending |
+| SURF-02 | Phase 27 | Pending |
+| SURF-03 | Phase 27 | Pending |
+| SURF-04 | Phase 27 | Pending |
+| RETR-01 | Phase 28 | Pending |
+| RETR-02 | Phase 28 | Pending |
+| RETR-03 | Phase 28 | Pending |
+| RETR-04 | Phase 28 | Pending |
+| RETR-05 | Phase 28 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21
+- Mapped to phases: 21
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-21*
-*Last updated: 2026-05-21 after v1.4 requirements definition*
+*Last updated: 2026-05-21 after v1.4 roadmap creation*
