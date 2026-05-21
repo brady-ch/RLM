@@ -1,5 +1,22 @@
 # Milestones
 
+## v1.3 Desktop Product (Shipped: 2026-05-21)
+
+**Phases completed:** 4 phases, 4 plans, 0 tasks
+
+**Key accomplishments:**
+
+- Added runner adapter and sampling cascade metadata across config, providers, nodes, CLI render, and UI.
+- Added an in-app model library with curated Ollama catalog, Hugging Face compatibility search, install progress, and tier selection.
+- Added desktop release staging with bundled Node runtime, launch shims, UI assets, Ollama readiness helper, and package smoke.
+- Added Tauri shell configuration and native runtime lifecycle management for packaged `rlm ui`.
+- Produced a Linux `.deb` with `npm run tauri:build` and verified package smoke plus 149/149 tests.
+
+**Archive:** `.planning/milestones/v1.3-ROADMAP.md`  
+**Audit:** `.planning/milestones/v1.3-MILESTONE-AUDIT.md`
+
+---
+
 ## v1.2 Answer Quality Loops (Shipped: 2026-05-20)
 
 **Status:** completed (see `.planning/milestones/v1.2-MILESTONE-AUDIT.md`)  
