@@ -2,6 +2,7 @@
 
 ## Milestones
 
+- 🚧 **v1.5 Dynamic Graph Authoring** — Phases 30-35 (in progress)
 - ✅ **v1.4 Session Memory** — Phases 25-29, 29.1 (shipped 2026-05-21; archive: `.planning/milestones/v1.4-ROADMAP.md`)
 - ✅ **v1.3 Desktop Product** — Phases 21-24 (shipped 2026-05-21; archive: `.planning/milestones/v1.3-ROADMAP.md`)
 - ✅ **v1.2 Answer Quality Loops** — Phases 12-17 (shipped 2026-05-20; archive: `.planning/milestones/v1.2-ROADMAP.md`)
@@ -10,7 +11,24 @@
 
 ## Overview
 
-No active milestone. v1.4 shipped durable session memory with save/reopen, structured scopes, preferences, semantic retrieval, and integration hardening. Start the next milestone with `/gsd-new-milestone`.
+v1.5 makes the execution graph the primary product surface: model-driven plan-from-node replaces keyword heuristics and chat-first pre-run authoring, planner-assigned expert teams bind per node with visible overrides, approved graphs export as replayable `kind: graph` workflow sidecars, and a shared graph executor walks planned topology at run time — with full UI/CLI parity and no silent failures.
+
+## Phases
+
+**Phase Numbering:**
+- Phase numbers continue from v1.4 (last phase: 29.1).
+- v1.5 uses phases 30-35.
+
+### 🚧 v1.5 Dynamic Graph Authoring (In Progress)
+
+**Milestone Goal:** Make the execution graph the primary surface for planning, expert assignment, and replayable workflow export — with full UI/CLI parity and no silent failures.
+
+- [ ] **Phase 30: Plan-from-Node Foundation** - Model-driven child planning from any node with root-composer default and explicit failure states.
+- [ ] **Phase 31: Protected Replan UX** - Replace/Merge/Cancel gate when protected descendants exist on parent replan.
+- [ ] **Phase 32: Expert Team Binding** - Planner-assigned expert presets, inspector overrides, and execution-time allowlist enforcement.
+- [ ] **Phase 33: Graph Execution Loop** - Shared graph executor walks approved topology with per-node expert binding and visible runtime modes.
+- [ ] **Phase 34: Graph Workflow Export/Import** - Lossless `kind: graph` sidecars with playbook/pipeline variants and frozen replay.
+- [ ] **Phase 35: Integration Hardening** - UI/CLI parity, graph-primary UX default, and session save/reopen for new fields.
 
 <details>
 <summary>✅ v1.4 Session Memory (Phases 25-29, 29.1) — SHIPPED 2026-05-21</summary>
@@ -26,18 +44,102 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 
 </details>
 
+## Phase Details
+
+### Phase 30: Plan-from-Node Foundation
+**Goal**: Users can author graphs from any node using model-driven planning as the default path.
+**Depends on**: v1.4
+**Requirements**: PLAN-01, PLAN-02, PLAN-03, PLAN-04, PLAN-07
+**Success Criteria** (what must be TRUE):
+  1. User opens the UI to a focused empty root-composer and submits a prompt without a separate global pre-run chat step.
+  2. Submitting on any editable node creates or refreshes direct child nodes via model-driven planning (not keyword heuristics).
+  3. Submitting on a child node plans only that node's subtree, inheriting ancestor prompt context and plan-budget semantics.
+  4. Resubmitting a parent replans pristine auto-planned descendants without a confirmation dialog.
+  5. Planning failures, invalid planner output, and plan-budget exhaustion surface explicit UI and CLI states with no silent heuristic fallback.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 31: Protected Replan UX
+**Goal**: Users can safely replan parent nodes without losing protected edits.
+**Depends on**: Phase 30
+**Requirements**: PLAN-05, PLAN-06
+**Success Criteria** (what must be TRUE):
+  1. When protected descendants exist (manual edits, pins, model overrides, manual child adds, expert overrides), parent replan offers Replace subtree, Merge, or Cancel before applying changes.
+  2. Replace removes and replaces the planned subtree according to the user's choice.
+  3. Merge preserves protected nodes and regenerates or adjusts only non-protected planned descendants using parent plus pinned-child context.
+  4. CLI replan with the protection gate matches UI Replace/Merge/Cancel semantics.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 32: Expert Team Binding
+**Goal**: Each planned node shows and binds an expert preset with visible overrides before run.
+**Depends on**: Phase 31
+**Requirements**: TEAM-01, TEAM-02, TEAM-03, TEAM-04, TEAM-05, TEAM-06, TEAM-07
+**Success Criteria** (what must be TRUE):
+  1. Model-driven planner assigns an expert preset per graph node at plan time; node card shows preset and assignment mode.
+  2. User can override expert preset, tool allowlist, purpose-to-tier map, or runtime mode before run; overrides are marked custom and protected for replan.
+  3. Expert presets use shared tool implementations with per-node allowlists enforced at execution bind time (no duplicate adapters per role).
+  4. Expert purpose-to-tier maps from config are honored via purpose routing during node execution.
+  5. Planner sets `runtime: rlm` on high-complexity nodes at plan time; user can override to single-pass or RLM explicitly; trace and UI show effective runtime mode.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 33: Graph Execution Loop
+**Goal**: Approved graphs execute as planned topology with per-node expert binding, not root-only delegation.
+**Depends on**: Phase 32
+**Requirements**: EXEC-01, EXEC-02, EXEC-03
+**Success Criteria** (what must be TRUE):
+  1. Approved graph runs walk planned node topology via a shared graph executor (not root-only `selectAgent` delegation).
+  2. Each node resolves its expert profile and constrained tool allowlist at execution bind time.
+  3. Single-pass and RLM runtime modes execute with visible mode metadata and no silent runtime escalation.
+  4. User sees per-node execution status progress across the planned graph during an interactive run.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 34: Graph Workflow Export/Import
+**Goal**: Users can save, import, edit, and replay approved graphs as frozen `kind: graph` workflow sidecars.
+**Depends on**: Phase 33
+**Requirements**: EXPORT-01, EXPORT-02, EXPORT-03, EXPORT-04, EXPORT-05, EXPORT-06, EXPORT-07, TEAM-08
+**Success Criteria** (what must be TRUE):
+  1. User can save an approved graph as a lossless `kind: graph` workflow sidecar with Playbook, Pipeline, or Both variant choices for the same workflow id.
+  2. Playbook variant stores literal node prompts; Pipeline variant stores template prompts with `{{input}}` at least at the root.
+  3. User can import a saved graph workflow into the editor, edit it, and re-export with round-trip fidelity including expert assignment metadata.
+  4. Saved graph workflows run through a frozen graph executor without replan unless the user edits the graph.
+  5. CLI and UI support explicit `--variant playbook|pipeline` override, display which variant ran at start, and fail explicitly at run start for missing agents, models, template variables, or invalid sidecar schema.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 35: Integration Hardening
+**Goal**: v1.5 fields and flows work end-to-end across UI, CLI, and session memory with no silent regressions.
+**Depends on**: Phase 34
+**Requirements**: SURF-01, SURF-02, SURF-03
+**Success Criteria** (what must be TRUE):
+  1. CLI supports plan-from-node, replan with protection gate, graph workflow export/import, and frozen graph workflow run with the same semantics as the UI.
+  2. Graph node submit is the default authoring path; global chat-first pre-run authoring is demoted (chat may remain as secondary refinement).
+  3. Session save/reopen preserves plan lineage, expert fields, and graph workflow export metadata introduced in v1.5.
+  4. Integration tests cover plan→approve→run, export→CLI run, and protected replan flows with aligned error vocabulary across surfaces.
+**Plans**: TBD
+**UI hint**: yes
+
 ## Candidate Future Themes
 
-- Dynamic graph authoring: plan-from-node as the default graph creation path.
-- Graph workflow export and replay: save approved graphs as playbook/pipeline workflow sidecars.
-- Expert team and node assignment: visible expert presets, tool allowlists, and RLM/single-pass runtime choice per node.
-- Multi-runner beyond bundled Ollama: llama.cpp, vLLM, or cloud adapters after v1.3 validates the desktop product path.
+- Multi-runner adapters beyond bundled Ollama: llama.cpp, vLLM, or cloud APIs.
 - Release hardening: signed/reproducible artifacts, Windows/macOS package builds, GUI clean-machine smoke, and auto-update channel.
+- Developer launcher and local-folder plugin manager.
 
 ## Progress
 
+**Execution Order:**
+Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
+
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
+| 30. Plan-from-Node Foundation | v1.5 | 0/TBD | Not started | - |
+| 31. Protected Replan UX | v1.5 | 0/TBD | Not started | - |
+| 32. Expert Team Binding | v1.5 | 0/TBD | Not started | - |
+| 33. Graph Execution Loop | v1.5 | 0/TBD | Not started | - |
+| 34. Graph Workflow Export/Import | v1.5 | 0/TBD | Not started | - |
+| 35. Integration Hardening | v1.5 | 0/TBD | Not started | - |
 | 25-29, 29.1 Session Memory | v1.4 | 6/6 | Complete | 2026-05-21 |
 | 21-24 Desktop Product | v1.3 | archived | Complete | 2026-05-21 |
 | 12-17 Answer Quality Loops | v1.2 | archived | Complete | 2026-05-20 |

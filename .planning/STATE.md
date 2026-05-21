@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Dynamic Graph Authoring
-status: planning
-last_updated: "2026-05-21T06:15:22.562Z"
+status: ready
+last_updated: "2026-05-21T12:00:00.000Z"
 last_activity: 2026-05-21
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-21)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** v1.5 Dynamic Graph Authoring — defining requirements
+**Current focus:** v1.5 Dynamic Graph Authoring — Phase 30 Plan-from-Node Foundation
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-05-21 — Milestone v1.5 started
+Phase: 30 of 35 (Plan-from-Node Foundation)
+Plan: Not started
+Status: Ready to discuss/plan
+Last activity: 2026-05-21 — v1.5 roadmap created (Phases 30-35)
 
 ## Recently Completed
 
@@ -66,4 +66,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Complete v1.5 requirements and roadmap, then `/gsd-discuss-phase 30` or `/gsd-plan-phase 30`.
+- `/gsd-discuss-phase 30` or `/gsd-plan-phase 30` to begin Plan-from-Node Foundation.

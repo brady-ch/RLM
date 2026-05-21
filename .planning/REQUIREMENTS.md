@@ -78,11 +78,38 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (filled by roadmapper) | | |
+| PLAN-01 | Phase 30 | Pending |
+| PLAN-02 | Phase 30 | Pending |
+| PLAN-03 | Phase 30 | Pending |
+| PLAN-04 | Phase 30 | Pending |
+| PLAN-05 | Phase 31 | Pending |
+| PLAN-06 | Phase 31 | Pending |
+| PLAN-07 | Phase 30 | Pending |
+| EXPORT-01 | Phase 34 | Pending |
+| EXPORT-02 | Phase 34 | Pending |
+| EXPORT-03 | Phase 34 | Pending |
+| EXPORT-04 | Phase 34 | Pending |
+| EXPORT-05 | Phase 34 | Pending |
+| EXPORT-06 | Phase 34 | Pending |
+| EXPORT-07 | Phase 34 | Pending |
+| TEAM-01 | Phase 32 | Pending |
+| TEAM-02 | Phase 32 | Pending |
+| TEAM-03 | Phase 32 | Pending |
+| TEAM-04 | Phase 32 | Pending |
+| TEAM-05 | Phase 32 | Pending |
+| TEAM-06 | Phase 32 | Pending |
+| TEAM-07 | Phase 32 | Pending |
+| TEAM-08 | Phase 34 | Pending |
+| EXEC-01 | Phase 33 | Pending |
+| EXEC-02 | Phase 33 | Pending |
+| EXEC-03 | Phase 33 | Pending |
+| SURF-01 | Phase 35 | Pending |
+| SURF-02 | Phase 35 | Pending |
+| SURF-03 | Phase 35 | Pending |
 
 **Coverage:**
-- v1.5 requirements: 26 total
-- Mapped to phases: 0 (pending roadmap)
+- v1.5 requirements: 28 total
+- Mapped to phases: 28/28 ✓
 
 ---
 *Requirements defined: 2026-05-21*
