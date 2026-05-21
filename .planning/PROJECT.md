@@ -2,22 +2,13 @@
 
 ## Current State
 
-**Latest shipped milestone:** v1.3 - Desktop Product  
-**Current milestone:** v1.4 - Session Memory  
-**Status:** Defining requirements
+**Latest shipped milestone:** v1.4 - Session Memory  
+**Current milestone:** None — start next with `/gsd-new-milestone`  
+**Status:** Ready for next milestone planning
+
+v1.4 shipped durable session memory: saved session bundles with restore verification, structured memory scopes and episodic continuity, preference persistence and inspection surfaces, local semantic retrieval with visible degraded states, and Phase 29.1 integration hardening that binds live memory and vector state on save/reopen.
 
 v1.3 shipped the desktop product foundation: runner adapter/sampling cascade metadata, model library, release staging with bundled Node runtime, Tauri shell configuration, native RLM child-process lifecycle management, Ollama readiness integration, Linux `.deb` build output, package smoke, and full test verification.
-
-## Current Milestone: v1.4 Session Memory
-
-**Goal:** Build durable session memory so workflow runs, user/project preferences, artifacts, graph state, and relevant prior context survive across sessions without silent loss.
-
-**Target features:**
-- Save and reopen workflow sessions with prompts, graph state, artifacts, execution history, and run metadata.
-- Add structured memory scopes plus episodic logs so node context can be restored and packed deterministically.
-- Remember user/project preferences that affect future planning and execution behavior.
-- Expose memory in both UI and CLI so users can inspect what is saved, what is restored, and what is used as context.
-- Include semantic/vector retrieval over prior memory entries, with safeguards so retrieval/index failures degrade visibly instead of losing or blocking core session state.
 
 ## What This Is
 
@@ -51,19 +42,19 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Runner registry and sampling cascade expose effective global/model/node values - v1.3
 - ✓ Model library supports curated recommendations, Hugging Face search, download progress, and installed model selection - v1.3
 - ✓ Native desktop lifecycle starts packaged `rlm ui`, redirects the webview, checks Ollama readiness, and stops the managed RLM child on close - v1.3
+- ✓ Durable session save/reopen preserves workflow graph state, memory scopes, episodic history, preferences, and vector index metadata - v1.4
+- ✓ Structured memory scopes and episodic logs restore bounded node context deterministically - v1.4
+- ✓ User/project preferences can be persisted, inspected, edited, and deleted - v1.4
+- ✓ CLI and UI expose what memory is saved, restored, and injected into node context - v1.4
+- ✓ Semantic/vector retrieval surfaces relevant prior memory with visible degraded states - v1.4
 
 ### Active
 
-- [ ] Durable session save/reopen preserves workflow prompts, graph state, artifacts, execution history, and run metadata.
-- [x] Structured memory scopes and episodic logs restore bounded node context deterministically.
-- [x] User/project preferences can be persisted and applied to future planning and execution behavior.
-- [x] CLI and UI expose what memory is saved, restored, and injected into node context.
-- [x] Semantic/vector retrieval can surface relevant prior memory entries while preserving local-first operation and visible degraded states.
+(No active milestone requirements — run `/gsd-new-milestone` to define the next scope.)
 
 ### Candidate Next-Milestone Themes
 
 - Dynamic graph authoring, graph workflow export, and expert team node assignment.
-- Session memory with structured scopes, save/reopen, and vector retrieval.
 - Multi-runner adapters beyond bundled Ollama, including llama.cpp, vLLM, and cloud APIs.
 - Release hardening beyond baseline Linux installer: signed/reproducible artifacts, Windows/macOS package builds, GUI clean-machine smoke, and auto-update channel.
 - Developer launcher and local-folder plugin manager.
@@ -77,7 +68,7 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI execution surface in `ui/`, and a Tauri shell under `src-tauri/`. The current product path remains local-first and observable.
 
-For v1.4, "don't let anything get lost" is the priority: durability, explicit persistence boundaries, restore verification, and visible degraded/error states matter more than clever retrieval. The existing planted seed `Vector Memory Retrieval` is in scope for this milestone, but retrieval must build on reliable structured session state rather than replace it.
+v1.4 established the session memory foundation: durability, explicit persistence boundaries, restore verification, and visible degraded/error states. Retrieval builds on structured session state rather than replacing it.
 
 ## Constraints
 
@@ -104,4 +95,4 @@ For v1.4, "don't let anything get lost" is the priority: durability, explicit pe
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-21 after v1.4 milestone start*
+*Last updated: 2026-05-21 after v1.4 milestone shipped*

@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.4 Session Memory (Shipped: 2026-05-21)
+
+**Phases completed:** 6 phases, 6 plans, 0 tasks  
+**Known deferred items at close:** 1 (see STATE.md Deferred Items)
+
+**Key accomplishments:**
+
+- Added durable session snapshot store with restore verification and CLI/API/UI save/reopen controls.
+- Added structured memory scopes, episodic continuity, ACL audit records, and bounded context packets.
+- Added memory preference persistence plus CLI/API/UI inspection and edit controls.
+- Added local semantic retrieval with scoped vector hits and visible degraded index states.
+- Verified integrated memory flows and no-silent-loss degraded states end-to-end.
+- Closed session save/reopen memory binding gap: live memory, vector index, and runId rebind on restore.
+
+**Archive:** `.planning/milestones/v1.4-ROADMAP.md`  
+**Audit:** `.planning/milestones/v1.4-MILESTONE-AUDIT.md`
+
+---
+
 ## v1.3 Desktop Product (Shipped: 2026-05-21)
 
 **Phases completed:** 4 phases, 4 plans, 0 tasks
