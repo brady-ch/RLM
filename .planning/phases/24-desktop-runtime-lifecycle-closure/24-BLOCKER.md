@@ -1,7 +1,8 @@
 ---
 phase: 24
-status: blocked
+status: resolved
 blocked_at: 2026-05-20
+resolved_at: 2026-05-21
 requirements:
   - PROD-01
   - PROD-02
@@ -10,9 +11,13 @@ requirements:
 
 # Phase 24 Blocker: Native Linux Tauri Dependencies
 
+## Status
+
+Resolved. The required Linux Tauri dependencies are now available in the environment, and `npm run tauri:build` produced a Linux `.deb`.
+
 ## Blocker
 
-`npm run tauri:build` cannot complete in this environment because required Linux system development packages are missing and non-interactive sudo is unavailable.
+`npm run tauri:build` could not complete because required Linux system development packages were missing and non-interactive sudo was unavailable.
 
 Observed failure:
 
@@ -43,6 +48,8 @@ Then rerun:
 npm run tauri:build
 ```
 
+This now passes in the current environment.
+
 ## Work Completed Before Blocker
 
 - Staged release now bundles the packaging host's Node runtime and package smoke executes it.
@@ -53,4 +60,3 @@ npm run tauri:build
 - Tauri closes the RLM-managed child process on native window close.
 - `npm run package:smoke` passes.
 - `npm test` passes with 149/149 tests.
-

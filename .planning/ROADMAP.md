@@ -2,7 +2,7 @@
 
 ## Milestones
 
-- 🚧 **v1.3 Desktop Product** — Phases 21-24 (in progress; milestone audit gaps found)
+- 🚧 **v1.3 Desktop Product** — Phases 21-24 (implementation complete; ready for milestone audit)
 - ✅ **v1.2 Answer Quality Loops** — Phases 12-17 (shipped 2026-05-20; archive: `.planning/milestones/v1.2-ROADMAP.md`)
 - ✅ **v1.1 Interop, chat-first, plugins, constrained tools** — Phases 6-11, including inserted Phase 8.5 (shipped 2026-05-13; archive: `.planning/milestones/v1.1-ROADMAP.md`)
 - ✅ **v1.0 MVP** — Phases 1-5 (shipped 2026-05-08; archive: `.planning/milestones/v1.0-ROADMAP.md`)
@@ -41,7 +41,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-phases
 - [x] **Phase 21: Runner Registry and Sampling Cascade** - Formalize runners as adapters and implement global, model, and node sampling merge before product UI work.
 - [x] **Phase 22: Model Library** - Build curated and Hugging Face-backed model installation, progress, compatibility, and installed-model selection.
 - [x] **Phase 23: Desktop Release Staging** - Stage release artifacts, launch shims, Ollama helper, package smoke, documentation, and initial Tauri shell configuration.
-- [ ] **Phase 24: Desktop Runtime Lifecycle Closure** - Close v1.3 audit gaps by making the native desktop shell launch without Node/npm, manage RLM/Ollama lifecycle, and document or execute clean-machine smoke.
+- [x] **Phase 24: Desktop Runtime Lifecycle Closure** - Close v1.3 audit gaps by making the native desktop shell launch without Node/npm, manage RLM/Ollama lifecycle, and document or execute clean-machine smoke.
 
 ## Phase Details
 
@@ -126,7 +126,7 @@ Phases execute in numeric order: 21 -> 22 -> 23 -> 24
 | 21. Runner Registry and Sampling Cascade | v1.3 | 1/1 | Complete | 2026-05-20 |
 | 22. Model Library | v1.3 | 1/1 | Complete | 2026-05-20 |
 | 23. Desktop Release Staging | v1.3 | 1/1 | Complete | 2026-05-20 |
-| 24. Desktop Runtime Lifecycle Closure | v1.3 | 0/1 | Planned | - |
+| 24. Desktop Runtime Lifecycle Closure | v1.3 | 1/1 | Complete | 2026-05-21 |
 | v1.2 Answer Quality Loops | v1.2 | archived | Complete | 2026-05-20 |
 | v1.1 Interop, chat-first, plugins, constrained tools | v1.1 | archived | Complete | 2026-05-13 |
 | v1.0 MVP | v1.0 | archived | Complete | 2026-05-08 |
