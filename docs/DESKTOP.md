@@ -12,6 +12,15 @@ npm run tauri:build
 The Tauri config lives under `src-tauri/` and uses the React UI build as its frontend bundle.
 For native builds, Tauri also bundles the staged release folder from `dist/release/` and starts the packaged `rlm ui` runtime as an app-managed child process. Closing the native window stops that RLM-managed child process.
 
+Linux native build prerequisites:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libglib2.0-dev libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+```
+
+Without these packages, `npm run tauri:build` fails before compiling the app because `pkg-config` cannot find libraries such as `glib-2.0`, `gtk+-3.0`, and `webkit2gtk-4.1`.
+
 The staged release is written to:
 
 ```text
