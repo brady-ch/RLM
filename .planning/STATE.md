@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Desktop Product
-status: Awaiting next milestone
-stopped_at: v1.3 milestone archived after passing audit
-last_updated: "2026-05-21T00:32:02.329Z"
-last_activity: 2026-05-21 — Milestone v1.3 completed and archived
+milestone: v1.4
+milestone_name: Session Memory
+status: planning
+last_updated: "2026-05-21T00:46:25.838Z"
+last_activity: 2026-05-21
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-21)
 
 ## Current Position
 
-Phase: Milestone v1.3 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-05-21 — Milestone v1.3 completed and archived
+Status: Defining requirements
+Last activity: 2026-05-21 — Milestone v1.4 started
 
 ## Recently Completed
 

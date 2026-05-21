@@ -3,10 +3,21 @@
 ## Current State
 
 **Latest shipped milestone:** v1.3 - Desktop Product  
-**Current milestone:** None  
-**Status:** Awaiting next milestone definition
+**Current milestone:** v1.4 - Session Memory  
+**Status:** Defining requirements
 
 v1.3 shipped the desktop product foundation: runner adapter/sampling cascade metadata, model library, release staging with bundled Node runtime, Tauri shell configuration, native RLM child-process lifecycle management, Ollama readiness integration, Linux `.deb` build output, package smoke, and full test verification.
+
+## Current Milestone: v1.4 Session Memory
+
+**Goal:** Build durable session memory so workflow runs, user/project preferences, artifacts, graph state, and relevant prior context survive across sessions without silent loss.
+
+**Target features:**
+- Save and reopen workflow sessions with prompts, graph state, artifacts, execution history, and run metadata.
+- Add structured memory scopes plus episodic logs so node context can be restored and packed deterministically.
+- Remember user/project preferences that affect future planning and execution behavior.
+- Expose memory in both UI and CLI so users can inspect what is saved, what is restored, and what is used as context.
+- Include semantic/vector retrieval over prior memory entries, with safeguards so retrieval/index failures degrade visibly instead of losing or blocking core session state.
 
 ## What This Is
 
@@ -43,7 +54,11 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-No active milestone requirements. Create fresh requirements with `$gsd-new-milestone`.
+- [ ] Durable session save/reopen preserves workflow prompts, graph state, artifacts, execution history, and run metadata.
+- [ ] Structured memory scopes and episodic logs restore bounded node context deterministically.
+- [ ] User/project preferences can be persisted and applied to future planning and execution behavior.
+- [ ] CLI and UI expose what memory is saved, restored, and injected into node context.
+- [ ] Semantic/vector retrieval can surface relevant prior memory entries while preserving local-first operation and visible degraded states.
 
 ### Candidate Next-Milestone Themes
 
@@ -61,6 +76,8 @@ No active milestone requirements. Create fresh requirements with `$gsd-new-miles
 ## Context
 
 The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI execution surface in `ui/`, and a Tauri shell under `src-tauri/`. The current product path remains local-first and observable.
+
+For v1.4, "don't let anything get lost" is the priority: durability, explicit persistence boundaries, restore verification, and visible degraded/error states matter more than clever retrieval. The existing planted seed `Vector Memory Retrieval` is in scope for this milestone, but retrieval must build on reliable structured session state rather than replace it.
 
 ## Constraints
 
@@ -80,10 +97,11 @@ The repository has a layered TypeScript architecture (`src/application`, `src/do
 | v1.3 manages Ollama only while preserving adapter boundaries | Keeps the first desktop product installable and testable without multiplying runner lifecycle complexity | Shipped in v1.3 |
 | Sampling configuration resolves by cascade: global -> model -> node | Gives simple defaults and precise per-node control while preserving auditability | Shipped in v1.3 |
 | Desktop app starts packaged `rlm ui` as a managed child rather than duplicating the control server in Rust | Preserves the existing TypeScript control-server behavior while giving Tauri ownership of native process lifecycle | Shipped in v1.3 |
+| Session memory prioritizes durability and explicit restore semantics over retrieval cleverness | User explicitly wants all memory surfaces and does not want anything to get lost | Pending v1.4 |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-21 after v1.3 milestone completion*
+*Last updated: 2026-05-21 after v1.4 milestone start*
