@@ -56,8 +56,8 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 - [ ] Durable session save/reopen preserves workflow prompts, graph state, artifacts, execution history, and run metadata.
 - [x] Structured memory scopes and episodic logs restore bounded node context deterministically.
-- [ ] User/project preferences can be persisted and applied to future planning and execution behavior.
-- [ ] CLI and UI expose what memory is saved, restored, and injected into node context.
+- [x] User/project preferences can be persisted and applied to future planning and execution behavior.
+- [x] CLI and UI expose what memory is saved, restored, and injected into node context.
 - [ ] Semantic/vector retrieval can surface relevant prior memory entries while preserving local-first operation and visible degraded states.
 
 ### Candidate Next-Milestone Themes

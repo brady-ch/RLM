@@ -63,10 +63,13 @@ export interface MemoryPacketMetadata {
 
 export interface MemoryStorePort {
   readScope(sessionId: string, scopeId: string): Promise<MemoryScopeDocument | undefined>;
+  listScopes(sessionId: string): Promise<MemoryScopeDocument[]>;
   patchScope(request: MemoryScopePatchRequest): Promise<MemoryScopePatchResult>;
   listAudit(sessionId: string): Promise<MemoryAuditRecord[]>;
   appendEpisodic(entry: EpisodicMemoryEntry): Promise<void>;
+  listEpisodic(sessionId: string): Promise<EpisodicMemoryEntry[]>;
   getRollingSummary(sessionId: string, scopeIds: string[], maxChars: number): Promise<string>;
   recordPacketMetadata(metadata: MemoryPacketMetadata): Promise<void>;
+  listPacketMetadata(sessionId: string): Promise<MemoryPacketMetadata[]>;
   getLastPacketMetadata(sessionId: string, nodeId: string): Promise<MemoryPacketMetadata | undefined>;
 }

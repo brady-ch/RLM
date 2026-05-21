@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import type {
   EpisodicMemoryEntry,
@@ -22,14 +22,27 @@ export class FileMemoryStore implements MemoryStorePort {
   }
 
   async readScope(sessionId: string, scopeId: string): Promise<MemoryScopeDocument | undefined> {
-    try {
-      return JSON.parse(await readFile(this.scopePath(sessionId, scopeId), "utf8")) as MemoryScopeDocument;
-    } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        return undefined;
+    for (const path of this.scopeReadPaths(sessionId, scopeId)) {
+      try {
+        return JSON.parse(await readFile(path, "utf8")) as MemoryScopeDocument;
+      } catch (error: unknown) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+          continue;
+        }
+        throw error;
       }
-      throw error;
     }
+    return undefined;
+  }
+
+  async listScopes(sessionId: string): Promise<MemoryScopeDocument[]> {
+    const documents = new Map<string, MemoryScopeDocument>();
+    for (const dir of this.scopeListDirs(sessionId)) {
+      for (const document of await this.readScopeDir(dir)) {
+        documents.set(`${document.lifetime}:${document.scopeId}`, document);
+      }
+    }
+    return [...documents.values()].sort((a, b) => `${a.lifetime}:${a.scopeId}`.localeCompare(`${b.lifetime}:${b.scopeId}`));
   }
 
   async patchScope(request: MemoryScopePatchRequest): Promise<MemoryScopePatchResult> {
@@ -48,13 +61,10 @@ export class FileMemoryStore implements MemoryStorePort {
         scopeId: request.scopeId,
         lifetime: request.lifetime ?? existing?.lifetime ?? "session",
         version: currentVersion + 1,
-        content: {
-          ...(existing?.content ?? {}),
-          ...request.patch,
-        },
+        content: applyPatch(existing?.content ?? {}, request.patch),
         updatedAt: this.now(),
       };
-      await this.writeJson(this.scopePath(request.sessionId, request.scopeId), next);
+      await this.writeJson(this.scopePathForLifetime(request.sessionId, request.scopeId, next.lifetime), next);
       await this.appendEpisodicUnlocked({
         id: `episode-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         sessionId: request.sessionId,
@@ -77,6 +87,10 @@ export class FileMemoryStore implements MemoryStorePort {
     });
   }
 
+  async listEpisodic(sessionId: string): Promise<EpisodicMemoryEntry[]> {
+    return this.readArray<EpisodicMemoryEntry>(this.episodicPath(sessionId));
+  }
+
   async getRollingSummary(sessionId: string, scopeIds: string[], maxChars: number): Promise<string> {
     const allowed = new Set(scopeIds);
     const entries = await this.readArray<EpisodicMemoryEntry>(this.episodicPath(sessionId));
@@ -94,6 +108,10 @@ export class FileMemoryStore implements MemoryStorePort {
       filtered.push(metadata);
       await this.writeJson(this.packetPath(metadata.sessionId), filtered.slice(-200));
     });
+  }
+
+  async listPacketMetadata(sessionId: string): Promise<MemoryPacketMetadata[]> {
+    return this.readArray<MemoryPacketMetadata>(this.packetPath(sessionId));
   }
 
   async getLastPacketMetadata(sessionId: string, nodeId: string): Promise<MemoryPacketMetadata | undefined> {
@@ -166,8 +184,50 @@ export class FileMemoryStore implements MemoryStorePort {
     await rename(temp, path);
   }
 
-  private scopePath(sessionId: string, scopeId: string): string {
+  private scopePathForLifetime(sessionId: string, scopeId: string, lifetime: MemoryScopeDocument["lifetime"]): string {
+    if (lifetime === "project") {
+      return join(this.baseDir, "project", "scopes", `${safe(scopeId)}.json`);
+    }
+    if (lifetime === "permanent") {
+      return join(this.baseDir, "permanent", "scopes", `${safe(scopeId)}.json`);
+    }
     return join(this.sessionDir(sessionId), "scopes", `${safe(scopeId)}.json`);
+  }
+
+  private scopeReadPaths(sessionId: string, scopeId: string): string[] {
+    return [
+      this.scopePathForLifetime(sessionId, scopeId, "session"),
+      this.scopePathForLifetime(sessionId, scopeId, "project"),
+      this.scopePathForLifetime(sessionId, scopeId, "permanent"),
+    ];
+  }
+
+  private scopeListDirs(sessionId: string): string[] {
+    return [
+      join(this.sessionDir(sessionId), "scopes"),
+      join(this.baseDir, "project", "scopes"),
+      join(this.baseDir, "permanent", "scopes"),
+    ];
+  }
+
+  private async readScopeDir(dir: string): Promise<MemoryScopeDocument[]> {
+    let names: string[];
+    try {
+      names = await readdir(dir);
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return [];
+      }
+      throw error;
+    }
+    const documents: MemoryScopeDocument[] = [];
+    for (const name of names) {
+      if (!name.endsWith(".json")) {
+        continue;
+      }
+      documents.push(JSON.parse(await readFile(join(dir, name), "utf8")) as MemoryScopeDocument);
+    }
+    return documents;
   }
 
   private episodicPath(sessionId: string): string {
@@ -212,6 +272,18 @@ function truncate(text: string, maxChars: number): string {
     return text;
   }
   return `${text.slice(0, Math.max(0, maxChars - 15)).trimEnd()}\n[truncated]`;
+}
+
+function applyPatch(existing: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...existing };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === null) {
+      delete next[key];
+    } else {
+      next[key] = value;
+    }
+  }
+  return next;
 }
 
 function safe(value: string): string {

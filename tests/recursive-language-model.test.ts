@@ -31,6 +31,8 @@ import { renderResult } from "../src/cli/render.js";
 import type { RuntimeLogEvent, RuntimeLogger } from "../src/ports/runtime-logger-port.js";
 import { FileRunStateStore } from "../src/adapters/file-run-state-store.js";
 import { FileSessionStore } from "../src/adapters/file-session-store.js";
+import { FileMemoryStore } from "../src/adapters/file-memory-store.js";
+import { MemoryResolver } from "../src/application/memory-resolver.js";
 
 type QueueResponse = string | LanguageModelResponse | Error;
 
@@ -304,7 +306,7 @@ test("injects resolved memory packet and records node summary", async () => {
   assert.equal(result.answer, "memory-aware answer");
   assert.match(model.calls[0]?.messages[0]?.content ?? "", /remember project context/);
   assert.equal(result.metadata.memoryPackets?.[0]?.nodeId, "task-1");
-  assert.deepEqual(summaries, [{ nodeId: "task-1", summary: "memory-aware answer", scopeIds: ["run-manifest"] }]);
+  assert.deepEqual(summaries, [{ nodeId: "task-1", summary: "memory-aware answer", scopeIds: ["run-manifest", "project-preferences"] }]);
 });
 
 test("quality loop graph node stays collapsed with nested phase history", async () => {
@@ -2707,6 +2709,38 @@ test("control server saves and opens interactive session snapshots", async () =>
     const list = await (await fetch(`${server.url}/api/saved-sessions`)).json() as { sessions: Array<{ id: string; status: string }> };
     assert.equal(list.sessions[0]?.id, "demo");
     assert.equal(list.sessions[0]?.status, "complete");
+  } finally {
+    await server.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("control server exposes memory inspection and preference mutation", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-control-memory-"));
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "remember preferences" });
+  const store = new FileMemoryStore({ baseDir: dir, now: () => "2026-05-21T00:00:00.000Z" });
+  const memory = new MemoryResolver(store, { sessionId: "run-ui", now: () => "2026-05-21T00:00:00.000Z" });
+  const server = await startControlServer({ session, memory });
+  try {
+    const create = await fetch(`${server.url}/api/memory/preferences`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ key: "tone", value: "be direct" }),
+    });
+    assert.equal(create.status, 200);
+    const created = await create.json() as { scopes: Array<{ scopeId: string; content: Record<string, { value?: string }> }>; audit: Array<{ accepted: boolean }> };
+    assert.equal(created.scopes.find((scope) => scope.scopeId === "project-preferences")?.content["tone"]?.value, "be direct");
+    assert.deepEqual(created.audit.map((record) => record.accepted), [true]);
+
+    const inspect = await fetch(`${server.url}/api/memory`);
+    assert.equal(inspect.status, 200);
+    const inspected = await inspect.json() as { scopes: Array<{ scopeId: string; lifetime: string }> };
+    assert.equal(inspected.scopes.find((scope) => scope.scopeId === "project-preferences")?.lifetime, "project");
+
+    const remove = await fetch(`${server.url}/api/memory/preferences/tone`, { method: "DELETE" });
+    assert.equal(remove.status, 200);
+    const removed = await remove.json() as { scopes: Array<{ scopeId: string; content: Record<string, unknown> }> };
+    assert.equal(removed.scopes.find((scope) => scope.scopeId === "project-preferences")?.content["tone"], undefined);
   } finally {
     await server.close();
     await rm(dir, { recursive: true, force: true });

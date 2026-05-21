@@ -107,3 +107,35 @@ test("memory resolver builds bounded packets and records metadata", async () => 
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("project preferences survive across run ids and can be deleted", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-memory-"));
+  try {
+    const store = new FileMemoryStore({ baseDir: dir, now: () => "2026-05-20T00:00:00.000Z" });
+    const firstResolver = new MemoryResolver(store, { sessionId: "run-a", now: () => "2026-05-20T00:00:00.000Z" });
+    await firstResolver.setPreference({
+      key: "tone",
+      value: "be direct",
+      source: "test",
+      lifetime: "project",
+    });
+
+    const secondResolver = new MemoryResolver(store, { sessionId: "run-b", now: () => "2026-05-20T00:00:01.000Z" });
+    const beforeDelete = await secondResolver.inspect();
+    const scope = beforeDelete.scopes.find((item) => item.scopeId === "project-preferences");
+    assert.equal(scope?.lifetime, "project");
+    assert.deepEqual(scope?.content["tone"], {
+      value: "be direct",
+      source: "test",
+      updatedAt: "2026-05-20T00:00:00.000Z",
+    });
+
+    await secondResolver.deletePreference({ key: "tone" });
+    const afterDelete = await firstResolver.inspect();
+    const updatedScope = afterDelete.scopes.find((item) => item.scopeId === "project-preferences");
+    assert.equal(updatedScope?.content["tone"], undefined);
+    assert.equal(updatedScope?.version, 2);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

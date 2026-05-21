@@ -1815,7 +1815,7 @@ function defaultMemoryPolicy(): ComposerContextPolicy {
     reads: ["rolling summary"],
     writes: ["memory updates"],
     limits: ["2000 characters"],
-    memoryScopes: ["run-manifest"],
+    memoryScopes: ["run-manifest", "project-preferences"],
   };
 }
 

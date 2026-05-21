@@ -23,16 +23,16 @@
 
 ### Preferences
 
-- [ ] **PREF-01**: User can save project-level preferences that influence future planning or execution behavior.
-- [ ] **PREF-02**: User can explicitly opt into longer-lived user preferences and see when they are applied.
-- [ ] **PREF-03**: User can inspect, edit, or delete saved preferences so stale preference memory does not silently steer future runs.
+- [x] **PREF-01**: User can save project-level preferences that influence future planning or execution behavior.
+- [x] **PREF-02**: User can explicitly opt into longer-lived user preferences and see when they are applied.
+- [x] **PREF-03**: User can inspect, edit, or delete saved preferences so stale preference memory does not silently steer future runs.
 
 ### UI and CLI Surfaces
 
 - [ ] **SURF-01**: User can list, save, reopen, and inspect sessions from the CLI.
-- [ ] **SURF-02**: User can save, reopen, and inspect memory state from the UI.
-- [ ] **SURF-03**: User can inspect memory scopes, episodic summaries, preference sources, restore status, and context packet provenance in UI/API responses.
-- [ ] **SURF-04**: User sees explicit degraded states in CLI and UI when memory restore, memory resolution, indexing, or retrieval fails.
+- [x] **SURF-02**: User can save, reopen, and inspect memory state from the UI.
+- [x] **SURF-03**: User can inspect memory scopes, episodic summaries, preference sources, restore status, and context packet provenance in UI/API responses.
+- [x] **SURF-04**: User sees explicit degraded states in CLI and UI when memory restore, memory resolution, indexing, or retrieval fails.
 
 ### Semantic Retrieval
 
@@ -75,13 +75,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEM-03 | Phase 26 | Complete |
 | MEM-04 | Phase 26 | Complete |
 | MEM-05 | Phase 26 | Complete |
-| PREF-01 | Phase 27 | Pending |
-| PREF-02 | Phase 27 | Pending |
-| PREF-03 | Phase 27 | Pending |
+| PREF-01 | Phase 27 | Complete |
+| PREF-02 | Phase 27 | Complete |
+| PREF-03 | Phase 27 | Complete |
 | SURF-01 | Phase 25 | Complete |
-| SURF-02 | Phase 27 | Pending |
-| SURF-03 | Phase 27 | Pending |
-| SURF-04 | Phase 27 | Pending |
+| SURF-02 | Phase 27 | Complete |
+| SURF-03 | Phase 27 | Complete |
+| SURF-04 | Phase 27 | Complete |
 | RETR-01 | Phase 28 | Pending |
 | RETR-02 | Phase 28 | Pending |
 | RETR-03 | Phase 28 | Pending |

@@ -78,12 +78,33 @@ async function main(): Promise<void> {
   const sessionStore = new FileSessionStore({
     baseDir: join(process.cwd(), ".rlm", "sessions"),
   });
+  const memoryStore = new FileMemoryStore({
+    baseDir: join(process.cwd(), ".rlm", "memory"),
+  });
   if (options.sessionList) {
     console.log(JSON.stringify({ sessions: await sessionStore.list() }, null, 2));
     return;
   }
   if (options.sessionInspect) {
     console.log(JSON.stringify(await sessionStore.inspect(options.sessionInspect), null, 2));
+    return;
+  }
+  if (options.memoryInspect) {
+    const inspector = new MemoryResolver(memoryStore, { sessionId: options.memoryInspect });
+    console.log(JSON.stringify(await inspector.inspect(), null, 2));
+    return;
+  }
+  if (options.preferenceSet) {
+    const { key, value } = parsePreferenceAssignment(options.preferenceSet);
+    const preferences = new MemoryResolver(memoryStore, { sessionId: "preferences-cli" });
+    await preferences.setPreference({ key, value, source: "cli", lifetime: "project" });
+    console.log(JSON.stringify(await preferences.inspect(), null, 2));
+    return;
+  }
+  if (options.preferenceDelete) {
+    const preferences = new MemoryResolver(memoryStore, { sessionId: "preferences-cli" });
+    await preferences.deletePreference({ key: options.preferenceDelete });
+    console.log(JSON.stringify(await preferences.inspect(), null, 2));
     return;
   }
 
@@ -205,9 +226,6 @@ async function main(): Promise<void> {
     actor: "runtime",
     capabilityToken: `${runId}:runtime`,
   };
-  const memoryStore = new FileMemoryStore({
-    baseDir: join(process.cwd(), ".rlm", "memory"),
-  });
   await memoryStore.patchScope({
     sessionId: runId,
     scopeId: "run-manifest",
@@ -222,6 +240,19 @@ async function main(): Promise<void> {
     },
     lifetime: "session",
   });
+  const existingPreferences = await memoryStore.readScope(runId, "project-preferences");
+  if (!existingPreferences) {
+    await memoryStore.patchScope({
+      sessionId: runId,
+      scopeId: "project-preferences",
+      actor: "runtime",
+      expectedVersion: 0,
+      allowedScopes: ["project-preferences"],
+      writes: ["preferences"],
+      patch: {},
+      lifetime: "project",
+    });
+  }
   const runtimeMemory = new MemoryResolver(memoryStore, { sessionId: runId });
   logger?.log({
     stage: "interop",
@@ -285,6 +316,7 @@ async function main(): Promise<void> {
         uiDistDir,
         modelLibrary,
         sessionStore,
+        memory: runtimeMemory,
         onConfirmRun: (activeSession) => uiRunner.start(activeSession),
       });
       cleanup.track({
@@ -411,4 +443,17 @@ async function waitForApproval(): Promise<void> {
     process.stderr.write("Waiting for approval: type 'run' to continue.\n");
     chunks.length = 0;
   }
+}
+
+function parsePreferenceAssignment(value: string): { key: string; value: string } {
+  const separator = value.indexOf("=");
+  if (separator <= 0) {
+    throw new Error("--preference-set must use key=value.");
+  }
+  const key = value.slice(0, separator).trim();
+  const preferenceValue = value.slice(separator + 1).trim();
+  if (!key || !preferenceValue) {
+    throw new Error("--preference-set requires non-empty key and value.");
+  }
+  return { key, value: preferenceValue };
 }

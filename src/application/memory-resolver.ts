@@ -1,9 +1,24 @@
 import type { ComposerContextPolicy } from "../domain/types.js";
-import type { EpisodicMemoryEntry, MemoryPacketMetadata, MemoryStorePort } from "../ports/memory-store-port.js";
+import type {
+  EpisodicMemoryEntry,
+  MemoryAuditRecord,
+  MemoryPacketMetadata,
+  MemoryScopeDocument,
+  MemoryScopeLifetime,
+  MemoryStorePort,
+} from "../ports/memory-store-port.js";
 
 export interface MemoryContextPacket {
   text: string;
   metadata: MemoryPacketMetadata;
+}
+
+export interface MemoryInspectionSnapshot {
+  sessionId: string;
+  scopes: MemoryScopeDocument[];
+  episodic: EpisodicMemoryEntry[];
+  packets: MemoryPacketMetadata[];
+  audit: MemoryAuditRecord[];
 }
 
 export class MemoryResolver {
@@ -81,6 +96,61 @@ export class MemoryResolver {
       timestamp: this.input.now?.() ?? new Date().toISOString(),
     };
     await this.store.appendEpisodic(entry);
+  }
+
+  async inspect(): Promise<MemoryInspectionSnapshot> {
+    return {
+      sessionId: this.input.sessionId,
+      scopes: await this.store.listScopes(this.input.sessionId),
+      episodic: await this.store.listEpisodic(this.input.sessionId),
+      packets: await this.store.listPacketMetadata(this.input.sessionId),
+      audit: await this.store.listAudit(this.input.sessionId),
+    };
+  }
+
+  async setPreference(input: { key: string; value: string; source?: string; lifetime?: MemoryScopeLifetime; expectedVersion?: number }): Promise<void> {
+    const key = input.key.trim();
+    const value = input.value.trim();
+    if (!key || !value) {
+      throw new Error("Preference key and value are required.");
+    }
+    const existing = await this.store.readScope(this.input.sessionId, "project-preferences");
+    await this.store.patchScope({
+      sessionId: this.input.sessionId,
+      scopeId: "project-preferences",
+      actor: "user",
+      expectedVersion: input.expectedVersion ?? existing?.version ?? 0,
+      allowedScopes: ["project-preferences"],
+      writes: ["preferences"],
+      lifetime: input.lifetime ?? "project",
+      patch: {
+        [key]: {
+          value,
+          source: input.source ?? "user",
+          updatedAt: this.input.now?.() ?? new Date().toISOString(),
+        },
+      },
+    });
+  }
+
+  async deletePreference(input: { key: string; expectedVersion?: number }): Promise<void> {
+    const key = input.key.trim();
+    if (!key) {
+      throw new Error("Preference key is required.");
+    }
+    const existing = await this.store.readScope(this.input.sessionId, "project-preferences");
+    await this.store.patchScope({
+      sessionId: this.input.sessionId,
+      scopeId: "project-preferences",
+      actor: "user",
+      expectedVersion: input.expectedVersion ?? existing?.version ?? 0,
+      allowedScopes: ["project-preferences"],
+      writes: ["preferences"],
+      lifetime: existing?.lifetime ?? "project",
+      patch: {
+        [key]: null,
+      },
+    });
   }
 }
 

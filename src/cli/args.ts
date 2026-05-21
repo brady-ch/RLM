@@ -25,6 +25,9 @@ export interface CliOptions {
   sessionList: boolean;
   sessionInspect?: string;
   openSession?: string;
+  memoryInspect?: string;
+  preferenceSet?: string;
+  preferenceDelete?: string;
 }
 
 const DEFAULT_QUALITY_LOOP_CONFIG = {
@@ -76,6 +79,9 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   let sessionList = false;
   let sessionInspect: string | undefined;
   let openSession: string | undefined;
+  let memoryInspect: string | undefined;
+  let preferenceSet: string | undefined;
+  let preferenceDelete: string | undefined;
   const promptParts: string[] = [];
 
   for (let index = 0; index < args.length; index += 1) {
@@ -257,6 +263,21 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
       index += 1;
       continue;
     }
+    if (arg === "--memory-inspect") {
+      memoryInspect = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg === "--preference-set") {
+      preferenceSet = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg === "--preference-delete") {
+      preferenceDelete = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
 
     promptParts.push(arg);
   }
@@ -264,7 +285,10 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   const promptInput = promptParts.join(" ").trim();
   let prompt = promptInput;
   if (!promptInput) {
-    if (command === "ui") {
+    if (memoryInspect || preferenceSet || preferenceDelete || sessionList || sessionInspect) {
+      prompt = "";
+    }
+    else if (command === "ui") {
       prompt = DEFAULT_UI_BOOTSTRAP_PROMPT;
     }
     else {
@@ -313,6 +337,15 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   if (openSession) {
     options.openSession = openSession;
   }
+  if (memoryInspect) {
+    options.memoryInspect = memoryInspect;
+  }
+  if (preferenceSet) {
+    options.preferenceSet = preferenceSet;
+  }
+  if (preferenceDelete) {
+    options.preferenceDelete = preferenceDelete;
+  }
   if (modelOverride) {
     options.modelOverride = modelOverride;
   }
@@ -359,6 +392,9 @@ export function helpText(): string {
     "  --session-list         List saved UI sessions and exit",
     "  --session-inspect <id> Inspect saved session restore verification and exit",
     "  --open-session <id>    Open a saved session in UI mode",
+    "  --memory-inspect <run> Inspect memory scopes, episodes, packets, and audit for a run id",
+    "  --preference-set <k=v> Set a project memory preference and exit",
+    "  --preference-delete <k> Delete a project memory preference and exit",
     "",
     "Environment:",
     '  RLM_UI_DIST=<dir>         Override packaged UI asset directory.',

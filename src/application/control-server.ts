@@ -5,6 +5,7 @@ import { extname, join, normalize, relative, resolve, sep } from "node:path";
 import type { AddressInfo } from "node:net";
 import type { InteractiveExecutionSession } from "./execution-controller.js";
 import type { ModelLibraryService } from "./model-library.js";
+import type { MemoryResolver } from "./memory-resolver.js";
 import type { ApprovalMode, DeleteStrategy } from "../domain/types.js";
 import type { SavedSessionPayload, SessionStorePort } from "../ports/session-store-port.js";
 
@@ -19,11 +20,12 @@ export async function startControlServer(input: {
   port?: number | undefined;
   uiDistDir?: string | undefined;
   modelLibrary?: ModelLibraryService | undefined;
+  memory?: MemoryResolver | undefined;
   sessionStore?: SessionStorePort | undefined;
   onConfirmRun?: ((session: InteractiveExecutionSession) => void | Promise<void>) | undefined;
 }): Promise<ControlServer> {
   const server = createServer((request, response) => {
-    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun, input.modelLibrary, input.sessionStore);
+    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun, input.modelLibrary, input.sessionStore, input.memory);
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -52,6 +54,7 @@ async function routeRequest(
   onConfirmRun?: ((session: InteractiveExecutionSession) => void | Promise<void>) | undefined,
   modelLibrary?: ModelLibraryService | undefined,
   sessionStore?: SessionStorePort | undefined,
+  memory?: MemoryResolver | undefined,
 ): Promise<void> {
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
   try {
@@ -74,6 +77,33 @@ async function routeRequest(
         return sendJson(response, { error: "Saved sessions are not configured." }, 404);
       }
       return sendJson(response, { sessions: await sessionStore.list() });
+    }
+    if (request.method === "GET" && url.pathname === "/api/memory") {
+      if (!memory) {
+        return sendJson(response, { error: "Memory inspection is not configured." }, 404);
+      }
+      return sendJson(response, await memory.inspect());
+    }
+    if (request.method === "POST" && url.pathname === "/api/memory/preferences") {
+      if (!memory) {
+        return sendJson(response, { error: "Memory inspection is not configured." }, 404);
+      }
+      const body = await readJsonBody(request);
+      await memory.setPreference({
+        key: String(body["key"] ?? ""),
+        value: String(body["value"] ?? ""),
+        source: "ui",
+        lifetime: body["lifetime"] === "permanent" ? "permanent" : "project",
+      });
+      return sendJson(response, await memory.inspect());
+    }
+    if (request.method === "DELETE" && url.pathname.match(/^\/api\/memory\/preferences\/[^/]+$/)) {
+      if (!memory) {
+        return sendJson(response, { error: "Memory inspection is not configured." }, 404);
+      }
+      const key = decodeURIComponent(url.pathname.split("/")[4] ?? "");
+      await memory.deletePreference({ key });
+      return sendJson(response, await memory.inspect());
     }
     if (request.method === "POST" && url.pathname === "/api/saved-sessions/save") {
       if (!sessionStore) {

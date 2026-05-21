@@ -274,6 +274,14 @@ type SavedSessionRecord = SavedSessionSummary & {
   verification: SavedSessionVerification;
 };
 
+type MemorySnapshot = {
+  sessionId: string;
+  scopes: Array<{ scopeId: string; lifetime: "session" | "project" | "permanent"; version: number; content: Record<string, unknown>; updatedAt: string }>;
+  episodic: Array<{ id: string; nodeId?: string; type: string; summary: string; scopeIds?: string[]; timestamp: string }>;
+  packets: Array<{ nodeId: string; scopeIds: string[]; charsUsed: number; charLimit: number; truncated: boolean; degraded: boolean; reasons: string[]; createdAt: string }>;
+  audit: Array<{ seq: number; scopeId: string; actor: string; accepted: boolean; reason: string; timestamp: string }>;
+};
+
 /** Mirror `labelForCategory` / status strings in `src/domain/execution-failure.ts` for header copy. */
 const uiRunStatusLabels: Record<ExecutionStatus, string> = {
   planned: "Planned",
@@ -340,6 +348,7 @@ function App() {
   const [modelSearchResults, setModelSearchResults] = useState<ModelLibraryEntry[]>([]);
   const [savedSessions, setSavedSessions] = useState<SavedSessionSummary[]>([]);
   const [savedSessionDetail, setSavedSessionDetail] = useState<SavedSessionRecord | undefined>();
+  const [memory, setMemory] = useState<MemorySnapshot | undefined>();
   const selectedNode = snapshot.graph.nodes.find((node) => node.id === selectedNodeId) ?? snapshot.graph.nodes[0];
   const readiness = snapshot.chat?.readiness ?? {
     state: "draft" as const,
@@ -375,10 +384,19 @@ function App() {
     setSavedSessions(payload.sessions);
   }, []);
 
+  const refreshMemory = useCallback(async () => {
+    const response = await fetch("/api/memory");
+    if (!response.ok) {
+      return;
+    }
+    setMemory(await response.json() as MemorySnapshot);
+  }, []);
+
   useEffect(() => {
     void refresh();
     void refreshModelLibrary();
     void refreshSavedSessions();
+    void refreshMemory();
     const events = new EventSource("/api/events");
     events.addEventListener("snapshot", (event) => {
       setSnapshot(JSON.parse((event as MessageEvent).data) as SessionSnapshot);
@@ -387,9 +405,10 @@ function App() {
       void refresh();
       void refreshModelLibrary();
       void refreshSavedSessions();
+      void refreshMemory();
     });
     return () => events.close();
-  }, [refresh, refreshModelLibrary, refreshSavedSessions]);
+  }, [refresh, refreshMemory, refreshModelLibrary, refreshSavedSessions]);
 
   useEffect(() => {
     if (draggingRef.current) {
@@ -536,6 +555,11 @@ function App() {
             await refresh();
             await refreshSavedSessions();
           }}
+          setErrorMessage={setErrorMessage}
+        />
+        <MemoryPanel
+          memory={memory}
+          refresh={refreshMemory}
           setErrorMessage={setErrorMessage}
         />
         <ModelLibraryPanel
@@ -833,6 +857,81 @@ function SavedSessionPanel({
           </div>
         )
         : null}
+    </section>
+  );
+}
+
+function MemoryPanel({
+  memory,
+  refresh,
+  setErrorMessage,
+}: {
+  memory?: MemorySnapshot;
+  refresh: () => Promise<void>;
+  setErrorMessage: (message: string | undefined) => void;
+}) {
+  const [key, setKey] = useState("");
+  const [value, setValue] = useState("");
+  const preferences = memory?.scopes.find((scope) => scope.scopeId === "project-preferences");
+  const preferenceEntries = Object.entries(preferences?.content ?? {});
+  const rejected = memory?.audit.filter((record) => !record.accepted) ?? [];
+  const degradedPackets = memory?.packets.filter((packet) => packet.degraded || packet.truncated) ?? [];
+
+  return (
+    <section className="memory-panel">
+      <div className="panel-heading">
+        <div>
+          <label>Memory</label>
+          <div className="meta-row">{memory ? `${memory.scopes.length} scopes · ${memory.episodic.length} episodes · ${memory.packets.length} packets` : "Memory inspection unavailable."}</div>
+        </div>
+        <button className="icon" title="Refresh memory" onClick={() => runAction(setErrorMessage, refresh, refresh)}>
+          <RefreshCw size={16} aria-hidden />
+        </button>
+      </div>
+      <div className="preference-editor">
+        <input value={key} onChange={(event) => setKey(event.target.value)} placeholder="Preference key" />
+        <input value={value} onChange={(event) => setValue(event.target.value)} placeholder="Preference value" />
+        <button
+          disabled={!key.trim() || !value.trim()}
+          onClick={() => runAction(setErrorMessage, async () => {
+            await post("/api/memory/preferences", { key, value, lifetime: "project" });
+            setKey("");
+            setValue("");
+          }, refresh)}
+        >
+          Save
+        </button>
+      </div>
+      {preferenceEntries.length === 0
+        ? <div className="meta-row">No project preferences saved.</div>
+        : preferenceEntries.map(([prefKey, prefValue]) => (
+          <div className="memory-row" key={prefKey}>
+            <div>
+              <b>{prefKey}</b>
+              <span>{formatPreferenceValue(prefValue)}</span>
+            </div>
+            <button
+              className="icon danger"
+              aria-label={`Delete preference ${prefKey}`}
+              onClick={() => runAction(setErrorMessage, () => del(`/api/memory/preferences/${encodeURIComponent(prefKey)}`), refresh)}
+            >
+              <Trash2 size={16} aria-hidden />
+            </button>
+          </div>
+        ))}
+      <div className="memory-grid">
+        {(memory?.scopes ?? []).slice(0, 6).map((scope) => (
+          <div className="memory-chip" key={`${scope.lifetime}:${scope.scopeId}`}>
+            <b>{scope.scopeId}</b>
+            <span>{scope.lifetime} · v{scope.version}</span>
+          </div>
+        ))}
+      </div>
+      {(memory?.episodic ?? []).slice(-4).map((entry) => (
+        <div className="meta-row" key={entry.id}>{entry.type}{entry.nodeId ? ` ${entry.nodeId}` : ""}: {entry.summary}</div>
+      ))}
+      {degradedPackets.length > 0 ? <div className="meta-row warning">{degradedPackets.length} degraded or truncated packet{degradedPackets.length === 1 ? "" : "s"} recorded.</div> : null}
+      {rejected.length > 0 ? <div className="meta-row warning">{rejected.length} rejected memory write{rejected.length === 1 ? "" : "s"} in audit.</div> : null}
     </section>
   );
 }
@@ -1414,6 +1513,13 @@ async function post(path: string, body: Record<string, unknown>) {
   }
 }
 
+async function del(path: string) {
+  const response = await fetch(path, { method: "DELETE" });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+}
+
 createRoot(document.getElementById("root")!).render(<App />);
 
 function approvalModeLabel(mode: "full" | "initial-plan" | "initial-plan-recursive"): string {
@@ -1433,6 +1539,14 @@ function phaseLabel(phase: QualityLoopPhaseName): string {
 function scoreFromSelection(scoreBasis: string[] | undefined): string | undefined {
   const score = scoreBasis?.find((item) => item.startsWith("best_of_progress_score:"))?.split(":")[1];
   return score && score.trim().length > 0 ? score : undefined;
+}
+
+function formatPreferenceValue(value: unknown): string {
+  if (!value || typeof value !== "object") {
+    return String(value ?? "");
+  }
+  const record = value as Record<string, unknown>;
+  return String(record["value"] ?? JSON.stringify(record));
 }
 
 function deleteStrategyLabel(strategy: "delete_subtree" | "rewire_dependents"): string {
