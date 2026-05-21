@@ -3,10 +3,12 @@
 ## Current State
 
 **Latest shipped milestone:** v1.4 - Session Memory  
-**Current milestone:** None — start next with `/gsd-new-milestone`  
-**Status:** Ready for next milestone planning
+**Current milestone:** v1.5 - Dynamic Graph Authoring  
+**Status:** Defining requirements and roadmap
 
 v1.4 shipped durable session memory: saved session bundles with restore verification, structured memory scopes and episodic continuity, preference persistence and inspection surfaces, local semantic retrieval with visible degraded states, and Phase 29.1 integration hardening that binds live memory and vector state on save/reopen.
+
+v1.5 makes the graph the primary authoring surface: model-driven plan-from-node (replacing keyword heuristics and chat-first pre-run flow), graph workflow export/import (playbook and pipeline variants), and planner-assigned expert teams with visible overrides — with matching UI and CLI behavior.
 
 v1.3 shipped the desktop product foundation: runner adapter/sampling cascade metadata, model library, release staging with bundled Node runtime, Tauri shell configuration, native RLM child-process lifecycle management, Ollama readiness integration, Linux `.deb` build output, package smoke, and full test verification.
 
@@ -50,11 +52,13 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-(No active milestone requirements — run `/gsd-new-milestone` to define the next scope.)
+- [ ] Plan-from-node is the default graph authoring path (root-composer submit, model-driven child planning, replan with protected-state UX) — v1.5
+- [ ] Approved graphs save/import as `kind: graph` workflow sidecars (playbook + pipeline variants) — v1.5
+- [ ] Planner assigns expert presets per node with visible overrides and exportable assignment metadata — v1.5
+- [ ] UI and CLI expose the same planning, export, and expert semantics with explicit failure states — v1.5
 
 ### Candidate Next-Milestone Themes
 
-- Dynamic graph authoring, graph workflow export, and expert team node assignment.
 - Multi-runner adapters beyond bundled Ollama, including llama.cpp, vLLM, and cloud APIs.
 - Release hardening beyond baseline Linux installer: signed/reproducible artifacts, Windows/macOS package builds, GUI clean-machine smoke, and auto-update channel.
 - Developer launcher and local-folder plugin manager.
@@ -88,11 +92,25 @@ v1.4 established the session memory foundation: durability, explicit persistence
 | v1.3 manages Ollama only while preserving adapter boundaries | Keeps the first desktop product installable and testable without multiplying runner lifecycle complexity | Shipped in v1.3 |
 | Sampling configuration resolves by cascade: global -> model -> node | Gives simple defaults and precise per-node control while preserving auditability | Shipped in v1.3 |
 | Desktop app starts packaged `rlm ui` as a managed child rather than duplicating the control server in Rust | Preserves the existing TypeScript control-server behavior while giving Tauri ownership of native process lifecycle | Shipped in v1.3 |
-| Session memory prioritizes durability and explicit restore semantics over retrieval cleverness | User explicitly wants all memory surfaces and does not want anything to get lost | Active v1.4; structured memory foundation complete |
+| Session memory prioritizes durability and explicit restore semantics over retrieval cleverness | User explicitly wants all memory surfaces and does not want anything to get lost | Shipped v1.4 |
+| Graph-primary authoring replaces chat-first pre-run flow | Users describe work on the canvas; plan-from-node is the default path | Active v1.5 |
+| Expert team v1 uses shared tools with per-node allowlists | Keeps extension stack unified; specialized tool surfaces deferred until measured failures | Active v1.5 |
+| Graph export uses lossless `kind: graph` sidecars with playbook/pipeline variants | Bridges dynamic authoring to replayable workflows without replan-by-default | Active v1.5 |
+
+## Current Milestone: v1.5 Dynamic Graph Authoring
+
+**Goal:** Make the execution graph the primary product surface for planning, expert assignment, and replayable workflow export — with full UI/CLI parity and no silent failures.
+
+**Target features:**
+- Model-driven plan-from-node (replace `plannedChildrenFor` heuristics); root-composer default; pristine vs protected replan (Replace / Merge / Cancel)
+- Graph workflow export/import: playbook (literal prompts), pipeline (`{{input}}` templates), smart run defaults, `--variant` override
+- Expert team: planner-assigned presets, inspector overrides, allowlist-only tools, plan-time `runtime: rlm` on high-complexity nodes
+- Graph-primary UX: node submit replaces separate global chat-first authoring as default
+- UI + CLI parity for plan, replan, export, import, and expert metadata
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-21 after v1.4 milestone shipped*
+*Last updated: 2026-05-21 — milestone v1.5 Dynamic Graph Authoring started*

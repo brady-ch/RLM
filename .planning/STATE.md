@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Session Memory
-status: shipped
-last_updated: "2026-05-21T06:15:00.000Z"
+milestone: v1.5
+milestone_name: Dynamic Graph Authoring
+status: planning
+last_updated: "2026-05-21T06:15:22.562Z"
 last_activity: 2026-05-21
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-21)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Planning next milestone
+**Current focus:** v1.5 Dynamic Graph Authoring — defining requirements
 
 ## Current Position
 
-Phase: —
+Phase: Not started (defining requirements)
 Plan: —
-Status: v1.4 shipped — ready for `/gsd-new-milestone`
-Last activity: 2026-05-21 — v1.4 Session Memory milestone archived
+Status: Defining requirements
+Last activity: 2026-05-21 — Milestone v1.5 started
 
 ## Recently Completed
 
@@ -66,4 +66,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with `/gsd-new-milestone` when ready.
+- Complete v1.5 requirements and roadmap, then `/gsd-discuss-phase 30` or `/gsd-plan-phase 30`.
