@@ -7,6 +7,7 @@ import type {
   MemoryScopeLifetime,
   MemoryStorePort,
 } from "../ports/memory-store-port.js";
+import type { SemanticMemoryIndex } from "./semantic-memory-index.js";
 
 export interface MemoryContextPacket {
   text: string;
@@ -25,10 +26,12 @@ export class MemoryResolver {
   constructor(
     private readonly store: MemoryStorePort,
     private readonly input: { sessionId: string; now?: () => string },
+    private readonly retrieval?: SemanticMemoryIndex,
   ) {}
 
   async buildPacket(input: {
     nodeId: string;
+    prompt: string;
     policy: ComposerContextPolicy;
   }): Promise<MemoryContextPacket | undefined> {
     const scopeIds = input.policy.memoryScopes;
@@ -63,6 +66,19 @@ export class MemoryResolver {
       chunks.push(`Rolling summary:\n${summary}`);
     }
 
+    let retrievalHits: MemoryPacketMetadata["retrievalHits"] | undefined;
+    if (input.policy.reads.some((read) => /relevant memory/i.test(read))) {
+      const result = await this.retrieval?.search({ query: input.prompt, scopeIds, limit: 4 });
+      if (result?.status === "ready" && result.hits.length > 0) {
+        retrievalHits = result.hits;
+        provenance.push(...result.hits.map((hit) => ({ kind: "retrieval" as const, id: hit.id })));
+        chunks.push(`Retrieval hits:\n${result.hits.map((hit) => `- ${hit.source}:${hit.scopeId} score=${hit.score.toFixed(3)} ${hit.snippet}`).join("\n")}`);
+      } else if (result?.status === "degraded") {
+        degraded = true;
+        reasons.push(`retrieval degraded: ${result.reason ?? "unknown reason"}`);
+      }
+    }
+
     const raw = chunks.join("\n\n");
     const text = truncate(raw, charLimit);
     const metadata: MemoryPacketMetadata = {
@@ -75,6 +91,7 @@ export class MemoryResolver {
       degraded,
       reasons,
       provenance,
+      retrievalHits,
       createdAt: this.input.now?.() ?? new Date().toISOString(),
     };
     await this.store.recordPacketMetadata(metadata);

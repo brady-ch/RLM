@@ -225,7 +225,7 @@ export interface RuntimeRunState {
 }
 
 export interface RuntimeMemory {
-  buildPacket(input: { nodeId: string; policy: ComposerContextPolicy }): Promise<{ text: string; metadata: MemoryPacketMetadata } | undefined>;
+  buildPacket(input: { nodeId: string; prompt: string; policy: ComposerContextPolicy }): Promise<{ text: string; metadata: MemoryPacketMetadata } | undefined>;
   appendNodeSummary(input: { nodeId: string; summary: string; scopeIds: string[]; artifactRefs?: string[] }): Promise<void>;
 }
 

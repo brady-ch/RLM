@@ -1334,7 +1334,7 @@ export class RecursiveLanguageModel {
 
     const policy = task.contextPolicy ?? this.executionNodes.get(task.id)?.composer?.contextPolicy ?? defaultMemoryPolicy();
     try {
-      const packet = await this.memory.buildPacket({ nodeId: task.id, policy });
+      const packet = await this.memory.buildPacket({ nodeId: task.id, prompt: task.prompt, policy });
       if (!packet) {
         return undefined;
       }

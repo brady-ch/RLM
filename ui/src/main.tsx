@@ -278,7 +278,7 @@ type MemorySnapshot = {
   sessionId: string;
   scopes: Array<{ scopeId: string; lifetime: "session" | "project" | "permanent"; version: number; content: Record<string, unknown>; updatedAt: string }>;
   episodic: Array<{ id: string; nodeId?: string; type: string; summary: string; scopeIds?: string[]; timestamp: string }>;
-  packets: Array<{ nodeId: string; scopeIds: string[]; charsUsed: number; charLimit: number; truncated: boolean; degraded: boolean; reasons: string[]; createdAt: string }>;
+  packets: Array<{ nodeId: string; scopeIds: string[]; charsUsed: number; charLimit: number; truncated: boolean; degraded: boolean; reasons: string[]; retrievalHits?: Array<{ scopeId: string; source: string; snippet: string; score: number }>; createdAt: string }>;
   audit: Array<{ seq: number; scopeId: string; actor: string; accepted: boolean; reason: string; timestamp: string }>;
 };
 
@@ -931,6 +931,9 @@ function MemoryPanel({
         <div className="meta-row" key={entry.id}>{entry.type}{entry.nodeId ? ` ${entry.nodeId}` : ""}: {entry.summary}</div>
       ))}
       {degradedPackets.length > 0 ? <div className="meta-row warning">{degradedPackets.length} degraded or truncated packet{degradedPackets.length === 1 ? "" : "s"} recorded.</div> : null}
+      {(memory?.packets ?? []).flatMap((packet) => packet.retrievalHits ?? []).slice(0, 3).map((hit, index) => (
+        <div className="meta-row" key={`${hit.scopeId}-${index}`}>{hit.source}:{hit.scopeId} score {hit.score.toFixed(3)} - {hit.snippet}</div>
+      ))}
       {rejected.length > 0 ? <div className="meta-row warning">{rejected.length} rejected memory write{rejected.length === 1 ? "" : "s"} in audit.</div> : null}
     </section>
   );

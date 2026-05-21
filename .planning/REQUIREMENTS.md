@@ -36,11 +36,11 @@
 
 ### Semantic Retrieval
 
-- [ ] **RETR-01**: Runtime can generate local embeddings for memory text through an embedding adapter, with Ollama as the first provider.
-- [ ] **RETR-02**: Runtime indexes eligible episodic entries, structured memory text, and selected artifact excerpts asynchronously without blocking node completion.
-- [ ] **RETR-03**: Runtime retrieves relevant prior memory entries only when node policy requests them, filtered by authorized memory scopes and bounded by context limits.
-- [ ] **RETR-04**: User can inspect retrieval hits with source, scope, snippet, score, and degraded/index-stale status.
-- [ ] **RETR-05**: Saved sessions preserve or rebuild vector index metadata without making vector retrieval the canonical source of memory.
+- [x] **RETR-01**: Runtime can generate local embeddings for memory text through an embedding adapter, with Ollama as the first provider.
+- [x] **RETR-02**: Runtime indexes eligible episodic entries, structured memory text, and selected artifact excerpts asynchronously without blocking node completion.
+- [x] **RETR-03**: Runtime retrieves relevant prior memory entries only when node policy requests them, filtered by authorized memory scopes and bounded by context limits.
+- [x] **RETR-04**: User can inspect retrieval hits with source, scope, snippet, score, and degraded/index-stale status.
+- [x] **RETR-05**: Saved sessions preserve or rebuild vector index metadata without making vector retrieval the canonical source of memory.
 
 ## Future Requirements
 
@@ -82,11 +82,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SURF-02 | Phase 27 | Complete |
 | SURF-03 | Phase 27 | Complete |
 | SURF-04 | Phase 27 | Complete |
-| RETR-01 | Phase 28 | Pending |
-| RETR-02 | Phase 28 | Pending |
-| RETR-03 | Phase 28 | Pending |
-| RETR-04 | Phase 28 | Pending |
-| RETR-05 | Phase 28 | Pending |
+| RETR-01 | Phase 28 | Complete |
+| RETR-02 | Phase 28 | Complete |
+| RETR-03 | Phase 28 | Complete |
+| RETR-04 | Phase 28 | Complete |
+| RETR-05 | Phase 28 | Complete |
 
 **Coverage:**
 - v1.4 requirements: 21 total

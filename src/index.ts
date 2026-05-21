@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { FileRunStateStore } from "./adapters/file-run-state-store.js";
 import { FileMemoryStore } from "./adapters/file-memory-store.js";
+import { FileVectorIndex } from "./adapters/file-vector-index.js";
+import { OllamaEmbeddingModel } from "./adapters/ollama-embedding-model.js";
 import { FileSessionStore } from "./adapters/file-session-store.js";
 import { runConfiguredAgent } from "./application/agent-runner.js";
 import { createAgentRegistry, selectAgent } from "./application/agent-registry.js";
@@ -15,6 +17,7 @@ import {
 } from "./application/mcp-skill-runtime.js";
 import { MemoryManager } from "./application/memory-manager.js";
 import { MemoryResolver } from "./application/memory-resolver.js";
+import { SemanticMemoryIndex } from "./application/semantic-memory-index.js";
 import { createMcpTools, createSkillTool } from "./application/interop-runtime.js";
 import {
   applyModelOverride,
@@ -253,7 +256,16 @@ async function main(): Promise<void> {
       lifetime: "project",
     });
   }
-  const runtimeMemory = new MemoryResolver(memoryStore, { sessionId: runId });
+  const semanticMemoryIndex = new SemanticMemoryIndex({
+    sessionId: runId,
+    store: memoryStore,
+    embeddings: new OllamaEmbeddingModel({
+      ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
+      ...(process.env.RLM_EMBED_MODEL ? { model: process.env.RLM_EMBED_MODEL } : {}),
+    }),
+    index: new FileVectorIndex({ path: join(process.cwd(), ".rlm", "memory", "vector-index.json") }),
+  });
+  const runtimeMemory = new MemoryResolver(memoryStore, { sessionId: runId }, semanticMemoryIndex);
   logger?.log({
     stage: "interop",
     message: "mcp+skill runtime initialized",

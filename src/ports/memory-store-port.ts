@@ -57,7 +57,8 @@ export interface MemoryPacketMetadata {
   truncated: boolean;
   degraded: boolean;
   reasons: string[];
-  provenance: Array<{ kind: "scope" | "episodic"; id: string; version?: number | undefined }>;
+  provenance: Array<{ kind: "scope" | "episodic" | "retrieval"; id: string; version?: number | undefined }>;
+  retrievalHits?: Array<{ id: string; scopeId: string; source: "scope" | "episodic" | "artifact"; snippet: string; score: number }> | undefined;
   createdAt: string;
 }
 

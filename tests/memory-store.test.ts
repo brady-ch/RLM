@@ -4,7 +4,21 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { FileMemoryStore } from "../src/adapters/file-memory-store.js";
+import { FileVectorIndex } from "../src/adapters/file-vector-index.js";
 import { MemoryResolver } from "../src/application/memory-resolver.js";
+import { SemanticMemoryIndex } from "../src/application/semantic-memory-index.js";
+import type { EmbeddingPort } from "../src/ports/embedding-port.js";
+
+class KeywordEmbedding implements EmbeddingPort {
+  async embed(input: string): Promise<number[]> {
+    const text = input.toLowerCase();
+    return [
+      text.includes("typescript") ? 1 : 0,
+      text.includes("memory") ? 1 : 0,
+      text.includes("release") ? 1 : 0,
+    ];
+  }
+}
 
 test("file memory store enforces scope ACLs and version conflicts", async () => {
   const dir = await mkdtemp(join(tmpdir(), "rlm-memory-"));
@@ -85,6 +99,7 @@ test("memory resolver builds bounded packets and records metadata", async () => 
     });
     const packet = await resolver.buildPacket({
       nodeId: "task-2",
+      prompt: "persist memory",
       policy: {
         reads: ["rolling summary"],
         writes: ["memory updates"],
@@ -135,6 +150,58 @@ test("project preferences survive across run ids and can be deleted", async () =
     const updatedScope = afterDelete.scopes.find((item) => item.scopeId === "project-preferences");
     assert.equal(updatedScope?.content["tone"], undefined);
     assert.equal(updatedScope?.version, 2);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("semantic memory retrieval injects scoped vector hits", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-memory-"));
+  try {
+    const store = new FileMemoryStore({ baseDir: dir, now: () => "2026-05-20T00:00:00.000Z" });
+    await store.patchScope({
+      sessionId: "run-3",
+      scopeId: "project-facts",
+      actor: "setup",
+      expectedVersion: 0,
+      allowedScopes: ["project-facts"],
+      writes: ["memory updates"],
+      patch: { fact: "TypeScript memory resolver" },
+    });
+    await store.patchScope({
+      sessionId: "run-3",
+      scopeId: "private",
+      actor: "setup",
+      expectedVersion: 0,
+      allowedScopes: ["private"],
+      writes: ["memory updates"],
+      patch: { fact: "release packaging" },
+    });
+    const retrieval = new SemanticMemoryIndex({
+      sessionId: "run-3",
+      store,
+      embeddings: new KeywordEmbedding(),
+      index: new FileVectorIndex({ path: join(dir, "vector-index.json") }),
+      now: () => "2026-05-20T00:00:01.000Z",
+    });
+    const resolver = new MemoryResolver(store, { sessionId: "run-3", now: () => "2026-05-20T00:00:02.000Z" }, retrieval);
+
+    const packet = await resolver.buildPacket({
+      nodeId: "task-9",
+      prompt: "Use TypeScript memory",
+      policy: {
+        reads: ["relevant memory entries"],
+        writes: ["memory updates"],
+        limits: ["2000 characters"],
+        memoryScopes: ["project-facts"],
+      },
+    });
+
+    assert.ok(packet);
+    assert.match(packet.text, /Retrieval hits/);
+    assert.match(packet.text, /TypeScript memory resolver/);
+    assert.doesNotMatch(packet.text, /release packaging/);
+    assert.equal(packet.metadata.retrievalHits?.[0]?.scopeId, "project-facts");
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
