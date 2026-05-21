@@ -86,6 +86,13 @@ textarea:focus-visible {
   justify-content: space-between;
 }
 
+.panel-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-md);
+  justify-content: space-between;
+}
+
 .icon {
   min-width: 36px;
   padding: 0;
@@ -137,6 +144,114 @@ textarea:focus-visible {
   font-size: var(--font-label);
   padding: var(--space-xs) var(--space-sm);
   font-weight: 700;
+}
+
+.session-panel {
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-md);
+}
+
+.session-list {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.session-row {
+  align-items: center;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-sm);
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  min-height: 44px;
+  padding: var(--space-sm);
+}
+
+.session-row.degraded {
+  border-color: #d7a350;
+}
+
+.session-row.failed {
+  border-color: #a53d3d;
+}
+
+.session-row-main {
+  display: grid;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.session-row-main b,
+.session-row-main span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-row-main span,
+.session-empty span {
+  color: #56665d;
+  font-size: var(--font-meta);
+}
+
+.restore-pill {
+  border: 1px solid #cad3ce;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-meta);
+  font-weight: 700;
+  padding: var(--space-xs) var(--space-sm);
+  text-transform: uppercase;
+}
+
+.restore-pill.complete,
+.restore-grid .complete {
+  color: #2f6f45;
+}
+
+.restore-pill.degraded,
+.restore-grid .degraded {
+  color: #9a6117;
+}
+
+.restore-pill.failed,
+.restore-grid .failed {
+  color: #8f2f2f;
+}
+
+.restore-detail {
+  background: #f4f7fb;
+  border: 1px solid #cfd8e3;
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+}
+
+.restore-detail.degraded {
+  background: #fff8ec;
+  border-color: #d7a350;
+}
+
+.restore-detail.failed {
+  background: #fff3f0;
+  border-color: #e4b0a8;
+}
+
+.restore-grid {
+  display: grid;
+  font-size: var(--font-meta);
+  gap: var(--space-xs) var(--space-sm);
+  grid-template-columns: auto auto minmax(0, 1fr);
+}
+
+.restore-grid span,
+.restore-grid em {
+  color: #56665d;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .node-card {

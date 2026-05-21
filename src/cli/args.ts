@@ -22,6 +22,9 @@ export interface CliOptions {
   baseUrl?: string;
   host?: string;
   uiPort?: number;
+  sessionList: boolean;
+  sessionInspect?: string;
+  openSession?: string;
 }
 
 const DEFAULT_QUALITY_LOOP_CONFIG = {
@@ -70,6 +73,9 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   let baseUrl = env.OLLAMA_HOST;
   let host = env.RLM_HOST;
   let uiPort: number | undefined;
+  let sessionList = false;
+  let sessionInspect: string | undefined;
+  let openSession: string | undefined;
   const promptParts: string[] = [];
 
   for (let index = 0; index < args.length; index += 1) {
@@ -237,6 +243,20 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
       index += 1;
       continue;
     }
+    if (arg === "--session-list") {
+      sessionList = true;
+      continue;
+    }
+    if (arg === "--session-inspect") {
+      sessionInspect = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg === "--open-session") {
+      openSession = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
 
     promptParts.push(arg);
   }
@@ -267,6 +287,7 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     approvalMode,
     approve,
     model,
+    sessionList,
   };
   if (agent) {
     options.agent = agent;
@@ -285,6 +306,12 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   }
   if (uiPort !== undefined) {
     options.uiPort = uiPort;
+  }
+  if (sessionInspect) {
+    options.sessionInspect = sessionInspect;
+  }
+  if (openSession) {
+    options.openSession = openSession;
   }
   if (modelOverride) {
     options.modelOverride = modelOverride;
@@ -329,6 +356,9 @@ export function helpText(): string {
     "  --approval-mode <mode> Approval behavior: full | initial-plan | initial-plan-recursive",
     "  --approve              Auto-approve a require-approval run (non-interactive)",
     "  --ui-port <n>          Port for local React Flow UI. Default: available port",
+    "  --session-list         List saved UI sessions and exit",
+    "  --session-inspect <id> Inspect saved session restore verification and exit",
+    "  --open-session <id>    Open a saved session in UI mode",
     "",
     "Environment:",
     '  RLM_UI_DIST=<dir>         Override packaged UI asset directory.',
@@ -354,6 +384,7 @@ function helpOptions(env: NodeJS.ProcessEnv): CliOptions {
     approvalMode: "full",
     approve: false,
     model: env.RLM_MODEL ?? "granite4.1:3b",
+    sessionList: false,
   };
   if (env.RLM_MODEL) {
     options.modelOverride = env.RLM_MODEL;

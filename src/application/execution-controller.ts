@@ -108,6 +108,36 @@ export class InteractiveExecutionSession {
     }
   }
 
+  restoreSnapshot(snapshot: ReturnType<InteractiveExecutionSession["snapshot"]>): void {
+    this.nodes.clear();
+    for (const node of snapshot.graph.nodes) {
+      this.nodes.set(node.id, { ...node });
+    }
+    this.edges.splice(0, this.edges.length, ...snapshot.graph.edges.map((edge) => ({ ...edge })));
+    this.graphViewport = snapshot.graph.viewport ? { ...snapshot.graph.viewport } : { x: 0, y: 0, zoom: 1 };
+    this.pending.clear();
+    this.resolvedApprovalTokens.clear();
+    this.statusWaiters.clear();
+    this.statusWaitAbortHandlers.clear();
+    this.approvalMode = snapshot.approvalMode;
+    this.futureAutoApprovalsPaused = snapshot.autoApprovalPaused;
+    this.initialPlanAccepted = snapshot.graph.nodes.some((node) => node.approvalSource === "manual" || node.approvalSource === "auto");
+    this.chatReadiness = snapshot.chat?.readiness ?? {
+      state: "draft",
+      reason: "Restored session: review graph and run when ready.",
+    };
+    this.pendingMutation = undefined;
+    this.mutationVersion += 1;
+    this.pendingClarification = snapshot.chat?.pendingClarification;
+    this.pendingClarificationWaiter = undefined;
+    this.clarificationHistory = [...(snapshot.chat?.clarificationHistory ?? [])];
+    this.qualityLoopDecisions.clear();
+    this.runLifecycle = "idle";
+    this.autoApproveNextRootExecution = false;
+    this.abortSnapshot = snapshot.chat?.abortSnapshot;
+    this.publish({ type: "execution", status: snapshot.status, message: "session snapshot restored" });
+  }
+
   readonly control: ExecutionControl = {
     approvalMode: this.approvalMode,
     isCancelled: () => this.cancellation.isCancelled(),

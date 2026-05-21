@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { FileRunStateStore } from "./adapters/file-run-state-store.js";
+import { FileSessionStore } from "./adapters/file-session-store.js";
 import { runConfiguredAgent } from "./application/agent-runner.js";
 import { createAgentRegistry, selectAgent } from "./application/agent-registry.js";
 import { ExtensionHost } from "./application/extension-host.js";
@@ -69,6 +70,18 @@ async function main(): Promise<void> {
   const options = parseArgs(cliArgv);
   if (options.command === "help") {
     console.log(helpText());
+    return;
+  }
+
+  const sessionStore = new FileSessionStore({
+    baseDir: join(process.cwd(), ".rlm", "sessions"),
+  });
+  if (options.sessionList) {
+    console.log(JSON.stringify({ sessions: await sessionStore.list() }, null, 2));
+    return;
+  }
+  if (options.sessionInspect) {
+    console.log(JSON.stringify(await sessionStore.inspect(options.sessionInspect), null, 2));
     return;
   }
 
@@ -216,6 +229,13 @@ async function main(): Promise<void> {
   try {
     if (options.command === "ui") {
       const session = createInteractiveExecutionSession({ seedRootPrompt: options.prompt });
+      if (options.openSession) {
+        const saved = await sessionStore.load(options.openSession);
+        session.restoreSnapshot(saved.payload.session as ReturnType<typeof session.snapshot>);
+        if (saved.verification.status !== "complete") {
+          console.error(`Saved session ${saved.id} restored with ${saved.verification.status} verification; unsafe continuation is blocked.`);
+        }
+      }
       const runtimeHost = resolveRuntimeHostSelection(projectConfig, {
         cliHostId: options.host,
         env: process.env,
@@ -243,6 +263,7 @@ async function main(): Promise<void> {
         port: options.uiPort,
         uiDistDir,
         modelLibrary,
+        sessionStore,
         onConfirmRun: (activeSession) => uiRunner.start(activeSession),
       });
       cleanup.track({

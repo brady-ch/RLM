@@ -30,6 +30,7 @@ import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
 import type { RuntimeLogEvent, RuntimeLogger } from "../src/ports/runtime-logger-port.js";
 import { FileRunStateStore } from "../src/adapters/file-run-state-store.js";
+import { FileSessionStore } from "../src/adapters/file-session-store.js";
 
 type QueueResponse = string | LanguageModelResponse | Error;
 
@@ -2631,6 +2632,41 @@ test("control server exposes model library catalog install search and tier selec
   }
   finally {
     await server.close();
+  }
+});
+
+test("control server saves and opens interactive session snapshots", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "rlm-control-sessions-"));
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "persist this workflow" });
+  const child = session.addNode({ parentId: "root-composer", prompt: "child prompt" });
+  session.connectNode({ nodeId: child.id, parentId: "root-composer" });
+  const sessionStore = new FileSessionStore({ baseDir: dir, now: () => "2026-05-21T00:00:00.000Z" });
+  const server = await startControlServer({ session, sessionStore });
+  try {
+    const save = await fetch(`${server.url}/api/saved-sessions/save`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: "demo", name: "Demo" }),
+    });
+    assert.equal(save.status, 200);
+    const saved = await save.json() as { id: string; verification: { status: string; sections: Array<{ name: string }> } };
+    assert.equal(saved.id, "demo");
+    assert.equal(saved.verification.status, "complete");
+    assert.ok(saved.verification.sections.some((section) => section.name === "vectorIndex"));
+
+    session.deleteNodeWithStrategy(child.id, "delete_subtree");
+    assert.equal(session.snapshot().graph.nodes.some((node) => node.id === child.id), false);
+
+    const open = await fetch(`${server.url}/api/saved-sessions/demo/open`, { method: "POST" });
+    assert.equal(open.status, 200);
+    assert.equal(session.snapshot().graph.nodes.some((node) => node.id === child.id), true);
+
+    const list = await (await fetch(`${server.url}/api/saved-sessions`)).json() as { sessions: Array<{ id: string; status: string }> };
+    assert.equal(list.sessions[0]?.id, "demo");
+    assert.equal(list.sessions[0]?.status, "complete");
+  } finally {
+    await server.close();
+    await rm(dir, { recursive: true, force: true });
   }
 });
 

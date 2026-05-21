@@ -2,7 +2,7 @@
 
 ## Milestones
 
-- 🚧 **v1.4 Session Memory** — Phases 25-29 (requirements defined; roadmap pending approval)
+- 🚧 **v1.4 Session Memory** — Phases 25-29 (Phase 25 complete)
 - ✅ **v1.3 Desktop Product** — Phases 21-24 (shipped 2026-05-21; archive: `.planning/milestones/v1.3-ROADMAP.md`)
 - ✅ **v1.2 Answer Quality Loops** — Phases 12-17 (shipped 2026-05-20; archive: `.planning/milestones/v1.2-ROADMAP.md`)
 - ✅ **v1.1 Interop, chat-first, plugins, constrained tools** — Phases 6-11, including inserted Phase 8.5 (shipped 2026-05-13; archive: `.planning/milestones/v1.1-ROADMAP.md`)
@@ -25,7 +25,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 
 </details>
 
-- [ ] **Phase 25: Session Snapshot Store** - Create durable session save/reopen foundation with restore verification and safe continuation boundaries.
+- [x] **Phase 25: Session Snapshot Store** - Create durable session save/reopen foundation with restore verification and safe continuation boundaries.
 - [ ] **Phase 26: Structured Memory Store and Resolver** - Persist structured memory scopes, episodic logs, ACL/audit records, and bounded context packets.
 - [ ] **Phase 27: Memory Preferences and Inspection Surfaces** - Add project/user preference memory plus CLI, API, and UI inspection/edit controls.
 - [ ] **Phase 28: Semantic Retrieval Pipeline** - Add local embeddings, async indexing, scoped retrieval, visible retrieval hits, and degraded index states.
@@ -43,8 +43,11 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   3. Reopened sessions restore graph, approval/clarification state, artifact refs, execution status, and safe continuation metadata.
   4. Restore verification reports complete, degraded, or failed status with concrete missing/corrupt fields.
   5. Reopened sessions only continue from safe approval or clarification boundaries, not mid-model-call state.
-**Plans**: 0 plans
+**Plans**: 1 plan
 **UI hint**: yes
+
+Plans:
+- [x] 25-01-PLAN.md — Implement durable session bundles, restore verification, API/CLI/UI controls, and tests.
 
 ### Phase 26: Structured Memory Store and Resolver
 **Goal**: Add canonical structured memory and episodic continuity, then resolve bounded, provenance-rich context packets for node/model calls.
@@ -113,7 +116,7 @@ Phases execute in numeric order: 25 -> 26 -> 27 -> 28 -> 29
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 25. Session Snapshot Store | v1.4 | 0/0 | Not Started | — |
+| 25. Session Snapshot Store | v1.4 | 1/1 | Complete | 2026-05-21 |
 | 26. Structured Memory Store and Resolver | v1.4 | 0/0 | Not Started | — |
 | 27. Memory Preferences and Inspection Surfaces | v1.4 | 0/0 | Not Started | — |
 | 28. Semantic Retrieval Pipeline | v1.4 | 0/0 | Not Started | — |

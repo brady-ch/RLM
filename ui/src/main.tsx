@@ -15,7 +15,7 @@ import {
   type OnConnect,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Check, Download, GitBranchPlus, RefreshCw, Scissors, Search, Square, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, Download, FolderOpen, GitBranchPlus, RefreshCw, Scissors, Search, Square, Trash2, X } from "lucide-react";
 import "./styles.css";
 
 type ExecutionStatus =
@@ -251,6 +251,29 @@ type ModelLibrarySnapshot = {
   tiers: Record<string, string>;
 };
 
+type SavedSessionRestoreStatus = "complete" | "degraded" | "failed";
+
+type SavedSessionSummary = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  status: SavedSessionRestoreStatus;
+  path: string;
+};
+
+type SavedSessionVerification = {
+  status: SavedSessionRestoreStatus;
+  unsafeToContinue: boolean;
+  missing: string[];
+  corrupt: Array<{ section: string; reason: string }>;
+  sections: Array<{ name: string; status: SavedSessionRestoreStatus; path: string; version?: number; reason?: string }>;
+};
+
+type SavedSessionRecord = SavedSessionSummary & {
+  verification: SavedSessionVerification;
+};
+
 /** Mirror `labelForCategory` / status strings in `src/domain/execution-failure.ts` for header copy. */
 const uiRunStatusLabels: Record<ExecutionStatus, string> = {
   planned: "Planned",
@@ -315,6 +338,8 @@ function App() {
   const [modelLibrary, setModelLibrary] = useState<ModelLibrarySnapshot | undefined>();
   const [modelSearch, setModelSearch] = useState("");
   const [modelSearchResults, setModelSearchResults] = useState<ModelLibraryEntry[]>([]);
+  const [savedSessions, setSavedSessions] = useState<SavedSessionSummary[]>([]);
+  const [savedSessionDetail, setSavedSessionDetail] = useState<SavedSessionRecord | undefined>();
   const selectedNode = snapshot.graph.nodes.find((node) => node.id === selectedNodeId) ?? snapshot.graph.nodes[0];
   const readiness = snapshot.chat?.readiness ?? {
     state: "draft" as const,
@@ -341,9 +366,19 @@ function App() {
     setModelLibrary(await response.json() as ModelLibrarySnapshot);
   }, []);
 
+  const refreshSavedSessions = useCallback(async () => {
+    const response = await fetch("/api/saved-sessions");
+    if (!response.ok) {
+      return;
+    }
+    const payload = await response.json() as { sessions: SavedSessionSummary[] };
+    setSavedSessions(payload.sessions);
+  }, []);
+
   useEffect(() => {
     void refresh();
     void refreshModelLibrary();
+    void refreshSavedSessions();
     const events = new EventSource("/api/events");
     events.addEventListener("snapshot", (event) => {
       setSnapshot(JSON.parse((event as MessageEvent).data) as SessionSnapshot);
@@ -351,9 +386,10 @@ function App() {
     events.addEventListener("execution", () => {
       void refresh();
       void refreshModelLibrary();
+      void refreshSavedSessions();
     });
     return () => events.close();
-  }, [refresh, refreshModelLibrary]);
+  }, [refresh, refreshModelLibrary, refreshSavedSessions]);
 
   useEffect(() => {
     if (draggingRef.current) {
@@ -492,6 +528,16 @@ function App() {
           </button>
         </header>
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
+        <SavedSessionPanel
+          sessions={savedSessions}
+          detail={savedSessionDetail}
+          setDetail={setSavedSessionDetail}
+          refresh={async () => {
+            await refresh();
+            await refreshSavedSessions();
+          }}
+          setErrorMessage={setErrorMessage}
+        />
         <ModelLibraryPanel
           library={modelLibrary}
           search={modelSearch}
@@ -685,6 +731,109 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
           ))
         : <Handle className="node-port node-port-output" id="out" type="source" position={Position.Right} />}
     </div>
+  );
+}
+
+function SavedSessionPanel({
+  sessions,
+  detail,
+  setDetail,
+  refresh,
+  setErrorMessage,
+}: {
+  sessions: SavedSessionSummary[];
+  detail: SavedSessionRecord | undefined;
+  setDetail: (detail: SavedSessionRecord | undefined) => void;
+  refresh: () => Promise<void>;
+  setErrorMessage: (message: string | undefined) => void;
+}) {
+  return (
+    <section className="session-panel">
+      <div className="panel-heading">
+        <div>
+          <label>Saved sessions</label>
+          <div className="meta-row">Save or reopen graph, approvals, artifacts, and memory contract.</div>
+        </div>
+        <div className="actions">
+          <button
+            onClick={() => runAction(setErrorMessage, () => post("/api/saved-sessions/save", { name: `Session ${new Date().toLocaleString()}` }), refresh)}
+          >
+            <Download size={16} aria-hidden />
+            Save session
+          </button>
+          <button onClick={() => runAction(setErrorMessage, async () => refresh(), refresh)}>
+            <RefreshCw size={16} aria-hidden />
+            Refresh
+          </button>
+        </div>
+      </div>
+      {sessions.length === 0
+        ? (
+          <div className="empty session-empty">
+            <b>No saved sessions</b>
+            <span>Save this workflow to reopen the graph, approvals, artifacts, and memory contract later.</span>
+          </div>
+        )
+        : (
+          <div className="session-list">
+            {sessions.slice(0, 5).map((item) => (
+              <div className={`session-row ${item.status}`} key={item.id}>
+                <div className="session-row-main">
+                  <b>{item.name}</b>
+                  <span>{item.id} · {new Date(item.updatedAt).toLocaleString()}</span>
+                </div>
+                <span className={`restore-pill ${item.status}`}>{item.status}</span>
+                <button
+                  className="icon"
+                  title="Inspect saved session"
+                  aria-label={`Inspect ${item.name}`}
+                  onClick={() => runAction(setErrorMessage, async () => {
+                    const response = await fetch(`/api/saved-sessions/${encodeURIComponent(item.id)}`);
+                    if (!response.ok) {
+                      throw new Error(await response.text());
+                    }
+                    setDetail(await response.json() as SavedSessionRecord);
+                  })}
+                >
+                  {item.status === "complete" ? <Check size={16} aria-hidden /> : <AlertTriangle size={16} aria-hidden />}
+                </button>
+                <button
+                  className="icon"
+                  title="Open saved session"
+                  aria-label={`Open ${item.name}`}
+                  onClick={() => runAction(setErrorMessage, () => post(`/api/saved-sessions/${encodeURIComponent(item.id)}/open`, {}), refresh)}
+                >
+                  <FolderOpen size={16} aria-hidden />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      {detail
+        ? (
+          <div className={`restore-detail ${detail.verification.status}`}>
+            <div className="panel-heading">
+              <div>
+                <b>{detail.verification.status === "complete" ? "Session restored" : "Session restored with missing data"}</b>
+                <div className="meta-row">{detail.name} · unsafeToContinue={String(detail.verification.unsafeToContinue)}</div>
+              </div>
+              <button className="icon" aria-label="Close saved session detail" onClick={() => setDetail(undefined)}>
+                <X size={16} aria-hidden />
+              </button>
+            </div>
+            <div className="restore-grid">
+              {detail.verification.sections.map((section) => (
+                <React.Fragment key={section.name}>
+                  <span>{section.name}</span>
+                  <b className={section.status}>{section.status}</b>
+                  <em>{section.reason ?? `v${section.version ?? "?"}`}</em>
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )
+        : null}
+    </section>
   );
 }
 
@@ -1235,7 +1384,7 @@ function PolicyRows({ title, items }: { title: string; items: string[] }) {
 async function runAction(
   setErrorMessage: (message: string | undefined) => void,
   operation: () => Promise<void>,
-  refresh: () => Promise<void>,
+  refresh: () => Promise<void> = async () => undefined,
 ) {
   try {
     setErrorMessage(undefined);

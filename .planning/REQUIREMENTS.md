@@ -66,10 +66,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SESS-01 | Phase 25 | Pending |
-| SESS-02 | Phase 25 | Pending |
-| SESS-03 | Phase 25 | Pending |
-| SESS-04 | Phase 25 | Pending |
+| SESS-01 | Phase 25 | Complete |
+| SESS-02 | Phase 25 | Complete |
+| SESS-03 | Phase 25 | Complete |
+| SESS-04 | Phase 25 | Complete |
 | MEM-01 | Phase 26 | Pending |
 | MEM-02 | Phase 26 | Pending |
 | MEM-03 | Phase 26 | Pending |
@@ -78,7 +78,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PREF-01 | Phase 27 | Pending |
 | PREF-02 | Phase 27 | Pending |
 | PREF-03 | Phase 27 | Pending |
-| SURF-01 | Phase 25 | Pending |
+| SURF-01 | Phase 25 | Complete |
 | SURF-02 | Phase 27 | Pending |
 | SURF-03 | Phase 27 | Pending |
 | SURF-04 | Phase 27 | Pending |

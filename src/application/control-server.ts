@@ -6,6 +6,7 @@ import type { AddressInfo } from "node:net";
 import type { InteractiveExecutionSession } from "./execution-controller.js";
 import type { ModelLibraryService } from "./model-library.js";
 import type { ApprovalMode, DeleteStrategy } from "../domain/types.js";
+import type { SavedSessionPayload, SessionStorePort } from "../ports/session-store-port.js";
 
 export interface ControlServer {
   url: string;
@@ -18,10 +19,11 @@ export async function startControlServer(input: {
   port?: number | undefined;
   uiDistDir?: string | undefined;
   modelLibrary?: ModelLibraryService | undefined;
+  sessionStore?: SessionStorePort | undefined;
   onConfirmRun?: ((session: InteractiveExecutionSession) => void | Promise<void>) | undefined;
 }): Promise<ControlServer> {
   const server = createServer((request, response) => {
-    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun, input.modelLibrary);
+    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun, input.modelLibrary, input.sessionStore);
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -49,6 +51,7 @@ async function routeRequest(
   uiDistDir: string | undefined,
   onConfirmRun?: ((session: InteractiveExecutionSession) => void | Promise<void>) | undefined,
   modelLibrary?: ModelLibraryService | undefined,
+  sessionStore?: SessionStorePort | undefined,
 ): Promise<void> {
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
   try {
@@ -65,6 +68,41 @@ async function routeRequest(
     }
     if (request.method === "GET" && url.pathname === "/api/graph") {
       return sendJson(response, session.snapshot().graph);
+    }
+    if (request.method === "GET" && url.pathname === "/api/saved-sessions") {
+      if (!sessionStore) {
+        return sendJson(response, { error: "Saved sessions are not configured." }, 404);
+      }
+      return sendJson(response, { sessions: await sessionStore.list() });
+    }
+    if (request.method === "POST" && url.pathname === "/api/saved-sessions/save") {
+      if (!sessionStore) {
+        return sendJson(response, { error: "Saved sessions are not configured." }, 404);
+      }
+      const body = await readJsonBody(request);
+      const snapshot = session.snapshot();
+      const saved = await sessionStore.save({
+        id: typeof body["id"] === "string" ? body["id"] : undefined,
+        name: typeof body["name"] === "string" ? body["name"] : undefined,
+        payload: savedSessionPayload(snapshot),
+      });
+      return sendJson(response, saved);
+    }
+    if (request.method === "GET" && url.pathname.match(/^\/api\/saved-sessions\/[^/]+$/)) {
+      if (!sessionStore) {
+        return sendJson(response, { error: "Saved sessions are not configured." }, 404);
+      }
+      const sessionId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      return sendJson(response, await sessionStore.load(sessionId));
+    }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/saved-sessions\/[^/]+\/open$/)) {
+      if (!sessionStore) {
+        return sendJson(response, { error: "Saved sessions are not configured." }, 404);
+      }
+      const sessionId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const saved = await sessionStore.load(sessionId);
+      session.restoreSnapshot(saved.payload.session as ReturnType<InteractiveExecutionSession["snapshot"]>);
+      return sendJson(response, { ...session.snapshot(), savedSession: saved });
     }
     if (request.method === "GET" && url.pathname === "/api/model-library") {
       if (!modelLibrary) {
@@ -347,6 +385,43 @@ async function routeRequest(
         : 400;
     return sendJson(response, { error: message }, status);
   }
+}
+
+function savedSessionPayload(snapshot: ReturnType<InteractiveExecutionSession["snapshot"]>): SavedSessionPayload {
+  const artifactRefs: Array<{ nodeId: string; ref: unknown }> = [];
+  for (const node of snapshot.graph.nodes) {
+    for (const ref of node.composer?.artifactRefs ?? []) {
+      artifactRefs.push({ nodeId: node.id, ref });
+    }
+  }
+  return {
+    session: snapshot,
+    artifacts: {
+      version: 1,
+      refs: artifactRefs,
+      policy: "refs-only",
+    },
+    memory: {
+      version: 1,
+      status: "contract_saved",
+      scopes: [],
+      note: "Structured memory behavior is implemented in Phase 26.",
+    },
+    preferences: {
+      version: 1,
+      status: "contract_saved",
+      preferences: [],
+      note: "Preference edit/apply behavior is implemented in Phase 27.",
+    },
+    vectorIndex: {
+      version: 1,
+      status: "not_indexed",
+      provider: null,
+      indexManifest: null,
+      rebuildNeeded: true,
+      note: "Vector retrieval behavior is implemented in Phase 28.",
+    },
+  };
 }
 
 function streamEvents(response: ServerResponse, session: InteractiveExecutionSession): void {
