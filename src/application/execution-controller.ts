@@ -731,6 +731,7 @@ export class InteractiveExecutionSession {
       prompt: node.prompt ?? node.label,
       modelOverride: node.modelOverride,
       samplingOverride: node.samplingOverride,
+      contextPolicy: node.composer?.contextPolicy,
       approvalSource: "manual",
       approvalReason: node.approvalReason,
     });
@@ -770,6 +771,7 @@ export class InteractiveExecutionSession {
       prompt: node.prompt ?? node.label,
       modelOverride: node.modelOverride,
       samplingOverride: node.samplingOverride,
+      contextPolicy: node.composer?.contextPolicy,
     });
     return { duplicate: false };
   }
@@ -1101,6 +1103,7 @@ export class InteractiveExecutionSession {
         prompt: node.prompt ?? node.label,
         modelOverride: node.modelOverride,
         samplingOverride: node.samplingOverride,
+        contextPolicy: node.composer?.contextPolicy,
         approvalSource: "auto",
         approvalReason: node.approvalReason,
       });

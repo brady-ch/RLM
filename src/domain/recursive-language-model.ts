@@ -33,6 +33,7 @@ import type {
   TaskNode,
   TokenUsageTrace,
   ToolCallRecord,
+  ComposerContextPolicy,
 } from "./types.js";
 import { EXECUTION_FAILURE_CODES } from "./execution-failure.js";
 import { RunStatePersistence } from "./run-state-persistence.js";
@@ -57,6 +58,7 @@ export class RecursiveLanguageModel {
   private metadata: RecursivePromptMetadata = createEmptyMetadata();
   private logger: RuntimeLogger | undefined;
   private execution: RecursivePromptRequest["execution"] | undefined;
+  private memory: RecursivePromptRequest["memory"] | undefined;
   private runStatePersistence: RunStatePersistence | undefined;
   private runStateWrites: Array<Promise<void>> = [];
   private initialApprovalBoundaryPassed = false;
@@ -80,6 +82,7 @@ export class RecursiveLanguageModel {
     this.metadata = createEmptyMetadata();
     this.logger = request.logger;
     this.execution = request.execution;
+    this.memory = request.memory;
     this.runStatePersistence = request.runState
       ? new RunStatePersistence(request.runState, (event) => this.emitExecution(event))
       : undefined;
@@ -754,6 +757,7 @@ export class RecursiveLanguageModel {
     const maxDepth = config.maxDepth ?? 0;
     if (task.depth >= maxDepth) {
       const answer = await this.answerDirectly(task, "Depth limit reached; answer directly.");
+      await this.appendMemorySummary(task, answer);
       this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
         id: task.id,
@@ -765,6 +769,7 @@ export class RecursiveLanguageModel {
 
     if (this.remainingModelCalls() <= 1) {
       const answer = await this.answerDirectly(task, "Model call budget is nearly exhausted; answer directly.");
+      await this.appendMemorySummary(task, answer);
       this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
         id: task.id,
@@ -782,6 +787,7 @@ export class RecursiveLanguageModel {
     });
     if (classification !== RECURSIVE) {
       const answer = await this.answerDirectly(task, "Task is simple enough for a direct answer.");
+      await this.appendMemorySummary(task, answer);
       this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
         id: task.id,
@@ -793,6 +799,7 @@ export class RecursiveLanguageModel {
 
     if (!this.hasCallReservedForDirectAnswer(config)) {
       const answer = await this.answerDirectly(task, "Model call budget is nearly exhausted; answer directly.");
+      await this.appendMemorySummary(task, answer);
       this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
         id: task.id,
@@ -809,6 +816,7 @@ export class RecursiveLanguageModel {
     });
     if (children.length === 0) {
       const answer = await this.answerDirectly(task, "No useful subtasks were found; answer directly.");
+      await this.appendMemorySummary(task, answer);
       this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
         id: task.id,
@@ -847,6 +855,7 @@ export class RecursiveLanguageModel {
     const answer = await (this.canSpendAnyModelCall()
       ? this.synthesize(task, solvedChildren)
       : this.synthesizeWithoutModel(task, solvedChildren));
+    await this.appendMemorySummary(task, answer);
     this.log("task", "completed task", {
       id: task.id,
       depth: task.depth,
@@ -1011,7 +1020,10 @@ export class RecursiveLanguageModel {
       return fallbackFromMessages(messages);
     }
 
-    const conversation = [...messages];
+    const memoryPacket = await this.resolveMemoryPacket(task);
+    const conversation = memoryPacket?.text
+      ? [{ role: "system" as const, content: memoryPacket.text }, ...messages]
+      : [...messages];
     for (let round = 0; round <= this.maxToolRounds(); round += 1) {
       this.modelCalls += 1;
       const callNumber = this.modelCalls;
@@ -1315,6 +1327,69 @@ export class RecursiveLanguageModel {
     ];
   }
 
+  private async resolveMemoryPacket(task: TaskNode): Promise<{ text: string } | undefined> {
+    if (!this.memory) {
+      return undefined;
+    }
+
+    const policy = task.contextPolicy ?? this.executionNodes.get(task.id)?.composer?.contextPolicy ?? defaultMemoryPolicy();
+    try {
+      const packet = await this.memory.buildPacket({ nodeId: task.id, policy });
+      if (!packet) {
+        return undefined;
+      }
+      this.metadata.memoryPackets = [...(this.metadata.memoryPackets ?? []), packet.metadata];
+      if (packet.metadata.degraded) {
+        this.emitExecution({
+          type: "execution",
+          status: "running",
+          nodeId: task.id,
+          modelCallsUsed: this.modelCalls,
+          modelCallsRemaining: this.remainingModelCalls(),
+          toolCallsUsed: this.metadata.toolCalls.length,
+          message: `memory context degraded: ${packet.metadata.reasons.join("; ") || "unknown reason"}`,
+        });
+      }
+      return packet.text ? { text: packet.text } : undefined;
+    } catch (error: unknown) {
+      this.emitExecution({
+        type: "execution",
+        status: "running",
+        nodeId: task.id,
+        modelCallsUsed: this.modelCalls,
+        modelCallsRemaining: this.remainingModelCalls(),
+        toolCallsUsed: this.metadata.toolCalls.length,
+        message: `memory context unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      });
+      return undefined;
+    }
+  }
+
+  private async appendMemorySummary(task: TaskNode, answer: string): Promise<void> {
+    if (!this.memory) {
+      return;
+    }
+
+    const policy = task.contextPolicy ?? this.executionNodes.get(task.id)?.composer?.contextPolicy ?? defaultMemoryPolicy();
+    try {
+      await this.memory.appendNodeSummary({
+        nodeId: task.id,
+        summary: answer,
+        scopeIds: policy.memoryScopes,
+      });
+    } catch (error: unknown) {
+      this.emitExecution({
+        type: "execution",
+        status: "running",
+        nodeId: task.id,
+        modelCallsUsed: this.modelCalls,
+        modelCallsRemaining: this.remainingModelCalls(),
+        toolCallsUsed: this.metadata.toolCalls.length,
+        message: `memory summary unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+  }
+
   private record(task: TaskNode, kind: Parameters<TracePort["record"]>[0]["kind"], prompt: string, output: string): void {
     const event: Parameters<TracePort["record"]>[0] = {
       id: task.id,
@@ -1588,6 +1663,7 @@ export class RecursiveLanguageModel {
         prompt: decision?.prompt ?? task.prompt,
         modelOverride: decision?.modelOverride ?? task.modelOverride,
         samplingOverride: decision?.samplingOverride ?? task.samplingOverride,
+        contextPolicy: decision?.contextPolicy ?? task.contextPolicy,
       };
     }
     if (decision.status === "skipped") {
@@ -1731,6 +1807,15 @@ function createEmptyMetadata(): RecursivePromptMetadata {
     },
     toolCalls: [],
     errors: [],
+  };
+}
+
+function defaultMemoryPolicy(): ComposerContextPolicy {
+  return {
+    reads: ["rolling summary"],
+    writes: ["memory updates"],
+    limits: ["2000 characters"],
+    memoryScopes: ["run-manifest"],
   };
 }
 

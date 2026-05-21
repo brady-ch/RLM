@@ -1,5 +1,5 @@
 import type { AgentProfile } from "../domain/agents.js";
-import type { RecursiveModelConfig } from "../domain/types.js";
+import type { RecursiveModelConfig, RuntimeMemory } from "../domain/types.js";
 import type { LanguageModelPort } from "../ports/language-model-port.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 import { runConfiguredAgent } from "./agent-runner.js";
@@ -19,6 +19,7 @@ export interface UiExecutionRunnerInput {
   createModel: (model: string, runtime: ModelRuntimeSelection) => LanguageModelPort;
   logger?: RuntimeLogger | undefined;
   runState?: Parameters<typeof runConfiguredAgent>[0]["runState"];
+  memory?: RuntimeMemory | undefined;
 }
 
 export interface UiExecutionRunner {
@@ -71,6 +72,7 @@ export function createUiExecutionRunner(input: UiExecutionRunnerInput): UiExecut
             logger: input.logger,
             execution: session.control,
             runState: input.runState,
+            memory: input.memory,
           });
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : String(error);

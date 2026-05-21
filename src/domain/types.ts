@@ -2,6 +2,7 @@ import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 import type { RunStateStorePort } from "../ports/run-state-store-port.js";
 import type { ExecutionFailureCategory } from "./execution-failure.js";
 import type { EffectiveSamplingMetadata, LanguageModelSamplingOptions } from "../ports/language-model-port.js";
+import type { MemoryPacketMetadata } from "../ports/memory-store-port.js";
 
 export interface RecursiveModelConfig {
   maxDepth?: number;
@@ -208,6 +209,7 @@ export interface RecursivePromptRequest {
   logger?: RuntimeLogger | undefined;
   execution?: ExecutionControl | undefined;
   runState?: RuntimeRunState | undefined;
+  memory?: RuntimeMemory | undefined;
   agent?: {
     id: string;
     source: "auto" | "override";
@@ -220,6 +222,11 @@ export interface RuntimeRunState {
   store: RunStateStorePort;
   actor: string;
   capabilityToken: string;
+}
+
+export interface RuntimeMemory {
+  buildPacket(input: { nodeId: string; policy: ComposerContextPolicy }): Promise<{ text: string; metadata: MemoryPacketMetadata } | undefined>;
+  appendNodeSummary(input: { nodeId: string; summary: string; scopeIds: string[]; artifactRefs?: string[] }): Promise<void>;
 }
 
 export interface RecursivePromptResult {
@@ -256,6 +263,7 @@ export interface TaskNode {
   artifactContract?: ArtifactContract | undefined;
   modelOverride?: string | undefined;
   samplingOverride?: LanguageModelSamplingOptions | undefined;
+  contextPolicy?: ComposerContextPolicy | undefined;
 }
 
 export interface ArtifactContract {
@@ -369,6 +377,7 @@ export interface RecursivePromptMetadata {
   tokenUsage: TokenUsageTrace;
   toolCalls: ToolCallRecord[];
   qualityLoop?: QualityLoopMetadata | undefined;
+  memoryPackets?: MemoryPacketMetadata[] | undefined;
   clarificationHistory?: ClarificationRecord[] | undefined;
   errors: string[];
 }
@@ -489,6 +498,7 @@ export interface NodeApprovalDecision {
   prompt: string;
   modelOverride?: string | undefined;
   samplingOverride?: LanguageModelSamplingOptions | undefined;
+  contextPolicy?: ComposerContextPolicy | undefined;
   approvalSource?: "manual" | "auto" | "none" | undefined;
   approvalReason?: string | undefined;
 }

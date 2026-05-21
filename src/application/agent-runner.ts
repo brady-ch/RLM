@@ -9,7 +9,7 @@ import { estimateAgentRamMb, PurposeRoutingLanguageModel } from "./model-provide
 import type { ModelRuntimeSelection } from "./model-provider.js";
 import { selectedAgentMetadata } from "./agent-registry.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
-import type { ExecutionControl, RuntimeRunState } from "../domain/types.js";
+import type { ExecutionControl, RuntimeMemory, RuntimeRunState } from "../domain/types.js";
 import { resolveRuntimeHostSelection } from "./project-config.js";
 
 export interface RunConfiguredAgentInput {
@@ -26,6 +26,7 @@ export interface RunConfiguredAgentInput {
   logger?: RuntimeLogger | undefined;
   execution?: ExecutionControl | undefined;
   runState?: RuntimeRunState | undefined;
+  memory?: RuntimeMemory | undefined;
 }
 
 export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promise<RecursivePromptResult> {
@@ -89,6 +90,7 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
       logger: input.logger,
       execution: input.execution,
       runState: input.runState,
+      memory: input.memory,
     });
 
     result.metadata.configPath = input.configPath;

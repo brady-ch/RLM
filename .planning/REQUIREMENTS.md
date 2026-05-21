@@ -15,11 +15,11 @@
 
 ### Structured Memory
 
-- [ ] **MEM-01**: User can persist structured memory scopes with `session`, `project`, or `permanent` lifetimes.
-- [ ] **MEM-02**: Runtime enforces node `contextPolicy.memoryScopes`, reads, writes, and packet limits when resolving memory for model calls.
-- [ ] **MEM-03**: Runtime rejects unauthorized memory writes with visible audit records instead of silently ignoring or applying them.
-- [ ] **MEM-04**: Runtime maintains an append-only episodic log of node events, summaries, artifact refs, memory writes, and degraded memory/indexing events.
-- [ ] **MEM-05**: Runtime assembles bounded context packets with provenance so users can inspect what memory was injected into a node or recursive sub-call.
+- [x] **MEM-01**: User can persist structured memory scopes with `session`, `project`, or `permanent` lifetimes.
+- [x] **MEM-02**: Runtime enforces node `contextPolicy.memoryScopes`, reads, writes, and packet limits when resolving memory for model calls.
+- [x] **MEM-03**: Runtime rejects unauthorized memory writes with visible audit records instead of silently ignoring or applying them.
+- [x] **MEM-04**: Runtime maintains an append-only episodic log of node events, summaries, artifact refs, memory writes, and degraded memory/indexing events.
+- [x] **MEM-05**: Runtime assembles bounded context packets with provenance so users can inspect what memory was injected into a node or recursive sub-call.
 
 ### Preferences
 
@@ -70,11 +70,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SESS-02 | Phase 25 | Complete |
 | SESS-03 | Phase 25 | Complete |
 | SESS-04 | Phase 25 | Complete |
-| MEM-01 | Phase 26 | Pending |
-| MEM-02 | Phase 26 | Pending |
-| MEM-03 | Phase 26 | Pending |
-| MEM-04 | Phase 26 | Pending |
-| MEM-05 | Phase 26 | Pending |
+| MEM-01 | Phase 26 | Complete |
+| MEM-02 | Phase 26 | Complete |
+| MEM-03 | Phase 26 | Complete |
+| MEM-04 | Phase 26 | Complete |
+| MEM-05 | Phase 26 | Complete |
 | PREF-01 | Phase 27 | Pending |
 | PREF-02 | Phase 27 | Pending |
 | PREF-03 | Phase 27 | Pending |

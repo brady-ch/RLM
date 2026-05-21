@@ -409,9 +409,12 @@ function savedSessionPayload(snapshot: ReturnType<InteractiveExecutionSession["s
     },
     memory: {
       version: 1,
-      status: "contract_saved",
-      scopes: [],
-      note: "Structured memory behavior is implemented in Phase 26.",
+      status: "structured_contract_saved",
+      scopes: [...new Set(snapshot.graph.nodes.flatMap((node) => node.composer?.contextPolicy.memoryScopes ?? []))],
+      contextPolicies: snapshot.graph.nodes
+        .filter((node) => node.composer?.contextPolicy)
+        .map((node) => ({ nodeId: node.id, policy: node.composer?.contextPolicy })),
+      note: "Runtime structured memory and rolling episodic summaries are stored under .rlm/memory by run id.",
     },
     preferences: {
       version: 1,

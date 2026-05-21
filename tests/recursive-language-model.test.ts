@@ -12,7 +12,7 @@ import type {
   LanguageModelPort,
   LanguageModelResponse,
 } from "../src/ports/language-model-port.js";
-import type { ExecutionGraphNode, NodeApprovalDecision, QualityLoopMetadata } from "../src/domain/types.js";
+import type { ExecutionGraphNode, NodeApprovalDecision, QualityLoopMetadata, RuntimeMemory } from "../src/domain/types.js";
 import type { ToolExecutionResult, ToolPort } from "../src/ports/tool-port.js";
 import { InMemoryTrace } from "../src/adapters/in-memory-trace.js";
 import { GuardedShellTool } from "../src/adapters/guarded-shell-tool.js";
@@ -262,6 +262,49 @@ test("answers directly when max depth is zero", async () => {
     result.trace.map((event) => event.kind),
     ["answer"],
   );
+});
+
+test("injects resolved memory packet and records node summary", async () => {
+  const trace = new InMemoryTrace();
+  const model = new QueueModel(["memory-aware answer"]);
+  const summaries: Array<{ nodeId: string; summary: string; scopeIds: string[] }> = [];
+  const memory: RuntimeMemory = {
+    async buildPacket(input) {
+      return {
+        text: `<memory_context>\nScope ${input.policy.memoryScopes.join(",")}: remember project context\n</memory_context>`,
+        metadata: {
+          sessionId: "run-memory",
+          nodeId: input.nodeId,
+          scopeIds: input.policy.memoryScopes,
+          charLimit: 2_000,
+          charsUsed: 31,
+          truncated: false,
+          degraded: false,
+          reasons: [],
+          provenance: [{ kind: "scope", id: "run-manifest", version: 1 }],
+          createdAt: "2026-05-20T00:00:00.000Z",
+        },
+      };
+    },
+    async appendNodeSummary(input) {
+      summaries.push(input);
+    },
+  };
+  const engine = new RecursiveLanguageModel(model, trace);
+
+  const result = await engine.run({
+    prompt: "Use remembered context",
+    config: {
+      ...config,
+      maxDepth: 0,
+    },
+    memory,
+  });
+
+  assert.equal(result.answer, "memory-aware answer");
+  assert.match(model.calls[0]?.messages[0]?.content ?? "", /remember project context/);
+  assert.equal(result.metadata.memoryPackets?.[0]?.nodeId, "task-1");
+  assert.deepEqual(summaries, [{ nodeId: "task-1", summary: "memory-aware answer", scopeIds: ["run-manifest"] }]);
 });
 
 test("quality loop graph node stays collapsed with nested phase history", async () => {

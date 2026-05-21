@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { FileRunStateStore } from "./adapters/file-run-state-store.js";
+import { FileMemoryStore } from "./adapters/file-memory-store.js";
 import { FileSessionStore } from "./adapters/file-session-store.js";
 import { runConfiguredAgent } from "./application/agent-runner.js";
 import { createAgentRegistry, selectAgent } from "./application/agent-registry.js";
@@ -13,6 +14,7 @@ import {
   McpSkillRuntime,
 } from "./application/mcp-skill-runtime.js";
 import { MemoryManager } from "./application/memory-manager.js";
+import { MemoryResolver } from "./application/memory-resolver.js";
 import { createMcpTools, createSkillTool } from "./application/interop-runtime.js";
 import {
   applyModelOverride,
@@ -203,6 +205,24 @@ async function main(): Promise<void> {
     actor: "runtime",
     capabilityToken: `${runId}:runtime`,
   };
+  const memoryStore = new FileMemoryStore({
+    baseDir: join(process.cwd(), ".rlm", "memory"),
+  });
+  await memoryStore.patchScope({
+    sessionId: runId,
+    scopeId: "run-manifest",
+    actor: "runtime",
+    expectedVersion: 0,
+    allowedScopes: ["run-manifest"],
+    writes: ["memory updates"],
+    patch: {
+      runId,
+      promptPreview: options.prompt.slice(0, 240),
+      createdAt: new Date().toISOString(),
+    },
+    lifetime: "session",
+  });
+  const runtimeMemory = new MemoryResolver(memoryStore, { sessionId: runId });
   logger?.log({
     stage: "interop",
     message: "mcp+skill runtime initialized",
@@ -256,6 +276,7 @@ async function main(): Promise<void> {
         createModel,
         logger,
         runState,
+        memory: runtimeMemory,
       });
       const uiDistDir = resolveUiDistDir(fileURLToPath(import.meta.url), process.env);
       const server = await startControlServer({
@@ -287,6 +308,7 @@ async function main(): Promise<void> {
       logger,
       execution,
       runState,
+      memory: runtimeMemory,
     } as const;
     let result = options.workflow
       ? await runWorkflow({
@@ -306,6 +328,7 @@ async function main(): Promise<void> {
         logger: runInputBase.logger,
         execution,
         runState,
+        memory: runtimeMemory,
       });
     if (options.requireApproval && !options.planOnly) {
       if (!options.approve) {
@@ -323,6 +346,7 @@ async function main(): Promise<void> {
           hostId: options.host,
           execution: executeControl,
           runState,
+          memory: runtimeMemory,
         })
         : await runConfiguredAgent({
           prompt: runInputBase.prompt,
@@ -336,6 +360,7 @@ async function main(): Promise<void> {
           logger: runInputBase.logger,
           execution: executeControl,
           runState,
+          memory: runtimeMemory,
         });
     }
     if (loadedConfig.path) {
