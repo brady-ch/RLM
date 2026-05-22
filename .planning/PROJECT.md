@@ -2,14 +2,15 @@
 
 ## Current Milestone: v1.7 Adapter & Plugin Taxonomy
 
-**Goal:** Solidify plugin vs adapter boundaries, enforce layer rules, split runtime/interop concerns, and deliver a first-class plugin taxonomy with full plugin manager UX.
+**Goal:** Establish a concern-first project taxonomy — clearer separation across `src/`, `tests/`, and tooling — plus first-class plugin registration, boundary enforcement, and full plugin manager UX.
 
 **Target features:**
-- Plugin vs adapter boundary — built-in tools live under a plugin taxonomy; extension registration contracts clarified
+- Concern taxonomy — group `application/` by domain (execution, graph, memory, plugins); introduce `runtime/` and `plugins/`; mirror layout in `tests/`; encode rules in dependency-cruiser + AGENTS.md
+- Plugin vs adapter boundary — built-in tools as plugins; extension registration contracts clarified
 - Dependency-cruiser enforcement — ratchet ARCH-02 boundary violations to error; fix import direction
-- Runtime/interop split — composition and MCP/skill interop extracted from overloaded application/adapters modules
+- Runtime/interop split — composition and MCP/skill interop extracted from overloaded application modules
 - First-class plugin taxonomy — tool categories, manifests, capability metadata
-- Full plugin manager UX — local-folder install/enable/list/doctor plus remote fetch-to-local-folder
+- Full plugin manager UX — CLI + UI panel; local-folder install/enable/list/doctor plus remote fetch-to-local
 
 ## Current State
 
