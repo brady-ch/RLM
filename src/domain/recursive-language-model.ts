@@ -6,7 +6,6 @@ import type {
 import type { LanguageModelPurpose } from "../ports/language-model-port.js";
 import type { LanguageModelUsage } from "../ports/language-model-port.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
-import type { ToolExecutionResult } from "../ports/tool-port.js";
 import type { ToolPort } from "../ports/tool-port.js";
 import type { TracePort } from "../ports/trace-port.js";
 import type {
@@ -36,7 +35,6 @@ import type {
   SolvedTask,
   TaskNode,
   TokenUsageTrace,
-  ToolCallRecord,
   ComposerContextPolicy,
 } from "./types.js";
 import { EXECUTION_FAILURE_CODES } from "./execution-failure.js";
@@ -46,17 +44,19 @@ import {
   fallbackFromMessages,
   isCodeTask,
   limitPrompt,
-  parseClarificationRequest,
   parseFirstInteger,
   preview,
-  toModelPurpose,
 } from "./recursion/prompt-utilities.js";
+import type { ModelCompletionHost } from "./recursion/tool-round-loop.js";
+import {
+  runCompletionWithToolRounds,
+  runCompletionWithoutTools,
+} from "./recursion/tool-round-loop.js";
 import {
   canSpendAnyModelCall,
   estimateModelCalls,
   estimateToolRounds,
   hasCallReservedForDirectAnswer,
-  maxToolRoundsFromLimit,
   remainingModelCalls,
 } from "./recursion/budget-guard.js";
 import { buildLiveExecutionMetadata } from "./recursion/execution-graph-sync.js";
@@ -104,6 +104,41 @@ export class RecursiveLanguageModel {
     tools: ToolPort[] = [],
   ) {
     this.toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
+  }
+
+  /**
+   * Host for extracted tool-round completion; forwards to orchestrator fields (see 40-RESEARCH.md).
+   */
+  private asModelCompletionHost(): ModelCompletionHost {
+    return {
+      model: this.model,
+      getModelCalls: () => this.modelCalls,
+      getMaxModelCalls: () => this.maxModelCalls,
+      getToolRoundLimit: () => this.toolRoundLimit,
+      getComplexityDepth: () => this.metadata.depth.selected,
+      consumeModelCall: () => {
+        this.modelCalls += 1;
+      },
+      throwIfCancelled: (task) => this.throwIfCancelled(task),
+      withAgentSystemPrompt: (messages) => this.withAgentSystemPrompt(messages),
+      resolveMemoryPacket: (task) => this.resolveMemoryPacket(task),
+      recordLimit: (task, message) => this.recordLimit(task, message),
+      record: (task, kind, prompt, output) => this.record(task, kind, prompt, output),
+      log: (stage, message, data) => this.log(stage, message, data),
+      pushMetadataError: (message) => {
+        this.metadata.errors.push(message);
+      },
+      appendToolCallRecord: (record) => {
+        this.metadata.toolCalls.push(record);
+      },
+      markExecutionNodeFailed: (...args) => this.markExecutionNodeFailed(...args),
+      expertTierFor: (task, purpose) => this.expertTierFor(task, purpose),
+      toolsForTask: (task) => this.toolsForTask(task),
+      getToolByName: (name) => this.toolsByName.get(name),
+      updateExecutionNodeModel: (...args) => this.updateExecutionNodeModel(...args),
+      recordUsage: (usage) => this.recordUsage(usage),
+      requestClarification: (task, promptText) => this.requestClarification(task, promptText),
+    };
   }
 
   async run(request: RecursivePromptRequest): Promise<RecursivePromptResult> {
@@ -1114,188 +1149,19 @@ export class RecursiveLanguageModel {
     return output;
   }
 
-  private async complete(
+  private complete(
     task: TaskNode,
     kind: Parameters<TracePort["record"]>[0]["kind"],
     messages: Parameters<LanguageModelPort["complete"]>[0],
     allowTools = false,
   ): Promise<string> {
-    this.throwIfCancelled(task);
-    if (!canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)) {
-      this.recordLimit(task, `model call budget reached before ${kind}`);
-      return fallbackFromMessages(messages);
-    }
-
-    const memoryPacket = await this.resolveMemoryPacket(task);
-    const conversation = memoryPacket?.text
-      ? [{ role: "system" as const, content: memoryPacket.text }, ...messages]
-      : [...messages];
-    for (let round = 0; round <= maxToolRoundsFromLimit(this.toolRoundLimit); round += 1) {
-      this.modelCalls += 1;
-      const callNumber = this.modelCalls;
-      this.log("completion", "starting model completion", {
-        call: callNumber,
-        task: task.id,
-        depth: task.depth,
-        kind,
-        round,
-        toolsEnabled: allowTools,
-        prompt: preview(messages.at(-1)?.content ?? ""),
-      });
-      const purpose = toModelPurpose(kind);
-      const expertTier = this.expertTierFor(task, purpose);
-      const response = await this.model.complete(this.withAgentSystemPrompt(conversation), {
-        tools: allowTools ? this.toolsForTask(task) : [],
-        purpose,
-        complexityDepth: this.metadata.depth.selected,
-        overrideModel: expertTier ? undefined : task.modelOverride,
-        overrideModelSelection: expertTier,
-        constrainedToolCalling: allowTools && this.toolsForTask(task).length > 0,
-        sampling: task.samplingOverride,
-      });
-      this.updateExecutionNodeModel(task.id, response.model, task.modelOverride, response.sampling);
-      this.recordUsage(response.usage);
-      this.log("completion", "completed model completion", {
-        call: callNumber,
-        task: task.id,
-        kind,
-        model: response.model,
-        toolCalls: response.toolCalls.length,
-        inputTokens: response.usage?.inputTokens,
-        outputTokens: response.usage?.outputTokens,
-        totalTokens: response.usage?.totalTokens,
-        output: preview(response.content),
-      });
-
-      if (response.toolCalls.length === 0) {
-        const clarificationPrompt = parseClarificationRequest(response.content);
-        if (clarificationPrompt) {
-          const answer = await this.requestClarification(task, clarificationPrompt);
-          conversation.push({
-            role: "assistant",
-            content: response.content,
-          });
-          conversation.push({
-            role: "user",
-            content: answer,
-          });
-          continue;
-        }
-        return response.content;
-      }
-
-      if (!allowTools) {
-        const output = `Model requested tools during ${kind}, but tools are disabled for this step.`;
-        this.record(task, "error", task.prompt, output);
-        this.metadata.errors.push(output);
-        this.markExecutionNodeFailed(task.id, "failed", {
-          failureCategory: "model",
-          code: EXECUTION_FAILURE_CODES.model,
-          message: output,
-        });
-        return response.content || fallbackFromMessages(conversation);
-      }
-
-      if (round >= maxToolRoundsFromLimit(this.toolRoundLimit)) {
-        this.recordLimit(task, `tool round limit reached during ${kind}`);
-        if (response.content) {
-          return response.content;
-        }
-
-        return canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)
-          ? this.completeWithoutTools(task, kind, [
-              ...conversation,
-              {
-                role: "assistant",
-                content: response.content,
-                toolCalls: response.toolCalls,
-              },
-              {
-                role: "system",
-                content:
-                  "Tool use is no longer available. Answer directly from the conversation and tool context already present.",
-              },
-            ])
-          : fallbackFromMessages(conversation);
-      }
-
-      conversation.push({
-        role: "assistant",
-        content: response.content,
-        toolCalls: response.toolCalls,
-      });
-
-      for (const toolCall of response.toolCalls) {
-        const tool = this.toolsByName.get(toolCall.name);
-        this.throwIfCancelled(task);
-        this.record(task, "tool-call", JSON.stringify(toolCall.args), toolCall.name);
-        this.log("tool", "starting tool call", {
-          task: task.id,
-          depth: task.depth,
-          call: toolCall.id,
-          name: toolCall.name,
-          args: toolCall.args,
-        });
-        const startedAt = Date.now();
-        let result: ToolExecutionResult;
-        if (tool) {
-          try {
-            result = await tool.execute(toolCall.args);
-          } catch (error: unknown) {
-            result = {
-              status: "error" as const,
-              output: error instanceof Error ? error.message : String(error),
-            };
-          }
-        } else {
-          result = { status: "error" as const, output: `Unknown tool: ${toolCall.name}` };
-        }
-        const durationMs = Date.now() - startedAt;
-        const record: ToolCallRecord = {
-          id: toolCall.id,
-          name: toolCall.name,
-          args: toolCall.args,
-          status: result.status,
-          output: result.output,
-        };
-        this.metadata.toolCalls.push(record);
-        if (result.status === "error") {
-          this.metadata.errors.push(result.output);
-          this.markExecutionNodeFailed(task.id, "failed", {
-            failureCategory: "tool",
-            code: EXECUTION_FAILURE_CODES.tool,
-            message: result.output,
-          });
-        }
-        this.log("tool", result.status === "success" ? "completed tool call" : "failed tool call", {
-          task: task.id,
-          call: toolCall.id,
-          name: toolCall.name,
-          status: result.status,
-          durationMs,
-          output: preview(result.output),
-        });
-        this.record(
-          task,
-          result.status === "success" ? "tool-result" : "error",
-          toolCall.name,
-          result.output,
-        );
-        conversation.push({
-          role: "tool",
-          content: result.output,
-          toolCallId: toolCall.id,
-        });
-      }
-
-      if (!canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)) {
-        this.recordLimit(task, `model call budget reached after tool calls during ${kind}`);
-        return response.content || fallbackFromMessages(conversation);
-      }
-    }
-
-    this.recordLimit(task, `tool round limit reached during ${kind}`);
-    return fallbackFromMessages(conversation);
+    return runCompletionWithToolRounds(
+      this.asModelCompletionHost(),
+      task,
+      kind,
+      messages,
+      allowTools,
+    );
   }
 
   private async completeWithoutTools(
@@ -1303,52 +1169,7 @@ export class RecursiveLanguageModel {
     kind: Parameters<TracePort["record"]>[0]["kind"],
     messages: Parameters<LanguageModelPort["complete"]>[0],
   ): Promise<string> {
-    if (!canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)) {
-      this.recordLimit(task, `model call budget reached before direct ${kind} follow-up`);
-      return fallbackFromMessages(messages);
-    }
-
-    this.modelCalls += 1;
-    const callNumber = this.modelCalls;
-    this.log("completion", "starting model completion", {
-      call: callNumber,
-      task: task.id,
-      depth: task.depth,
-      kind,
-      round: "direct",
-      toolsEnabled: false,
-      prompt: preview(messages.at(-1)?.content ?? ""),
-    });
-    const purpose = toModelPurpose(kind);
-    const expertTier = this.expertTierFor(task, purpose);
-    const response = await this.model.complete(this.withAgentSystemPrompt(messages), {
-      tools: [],
-      purpose,
-      complexityDepth: this.metadata.depth.selected,
-      overrideModel: expertTier ? undefined : task.modelOverride,
-      overrideModelSelection: expertTier,
-      constrainedToolCalling: false,
-      sampling: task.samplingOverride,
-    });
-    this.updateExecutionNodeModel(task.id, response.model, task.modelOverride, response.sampling);
-    this.recordUsage(response.usage);
-    this.log("completion", "completed model completion", {
-      call: callNumber,
-      task: task.id,
-      kind,
-      model: response.model,
-      toolCalls: response.toolCalls.length,
-      inputTokens: response.usage?.inputTokens,
-      outputTokens: response.usage?.outputTokens,
-      totalTokens: response.usage?.totalTokens,
-      output: preview(response.content),
-    });
-
-    if (response.toolCalls.length > 0) {
-      this.recordLimit(task, `ignored tool requests during direct ${kind} follow-up`);
-    }
-
-    return response.content || fallbackFromMessages(messages);
+    return runCompletionWithoutTools(this.asModelCompletionHost(), task, kind, messages);
   }
 
   private async selectDepth(prompt: string, config: RecursiveModelConfig): Promise<number> {
