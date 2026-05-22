@@ -4,10 +4,11 @@ import {
   RefreshCw, Scissors, Search, Square, Trash2, Upload, X,
 } from "lucide-react";
 import type {
-  ExecutionNode, GraphWorkflowSummary, MemorySnapshot,
+  ExecutionNode, GraphWorkflowSaveVariant, GraphWorkflowSummary, MemorySnapshot,
   ModelLibraryEntry, ModelLibrarySnapshot, PluginDoctorIssue,
   PluginInstallPreview, PluginListItem, PluginMutationResult, PluginSnapshot,
   QualityLoopMetadata, SavedSessionRecord, SavedSessionSummary, SamplingOptions,
+  SessionSnapshot,
 } from "../shared/types";
 import {
   approvalModeLabel, deleteStrategyLabel, del,
@@ -697,6 +698,17 @@ function ModelLibraryRow({
   setErrorMessage: (message: string | undefined) => void;
 }) {
   const selectableModel = entry.ollamaModel ?? entry.id;
+  const installEnabled =
+    (entry.source === "curated" || entry.source === "huggingface") &&
+    entry.status !== "installed" &&
+    entry.status !== "installing" &&
+    entry.status !== "unsupported";
+  const onInstall = () => {
+    if (entry.source === "huggingface") {
+      return post("/api/model-library/download", { model: entry.id });
+    }
+    return post("/api/model-library/install", { model: selectableModel });
+  };
   return (
     <div className={`model-row ${entry.status}`}>
       <div>
@@ -711,18 +723,8 @@ function ModelLibraryRow({
       </div>
       <div className="actions model-actions">
         <button
-          disabled={
-            entry.source !== "curated" ||
-            entry.status === "installed" ||
-            entry.status === "installing"
-          }
-          onClick={() =>
-            runAction(
-              setErrorMessage,
-              () => post("/api/model-library/install", { model: selectableModel }),
-              refresh,
-            )
-          }
+          disabled={!installEnabled}
+          onClick={() => runAction(setErrorMessage, onInstall, refresh)}
         >
           <Download size={16} /> Install
         </button>
