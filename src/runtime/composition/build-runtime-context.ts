@@ -16,6 +16,7 @@ import { PluginLoader } from "../../plugins/plugin-loader.js";
 import type { ExecutionEvent } from "../../domain/types.js";
 import type { LanguageModelPort } from "../../ports/language-model-port.js";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { homedir } from "node:os";
 import { ExtensionHost } from "./extension-host.js";
 import {
   COMPOSITION_INIT_ORDER,
@@ -150,11 +151,16 @@ export async function buildRuntimeContext(
     legacyExtensions: typeof configuredExtensions;
     allowlistPath?: string;
     interactive: boolean;
+    catalogPaths: string[];
   } = {
     cwd,
     configFilePath,
     legacyExtensions: configuredExtensions,
     interactive: process.stdin.isTTY && process.stdout.isTTY,
+    catalogPaths: [
+      join(homedir(), ".rlm", "plugins", "catalog.json"),
+      join(cwd, ".rlm", "plugins", "catalog.json"),
+    ],
   };
   if (configuredAllowlist) {
     pluginLoadOptions.allowlistPath = isAbsolute(configuredAllowlist)

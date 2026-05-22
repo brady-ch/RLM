@@ -15,11 +15,14 @@ export type PluginLoadOptions = {
   pluginEntries?: NormalizedPluginEntry[] | undefined;
   allowlistPath?: string | undefined;
   interactive?: boolean | undefined;
+  /** @deprecated Prefer catalogPaths */
   catalogPath?: string | undefined;
+  catalogPaths?: string[] | undefined;
 };
 
 export class PluginLoader {
   private readonly descriptors: PluginDescriptor[] = [];
+  private readonly loadedCatalogIds = new Set<string>();
 
   listPlugins(): PluginDescriptor[] {
     return [...this.descriptors];
@@ -40,6 +43,7 @@ export class PluginLoader {
 
   async loadInto(host: ExtensionHostPort, options: PluginLoadOptions): Promise<void> {
     this.descriptors.length = 0;
+    this.loadedCatalogIds.clear();
 
     if (!(host instanceof ExtensionHost)) {
       throw new Error("PluginLoader requires ExtensionHost for external plugin loading.");
@@ -58,8 +62,14 @@ export class PluginLoader {
       await this.loadConfiguredEntries(host, configured, options);
     }
 
-    const catalogPath = options.catalogPath ?? join(options.cwd, ".rlm", "plugins", "catalog.json");
-    await this.loadInstalledCatalog(host, catalogPath, options);
+    const catalogPaths =
+      options.catalogPaths ??
+      (options.catalogPath
+        ? [options.catalogPath]
+        : [join(options.cwd, ".rlm", "plugins", "catalog.json")]);
+    for (const catalogPath of catalogPaths) {
+      await this.loadInstalledCatalog(host, catalogPath, options);
+    }
   }
 
   private loadBuiltin(host: ExtensionHostPort, builtin: BuiltinPluginDefinition): void {
@@ -109,6 +119,11 @@ export class PluginLoader {
     }
 
     for (const entry of catalog.plugins ?? []) {
+      if (this.loadedCatalogIds.has(entry.id)) {
+        continue;
+      }
+      this.loadedCatalogIds.add(entry.id);
+
       const normalized: NormalizedPluginEntry = {
         id: entry.id,
         path: entry.path,

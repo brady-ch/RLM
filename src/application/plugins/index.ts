@@ -1,6 +1,5 @@
 /**
- * Plugin manager application layer — list/doctor UX expands in Phase 49+.
- * Runtime discovery lives in src/plugins/plugin-loader.ts.
+ * Plugin manager application layer — registry service shared by CLI and control-server.
  */
 export {
   PluginLoader,
@@ -11,6 +10,10 @@ export {
   parsePluginManifest,
   pluginCategorySchema,
   pluginManifestSchema,
+  getProjectPluginCatalogPath,
+  getUserPluginCatalogPath,
+  getUserPluginInstallDir,
+  getUserPluginsRoot,
 } from "../../plugins/index.js";
 export type {
   PluginCategory,
@@ -20,3 +23,11 @@ export type {
   PluginSource,
 } from "../../plugins/index.js";
 export type { ExtensionRegistryEntry } from "../../ports/extension-port.js";
+export { PluginRegistryService, createPluginRegistryService } from "./plugin-registry-service.js";
+export type {
+  PluginDoctorIssue,
+  PluginListItem,
+  PluginListSource,
+  PluginMutationResult,
+  PluginRegistryServiceOptions,
+} from "./plugin-registry-service.js";

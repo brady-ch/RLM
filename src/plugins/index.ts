@@ -16,6 +16,12 @@ export {
 export { PluginLoader } from "./plugin-loader.js";
 export type { PluginLoadOptions } from "./plugin-loader.js";
 export { BUILTIN_PLUGINS } from "./builtin/index.js";
+export {
+  getProjectPluginCatalogPath,
+  getUserPluginCatalogPath,
+  getUserPluginInstallDir,
+  getUserPluginsRoot,
+} from "./paths.js";
 export type {
   InstalledPluginCatalog,
   InstalledPluginCatalogEntry,
