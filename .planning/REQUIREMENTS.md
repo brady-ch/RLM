@@ -39,8 +39,8 @@
 ### Rust Architecture
 
 - [x] **ARCH-01**: Domain layer has no imports from `persistence/`, `adapters/`, or `control_server/` — run-state uses `RunStateStorePort` trait.
-- [ ] **ARCH-02**: `application/` module groups execution, graph, memory, config, and bootstrap facades; composition wiring extracted from transport/CLI entrypoints.
-- [ ] **ARCH-03**: Control server handlers split from monolithic `routes.rs` into concern modules; router file is transport-only wiring.
+- [x] **ARCH-02**: `application/` module groups execution, graph, memory, config, and bootstrap facades; composition wiring extracted from transport/CLI entrypoints.
+- [x] **ARCH-03**: Control server handlers split from monolithic `routes.rs` into concern modules; router file is transport-only wiring.
 - [ ] **ARCH-04**: Large modules decomposed (`recursive_language_model`, `session_graph`, `registry_service`, `persistence/config`) with behavior-preserving tests green after each split.
 - [ ] **ARCH-05**: Rust concern map documented in `AGENTS.md`; `check-rust-boundaries` script wired into `npm run check:rust`.
 - [ ] **ARCH-06**: Optional workspace crate split (`rlm-ports`, `rlm-domain`) evaluated and implemented only if compile iteration remains painful after A1–A4; public API unchanged.
@@ -83,8 +83,8 @@
 | CLI-02 | Phase 66 | Complete |
 | PACK-01 | Phase 67 | Complete |
 | ARCH-01 | Phase 64 | Complete |
-| ARCH-02 | Phase 68 | Pending |
-| ARCH-03 | Phase 68 | Pending |
+| ARCH-02 | Phase 68 | Complete |
+| ARCH-03 | Phase 68 | Complete |
 | ARCH-04 | Phase 69 | Pending |
 | ARCH-05 | Phase 70 | Pending |
 | ARCH-06 | Phase 71 | Pending |
