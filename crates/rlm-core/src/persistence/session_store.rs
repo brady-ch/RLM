@@ -1,0 +1,485 @@
+use std::collections::BTreeMap;
+use std::fs;
+use std::io;
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+
+use super::util::{sanitize_id, write_json_atomic};
+
+const MANIFEST_VERSION: u32 = 1;
+const SECTION_VERSION: u32 = 1;
+
+const SECTION_FILES: [(&str, &str); 7] = [
+    ("session", "session.json"),
+    ("runState", "run-state.json"),
+    ("artifacts", "artifacts.json"),
+    ("memory", "memory.json"),
+    ("preferences", "preferences.json"),
+    ("vectorIndex", "vector-index.json"),
+    ("graphWorkflowMetadata", "graph-workflow-metadata.json"),
+];
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SectionManifest {
+    file: String,
+    version: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SavedSessionManifest {
+    version: u32,
+    id: String,
+    name: String,
+    created_at: String,
+    updated_at: String,
+    sections: BTreeMap<String, SectionManifest>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct SectionEnvelope {
+    version: u32,
+    data: Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedSessionSectionStatus {
+    pub name: String,
+    pub status: String,
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedSessionVerification {
+    pub status: String,
+    pub sections: Vec<SavedSessionSectionStatus>,
+    pub missing: Vec<String>,
+    pub corrupt: Vec<CorruptSection>,
+    pub unsafe_to_continue: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CorruptSection {
+    pub section: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedSessionSummary {
+    pub id: String,
+    pub name: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub status: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedSessionPayload {
+    pub session: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub run_state: Option<Value>,
+    pub artifacts: Value,
+    pub memory: Value,
+    pub preferences: Value,
+    pub vector_index: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub graph_workflow_metadata: Option<Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedSessionRecord {
+    #[serde(flatten)]
+    pub summary: SavedSessionSummary,
+    pub payload: SavedSessionPayload,
+    pub verification: SavedSessionVerification,
+}
+
+#[derive(Debug, Clone)]
+pub struct SaveSessionRequest {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub payload: SavedSessionPayload,
+}
+
+pub struct FileSessionStore {
+    base_dir: PathBuf,
+}
+
+impl FileSessionStore {
+    pub fn new(base_dir: PathBuf) -> Self {
+        Self { base_dir }
+    }
+
+    pub fn save(&self, request: SaveSessionRequest) -> io::Result<SavedSessionRecord> {
+        let id = sanitize_id(
+            request
+                .id
+                .as_deref()
+                .unwrap_or(&format!("session-{}", chrono_placeholder())),
+        )
+        .map_err(|msg| io::Error::new(io::ErrorKind::InvalidInput, msg))?;
+        let dir = self.session_dir(&id);
+        fs::create_dir_all(&dir)?;
+        let existing = self.read_manifest(&id).ok();
+        let timestamp = iso_now();
+        let name = request
+            .name
+            .as_deref()
+            .map(str::trim)
+            .filter(|n| !n.is_empty())
+            .map(str::to_string)
+            .or_else(|| existing.as_ref().map(|m| m.name.clone()))
+            .unwrap_or_else(|| id.clone());
+
+        let mut sections = BTreeMap::new();
+        for (name, file) in SECTION_FILES {
+            sections.insert(
+                name.to_string(),
+                SectionManifest {
+                    file: file.to_string(),
+                    version: SECTION_VERSION,
+                },
+            );
+        }
+
+        let manifest = SavedSessionManifest {
+            version: MANIFEST_VERSION,
+            id: id.clone(),
+            name,
+            created_at: existing
+                .as_ref()
+                .map(|m| m.created_at.clone())
+                .unwrap_or_else(iso_now),
+            updated_at: timestamp,
+            sections,
+        };
+
+        write_json_atomic(
+            &dir.join("session.json"),
+            &envelope(request.payload.session),
+        )?;
+        write_json_atomic(
+            &dir.join("run-state.json"),
+            &envelope(request.payload.run_state.unwrap_or(Value::Null)),
+        )?;
+        write_json_atomic(
+            &dir.join("artifacts.json"),
+            &envelope(request.payload.artifacts),
+        )?;
+        write_json_atomic(&dir.join("memory.json"), &envelope(request.payload.memory))?;
+        write_json_atomic(
+            &dir.join("preferences.json"),
+            &envelope(request.payload.preferences),
+        )?;
+        write_json_atomic(
+            &dir.join("vector-index.json"),
+            &envelope(request.payload.vector_index),
+        )?;
+        write_json_atomic(
+            &dir.join("graph-workflow-metadata.json"),
+            &envelope(
+                request
+                    .payload
+                    .graph_workflow_metadata
+                    .unwrap_or_else(|| json!({ "version": 1 })),
+            ),
+        )?;
+        write_json_atomic(
+            &dir.join("manifest.json"),
+            &serde_json::to_value(&manifest)?,
+        )?;
+
+        self.load(&id)
+    }
+
+    pub fn list(&self) -> io::Result<Vec<SavedSessionSummary>> {
+        let entries = match fs::read_dir(&self.base_dir) {
+            Ok(entries) => entries,
+            Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(err) => return Err(err),
+        };
+
+        let mut summaries = Vec::new();
+        for entry in entries.flatten() {
+            let id = entry.file_name().to_string_lossy().to_string();
+            if self.read_manifest(&id).is_err() {
+                continue;
+            }
+            if let Ok(record) = self.load(&id) {
+                summaries.push(SavedSessionSummary {
+                    id: record.summary.id,
+                    name: record.summary.name,
+                    created_at: record.summary.created_at,
+                    updated_at: record.summary.updated_at,
+                    status: record.summary.status,
+                    path: record.summary.path,
+                });
+            }
+        }
+
+        summaries.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        Ok(summaries)
+    }
+
+    pub fn load(&self, id: &str) -> io::Result<SavedSessionRecord> {
+        let id = sanitize_id(id).map_err(|msg| io::Error::new(io::ErrorKind::InvalidInput, msg))?;
+        let manifest = self.read_manifest(&id)?;
+        let verification = self.verify_manifest(&manifest)?;
+        let payload = SavedSessionPayload {
+            session: self.safe_read_section(&manifest, "session"),
+            run_state: Some(self.safe_read_section(&manifest, "runState")),
+            artifacts: self.safe_read_section(&manifest, "artifacts"),
+            memory: self.safe_read_section(&manifest, "memory"),
+            preferences: self.safe_read_section(&manifest, "preferences"),
+            vector_index: self.safe_read_section(&manifest, "vectorIndex"),
+            graph_workflow_metadata: Some(
+                self.safe_read_section(&manifest, "graphWorkflowMetadata"),
+            ),
+        };
+
+        Ok(SavedSessionRecord {
+            summary: SavedSessionSummary {
+                id: manifest.id.clone(),
+                name: manifest.name.clone(),
+                created_at: manifest.created_at.clone(),
+                updated_at: manifest.updated_at.clone(),
+                status: verification.status.clone(),
+                path: self.session_dir(&manifest.id).to_string_lossy().to_string(),
+            },
+            payload,
+            verification,
+        })
+    }
+
+    pub fn inspect(&self, id: &str) -> io::Result<SavedSessionVerification> {
+        let id = sanitize_id(id).map_err(|msg| io::Error::new(io::ErrorKind::InvalidInput, msg))?;
+        let manifest = self.read_manifest(&id)?;
+        self.verify_manifest(&manifest)
+    }
+
+    fn verify_manifest(
+        &self,
+        manifest: &SavedSessionManifest,
+    ) -> io::Result<SavedSessionVerification> {
+        let mut sections = Vec::new();
+        let mut missing = Vec::new();
+        let mut corrupt = Vec::new();
+
+        if manifest.version != MANIFEST_VERSION {
+            corrupt.push(CorruptSection {
+                section: "manifest".to_string(),
+                reason: format!("unsupported manifest version {}", manifest.version),
+            });
+        }
+
+        for (name, file) in SECTION_FILES {
+            let section = manifest.sections.get(name);
+            let Some(section) = section else {
+                missing.push(name.to_string());
+                sections.push(SavedSessionSectionStatus {
+                    name: name.to_string(),
+                    status: "failed".to_string(),
+                    path: String::new(),
+                    version: None,
+                    reason: Some("missing manifest section".to_string()),
+                });
+                continue;
+            };
+
+            let path = self.session_dir(&manifest.id).join(&section.file);
+            match fs::read_to_string(&path) {
+                Ok(raw) => match serde_json::from_str::<SectionEnvelope>(&raw) {
+                    Ok(parsed) if parsed.version != section.version => {
+                        corrupt.push(CorruptSection {
+                            section: name.to_string(),
+                            reason: format!("unsupported section version {}", parsed.version),
+                        });
+                        sections.push(SavedSessionSectionStatus {
+                            name: name.to_string(),
+                            status: "failed".to_string(),
+                            path: path.to_string_lossy().to_string(),
+                            version: Some(parsed.version),
+                            reason: Some("unsupported section version".to_string()),
+                        });
+                    }
+                    Ok(parsed) => {
+                        sections.push(SavedSessionSectionStatus {
+                            name: name.to_string(),
+                            status: "complete".to_string(),
+                            path: path.to_string_lossy().to_string(),
+                            version: Some(parsed.version),
+                            reason: None,
+                        });
+                    }
+                    Err(err) => {
+                        let reason = err.to_string();
+                        corrupt.push(CorruptSection {
+                            section: name.to_string(),
+                            reason: reason.clone(),
+                        });
+                        sections.push(SavedSessionSectionStatus {
+                            name: name.to_string(),
+                            status: "failed".to_string(),
+                            path: path.to_string_lossy().to_string(),
+                            version: None,
+                            reason: Some(reason),
+                        });
+                    }
+                },
+                Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                    missing.push(name.to_string());
+                    sections.push(SavedSessionSectionStatus {
+                        name: name.to_string(),
+                        status: "failed".to_string(),
+                        path: path.to_string_lossy().to_string(),
+                        version: None,
+                        reason: Some("missing section file".to_string()),
+                    });
+                }
+                Err(err) => {
+                    let reason = err.to_string();
+                    corrupt.push(CorruptSection {
+                        section: name.to_string(),
+                        reason: reason.clone(),
+                    });
+                    sections.push(SavedSessionSectionStatus {
+                        name: name.to_string(),
+                        status: "failed".to_string(),
+                        path: path.to_string_lossy().to_string(),
+                        version: None,
+                        reason: Some(reason),
+                    });
+                }
+            }
+            let _ = file;
+        }
+
+        let status = restore_status(missing.len(), corrupt.len());
+        let sections = sections
+            .into_iter()
+            .map(|section| {
+                if section.status == "failed" && status == "degraded" {
+                    SavedSessionSectionStatus {
+                        status: "degraded".to_string(),
+                        ..section
+                    }
+                } else {
+                    section
+                }
+            })
+            .collect();
+
+        Ok(SavedSessionVerification {
+            status: status.to_string(),
+            sections,
+            missing,
+            corrupt,
+            unsafe_to_continue: status != "complete",
+        })
+    }
+
+    fn read_section(&self, manifest: &SavedSessionManifest, name: &str) -> io::Result<Value> {
+        let section = manifest
+            .sections
+            .get(name)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "missing section"))?;
+        let path = self.session_dir(&manifest.id).join(&section.file);
+        let parsed: SectionEnvelope = serde_json::from_str(&fs::read_to_string(path)?)?;
+        Ok(parsed.data)
+    }
+
+    fn safe_read_section(&self, manifest: &SavedSessionManifest, name: &str) -> Value {
+        self.read_section(manifest, name).unwrap_or(Value::Null)
+    }
+
+    fn read_manifest(&self, id: &str) -> io::Result<SavedSessionManifest> {
+        let path = self.session_dir(id).join("manifest.json");
+        let raw = fs::read_to_string(path)?;
+        serde_json::from_str(&raw).map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
+    }
+
+    fn session_dir(&self, id: &str) -> PathBuf {
+        self.base_dir.join(id)
+    }
+}
+
+fn envelope(data: Value) -> Value {
+    json!({ "version": SECTION_VERSION, "data": data })
+}
+
+fn restore_status(missing_count: usize, corrupt_count: usize) -> &'static str {
+    if corrupt_count > 0 {
+        "failed"
+    } else if missing_count > 0 {
+        "degraded"
+    } else {
+        "complete"
+    }
+}
+
+fn iso_now() -> String {
+    time::OffsetDateTime::now_utc()
+        .format(&time::format_description::well_known::Rfc3339)
+        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
+}
+
+fn chrono_placeholder() -> String {
+    iso_now()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("rlm-session-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn save_and_load_complete_bundle() {
+        let dir = temp_dir("complete");
+        let store = FileSessionStore::new(dir.clone());
+        let saved = store
+            .save(SaveSessionRequest {
+                id: Some("demo".into()),
+                name: Some("Demo".into()),
+                payload: SavedSessionPayload {
+                    session: json!({ "graph": { "nodes": [], "edges": [] }, "status": "planned" }),
+                    run_state: None,
+                    artifacts: json!({ "refs": [] }),
+                    memory: json!({ "status": "contract_saved", "scopes": [] }),
+                    preferences: json!({ "status": "contract_saved", "preferences": [] }),
+                    vector_index: json!({ "status": "not_indexed", "rebuildNeeded": true }),
+                    graph_workflow_metadata: None,
+                },
+            })
+            .unwrap();
+
+        assert_eq!(saved.summary.status, "complete");
+        assert!(!saved.verification.unsafe_to_continue);
+        assert!(saved.verification.missing.is_empty());
+
+        let loaded = store.load("demo").unwrap();
+        assert_eq!(
+            loaded.payload.vector_index,
+            json!({ "status": "not_indexed", "rebuildNeeded": true })
+        );
+    }
+}
