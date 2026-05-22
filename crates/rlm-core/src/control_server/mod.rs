@@ -9,8 +9,8 @@ use tokio::sync::Mutex as AsyncMutex;
 
 use crate::adapters::OllamaEmbeddingModel;
 use crate::adapters::OllamaLanguageModel;
-use crate::execution::{InteractiveExecutionSession, ProcessShutdown};
-use crate::memory::SemanticMemoryIndex;
+use crate::application::execution::{InteractiveExecutionSession, ProcessShutdown};
+use crate::application::memory::SemanticMemoryIndex;
 use crate::model_library::ModelLibraryService;
 use crate::persistence::{load_project_config, LoadedProjectConfig, ProjectPaths};
 use crate::plugins::{

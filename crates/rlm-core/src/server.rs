@@ -6,7 +6,7 @@ use axum::Router;
 use tokio::net::TcpListener;
 
 use crate::control_server;
-use crate::execution::InteractiveExecutionSession;
+use crate::application::execution::InteractiveExecutionSession;
 
 pub struct ServerConfig {
     pub port: u16,
@@ -19,6 +19,7 @@ pub struct ServerConfig {
 pub struct ControlServer {
     pub port: u16,
     pub url: String,
+    state: Arc<control_server::RouterState>,
     shutdown: tokio::sync::oneshot::Sender<()>,
     join: tokio::task::JoinHandle<()>,
 }
@@ -32,7 +33,8 @@ pub async fn start_server(config: ServerConfig) -> Result<ControlServer, std::io
     if let Some(session) = config.session {
         router_state = router_state.with_session(session);
     }
-    let app: Router = control_server::build_router(router_state);
+    let state = Arc::new(router_state);
+    let app: Router = control_server::build_router(Arc::clone(&state));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], config.port));
     let listener = TcpListener::bind(addr).await?;
@@ -51,6 +53,7 @@ pub async fn start_server(config: ServerConfig) -> Result<ControlServer, std::io
     Ok(ControlServer {
         port: bound.port(),
         url: format!("http://127.0.0.1:{}", bound.port()),
+        state,
         shutdown: shutdown_tx,
         join,
     })
@@ -58,6 +61,7 @@ pub async fn start_server(config: ServerConfig) -> Result<ControlServer, std::io
 
 impl ControlServer {
     pub async fn close(self) {
+        self.state.shutdown("server close").await;
         let _ = self.shutdown.send(());
         let _ = self.join.await;
     }
