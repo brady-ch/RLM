@@ -2,50 +2,48 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Dynamic Graph Authoring
-status: planning
-stopped_at: v1.4 milestone complete
-last_updated: "2026-05-22T14:14:17.004Z"
-last_activity: 2026-05-22
+status: Awaiting next milestone
+stopped_at: Milestone v1.5 complete
+last_updated: "2026-05-22T14:20:00.000Z"
+last_activity: 2026-05-22 — Milestone v1.5 completed and archived
 progress:
-  total_phases: 6
-  completed_phases: 5
-  total_plans: 17
-  completed_plans: 18
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-05-21)
+See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 33 — graph-execution-loop
+**Current focus:** Planning next milestone (`/gsd-new-milestone`)
 
 ## Current Position
 
-Phase: 35
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-22
+Phase: Milestone v1.5 complete  
+Plan: —  
+Status: Awaiting next milestone  
+Last activity: 2026-05-22 — Milestone v1.5 completed and archived
 
 ## Recently Completed
 
-- Phase 30 Plan-from-Node Foundation completed on 2026-05-22.
-- Phase 31 Protected Replan UX completed on 2026-05-22.
+- v1.5 Dynamic Graph Authoring shipped on 2026-05-22 (Phases 30-35, 18 plans, 205 tests).
+- Phase 35 Integration Hardening completed on 2026-05-22.
+- Phase 34 Graph Workflow Export/Import completed on 2026-05-22.
+- Phase 33 Graph Execution Loop completed on 2026-05-22.
 - Phase 32 Expert Team Binding completed on 2026-05-22.
+- Phase 31 Protected Replan UX completed on 2026-05-22.
+- Phase 30 Plan-from-Node Foundation completed on 2026-05-22.
 - v1.4 Session Memory shipped on 2026-05-21 after milestone audit passed.
-- Phase 29.1 Close gap: session save/reopen memory binding completed on 2026-05-21.
-- Phase 29 End-to-End Memory Hardening completed on 2026-05-21.
-- Phase 28 Semantic Retrieval Pipeline completed on 2026-05-21.
-- Phase 27 Memory Preferences and Inspection Surfaces completed on 2026-05-21.
-- Phase 26 Structured Memory Store and Resolver completed on 2026-05-21.
-- Phase 25 Session Snapshot Store completed on 2026-05-21.
 
 ## Pending Todos
 
-- 1 pending todo in `.planning/todos/pending/` (acknowledged at v1.4 close)
+- 3 pending todos in `.planning/todos/pending/` (acknowledged at v1.5 close)
 
 ## Blockers/Concerns
 
@@ -53,9 +51,14 @@ Last activity: 2026-05-22
 
 ## Deferred Items
 
+Items acknowledged and deferred at milestone close on 2026-05-22:
+
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| todo | 2026-05-14-create-next-milestone-roadmap.md | Superseded by `/gsd-new-milestone` | v1.4 closeout |
+| verification | Phase 33: 33-VERIFICATION.md human_needed | Deferred — live UI visual verification | v1.5 closeout |
+| todo | 2026-05-14-create-next-milestone-roadmap.md | Superseded by `/gsd-new-milestone` | v1.5 closeout |
+| todo | 2026-05-22-extract-runtime-composition-from-cli-entrypoint.md | Future refactor candidate | v1.5 closeout |
+| todo | 2026-05-22-split-config-loader-resolver-validation.md | Future refactor candidate | v1.5 closeout |
 | Launcher/plugins | Developer launcher and local-folder plugin manager | Future milestone candidate | v1.2 roadmap |
 | Local models | Hugging Face GGUF browser/installer and llama.cpp compatibility states | Future milestone candidate | v1.2 roadmap |
 | Release hardening | Signed/reproducible single executable artifacts and platform release checks | Future milestone candidate | v1.2 closeout |
@@ -64,10 +67,10 @@ Last activity: 2026-05-22
 
 ## Session Continuity
 
-Last session: 2026-05-22T14:14:16.973Z
-Stopped at: v1.4 milestone complete  
+Last session: 2026-05-22T14:20:00.000Z  
+Stopped at: Milestone v1.5 complete  
 Resume file: None
 
 ## Operator Next Steps
 
-- `/gsd-discuss-phase 33` to begin Graph Execution Loop.
+- `/gsd-new-milestone` to start the next milestone cycle

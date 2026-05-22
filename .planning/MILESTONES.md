@@ -1,5 +1,23 @@
 # Milestones
 
+## v1.5 Dynamic Graph Authoring (Shipped: 2026-05-22)
+
+**Phases completed:** 6 phases, 18 plans, 12 tasks  
+**Known deferred items at close:** 4 (see STATE.md Deferred Items)
+
+**Key accomplishments:**
+
+- Shared GraphExecutor with topological ordering, bind-time expert resolution, single-pass/RLM runtime enforcement, and descendant blocking on failure.
+- UI confirm-run now delegates to GraphExecutor with config-loaded agent registry instead of root-only selectAgent/runConfiguredAgent.
+- Canvas node cards show live execution status, active-node highlight, expert/runtime metadata, and truncated failure reasons during interactive graph runs.
+- CLI parity, session v1.5 metadata, and graph-primary UX hardening across UI, CLI, and saved sessions.
+
+**Archive:** `.planning/milestones/v1.5-ROADMAP.md`  
+**Requirements:** `.planning/milestones/v1.5-REQUIREMENTS.md`  
+**Audit:** `.planning/milestones/v1.5-MILESTONE-AUDIT.md`
+
+---
+
 ## v1.4 Session Memory (Shipped: 2026-05-21)
 
 **Phases completed:** 6 phases, 6 plans, 0 tasks  

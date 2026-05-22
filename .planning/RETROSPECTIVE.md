@@ -2,6 +2,53 @@
 
 *A living document updated after each milestone. Lessons feed forward into future planning.*
 
+## Milestone: v1.5 — Dynamic Graph Authoring
+
+**Shipped:** 2026-05-22  
+**Phases:** 6 | **Plans:** 18 | **Tests:** 205 passing
+
+### What Was Built
+
+- Model-driven plan-from-node with root-composer default, async planner contract, and explicit failure states (no heuristic fallback).
+- Protected replan UX with Replace/Merge/Cancel gate when manual edits, pins, overrides, or expert customizations exist.
+- Planner-assigned expert presets per node with inspector overrides, execution-time allowlist enforcement, and purpose-to-tier routing.
+- Shared GraphExecutor with topological walk, bind-time expert resolution, single-pass/RLM runtime modes, and per-node execution progress UI.
+- Lossless `kind: graph` workflow sidecars with playbook/pipeline variants, import/export API, and frozen replay path.
+- Integration hardening: CLI workflow-export/import, disk-resolved graph workflows, session v1.5 metadata, and graph-primary UX with demoted chat panel.
+
+### What Worked
+
+- Vertical phase slicing (plan → protect → experts → execute → export → integrate) kept dependencies clear and testable.
+- Reusing existing ports/adapters for planner, session, and workflow layers avoided a rewrite while shifting the product surface.
+- Milestone audit with 28/28 requirements and 205/205 tests gave confidence to close despite doc checkbox drift.
+
+### What Was Inefficient
+
+- SUMMARY frontmatter one-liner fields were missing on early phases, forcing accomplishment extraction from narrative summaries.
+- REQUIREMENTS.md traceability Status column lagged behind phase verification (Pending vs Complete mismatch).
+- Phase 33 human visual verification deferred — live execution progress styling not fully UAT'd in browser.
+
+### Patterns Established
+
+- Graph-primary authoring: node submit and Plan children CTA replace chat-first pre-run flow.
+- Expert binding at plan time with execution-time allowlist filtering on shared tool implementations.
+- Graph workflow sidecars as replayable artifacts separate from legacy agent-list workflows.
+- Disk fallback for graph workflows when absent from YAML config registration.
+
+### Key Lessons
+
+1. Keep REQUIREMENTS.md traceability in sync with phase verification as phases close, not at milestone audit.
+2. SUMMARY frontmatter (one_liner, requirements-completed) should be populated at plan close for reliable milestone extraction.
+3. UI-rich execution phases need scheduled human verification before close, or explicit deferral in STATE.md.
+
+### Cost Observations
+
+- Model mix: inherited session defaults (yolo mode).
+- Sessions: 6 phase execution waves over 2 days.
+- Notable: integration-v15.test.ts consolidated cross-surface parity checks efficiently in one phase.
+
+---
+
 ## Milestone: v1.1 — Interop, chat-first, plugins, constrained tools
 
 **Shipped:** 2026-05-13  
@@ -56,6 +103,7 @@
 |-----------|----------|--------|------------|
 | v1.0 | multiple | 5 | Established approval/checkpoint/control graph foundation |
 | v1.1 | multiple | 7 | Added interop, typed runtime state, chat-first UX, packaging, and milestone audit reconciliation |
+| v1.5 | 2 days | 6 | Graph-primary authoring, expert teams, GraphExecutor, workflow sidecars, UI/CLI parity |
 
 ### Cumulative Quality
 
@@ -63,6 +111,7 @@
 |-----------|-------|----------|-------------------|
 | v1.0 | baseline suite | approval and graph-control paths | n/a |
 | v1.1 | 98 passing | interop, run-state, clarification, typed composer, packaging/config scopes | Extension shims and runtime ports stayed in TypeScript/Node stack |
+| v1.5 | 205 passing | plan-from-node, protected replan, expert binding, GraphExecutor, graph workflow export/import, integration-v15 | Graph workflow sidecars and disk-resolved workflow path |
 
 ### Top Lessons (Verified Across Milestones)
 
