@@ -121,9 +121,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 33-01-PLAN.md — GraphExecutor core: topological walk, expert binding, single-pass/rlm modes
-- [ ] 33-02-PLAN.md — Wire UI runner to GraphExecutor (replace root-only selectAgent)
-- [ ] 33-03-PLAN.md — Per-node execution progress UI and human verify checkpoint
+- [x] 33-01-PLAN.md — GraphExecutor core: topological walk, expert binding, single-pass/rlm modes
+- [x] 33-02-PLAN.md — Wire UI runner to GraphExecutor (replace root-only selectAgent)
+- [x] 33-03-PLAN.md — Per-node execution progress UI and human verify checkpoint
 **UI hint**: yes
 
 ### Phase 34: Graph Workflow Export/Import
@@ -167,7 +167,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 | 30. Plan-from-Node Foundation | v1.5 | 5/5 | Complete | 2026-05-22 |
 | 31. Protected Replan UX | v1.5 | 3/3 | Complete | 2026-05-22 |
 | 32. Expert Team Binding | v1.5 | 3/3 | Complete | 2026-05-22 |
-| 33. Graph Execution Loop | v1.5 | 0/TBD | Not started | - |
+| 33. Graph Execution Loop | v1.5 | 3/3 | Complete    | 2026-05-22 |
 | 34. Graph Workflow Export/Import | v1.5 | 0/TBD | Not started | - |
 | 35. Integration Hardening | v1.5 | 0/TBD | Not started | - |
 | 25-29, 29.1 Session Memory | v1.4 | 6/6 | Complete | 2026-05-21 |

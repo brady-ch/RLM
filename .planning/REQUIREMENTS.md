@@ -39,9 +39,9 @@
 
 ### Graph Execution
 
-- [ ] **EXEC-01**: Approved graph runs walk planned node topology (not root-only `selectAgent` delegation) via a shared graph executor.
-- [ ] **EXEC-02**: Each node resolves its expert profile and constrained tool allowlist at execution bind time.
-- [ ] **EXEC-03**: Single-pass and RLM runtime modes execute with visible mode metadata and no silent runtime escalation.
+- [x] **EXEC-01**: Approved graph runs walk planned node topology (not root-only `selectAgent` delegation) via a shared graph executor.
+- [x] **EXEC-02**: Each node resolves its expert profile and constrained tool allowlist at execution bind time.
+- [x] **EXEC-03**: Single-pass and RLM runtime modes execute with visible mode metadata and no silent runtime escalation.
 
 ### UI and CLI Surfaces
 
@@ -107,9 +107,9 @@
 | TEAM-06 | Phase 32 | Pending |
 | TEAM-07 | Phase 32 | Pending |
 | TEAM-08 | Phase 34 | Pending |
-| EXEC-01 | Phase 33 | Pending |
-| EXEC-02 | Phase 33 | Pending |
-| EXEC-03 | Phase 33 | Pending |
+| EXEC-01 | Phase 33 | Complete |
+| EXEC-02 | Phase 33 | Complete |
+| EXEC-03 | Phase 33 | Complete |
 | SURF-01 | Phase 35 | Pending |
 | SURF-02 | Phase 35 | Pending |
 | SURF-03 | Phase 35 | Pending |
