@@ -60,11 +60,7 @@ export function shouldSkipLaunchWizard(argv: readonly string[]): boolean {
   }
 
   return (
-    first === "help"
-    || first === "--help"
-    || first === "-h"
-    || first === "ui"
-    || first === "ask"
+    first === "help" || first === "--help" || first === "-h" || first === "ui" || first === "ask"
   );
 }
 

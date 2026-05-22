@@ -74,17 +74,32 @@ export class FileSessionStore implements SessionStorePort {
         memory: { file: SECTION_FILES.memory, version: SECTION_VERSION },
         preferences: { file: SECTION_FILES.preferences, version: SECTION_VERSION },
         vectorIndex: { file: SECTION_FILES.vectorIndex, version: SECTION_VERSION },
-        graphWorkflowMetadata: { file: SECTION_FILES.graphWorkflowMetadata, version: SECTION_VERSION },
+        graphWorkflowMetadata: {
+          file: SECTION_FILES.graphWorkflowMetadata,
+          version: SECTION_VERSION,
+        },
       },
     };
 
     await this.writeJson(join(dir, SECTION_FILES.session), envelope(request.payload.session));
-    await this.writeJson(join(dir, SECTION_FILES.runState), envelope(request.payload.runState ?? null));
+    await this.writeJson(
+      join(dir, SECTION_FILES.runState),
+      envelope(request.payload.runState ?? null),
+    );
     await this.writeJson(join(dir, SECTION_FILES.artifacts), envelope(request.payload.artifacts));
     await this.writeJson(join(dir, SECTION_FILES.memory), envelope(request.payload.memory));
-    await this.writeJson(join(dir, SECTION_FILES.preferences), envelope(request.payload.preferences));
-    await this.writeJson(join(dir, SECTION_FILES.vectorIndex), envelope(request.payload.vectorIndex));
-    await this.writeJson(join(dir, SECTION_FILES.graphWorkflowMetadata), envelope(request.payload.graphWorkflowMetadata ?? { version: 1 }));
+    await this.writeJson(
+      join(dir, SECTION_FILES.preferences),
+      envelope(request.payload.preferences),
+    );
+    await this.writeJson(
+      join(dir, SECTION_FILES.vectorIndex),
+      envelope(request.payload.vectorIndex),
+    );
+    await this.writeJson(
+      join(dir, SECTION_FILES.graphWorkflowMetadata),
+      envelope(request.payload.graphWorkflowMetadata ?? { version: 1 }),
+    );
     await this.writeJson(join(dir, "manifest.json"), manifest);
 
     return this.load(id);
@@ -154,7 +169,10 @@ export class FileSessionStore implements SessionStorePort {
     const corrupt: Array<{ section: string; reason: string }> = [];
 
     if (manifest.version !== MANIFEST_VERSION) {
-      corrupt.push({ section: "manifest", reason: `unsupported manifest version ${manifest.version}` });
+      corrupt.push({
+        section: "manifest",
+        reason: `unsupported manifest version ${manifest.version}`,
+      });
     }
 
     for (const name of Object.keys(SECTION_FILES) as SectionName[]) {
@@ -170,7 +188,13 @@ export class FileSessionStore implements SessionStorePort {
         const parsed = JSON.parse(raw) as SectionEnvelope;
         if (parsed.version !== section.version) {
           corrupt.push({ section: name, reason: `unsupported section version ${parsed.version}` });
-          sections.push({ name, status: "failed", path, version: parsed.version, reason: "unsupported section version" });
+          sections.push({
+            name,
+            status: "failed",
+            path,
+            version: parsed.version,
+            reason: "unsupported section version",
+          });
           continue;
         }
         sections.push({ name, status: "complete", path, version: parsed.version });
@@ -190,7 +214,11 @@ export class FileSessionStore implements SessionStorePort {
     const status = restoreStatus(missing.length, corrupt.length);
     return {
       status,
-      sections: sections.map((section) => section.status === "failed" && status === "degraded" ? { ...section, status: "degraded" } : section),
+      sections: sections.map((section) =>
+        section.status === "failed" && status === "degraded"
+          ? { ...section, status: "degraded" }
+          : section,
+      ),
       missing,
       corrupt,
       unsafeToContinue: status !== "complete",
@@ -207,7 +235,10 @@ export class FileSessionStore implements SessionStorePort {
     return parsed.data;
   }
 
-  private async safeReadSection(manifest: SavedSessionManifest, name: SectionName): Promise<unknown> {
+  private async safeReadSection(
+    manifest: SavedSessionManifest,
+    name: SectionName,
+  ): Promise<unknown> {
     try {
       return await this.readSection(manifest, name);
     } catch {
@@ -216,13 +247,16 @@ export class FileSessionStore implements SessionStorePort {
   }
 
   private async readManifest(id: string): Promise<SavedSessionManifest> {
-    const raw = await readFile(join(this.sessionDir(sanitizeSessionId(id)), "manifest.json"), "utf8");
+    const raw = await readFile(
+      join(this.sessionDir(sanitizeSessionId(id)), "manifest.json"),
+      "utf8",
+    );
     return JSON.parse(raw) as SavedSessionManifest;
   }
 
   private async writeJson(path: string, value: unknown): Promise<void> {
     await mkdir(dirname(path), { recursive: true });
-    const tempPath = `${path}.${process.pid}.${this.writeCounter += 1}.tmp`;
+    const tempPath = `${path}.${process.pid}.${(this.writeCounter += 1)}.tmp`;
     await writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
     await rename(tempPath, path);
   }
@@ -247,7 +281,10 @@ function restoreStatus(missingCount: number, corruptCount: number): SavedSession
 }
 
 function sanitizeSessionId(id: string): string {
-  const safe = id.trim().replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-");
+  const safe = id
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-");
   if (!safe || safe === "." || safe === "..") {
     throw new Error("Session id must contain at least one safe character.");
   }

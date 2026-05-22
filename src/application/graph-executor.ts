@@ -92,7 +92,9 @@ export function topologicalExecutionOrder(graph: ExecutionGraph): string[] {
   while (queue.length > 0) {
     const current = queue.shift()!;
     order.push(current);
-    const neighbors = [...(adjacency.get(current) ?? [])].sort((left, right) => left.localeCompare(right));
+    const neighbors = [...(adjacency.get(current) ?? [])].sort((left, right) =>
+      left.localeCompare(right),
+    );
     for (const next of neighbors) {
       inDegree.set(next, (inDegree.get(next) ?? 0) - 1);
       if (inDegree.get(next) === 0) {
@@ -109,7 +111,10 @@ export function topologicalExecutionOrder(graph: ExecutionGraph): string[] {
   return order;
 }
 
-export function buildExecutionPrompt(node: ExecutionGraphNode, ancestors: ExecutionGraphNode[]): string {
+export function buildExecutionPrompt(
+  node: ExecutionGraphNode,
+  ancestors: ExecutionGraphNode[],
+): string {
   const lines: string[] = [];
   if (ancestors.length > 0) {
     lines.push("Context from ancestor steps:");
@@ -136,7 +141,11 @@ function collectAncestors(
   return ancestors;
 }
 
-function hasFailedAncestor(node: ExecutionGraphNode, failedNodeIds: Set<string>, nodeById: Map<string, ExecutionGraphNode>): boolean {
+function hasFailedAncestor(
+  node: ExecutionGraphNode,
+  failedNodeIds: Set<string>,
+  nodeById: Map<string, ExecutionGraphNode>,
+): boolean {
   let current = node.parentId ? nodeById.get(node.parentId) : undefined;
   while (current) {
     if (failedNodeIds.has(current.id)) {
@@ -166,7 +175,10 @@ function shouldSkipExecutionStatus(status: ExecutionStatus): boolean {
   return status === "skipped" || status === "cancelled";
 }
 
-export async function executeGraph(session: InteractiveExecutionSession, input: GraphExecutorInput): Promise<void> {
+export async function executeGraph(
+  session: InteractiveExecutionSession,
+  input: GraphExecutorInput,
+): Promise<void> {
   const graph = session.snapshot().graph;
   if (graph.nodes.length === 0) {
     throw new GraphExecutorError("empty_graph", "Graph has no nodes.");
@@ -227,7 +239,11 @@ export async function executeGraph(session: InteractiveExecutionSession, input: 
     const purposeTiers = node.expertPurposeTiers;
 
     if (session.control.waitForNodeApproval) {
-      if (node.depth === 0 && !node.spawnedAfterInitialApproval && session.isConfirmedExecutionRunning()) {
+      if (
+        node.depth === 0 &&
+        !node.spawnedAfterInitialApproval &&
+        session.isConfirmedExecutionRunning()
+      ) {
         session.control.updateNodeStatus?.(nodeId, "approved", {
           message: "graph confirmed for run",
         });

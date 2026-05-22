@@ -7,8 +7,14 @@ import { FileMemoryStore } from "../src/adapters/file-memory-store.js";
 import { FileSessionStore } from "../src/adapters/file-session-store.js";
 import { FileVectorIndex } from "../src/adapters/file-vector-index.js";
 import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
-import { exportAndSaveGraphWorkflow, resolveDiskGraphWorkflowConfig } from "../src/application/graph-workflow-store.js";
-import { exportSessionGraphToSidecar, importSidecarToGraph } from "../src/application/graph-workflow-serializer.js";
+import {
+  exportAndSaveGraphWorkflow,
+  resolveDiskGraphWorkflowConfig,
+} from "../src/application/graph-workflow-store.js";
+import {
+  exportSessionGraphToSidecar,
+  importSidecarToGraph,
+} from "../src/application/graph-workflow-serializer.js";
 import { loadProjectConfig } from "../src/application/project-config.js";
 import { runWorkflow } from "../src/application/workflow-runner.js";
 import {
@@ -38,7 +44,9 @@ function createMockPlanModel(): LanguageModelPort {
   };
 }
 
-function makeNode(partial: Partial<ExecutionGraphNode> & Pick<ExecutionGraphNode, "id">): ExecutionGraphNode {
+function makeNode(
+  partial: Partial<ExecutionGraphNode> & Pick<ExecutionGraphNode, "id">,
+): ExecutionGraphNode {
   return {
     kind: "task",
     label: partial.label ?? partial.id,
@@ -117,15 +125,16 @@ test("workflow export round-trip resolves from disk without config registration"
     const memoryManager = new MemoryManager({ config: projectConfig.memory });
 
     await assert.rejects(
-      () => runWorkflow({
-        workflowId: "missing-flow",
-        prompt: "",
-        config: projectConfig.runtime,
-        projectConfig,
-        registry,
-        memoryManager,
-        createModel: () => createMockPlanModel(),
-      }),
+      () =>
+        runWorkflow({
+          workflowId: "missing-flow",
+          prompt: "",
+          config: projectConfig.runtime,
+          projectConfig,
+          registry,
+          memoryManager,
+          createModel: () => createMockPlanModel(),
+        }),
       /Unknown workflow "missing-flow"/,
     );
 
@@ -144,15 +153,23 @@ test("workflow export round-trip resolves from disk without config registration"
 test("session save and restore preserves expert fields and graph workflow metadata", async () => {
   const dir = await mkdtemp(join(tmpdir(), "rlm-v15-session-"));
   try {
-    const memoryStore = new FileMemoryStore({ baseDir: join(dir, "memory"), now: () => "2026-05-22T00:00:00.000Z" });
+    const memoryStore = new FileMemoryStore({
+      baseDir: join(dir, "memory"),
+      now: () => "2026-05-22T00:00:00.000Z",
+    });
     const vectorIndex = new FileVectorIndex({ path: join(dir, "vector-index.json") });
-    const sessionStore = new FileSessionStore({ baseDir: join(dir, "sessions"), now: () => "2026-05-22T00:00:00.000Z" });
+    const sessionStore = new FileSessionStore({
+      baseDir: join(dir, "sessions"),
+      now: () => "2026-05-22T00:00:00.000Z",
+    });
     const session = createInteractiveExecutionSession({
       seedRootPrompt: "Expert binding session",
       planModel: createMockPlanModel(),
     });
     await session.planNode("root-composer");
-    const childId = session.snapshot().graph.nodes.find((node) => node.parentId === "root-composer")?.id;
+    const childId = session
+      .snapshot()
+      .graph.nodes.find((node) => node.parentId === "root-composer")?.id;
     assert.ok(childId);
     session.setNodeExpertOverride(childId, {
       agentId: "coding",
@@ -179,7 +196,9 @@ test("session save and restore preserves expert fields and graph workflow metada
 
     const restoredSession = createInteractiveExecutionSession({ planModel: createMockPlanModel() });
     const loaded = await sessionStore.load("v15-session");
-    restoredSession.restoreSnapshot(loaded.payload.session as ReturnType<typeof restoredSession.snapshot>);
+    restoredSession.restoreSnapshot(
+      loaded.payload.session as ReturnType<typeof restoredSession.snapshot>,
+    );
     const metadataRestore = restoreGraphWorkflowMetadata(loaded.payload);
     restoredSession.setGraphWorkflowMetadata(metadataRestore.metadata);
 

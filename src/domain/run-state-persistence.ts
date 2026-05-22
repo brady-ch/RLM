@@ -68,13 +68,18 @@ export class RunStatePersistence {
         policy: "strict",
         reason: result.reason,
       },
-      message: result.accepted ? "run-state node status persisted" : `run-state node status rejected: ${result.reason}`,
+      message: result.accepted
+        ? "run-state node status persisted"
+        : `run-state node status rejected: ${result.reason}`,
     });
   }
 }
 
 function toExecutionStatus(status: string): ExecutionStatus {
-  return status === "completed" || status === "failed" || status === "cancelled" || status === "skipped"
+  return status === "completed" ||
+    status === "failed" ||
+    status === "cancelled" ||
+    status === "skipped"
     ? status
     : "running";
 }

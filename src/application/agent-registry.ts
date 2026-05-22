@@ -115,7 +115,18 @@ export function createAgentRegistry(input: {
         "Fetch promising result URLs with web_fetch, use the selected content-tree sections, prefer primary or official sources, " +
         "and cite the links you rely on in the final answer.",
       tools: input.researchTools,
-      routingHints: ["research", "search", "lookup", "latest", "current", "source", "sources", "cite", "verify", "compare"],
+      routingHints: [
+        "research",
+        "search",
+        "lookup",
+        "latest",
+        "current",
+        "source",
+        "sources",
+        "cite",
+        "verify",
+        "compare",
+      ],
       config: agentConfigOrThrow(agentConfigs, "research"),
     },
   );
@@ -126,15 +137,22 @@ export function createAgentRegistry(input: {
   };
 }
 
-export function selectAgent(registry: AgentRegistry, prompt: string, override?: string): AgentProfile {
+export function selectAgent(
+  registry: AgentRegistry,
+  prompt: string,
+  override?: string,
+): AgentProfile {
   if (override) {
     return findAgentOrThrow(registry, override);
   }
 
   const normalized = prompt.toLowerCase();
   const researchAgent = findAgentOrThrow(registry, "research");
-  const shouldResearch = matchesAgent(normalized, researchAgent) ||
-    /\b(today|latest|recent|new|news|web|online|citation|citations|look up|find out)\b/.test(normalized);
+  const shouldResearch =
+    matchesAgent(normalized, researchAgent) ||
+    /\b(today|latest|recent|new|news|web|online|citation|citations|look up|find out)\b/.test(
+      normalized,
+    );
   if (shouldResearch) {
     return researchAgent;
   }
@@ -157,7 +175,10 @@ export function selectAgent(registry: AgentRegistry, prompt: string, override?: 
   return findAgentOrThrow(registry, registry.defaultAgentId);
 }
 
-export function selectedAgentMetadata(agent: AgentProfile, source: SelectedAgent["source"]): SelectedAgent {
+export function selectedAgentMetadata(
+  agent: AgentProfile,
+  source: SelectedAgent["source"],
+): SelectedAgent {
   return {
     id: agent.id,
     source,
@@ -172,7 +193,9 @@ export function resolveAgent(registry: AgentRegistry, id: string): AgentProfile 
 function findAgentOrThrow(registry: AgentRegistry, id: string): AgentProfile {
   const profile = registry.profiles.find((agent) => agent.id === id);
   if (!profile) {
-    throw new Error(`Unknown agent "${id}". Available agents: ${registry.profiles.map((agent) => agent.id).join(", ")}`);
+    throw new Error(
+      `Unknown agent "${id}". Available agents: ${registry.profiles.map((agent) => agent.id).join(", ")}`,
+    );
   }
 
   return profile;

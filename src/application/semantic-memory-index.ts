@@ -41,11 +41,19 @@ export class SemanticMemoryIndex {
       });
   }
 
-  async search(input: { query: string; scopeIds: string[]; limit?: number }): Promise<RetrievalResult> {
+  async search(input: {
+    query: string;
+    scopeIds: string[];
+    limit?: number;
+  }): Promise<RetrievalResult> {
     try {
       const records = await this.input.index.read();
       if (records.length === 0) {
-        return { hits: [], status: "empty", reason: "index empty; rebuild scheduled asynchronously" };
+        return {
+          hits: [],
+          status: "empty",
+          reason: "index empty; rebuild scheduled asynchronously",
+        };
       }
       const allowed = new Set(input.scopeIds);
       const eligible = records.filter((record) => allowed.has(record.scopeId));

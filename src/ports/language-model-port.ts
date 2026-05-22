@@ -6,7 +6,10 @@ export interface LanguageModelMessage {
 }
 
 export interface LanguageModelPort {
-  complete(messages: LanguageModelMessage[], options?: LanguageModelCompleteOptions): Promise<LanguageModelResponse>;
+  complete(
+    messages: LanguageModelMessage[],
+    options?: LanguageModelCompleteOptions,
+  ): Promise<LanguageModelResponse>;
   close?(): Promise<void>;
 }
 
@@ -40,13 +43,15 @@ export interface LanguageModelResponse {
   usage?: LanguageModelUsage | undefined;
   model?: string | undefined;
   sampling?: EffectiveSamplingMetadata | undefined;
-  host?: {
-    id: string;
-    kind: "ollama" | "http";
-    endpoint: string;
-    constrainedToolCalling?: boolean | undefined;
-    degradedToolCalling?: boolean | undefined;
-  } | undefined;
+  host?:
+    | {
+        id: string;
+        kind: "ollama" | "http";
+        endpoint: string;
+        constrainedToolCalling?: boolean | undefined;
+        degradedToolCalling?: boolean | undefined;
+      }
+    | undefined;
 }
 
 export interface LanguageModelSamplingOptions {

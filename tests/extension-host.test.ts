@@ -28,7 +28,9 @@ test("third-party tool extension loads after preApprove and executes", async () 
     const allowlistPath = join(dir, ".rlm-allowlist.json");
     const extensionPath = join(dir, "third-party-extension.mjs");
     await writeFile(configPath, "extensions:\n  load: []\n", "utf8");
-    await writeFile(extensionPath, `
+    await writeFile(
+      extensionPath,
+      `
 export function register(host) {
   host.tools.register({
     name: "third_party_echo",
@@ -39,7 +41,9 @@ export function register(host) {
     },
   });
 }
-`, "utf8");
+`,
+      "utf8",
+    );
 
     const host = new ExtensionHost();
     await host.preApprove(extensionPath, allowlistPath);
@@ -76,11 +80,12 @@ test("extension missing register rejects with register message", async () => {
     await host.preApprove(extensionPath, allowlistPath);
 
     await assert.rejects(
-      () => host.loadExternal([{ path: extensionPath, agents: [] }], {
-        configFilePath: configPath,
-        allowlistPath,
-        interactive: false,
-      }),
+      () =>
+        host.loadExternal([{ path: extensionPath, agents: [] }], {
+          configFilePath: configPath,
+          allowlistPath,
+          interactive: false,
+        }),
       /register/,
     );
   } finally {

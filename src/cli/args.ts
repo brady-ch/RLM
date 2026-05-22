@@ -56,24 +56,30 @@ const DEFAULT_UI_BOOTSTRAP_PROMPT =
 
 export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env): CliOptions {
   const [commandCandidate, ...rest] = argv;
-  if (!commandCandidate || commandCandidate === "help" || commandCandidate === "--help" || commandCandidate === "-h") {
+  if (
+    !commandCandidate ||
+    commandCandidate === "help" ||
+    commandCandidate === "--help" ||
+    commandCandidate === "-h"
+  ) {
     return helpOptions(env);
   }
 
   const command: CliOptions["command"] =
-    commandCandidate === "ui"
-    || commandCandidate === "plan-node"
-    || commandCandidate === "workflow-export"
-    || commandCandidate === "workflow-import"
+    commandCandidate === "ui" ||
+    commandCandidate === "plan-node" ||
+    commandCandidate === "workflow-export" ||
+    commandCandidate === "workflow-import"
       ? commandCandidate
       : "ask";
-  const args = commandCandidate === "ask"
-    || commandCandidate === "ui"
-    || commandCandidate === "plan-node"
-    || commandCandidate === "workflow-export"
-    || commandCandidate === "workflow-import"
-    ? rest
-    : argv;
+  const args =
+    commandCandidate === "ask" ||
+    commandCandidate === "ui" ||
+    commandCandidate === "plan-node" ||
+    commandCandidate === "workflow-export" ||
+    commandCandidate === "workflow-import"
+      ? rest
+      : argv;
 
   const config = { ...DEFAULT_CONFIG };
   const configOverrides: Partial<RecursiveModelConfig> = {};
@@ -149,7 +155,9 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     if (arg === "--approval-mode") {
       const value = readValue(args, index, arg);
       if (value !== "full" && value !== "initial-plan" && value !== "initial-plan-recursive") {
-        throw new Error("--approval-mode must be one of: full, initial-plan, initial-plan-recursive.");
+        throw new Error(
+          "--approval-mode must be one of: full, initial-plan, initial-plan-recursive.",
+        );
       }
       approvalMode = value;
       requireApproval = true;
@@ -355,18 +363,14 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   if (!promptInput) {
     if (memoryInspect || preferenceSet || preferenceDelete || sessionList || sessionInspect) {
       prompt = "";
-    }
-    else if (command === "ui") {
+    } else if (command === "ui") {
       prompt = DEFAULT_UI_BOOTSTRAP_PROMPT;
-    }
-    else if (command === "plan-node") {
+    } else if (command === "plan-node") {
       prompt = DEFAULT_UI_BOOTSTRAP_PROMPT;
-    }
-    else if (command === "workflow-export" || command === "workflow-import") {
+    } else if (command === "workflow-export" || command === "workflow-import") {
       prompt = "";
-    }
-    else {
-      throw new Error("Missing prompt. Example: npm run dev -- ask \"Explain recursive prompting\"");
+    } else {
+      throw new Error('Missing prompt. Example: npm run dev -- ask "Explain recursive prompting"');
     }
   }
 
@@ -450,10 +454,10 @@ export function helpText(): string {
     "Recursive Language Model",
     "",
     "Usage:",
-    "  rlm \"your prompt\" [--agent coding] [--workflow default] [--json] [--trace]",
-    "  rlm ask \"your prompt\" [--depth 2] [--branches 3]",
-    "  rlm ui \"your prompt\" [--ui-port 4545]",
-    "  rlm plan-node --node-id root-composer --prompt \"your workflow\"",
+    '  rlm "your prompt" [--agent coding] [--workflow default] [--json] [--trace]',
+    '  rlm ask "your prompt" [--depth 2] [--branches 3]',
+    '  rlm ui "your prompt" [--ui-port 4545]',
+    '  rlm plan-node --node-id root-composer --prompt "your workflow"',
     "  rlm workflow-export --workflow demo --export-session session-1",
     "  rlm workflow-import --workflow demo [--variant playbook|pipeline]",
     "",
@@ -499,10 +503,10 @@ export function helpText(): string {
     "  --preference-delete <k> Delete a project memory preference and exit",
     "",
     "Environment:",
-    '  RLM_UI_DIST=<dir>         Override packaged UI asset directory.',
-    '  RLM_NON_INTERACTIVE=1     Skip the interactive launcher; defaults to UI mode.',
+    "  RLM_UI_DIST=<dir>         Override packaged UI asset directory.",
+    "  RLM_NON_INTERACTIVE=1     Skip the interactive launcher; defaults to UI mode.",
     "  RLM_LAUNCH_MODE=cli       Pair with RLM_NON_INTERACTIVE=1 to force CLI mode without a prompt.",
-    '  Working directory is treated as the project root for ./rlm.config.yaml and ./.rlm/',
+    "  Working directory is treated as the project root for ./rlm.config.yaml and ./.rlm/",
   ].join("\n");
 }
 

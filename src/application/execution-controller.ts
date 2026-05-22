@@ -86,15 +86,17 @@ export class InteractiveExecutionSession {
     state: "draft",
     reason: "Draft graph: confirm graph and run to start execution.",
   };
-  private pendingMutation: { id: string; mutation: PendingMutation; proposal: ChatMutationProposal } | undefined;
+  private pendingMutation:
+    | { id: string; mutation: PendingMutation; proposal: ChatMutationProposal }
+    | undefined;
   private mutationVersion = 0;
   private pendingClarification: ClarificationQuestion | undefined;
   private pendingClarificationWaiter:
     | {
-      questionId: string;
-      resolve: (answer: string) => void;
-      reject: (error: Error) => void;
-    }
+        questionId: string;
+        resolve: (answer: string) => void;
+        reject: (error: Error) => void;
+      }
     | undefined;
   private clarificationHistory: ClarificationRecord[] = [];
   private readonly qualityLoopDecisions = new Map<string, QualityLoopManualDecision>();
@@ -104,13 +106,19 @@ export class InteractiveExecutionSession {
   private plannedNodeSequence = 0;
   private abortSnapshot:
     | {
-      graph: ExecutionGraph;
-      pendingQuestion: ClarificationQuestion;
-    }
+        graph: ExecutionGraph;
+        pendingQuestion: ClarificationQuestion;
+      }
     | undefined;
   private graphWorkflowMetadata: SavedGraphWorkflowMetadataSection = { version: 1 };
 
-  constructor(input: { approvalMode?: ApprovalMode; seedRootPrompt?: string | undefined; planModel?: LanguageModelPort | undefined } = {}) {
+  constructor(
+    input: {
+      approvalMode?: ApprovalMode;
+      seedRootPrompt?: string | undefined;
+      planModel?: LanguageModelPort | undefined;
+    } = {},
+  ) {
     this.approvalMode = input.approvalMode ?? "full";
     this.planModel = input.planModel;
     if (input.seedRootPrompt) {
@@ -124,14 +132,18 @@ export class InteractiveExecutionSession {
       this.nodes.set(node.id, { ...node });
     }
     this.edges.splice(0, this.edges.length, ...snapshot.graph.edges.map((edge) => ({ ...edge })));
-    this.graphViewport = snapshot.graph.viewport ? { ...snapshot.graph.viewport } : { x: 0, y: 0, zoom: 1 };
+    this.graphViewport = snapshot.graph.viewport
+      ? { ...snapshot.graph.viewport }
+      : { x: 0, y: 0, zoom: 1 };
     this.pending.clear();
     this.resolvedApprovalTokens.clear();
     this.statusWaiters.clear();
     this.statusWaitAbortHandlers.clear();
     this.approvalMode = snapshot.approvalMode;
     this.futureAutoApprovalsPaused = snapshot.autoApprovalPaused;
-    this.initialPlanAccepted = snapshot.graph.nodes.some((node) => node.approvalSource === "manual" || node.approvalSource === "auto");
+    this.initialPlanAccepted = snapshot.graph.nodes.some(
+      (node) => node.approvalSource === "manual" || node.approvalSource === "auto",
+    );
     this.chatReadiness = snapshot.chat?.readiness ?? {
       state: "draft",
       reason: "Restored session: review graph and run when ready.",
@@ -145,7 +157,11 @@ export class InteractiveExecutionSession {
     this.runLifecycle = "idle";
     this.autoApproveNextRootExecution = false;
     this.abortSnapshot = snapshot.chat?.abortSnapshot;
-    this.publish({ type: "execution", status: snapshot.status, message: "session snapshot restored" });
+    this.publish({
+      type: "execution",
+      status: snapshot.status,
+      message: "session snapshot restored",
+    });
   }
 
   getGraphWorkflowMetadata(): SavedGraphWorkflowMetadataSection {
@@ -191,20 +207,30 @@ export class InteractiveExecutionSession {
       pendingMutation?: ChatMutationProposal | undefined;
       pendingClarification?: ClarificationQuestion | undefined;
       clarificationHistory: ClarificationRecord[];
-      abortSnapshot?: {
-        graph: ExecutionGraph;
-        pendingQuestion: ClarificationQuestion;
-      } | undefined;
+      abortSnapshot?:
+        | {
+            graph: ExecutionGraph;
+            pendingQuestion: ClarificationQuestion;
+          }
+        | undefined;
     };
   } {
     const nodes = [...this.nodes.values()];
-    const activeNode = nodes.find((node) => node.status === "awaiting_approval" || node.status === "running");
-    const terminal = nodes.length > 0 && nodes.every((node) =>
-      node.status === "completed" || node.status === "skipped" || node.status === "failed" || node.status === "cancelled"
+    const activeNode = nodes.find(
+      (node) => node.status === "awaiting_approval" || node.status === "running",
     );
+    const terminal =
+      nodes.length > 0 &&
+      nodes.every(
+        (node) =>
+          node.status === "completed" ||
+          node.status === "skipped" ||
+          node.status === "failed" ||
+          node.status === "cancelled",
+      );
     // Cancelled session wins over per-node failed when both apply (user stop after partial failure).
     const status: ExecutionStatus = !terminal
-      ? activeNode?.status ?? "planned"
+      ? (activeNode?.status ?? "planned")
       : this.cancellation.isCancelled()
         ? "cancelled"
         : nodes.some((node) => node.status === "failed")
@@ -212,9 +238,10 @@ export class InteractiveExecutionSession {
           : "completed";
     let runSummary: { message?: string } | undefined;
     if (terminal && (status === "failed" || status === "cancelled")) {
-      const message = status === "cancelled"
-        ? (this.cancellation.cancelReason() ?? "Run was cancelled.")
-        : summarizeRunFromNodes(nodes).primaryMessage;
+      const message =
+        status === "cancelled"
+          ? (this.cancellation.cancelReason() ?? "Run was cancelled.")
+          : summarizeRunFromNodes(nodes).primaryMessage;
       runSummary = message ? { message } : {};
     }
     const snapshotPayload: {
@@ -229,10 +256,12 @@ export class InteractiveExecutionSession {
         pendingMutation?: ChatMutationProposal | undefined;
         pendingClarification?: ClarificationQuestion | undefined;
         clarificationHistory: ClarificationRecord[];
-        abortSnapshot?: {
-          graph: ExecutionGraph;
-          pendingQuestion: ClarificationQuestion;
-        } | undefined;
+        abortSnapshot?:
+          | {
+              graph: ExecutionGraph;
+              pendingQuestion: ClarificationQuestion;
+            }
+          | undefined;
       };
     } = {
       graph: {
@@ -288,7 +317,8 @@ export class InteractiveExecutionSession {
         reject(new Error(rejectReason));
       };
 
-      const bucket = this.statusWaitAbortHandlers.get(nodeId) ?? new Set<(reason: string) => void>();
+      const bucket =
+        this.statusWaitAbortHandlers.get(nodeId) ?? new Set<(reason: string) => void>();
       bucket.add(abort);
       this.statusWaitAbortHandlers.set(nodeId, bucket);
 
@@ -319,8 +349,14 @@ export class InteractiveExecutionSession {
     node.prompt = normalized;
     node.label = preview(normalized, 80);
     node.composer = withComposerDefaults(node);
-    node.composer.protectedReasons = addProtectedReason(node.composer.protectedReasons, "manual_prompt_edit");
-    this.invalidateQualityLoopMetadata(node, "node prompt edited; quality loop metadata invalidated");
+    node.composer.protectedReasons = addProtectedReason(
+      node.composer.protectedReasons,
+      "manual_prompt_edit",
+    );
+    this.invalidateQualityLoopMetadata(
+      node,
+      "node prompt edited; quality loop metadata invalidated",
+    );
     this.publish({ type: "execution", status: node.status, nodeId, message: "node prompt edited" });
   }
 
@@ -328,41 +364,81 @@ export class InteractiveExecutionSession {
     const node = this.requireEditableNode(nodeId);
     const normalized = model.trim();
     if (!normalized) {
-      throw new MutationError("invalid_model", "Model override cannot be empty.", [nodeId], undefined, "Provide a model name.");
+      throw new MutationError(
+        "invalid_model",
+        "Model override cannot be empty.",
+        [nodeId],
+        undefined,
+        "Provide a model name.",
+      );
     }
     node.modelOverride = normalized;
     node.modelOverrideSource = "user";
     node.composer = withComposerDefaults(node);
-    node.composer.protectedReasons = addProtectedReason(node.composer.protectedReasons, "user_model_override");
-    this.invalidateQualityLoopMetadata(node, "node model override set; quality loop metadata invalidated");
-    this.publish({ type: "execution", status: node.status, nodeId, message: "node model override set" });
+    node.composer.protectedReasons = addProtectedReason(
+      node.composer.protectedReasons,
+      "user_model_override",
+    );
+    this.invalidateQualityLoopMetadata(
+      node,
+      "node model override set; quality loop metadata invalidated",
+    );
+    this.publish({
+      type: "execution",
+      status: node.status,
+      nodeId,
+      message: "node model override set",
+    });
   }
 
   setNodeSamplingOverride(nodeId: string, sampling: Record<string, unknown>): void {
     const node = this.requireEditableNode(nodeId);
     const normalized = normalizeSamplingOverride(sampling);
     node.samplingOverride = Object.keys(normalized).length > 0 ? normalized : undefined;
-    this.invalidateQualityLoopMetadata(node, "node sampling override set; quality loop metadata invalidated");
-    this.publish({ type: "execution", status: node.status, nodeId, message: "node sampling override set" });
+    this.invalidateQualityLoopMetadata(
+      node,
+      "node sampling override set; quality loop metadata invalidated",
+    );
+    this.publish({
+      type: "execution",
+      status: node.status,
+      nodeId,
+      message: "node sampling override set",
+    });
   }
 
-  setNodeExpertOverride(nodeId: string, input: {
-    agentId?: string | undefined;
-    runtime?: ExpertRuntimeMode | undefined;
-    toolAllowlist?: string[] | undefined;
-    purposeTiers?: Record<string, string> | undefined;
-  }): void {
+  setNodeExpertOverride(
+    nodeId: string,
+    input: {
+      agentId?: string | undefined;
+      runtime?: ExpertRuntimeMode | undefined;
+      toolAllowlist?: string[] | undefined;
+      purposeTiers?: Record<string, string> | undefined;
+    },
+  ): void {
     const node = this.requireEditableNode(nodeId);
     if (input.agentId !== undefined) {
       const normalized = input.agentId.trim();
       if (!isKnownExpertAgent(normalized)) {
-        throw new MutationError("invalid_expert", `Unknown expert preset "${input.agentId}".`, [nodeId], undefined, "Choose default, coding, qa, product_designer, or research.");
+        throw new MutationError(
+          "invalid_expert",
+          `Unknown expert preset "${input.agentId}".`,
+          [nodeId],
+          undefined,
+          "Choose default, coding, qa, product_designer, or research.",
+        );
       }
       node.expertAgentId = normalized;
     }
     if (input.runtime !== undefined) {
       if (input.runtime !== "single-pass" && input.runtime !== "rlm") {
-        throw new MutationError("invalid_runtime", "Runtime mode must be single-pass or rlm.", [nodeId], undefined, "Choose single-pass or rlm.");
+        throw new MutationError(
+          "invalid_runtime",
+          "Runtime mode must be single-pass or rlm.",
+          [nodeId],
+          undefined,
+          "Choose single-pass or rlm.",
+        );
       }
       node.expertRuntime = input.runtime;
     }
@@ -374,20 +450,43 @@ export class InteractiveExecutionSession {
     }
     node.expertAssignmentMode = "custom";
     node.composer = withComposerDefaults(node);
-    node.composer.protectedReasons = addProtectedReason(node.composer.protectedReasons, "expert_override");
-    this.publish({ type: "execution", status: node.status, nodeId, message: "node expert override set" });
+    node.composer.protectedReasons = addProtectedReason(
+      node.composer.protectedReasons,
+      "expert_override",
+    );
+    this.publish({
+      type: "execution",
+      status: node.status,
+      nodeId,
+      message: "node expert override set",
+    });
   }
 
-  async planNode(nodeId: string, input: { replan?: ReplanChoice | undefined } = {}): Promise<{ plannedNodeIds: string[]; budget: ComposerPlanBudget; exhausted: boolean }> {
+  async planNode(
+    nodeId: string,
+    input: { replan?: ReplanChoice | undefined } = {},
+  ): Promise<{ plannedNodeIds: string[]; budget: ComposerPlanBudget; exhausted: boolean }> {
     const node = this.requireEditableNode(nodeId);
     this.ensureNodePosition(node);
     node.composer = withComposerDefaults(node);
     const normalizedPrompt = (node.prompt ?? node.label).trim();
     if (!normalizedPrompt) {
-      throw new MutationError("invalid_prompt", "Node prompt cannot be empty.", [nodeId], undefined, "Enter a non-empty prompt before planning.");
+      throw new MutationError(
+        "invalid_prompt",
+        "Node prompt cannot be empty.",
+        [nodeId],
+        undefined,
+        "Enter a non-empty prompt before planning.",
+      );
     }
     if (!this.planModel) {
-      throw new MutationError("planning_failed", "Graph planner model is not configured.", [nodeId], undefined, "Configure a plan purpose model tier.");
+      throw new MutationError(
+        "planning_failed",
+        "Graph planner model is not configured.",
+        [nodeId],
+        undefined,
+        "Configure a plan purpose model tier.",
+      );
     }
     const budgetRoot = this.findBudgetRoot(node);
     budgetRoot.composer = withComposerDefaults(budgetRoot);
@@ -427,17 +526,34 @@ export class InteractiveExecutionSession {
       budgetRoot.composer.planBudget = exhausted;
       node.composer.planBudget = exhausted;
       node.status = "awaiting_approval";
-      this.publish({ type: "execution", status: "awaiting_approval", nodeId, message: "plan budget exhausted; approval required to expand" });
+      this.publish({
+        type: "execution",
+        status: "awaiting_approval",
+        nodeId,
+        message: "plan budget exhausted; approval required to expand",
+      });
       return { plannedNodeIds: [], budget: exhausted, exhausted: true };
     }
 
-    const context = this.createPlannerContext(node, budgetRoot, remainingNodes, normalizedPrompt, input.replan === "merge" ? protectedDescendants : []);
+    const context = this.createPlannerContext(
+      node,
+      budgetRoot,
+      remainingNodes,
+      normalizedPrompt,
+      input.replan === "merge" ? protectedDescendants : [],
+    );
     let childSpecs;
     try {
       childSpecs = (await planChildren(this.planModel, context)).children.slice(0, remainingNodes);
     } catch (error: unknown) {
       if (error instanceof GraphPlannerError) {
-        throw new MutationError(error.code, error.message, [nodeId], error.details, suggestedPlannerFix(error.code));
+        throw new MutationError(
+          error.code,
+          error.message,
+          [nodeId],
+          error.details,
+          suggestedPlannerFix(error.code),
+        );
       }
       throw error;
     }
@@ -492,16 +608,28 @@ export class InteractiveExecutionSession {
       createdAt: new Date().toISOString(),
       summary: `${created.length} pending child node(s) planned. Execution requires explicit approval.`,
     };
-    node.composer.recommendedAction = created.some((id) => this.nodes.get(id)?.composer?.complexity === "high") ? "break_down" : "review";
+    node.composer.recommendedAction = created.some(
+      (id) => this.nodes.get(id)?.composer?.complexity === "high",
+    )
+      ? "break_down"
+      : "review";
     this.chatReadiness = {
       state: "draft",
       reason: "Pending planned child graph: inspect and approve before running.",
     };
-    this.publish({ type: "execution", status: node.status, nodeId, message: `planned ${created.length} pending child node(s)` });
+    this.publish({
+      type: "execution",
+      status: node.status,
+      nodeId,
+      message: `planned ${created.length} pending child node(s)`,
+    });
     return { plannedNodeIds: created, budget: nextBudget, exhausted: false };
   }
 
-  extendPlanBudget(nodeId: string, extension: Partial<Pick<ComposerPlanBudget, "maxDepth" | "maxNodes">> = {}): ComposerPlanBudget {
+  extendPlanBudget(
+    nodeId: string,
+    extension: Partial<Pick<ComposerPlanBudget, "maxDepth" | "maxNodes">> = {},
+  ): ComposerPlanBudget {
     const node = this.requireEditableNode(nodeId);
     node.composer = withComposerDefaults(node);
     if (!node.composer.planBudget.exhausted) {
@@ -515,7 +643,9 @@ export class InteractiveExecutionSession {
     }
     const budgetRoot = this.findBudgetRoot(node);
     budgetRoot.composer = withComposerDefaults(budgetRoot);
-    const current = budgetRoot.composer.planBudget.exhausted ? budgetRoot.composer.planBudget : node.composer.planBudget;
+    const current = budgetRoot.composer.planBudget.exhausted
+      ? budgetRoot.composer.planBudget
+      : node.composer.planBudget;
     const maxDepth = Math.max(current.maxDepth, extension.maxDepth ?? current.maxDepth + 1);
     const maxNodes = Math.max(current.maxNodes, extension.maxNodes ?? current.maxNodes + 4);
     const usedNodes = this.collectDescendants(budgetRoot.id).length;
@@ -531,7 +661,12 @@ export class InteractiveExecutionSession {
     };
     budgetRoot.composer.planBudget = nextBudget;
     node.composer.planBudget = nextBudget;
-    this.publish({ type: "execution", status: node.status, nodeId, message: "plan budget extended" });
+    this.publish({
+      type: "execution",
+      status: node.status,
+      nodeId,
+      message: "plan budget extended",
+    });
     return nextBudget;
   }
 
@@ -542,18 +677,38 @@ export class InteractiveExecutionSession {
   }): ExecutionGraphNode {
     const parent = this.nodes.get(input.parentId);
     if (!parent) {
-      throw new MutationError("invalid_parent", `Unknown parent node "${input.parentId}".`, [input.parentId], undefined, "Choose an existing parent node.");
+      throw new MutationError(
+        "invalid_parent",
+        `Unknown parent node "${input.parentId}".`,
+        [input.parentId],
+        undefined,
+        "Choose an existing parent node.",
+      );
     }
     const normalized = input.prompt.trim();
     if (!normalized) {
-      throw new MutationError("invalid_prompt", "Node prompt cannot be empty.", [input.parentId], undefined, "Provide a non-empty prompt.");
+      throw new MutationError(
+        "invalid_prompt",
+        "Node prompt cannot be empty.",
+        [input.parentId],
+        undefined,
+        "Provide a non-empty prompt.",
+      );
     }
     this.ensureNodePosition(parent);
     const parentDepth = parent.depth;
     if (parentDepth + 1 > 64) {
-      throw new MutationError("max_depth_exceeded", "Node depth exceeds configured max depth guardrail.", [input.parentId], `depth=${parentDepth + 1}`, "Attach under a shallower parent.");
+      throw new MutationError(
+        "max_depth_exceeded",
+        "Node depth exceeds configured max depth guardrail.",
+        [input.parentId],
+        `depth=${parentDepth + 1}`,
+        "Attach under a shallower parent.",
+      );
     }
-    const manualSiblings = [...this.nodes.values()].filter((n) => n.parentId === input.parentId).length;
+    const manualSiblings = [...this.nodes.values()].filter(
+      (n) => n.parentId === input.parentId,
+    ).length;
     const id = `task-manual-${this.nodes.size + 1}`;
     const px = parent.position?.x ?? parent.depth * 430;
     const py = parent.position?.y ?? 0;
@@ -582,13 +737,27 @@ export class InteractiveExecutionSession {
     return node;
   }
 
-  connectNode(input: { nodeId: string; parentId: string; sourceHandle?: string; targetHandle?: string }): void {
+  connectNode(input: {
+    nodeId: string;
+    parentId: string;
+    sourceHandle?: string;
+    targetHandle?: string;
+  }): void {
     const node = this.nodes.get(input.nodeId);
     const parent = this.nodes.get(input.parentId);
     if (!node || !parent) {
-      throw new MutationError("unknown_node", "Cannot connect unknown nodes.", [input.nodeId, input.parentId], undefined, "Select valid existing nodes.");
+      throw new MutationError(
+        "unknown_node",
+        "Cannot connect unknown nodes.",
+        [input.nodeId, input.parentId],
+        undefined,
+        "Select valid existing nodes.",
+      );
     }
-    if (input.nodeId === input.parentId || this.collectDescendants(input.nodeId).includes(input.parentId)) {
+    if (
+      input.nodeId === input.parentId ||
+      this.collectDescendants(input.nodeId).includes(input.parentId)
+    ) {
       throw new MutationError(
         "cycle_detected",
         "Cannot connect a node to itself or one of its descendants.",
@@ -605,9 +774,17 @@ export class InteractiveExecutionSession {
     node.parentId = input.parentId;
     this.updateDepthsFrom(node.id, parent.depth + 1);
     if (node.depth > 64) {
-      throw new MutationError("max_depth_exceeded", "Node depth exceeds configured max depth guardrail.", [node.id, parent.id], `depth=${node.depth}`, "Connect under a shallower parent.");
+      throw new MutationError(
+        "max_depth_exceeded",
+        "Node depth exceeds configured max depth guardrail.",
+        [node.id, parent.id],
+        `depth=${node.depth}`,
+        "Connect under a shallower parent.",
+      );
     }
-    const existing = this.edges.find((edge) => edge.from === input.parentId && edge.to === input.nodeId);
+    const existing = this.edges.find(
+      (edge) => edge.from === input.parentId && edge.to === input.nodeId,
+    );
     if (existing) {
       existing.sourceHandle = input.sourceHandle;
       existing.targetHandle = input.targetHandle;
@@ -652,7 +829,13 @@ export class InteractiveExecutionSession {
 
   deleteNodeWithStrategy(nodeId: string, strategy?: DeleteStrategy): { deleted: string[] } {
     if (!this.nodes.has(nodeId)) {
-      throw new MutationError("unknown_node", `Unknown node "${nodeId}".`, [nodeId], undefined, "Select an existing node.");
+      throw new MutationError(
+        "unknown_node",
+        `Unknown node "${nodeId}".`,
+        [nodeId],
+        undefined,
+        "Select an existing node.",
+      );
     }
     const dependents = this.directDependents(nodeId);
     if (dependents.length > 0 && !strategy) {
@@ -665,7 +848,10 @@ export class InteractiveExecutionSession {
       );
     }
     if (strategy === "rewire_dependents") {
-      return this.rewireAndDeleteNode(nodeId, dependents.map((node) => node.id));
+      return this.rewireAndDeleteNode(
+        nodeId,
+        dependents.map((node) => node.id),
+      );
     }
     const deleted = this.collectDescendants(nodeId);
     for (const id of deleted) {
@@ -682,25 +868,47 @@ export class InteractiveExecutionSession {
         this.edges.splice(i, 1);
       }
     }
-    this.publish({ type: "execution", status: "ready", message: `deleted ${deleted.length} node(s)` });
+    this.publish({
+      type: "execution",
+      status: "ready",
+      message: `deleted ${deleted.length} node(s)`,
+    });
     return { deleted };
   }
 
   previewMutationFromChat(message: string): ChatMutationProposal {
     const normalized = message.trim();
     if (!normalized) {
-      throw new MutationError("invalid_prompt", "Chat message cannot be empty.", [], undefined, "Describe the graph change.");
+      throw new MutationError(
+        "invalid_prompt",
+        "Chat message cannot be empty.",
+        [],
+        undefined,
+        "Describe the graph change.",
+      );
     }
     const lower = normalized.toLowerCase();
     if (lower.startsWith("edit ")) {
       const parsed = normalized.match(/^edit\s+(.+?)\s*:\s*(.+)$/i);
       if (!parsed) {
-        throw new MutationError("invalid_prompt", "Edit format must be: edit <node> : <new prompt>.", [], undefined, "Use a node label or id.");
+        throw new MutationError(
+          "invalid_prompt",
+          "Edit format must be: edit <node> : <new prompt>.",
+          [],
+          undefined,
+          "Use a node label or id.",
+        );
       }
       const nodeId = this.resolveNodeTarget(parsed[1] ?? "", "edit");
       const prompt = (parsed[2] ?? "").trim();
       if (!prompt) {
-        throw new MutationError("invalid_prompt", "Edited prompt cannot be empty.", [nodeId], undefined, "Provide replacement text.");
+        throw new MutationError(
+          "invalid_prompt",
+          "Edited prompt cannot be empty.",
+          [nodeId],
+          undefined,
+          "Provide replacement text.",
+        );
       }
       return this.setPendingMutation({ kind: "edit", nodeId, prompt }, `Edit ${nodeId} prompt`);
     }
@@ -718,10 +926,19 @@ export class InteractiveExecutionSession {
           },
         );
       }
-      return this.setPendingMutation({ kind: "delete", nodeId, strategy: "delete_subtree" }, `Delete subtree for ${nodeId}`);
+      return this.setPendingMutation(
+        { kind: "delete", nodeId, strategy: "delete_subtree" },
+        `Delete subtree for ${nodeId}`,
+      );
     }
 
-    throw new MutationError("unsupported_mutation", "Unsupported chat mutation command.", [], undefined, "Use edit <node>:<prompt> or delete <node>.");
+    throw new MutationError(
+      "unsupported_mutation",
+      "Unsupported chat mutation command.",
+      [],
+      undefined,
+      "Use edit <node>:<prompt> or delete <node>.",
+    );
   }
 
   applyPendingMutation(input?: { proposalId?: string; deleteStrategy?: DeleteStrategy }): {
@@ -731,10 +948,22 @@ export class InteractiveExecutionSession {
   } {
     const pending = this.pendingMutation;
     if (!pending) {
-      throw new MutationError("missing_pending_mutation", "No pending mutation to apply.", [], undefined, "Preview a mutation in chat first.");
+      throw new MutationError(
+        "missing_pending_mutation",
+        "No pending mutation to apply.",
+        [],
+        undefined,
+        "Preview a mutation in chat first.",
+      );
     }
     if (input?.proposalId && input.proposalId !== pending.id) {
-      throw new MutationError("stale_mutation", "Pending mutation id does not match.", [], undefined, "Refresh and apply latest preview.");
+      throw new MutationError(
+        "stale_mutation",
+        "Pending mutation id does not match.",
+        [],
+        undefined,
+        "Refresh and apply latest preview.",
+      );
     }
     let summary = pending.proposal.summary;
     let deletedNodeIds: string[] | undefined;
@@ -886,7 +1115,10 @@ export class InteractiveExecutionSession {
     return { duplicate: false };
   }
 
-  raiseClarificationCheckpoint(input: { nodeId: string; promptText: string }): ClarificationQuestion {
+  raiseClarificationCheckpoint(input: {
+    nodeId: string;
+    promptText: string;
+  }): ClarificationQuestion {
     const node = this.nodes.get(input.nodeId);
     if (!node) {
       throw new Error(`Unknown node "${input.nodeId}".`);
@@ -927,14 +1159,23 @@ export class InteractiveExecutionSession {
     });
   }
 
-  answerClarificationAndContinue(input: { questionId: string; userAnswer: string }): ClarificationRecord {
+  answerClarificationAndContinue(input: {
+    questionId: string;
+    userAnswer: string;
+  }): ClarificationRecord {
     const pending = this.pendingClarification;
     if (!pending || pending.questionId !== input.questionId) {
-      throw new MutationError("unknown_question", "Unknown or resolved clarification question.", []);
+      throw new MutationError(
+        "unknown_question",
+        "Unknown or resolved clarification question.",
+        [],
+      );
     }
     const normalizedAnswer = input.userAnswer.trim();
     if (!normalizedAnswer) {
-      throw new MutationError("invalid_answer", "Clarification answer cannot be empty.", [pending.nodeId]);
+      throw new MutationError("invalid_answer", "Clarification answer cannot be empty.", [
+        pending.nodeId,
+      ]);
     }
     const resumeEventId = `${pending.nodeId}:resume:${Date.now()}`;
     const record = createClarificationRecord({
@@ -964,7 +1205,11 @@ export class InteractiveExecutionSession {
   abortRunFromClarification(input: { questionId: string }): void {
     const pending = this.pendingClarification;
     if (!pending || pending.questionId !== input.questionId) {
-      throw new MutationError("unknown_question", "Unknown or resolved clarification question.", []);
+      throw new MutationError(
+        "unknown_question",
+        "Unknown or resolved clarification question.",
+        [],
+      );
     }
     this.abortSnapshot = {
       graph: {
@@ -991,7 +1236,9 @@ export class InteractiveExecutionSession {
     };
     this.qualityLoopDecisions.set(nodeId, decision);
     if (node.loop) {
-      const hasCandidate = (node.loop.candidates?.length ?? 0) > 0 || Boolean(node.loop.selection?.selectedCandidateId);
+      const hasCandidate =
+        (node.loop.candidates?.length ?? 0) > 0 ||
+        Boolean(node.loop.selection?.selectedCandidateId);
       node.loop.message = hasCandidate
         ? reason
         : `${reason}; waiting for first candidate before human acceptance applies`;
@@ -1073,7 +1320,9 @@ export class InteractiveExecutionSession {
       throw new MutationError("unknown_node", `Unknown node "${nodeId}".`, [nodeId]);
     }
     if (node.kind !== "quality-loop") {
-      throw new MutationError("not_quality_loop", `Node "${nodeId}" is not a quality-loop node.`, [nodeId]);
+      throw new MutationError("not_quality_loop", `Node "${nodeId}" is not a quality-loop node.`, [
+        nodeId,
+      ]);
     }
     return node;
   }
@@ -1131,13 +1380,15 @@ export class InteractiveExecutionSession {
       ...input,
       prompt: input.prompt ?? input.label,
       originalPrompt: input.originalPrompt ?? input.prompt ?? input.label,
-      composer: input.composer ?? createComposer({
-        type: inferNodeType(input.prompt ?? input.label),
-        prompt: input.prompt ?? input.label,
-        complexity: estimateComplexity(input.prompt ?? input.label),
-        budget: defaultPlanBudget(input.depth),
-        parentNodeId: input.parentId,
-      }),
+      composer:
+        input.composer ??
+        createComposer({
+          type: inferNodeType(input.prompt ?? input.label),
+          prompt: input.prompt ?? input.label,
+          complexity: estimateComplexity(input.prompt ?? input.label),
+          budget: defaultPlanBudget(input.depth),
+          parentNodeId: input.parentId,
+        }),
       plannedModel: input.plannedModel ?? "resolved-at-runtime",
       modelOverrideSource: input.modelOverrideSource ?? "none",
       expertAgentId: input.expertAgentId,
@@ -1152,14 +1403,26 @@ export class InteractiveExecutionSession {
     };
     this.nodes.set(node.id, node);
     this.ensureNodePosition(node);
-    if (node.parentId && !this.edges.some((edge) => edge.from === node.parentId && edge.to === node.id)) {
+    if (
+      node.parentId &&
+      !this.edges.some((edge) => edge.from === node.parentId && edge.to === node.id)
+    ) {
       this.edges.push({ from: node.parentId, to: node.id });
     }
-    this.publish({ type: "execution", status: node.status, nodeId: node.id, message: "node registered" });
+    this.publish({
+      type: "execution",
+      status: node.status,
+      nodeId: node.id,
+      message: "node registered",
+    });
     this.notifyStatusWaiters(node);
   }
 
-  private updateNodeStatus(nodeId: string, status: ExecutionStatus, detail?: ExecutionStatusUpdateDetail): void {
+  private updateNodeStatus(
+    nodeId: string,
+    status: ExecutionStatus,
+    detail?: ExecutionStatusUpdateDetail,
+  ): void {
     const node = this.nodes.get(nodeId);
     if (!node) {
       return;
@@ -1169,7 +1432,12 @@ export class InteractiveExecutionSession {
     if (status === "running") {
       node.startedAt = new Date().toISOString();
     }
-    if (status === "completed" || status === "skipped" || status === "failed" || status === "cancelled") {
+    if (
+      status === "completed" ||
+      status === "skipped" ||
+      status === "failed" ||
+      status === "cancelled"
+    ) {
       node.completedAt = new Date().toISOString();
     }
     if (detail?.message && (status === "failed" || status === "skipped")) {
@@ -1254,7 +1522,11 @@ export class InteractiveExecutionSession {
   }
 
   private shouldAutoApprove(node: ExecutionGraphNode): { auto: boolean; reason: string } {
-    if (this.autoApproveNextRootExecution && node.depth === 0 && !node.spawnedAfterInitialApproval) {
+    if (
+      this.autoApproveNextRootExecution &&
+      node.depth === 0 &&
+      !node.spawnedAfterInitialApproval
+    ) {
       this.autoApproveNextRootExecution = false;
       return {
         auto: true,
@@ -1291,7 +1563,9 @@ export class InteractiveExecutionSession {
 
     return {
       auto: true,
-      reason: node.spawnedAfterInitialApproval ? "recursive branch auto-approved" : "initial plan approved",
+      reason: node.spawnedAfterInitialApproval
+        ? "recursive branch auto-approved"
+        : "initial plan approved",
     };
   }
 
@@ -1313,7 +1587,11 @@ export class InteractiveExecutionSession {
     if (!node) {
       throw new Error(`Unknown node "${nodeId}".`);
     }
-    if (node.status !== "planned" && node.status !== "ready" && node.status !== "awaiting_approval") {
+    if (
+      node.status !== "planned" &&
+      node.status !== "ready" &&
+      node.status !== "awaiting_approval"
+    ) {
       throw new Error(`Node "${nodeId}" cannot be edited while ${node.status}.`);
     }
     return node;
@@ -1364,18 +1642,17 @@ export class InteractiveExecutionSession {
   }
 
   private ensureNodePosition(node: ExecutionGraphNode): void {
-    if (
-      node.position
-      && Number.isFinite(node.position.x)
-      && Number.isFinite(node.position.y)
-    ) {
+    if (node.position && Number.isFinite(node.position.x) && Number.isFinite(node.position.y)) {
       return;
     }
     const parent = node.parentId ? this.nodes.get(node.parentId) : undefined;
     const siblings = [...this.nodes.values()]
       .filter((n) => n.parentId === node.parentId)
       .sort((a, b) => a.id.localeCompare(b.id));
-    const idx = Math.max(0, siblings.findIndex((n) => n.id === node.id));
+    const idx = Math.max(
+      0,
+      siblings.findIndex((n) => n.id === node.id),
+    );
     if (parent?.position) {
       node.position = { x: parent.position.x + 430, y: parent.position.y + idx * 220 };
     } else {
@@ -1446,9 +1723,9 @@ export class InteractiveExecutionSession {
     const directChildren = [...this.nodes.values()].filter((node) => node.parentId === nodeId);
     for (const child of directChildren) {
       if (
-        child.status === "planned"
-        && child.composer?.plannedBy === "model"
-        && child.modelOverrideSource !== "user"
+        child.status === "planned" &&
+        child.composer?.plannedBy === "model" &&
+        child.modelOverrideSource !== "user"
       ) {
         this.deleteNodeWithStrategy(child.id, "delete_subtree");
       }
@@ -1506,11 +1783,18 @@ export class InteractiveExecutionSession {
 
   private resolveNodeTarget(target: string, action: string): string {
     const normalized = target.trim().toLowerCase();
-    const matches = [...this.nodes.values()].filter((node) =>
-      node.id.toLowerCase() === normalized || node.label.toLowerCase().includes(normalized)
+    const matches = [...this.nodes.values()].filter(
+      (node) =>
+        node.id.toLowerCase() === normalized || node.label.toLowerCase().includes(normalized),
     );
     if (matches.length === 0) {
-      throw new MutationError("unknown_node", `No node matches "${target}".`, [], undefined, "Use a known node id or label.");
+      throw new MutationError(
+        "unknown_node",
+        `No node matches "${target}".`,
+        [],
+        undefined,
+        "Use a known node id or label.",
+      );
     }
     if (matches.length > 1) {
       throw new MutationError(
@@ -1548,7 +1832,13 @@ export class InteractiveExecutionSession {
   private rewireAndDeleteNode(nodeId: string, dependentIds: string[]): { deleted: string[] } {
     const node = this.nodes.get(nodeId);
     if (!node) {
-      throw new MutationError("unknown_node", `Unknown node "${nodeId}".`, [nodeId], undefined, "Select an existing node.");
+      throw new MutationError(
+        "unknown_node",
+        `Unknown node "${nodeId}".`,
+        [nodeId],
+        undefined,
+        "Select an existing node.",
+      );
     }
     if (!node.parentId) {
       throw new MutationError(
@@ -1602,7 +1892,12 @@ export class InteractiveExecutionSession {
         node.completedAt = undefined;
       }
     }
-    this.publish({ type: "execution", status: "ready", nodeId, message: "subtree scheduled for reevaluation" });
+    this.publish({
+      type: "execution",
+      status: "ready",
+      nodeId,
+      message: "subtree scheduled for reevaluation",
+    });
   }
 
   private clearStatusWaitsForNode(nodeId: string, reason: string): void {
@@ -1634,13 +1929,23 @@ export class InteractiveExecutionSession {
         if (node.status === "failed" || node.status === "cancelled") {
           return false;
         }
-        return node.status !== "awaiting_approval" && node.status !== "completed" && node.status !== "skipped";
+        return (
+          node.status !== "awaiting_approval" &&
+          node.status !== "completed" &&
+          node.status !== "skipped"
+        );
       }),
     );
   }
 }
 
-export function createInteractiveExecutionSession(input: { approvalMode?: ApprovalMode; seedRootPrompt?: string | undefined; planModel?: LanguageModelPort | undefined } = {}): InteractiveExecutionSession {
+export function createInteractiveExecutionSession(
+  input: {
+    approvalMode?: ApprovalMode;
+    seedRootPrompt?: string | undefined;
+    planModel?: LanguageModelPort | undefined;
+  } = {},
+): InteractiveExecutionSession {
   return new InteractiveExecutionSession(input);
 }
 
@@ -1667,9 +1972,9 @@ function createComposer(input: {
   prompt: string;
   complexity: ComposerComplexity;
   budget: ComposerPlanBudget;
-    parentNodeId?: string | undefined;
-    plannedBy?: "model" | "user" | undefined;
-    protectedReasons?: string[] | undefined;
+  parentNodeId?: string | undefined;
+  plannedBy?: "model" | "user" | undefined;
+  protectedReasons?: string[] | undefined;
 }): NonNullable<ExecutionGraphNode["composer"]> {
   const ports = portsForType(input.type);
   return {
@@ -1690,14 +1995,19 @@ function createComposer(input: {
   };
 }
 
-function withComposerDefaults(node: ExecutionGraphNode): NonNullable<ExecutionGraphNode["composer"]> {
-  return node.composer ?? createComposer({
-    type: inferNodeType(node.prompt ?? node.label),
-    prompt: node.prompt ?? node.label,
-    complexity: estimateComplexity(node.prompt ?? node.label),
-    budget: defaultPlanBudget(node.depth),
-    parentNodeId: node.parentId,
-  });
+function withComposerDefaults(
+  node: ExecutionGraphNode,
+): NonNullable<ExecutionGraphNode["composer"]> {
+  return (
+    node.composer ??
+    createComposer({
+      type: inferNodeType(node.prompt ?? node.label),
+      prompt: node.prompt ?? node.label,
+      complexity: estimateComplexity(node.prompt ?? node.label),
+      budget: defaultPlanBudget(node.depth),
+      parentNodeId: node.parentId,
+    })
+  );
 }
 
 function defaultPlanBudget(depth: number): ComposerPlanBudget {
@@ -1713,7 +2023,11 @@ function defaultPlanBudget(depth: number): ComposerPlanBudget {
   };
 }
 
-function childBudgetFromRoot(root: ComposerPlanBudget, depth: number, usedNodes: number): ComposerPlanBudget {
+function childBudgetFromRoot(
+  root: ComposerPlanBudget,
+  depth: number,
+  usedNodes: number,
+): ComposerPlanBudget {
   return {
     maxDepth: root.maxDepth,
     maxNodes: root.maxNodes,
@@ -1731,7 +2045,12 @@ function inferNodeType(prompt: string): ComposerNodeType {
   if (lower.includes("tts") || lower.includes("speech") || lower.includes("audio")) {
     return "TTS";
   }
-  if (lower.includes("code") || lower.includes("script") || lower.includes("splice") || lower.includes("parse")) {
+  if (
+    lower.includes("code") ||
+    lower.includes("script") ||
+    lower.includes("splice") ||
+    lower.includes("parse")
+  ) {
     return "Code";
   }
   if (lower.includes("split") || lower.includes("chunk") || lower.includes("segment")) {
@@ -1748,8 +2067,19 @@ function inferNodeType(prompt: string): ComposerNodeType {
 
 function estimateComplexity(prompt: string): ComposerComplexity {
   const lower = prompt.toLowerCase();
-  const signals = ["book", "workflow", "recursive", "audio", "artifact", "multiple", "pipeline", "graph", "entire"];
-  const score = signals.filter((signal) => lower.includes(signal)).length + Math.floor(prompt.length / 180);
+  const signals = [
+    "book",
+    "workflow",
+    "recursive",
+    "audio",
+    "artifact",
+    "multiple",
+    "pipeline",
+    "graph",
+    "entire",
+  ];
+  const score =
+    signals.filter((signal) => lower.includes(signal)).length + Math.floor(prompt.length / 180);
   if (score >= 3) {
     return "high";
   }
@@ -1802,36 +2132,47 @@ function portsForType(type: ComposerNodeType): { inputs: ComposerPort[]; outputs
     default:
       return {
         inputs: [{ id: "in-context", label: "Context", artifactType: "context/packet" }],
-        outputs: [{ id: "out-structured", label: "Structured output", artifactType: "json/artifact" }],
+        outputs: [
+          { id: "out-structured", label: "Structured output", artifactType: "json/artifact" },
+        ],
       };
   }
 }
 
-function artifactRefsForType(type: ComposerNodeType, parentNodeId?: string): NonNullable<ExecutionGraphNode["composer"]>["artifactRefs"] {
+function artifactRefsForType(
+  type: ComposerNodeType,
+  parentNodeId?: string,
+): NonNullable<ExecutionGraphNode["composer"]>["artifactRefs"] {
   if (type === "TTS") {
-    return [{
-      id: "audio-ref-preview",
-      uri: ".rlm/runs/<run-id>/artifacts/audio-clip.wav",
-      mediaType: "audio/wav",
-      durationMs: 0,
-      producerNodeId: parentNodeId,
-      orderingKey: "chapter:segment",
-      metadata: { storage: "disk", payload: "external" },
-    }];
+    return [
+      {
+        id: "audio-ref-preview",
+        uri: ".rlm/runs/<run-id>/artifacts/audio-clip.wav",
+        mediaType: "audio/wav",
+        durationMs: 0,
+        producerNodeId: parentNodeId,
+        orderingKey: "chapter:segment",
+        metadata: { storage: "disk", payload: "external" },
+      },
+    ];
   }
   if (type === "Splitter" || type === "Code") {
-    return [{
-      id: "manifest-ref-preview",
-      uri: ".rlm/runs/<run-id>/artifacts/manifest.json",
-      mediaType: "application/json",
-      producerNodeId: parentNodeId,
-      metadata: { storage: "disk", payload: "external" },
-    }];
+    return [
+      {
+        id: "manifest-ref-preview",
+        uri: ".rlm/runs/<run-id>/artifacts/manifest.json",
+        mediaType: "application/json",
+        producerNodeId: parentNodeId,
+        metadata: { storage: "disk", payload: "external" },
+      },
+    ];
   }
   return [];
 }
 
-function contextPolicyForType(type: ComposerNodeType): NonNullable<ExecutionGraphNode["composer"]>["contextPolicy"] {
+function contextPolicyForType(
+  type: ComposerNodeType,
+): NonNullable<ExecutionGraphNode["composer"]>["contextPolicy"] {
   if (type === "TTS") {
     return {
       reads: ["current text segment", "speaker bible entry", "voice profile"],
@@ -1856,16 +2197,31 @@ function contextPolicyForType(type: ComposerNodeType): NonNullable<ExecutionGrap
   };
 }
 
-function normalizeSamplingOverride(input: Record<string, unknown>): NonNullable<ExecutionGraphNode["samplingOverride"]> {
+function normalizeSamplingOverride(
+  input: Record<string, unknown>,
+): NonNullable<ExecutionGraphNode["samplingOverride"]> {
   const sampling: NonNullable<ExecutionGraphNode["samplingOverride"]> = {};
-  for (const key of ["temperature", "topP", "topK", "repeatPenalty", "maxTokens", "seed"] as const) {
+  for (const key of [
+    "temperature",
+    "topP",
+    "topK",
+    "repeatPenalty",
+    "maxTokens",
+    "seed",
+  ] as const) {
     const raw = input[key];
     if (raw === undefined || raw === null || raw === "") {
       continue;
     }
     const value = Number(raw);
     if (!Number.isFinite(value)) {
-      throw new MutationError("invalid_sampling", `Sampling value "${key}" must be a number.`, [], undefined, "Use numeric sampling values.");
+      throw new MutationError(
+        "invalid_sampling",
+        `Sampling value "${key}" must be a number.`,
+        [],
+        undefined,
+        "Use numeric sampling values.",
+      );
     }
     sampling[key] = value;
   }
@@ -1883,6 +2239,14 @@ function addProtectedReason(existing: string[] | undefined, reason: string): str
   return [...new Set([...(existing ?? []), reason])];
 }
 
-function isKnownExpertAgent(value: string): value is "default" | "coding" | "qa" | "product_designer" | "research" {
-  return value === "default" || value === "coding" || value === "qa" || value === "product_designer" || value === "research";
+function isKnownExpertAgent(
+  value: string,
+): value is "default" | "coding" | "qa" | "product_designer" | "research" {
+  return (
+    value === "default" ||
+    value === "coding" ||
+    value === "qa" ||
+    value === "product_designer" ||
+    value === "research"
+  );
 }

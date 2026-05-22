@@ -5,7 +5,9 @@ import type { ToolExecutionResult, ToolPort } from "../ports/tool-port.js";
 
 const writeFileSchema = z.object({
   path: z.string().describe("Relative file path to write inside the open workspace directory."),
-  content: z.string().describe("The complete file content to write, or content to append when mode is append."),
+  content: z
+    .string()
+    .describe("The complete file content to write, or content to append when mode is append."),
   mode: z.enum(["overwrite", "append"]).optional().describe("Write mode. Defaults to overwrite."),
 });
 

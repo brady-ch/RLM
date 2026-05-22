@@ -10,7 +10,11 @@ import type { ApprovalMode, DeleteStrategy } from "../domain/types.js";
 import type { SavedSessionPayload, SessionStorePort } from "../ports/session-store-port.js";
 import type { FileMemoryStore } from "../adapters/file-memory-store.js";
 import type { FileVectorIndex } from "../adapters/file-vector-index.js";
-import { buildSavedSessionPayload, restoreGraphWorkflowMetadata, restoreSessionMemory } from "./session-memory-bridge.js";
+import {
+  buildSavedSessionPayload,
+  restoreGraphWorkflowMetadata,
+  restoreSessionMemory,
+} from "./session-memory-bridge.js";
 import {
   applyPipelineTemplate,
   buildImportSessionSnapshot,
@@ -53,7 +57,18 @@ export async function startControlServer(input: {
   projectRoot?: string | undefined;
 }): Promise<ControlServer> {
   const server = createServer((request, response) => {
-    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun, input.modelLibrary, input.sessionStore, input.memory, input.sessionRuntime, input.projectRoot);
+    void routeRequest(
+      request,
+      response,
+      input.session,
+      input.uiDistDir,
+      input.onConfirmRun,
+      input.modelLibrary,
+      input.sessionStore,
+      input.memory,
+      input.sessionRuntime,
+      input.projectRoot,
+    );
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -68,9 +83,10 @@ export async function startControlServer(input: {
   return {
     port: address.port,
     url: `http://127.0.0.1:${address.port}`,
-    close: () => new Promise((resolve, reject) => {
-      server.close((error) => error ? reject(error) : resolve());
-    }),
+    close: () =>
+      new Promise((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      }),
   };
 }
 
@@ -110,7 +126,9 @@ async function routeRequest(
       return sendJson(response, { sessions: await sessionStore.list() });
     }
     if (request.method === "GET" && url.pathname === "/api/graph-workflows") {
-      return sendJson(response, { workflows: await listGraphWorkflows(projectRoot ?? process.cwd()) });
+      return sendJson(response, {
+        workflows: await listGraphWorkflows(projectRoot ?? process.cwd()),
+      });
     }
     if (request.method === "POST" && url.pathname === "/api/graph-workflows/export") {
       const body = await readJsonBody(request);
@@ -144,17 +162,27 @@ async function routeRequest(
         return sendJson(response, { error: "workflowId is required." }, 400);
       }
       try {
-        const sidecar = await loadGraphWorkflow(workflowId, { projectRoot: projectRoot ?? process.cwd() });
+        const sidecar = await loadGraphWorkflow(workflowId, {
+          projectRoot: projectRoot ?? process.cwd(),
+        });
         const imported = importSidecarToGraph(sidecar, "playbook");
         session.restoreSnapshot(buildImportSessionSnapshot(imported.graph));
         session.patchGraphWorkflowMetadata({
           linkedWorkflowId: workflowId,
           lastVariant: imported.variant,
         });
-        return sendJson(response, { ...session.snapshot(), workflowId, importedVariant: imported.variant });
+        return sendJson(response, {
+          ...session.snapshot(),
+          workflowId,
+          importedVariant: imported.variant,
+        });
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        return sendJson(response, { error: `Import failed: invalid graph workflow file. ${message}` }, 400);
+        return sendJson(
+          response,
+          { error: `Import failed: invalid graph workflow file. ${message}` },
+          400,
+        );
       }
     }
     if (request.method === "GET" && url.pathname === "/api/memory") {
@@ -195,13 +223,13 @@ async function routeRequest(
       const snapshot = session.snapshot();
       const payload = sessionRuntime
         ? await buildSavedSessionPayload({
-          snapshot,
-          runId: sessionRuntime.getRunId(),
-          memoryStore: sessionRuntime.memoryStore,
-          vectorIndex: sessionRuntime.vectorIndex,
-          embedProvider: sessionRuntime.embedProvider ?? null,
-          graphWorkflowMetadata: session.getGraphWorkflowMetadata(),
-        })
+            snapshot,
+            runId: sessionRuntime.getRunId(),
+            memoryStore: sessionRuntime.memoryStore,
+            vectorIndex: sessionRuntime.vectorIndex,
+            embedProvider: sessionRuntime.embedProvider ?? null,
+            graphWorkflowMetadata: session.getGraphWorkflowMetadata(),
+          })
         : legacySavedSessionPayload(snapshot);
       const saved = await sessionStore.save({
         id: typeof body["id"] === "string" ? body["id"] : undefined,
@@ -224,10 +252,14 @@ async function routeRequest(
       const sessionId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const saved = await sessionStore.load(sessionId);
       if (saved.verification.status !== "complete") {
-        return sendJson(response, {
-          error: "Saved session restore is unsafe.",
-          savedSession: saved,
-        }, 409);
+        return sendJson(
+          response,
+          {
+            error: "Saved session restore is unsafe.",
+            savedSession: saved,
+          },
+          409,
+        );
       }
       if (sessionRuntime) {
         const runId = await restoreSessionMemory({
@@ -238,7 +270,9 @@ async function routeRequest(
         sessionRuntime.setRunId(runId);
         sessionRuntime.setMemory(sessionRuntime.createMemory(runId));
       }
-      session.restoreSnapshot(saved.payload.session as ReturnType<InteractiveExecutionSession["snapshot"]>);
+      session.restoreSnapshot(
+        saved.payload.session as ReturnType<InteractiveExecutionSession["snapshot"]>,
+      );
       const metadataRestore = restoreGraphWorkflowMetadata(saved.payload);
       session.setGraphWorkflowMetadata(metadataRestore.metadata);
       return sendJson(response, {
@@ -259,14 +293,20 @@ async function routeRequest(
       if (!modelLibrary) {
         return sendJson(response, { error: "Model library is not configured." }, 404);
       }
-      return sendJson(response, await modelLibrary.searchHuggingFace(url.searchParams.get("q") ?? ""));
+      return sendJson(
+        response,
+        await modelLibrary.searchHuggingFace(url.searchParams.get("q") ?? ""),
+      );
     }
     if (request.method === "POST" && url.pathname === "/api/model-library/install") {
       if (!modelLibrary) {
         return sendJson(response, { error: "Model library is not configured." }, 404);
       }
       const body = await readJsonBody(request);
-      return sendJson(response, { job: modelLibrary.startInstall(String(body["model"] ?? "")), library: await modelLibrary.snapshot() });
+      return sendJson(response, {
+        job: modelLibrary.startInstall(String(body["model"] ?? "")),
+        library: await modelLibrary.snapshot(),
+      });
     }
     if (request.method === "POST" && url.pathname === "/api/model-library/select-tier") {
       if (!modelLibrary) {
@@ -335,9 +375,17 @@ async function routeRequest(
       const body = await readJsonBody(request);
       session.setNodeExpertOverride(nodeId, {
         agentId: typeof body["agentId"] === "string" ? body["agentId"] : undefined,
-        runtime: body["runtime"] === "single-pass" || body["runtime"] === "rlm" ? body["runtime"] : undefined,
-        toolAllowlist: Array.isArray(body["toolAllowlist"]) ? body["toolAllowlist"].map(String) : undefined,
-        purposeTiers: body["purposeTiers"] && typeof body["purposeTiers"] === "object" ? body["purposeTiers"] as Record<string, string> : undefined,
+        runtime:
+          body["runtime"] === "single-pass" || body["runtime"] === "rlm"
+            ? body["runtime"]
+            : undefined,
+        toolAllowlist: Array.isArray(body["toolAllowlist"])
+          ? body["toolAllowlist"].map(String)
+          : undefined,
+        purposeTiers:
+          body["purposeTiers"] && typeof body["purposeTiers"] === "object"
+            ? (body["purposeTiers"] as Record<string, string>)
+            : undefined,
       });
       return sendJson(response, session.snapshot());
     }
@@ -382,30 +430,48 @@ async function routeRequest(
       const result = session.skipNode(nodeId, token);
       return sendJson(response, { ...session.snapshot(), duplicate: result.duplicate });
     }
-    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/quality-loop\/accept$/)) {
+    if (
+      request.method === "POST" &&
+      url.pathname.match(/^\/api\/nodes\/[^/]+\/quality-loop\/accept$/)
+    ) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const body = await readJsonBody(request);
-      session.acceptQualityLoop(nodeId, typeof body["reason"] === "string" ? body["reason"] : undefined);
+      session.acceptQualityLoop(
+        nodeId,
+        typeof body["reason"] === "string" ? body["reason"] : undefined,
+      );
       return sendJson(response, session.snapshot());
     }
-    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/quality-loop\/stop$/)) {
+    if (
+      request.method === "POST" &&
+      url.pathname.match(/^\/api\/nodes\/[^/]+\/quality-loop\/stop$/)
+    ) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const body = await readJsonBody(request);
-      session.stopQualityLoop(nodeId, typeof body["reason"] === "string" ? body["reason"] : undefined);
+      session.stopQualityLoop(
+        nodeId,
+        typeof body["reason"] === "string" ? body["reason"] : undefined,
+      );
       return sendJson(response, session.snapshot());
     }
     if (request.method === "POST" && url.pathname === "/api/nodes/add") {
       const body = await readJsonBody(request);
       const parentId = String(body["parentId"] ?? "");
       const prompt = String(body["prompt"] ?? "");
-      const kind = body["kind"] === "workflow-agent" || body["kind"] === "workflow-qa" ? body["kind"] : "task";
+      const kind =
+        body["kind"] === "workflow-agent" || body["kind"] === "workflow-qa" ? body["kind"] : "task";
       const node = session.addNode({ parentId, prompt, kind });
       return sendJson(response, { ...session.snapshot(), addedNodeId: node.id });
     }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/connect$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const body = await readJsonBody(request);
-      const connectInput: { nodeId: string; parentId: string; sourceHandle?: string; targetHandle?: string } = {
+      const connectInput: {
+        nodeId: string;
+        parentId: string;
+        sourceHandle?: string;
+        targetHandle?: string;
+      } = {
         nodeId,
         parentId: String(body["parentId"] ?? ""),
       };
@@ -421,9 +487,10 @@ async function routeRequest(
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/delete$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const body = await readJsonBody(request);
-      const strategy = body["strategy"] === "rewire_dependents" || body["strategy"] === "delete_subtree"
-        ? body["strategy"] as DeleteStrategy
-        : undefined;
+      const strategy =
+        body["strategy"] === "rewire_dependents" || body["strategy"] === "delete_subtree"
+          ? (body["strategy"] as DeleteStrategy)
+          : undefined;
       const result = session.deleteNodeWithStrategy(nodeId, strategy);
       return sendJson(response, { ...session.snapshot(), deletedNodeIds: result.deleted });
     }
@@ -435,9 +502,11 @@ async function routeRequest(
     if (request.method === "POST" && url.pathname === "/api/chat/apply") {
       const body = await readJsonBody(request);
       const proposalId = typeof body["proposalId"] === "string" ? body["proposalId"] : undefined;
-      const deleteStrategy = body["deleteStrategy"] === "delete_subtree" || body["deleteStrategy"] === "rewire_dependents"
-        ? body["deleteStrategy"] as DeleteStrategy
-        : undefined;
+      const deleteStrategy =
+        body["deleteStrategy"] === "delete_subtree" ||
+        body["deleteStrategy"] === "rewire_dependents"
+          ? (body["deleteStrategy"] as DeleteStrategy)
+          : undefined;
       const applyInput: { proposalId?: string; deleteStrategy?: DeleteStrategy } = {};
       if (proposalId) {
         applyInput.proposalId = proposalId;
@@ -459,11 +528,17 @@ async function routeRequest(
       if (runVariant === "pipeline" && taskInput.length > 0) {
         const currentGraph = session.snapshot().graph;
         if (graphHasPipelineTemplate(currentGraph)) {
-          session.restoreSnapshot(buildImportSessionSnapshot(applyPipelineTemplate(currentGraph, { input: taskInput })));
+          session.restoreSnapshot(
+            buildImportSessionSnapshot(applyPipelineTemplate(currentGraph, { input: taskInput })),
+          );
         }
       }
       const readiness = session.confirmGraphAndRun();
-      if (readiness.state === "ready_to_run" && onConfirmRun && !session.isConfirmedExecutionRunning()) {
+      if (
+        readiness.state === "ready_to_run" &&
+        onConfirmRun &&
+        !session.isConfirmedExecutionRunning()
+      ) {
         void Promise.resolve(onConfirmRun(session)).catch((error: unknown) => {
           const message = error instanceof Error ? error.message : String(error);
           session.stop(typeof message === "string" ? message : "UI execution failed");
@@ -499,12 +574,20 @@ async function routeRequest(
     }
     if (request.method === "POST" && url.pathname === "/api/pause-future-auto-approvals") {
       const snapshot = session.snapshot();
-      if (snapshot.status === "cancelled" || snapshot.status === "completed" || snapshot.status === "failed") {
-        return sendJson(response, {
-          error: "Cannot pause future auto-approvals after execution has finished.",
-          approvalMode: snapshot.approvalMode,
-          status: snapshot.status,
-        }, 409);
+      if (
+        snapshot.status === "cancelled" ||
+        snapshot.status === "completed" ||
+        snapshot.status === "failed"
+      ) {
+        return sendJson(
+          response,
+          {
+            error: "Cannot pause future auto-approvals after execution has finished.",
+            approvalMode: snapshot.approvalMode,
+            status: snapshot.status,
+          },
+          409,
+        );
       }
       session.pauseFutureAutoApprovals();
       const updated = session.snapshot();
@@ -518,19 +601,28 @@ async function routeRequest(
       const body = await readJsonBody(request);
       const requested = body["approvalMode"];
       if (!isApprovalMode(requested)) {
-        return sendJson(response, {
-          error: "Invalid approval mode. Expected one of: full, initial-plan, initial-plan-recursive.",
-          received: requested,
-        }, 400);
+        return sendJson(
+          response,
+          {
+            error:
+              "Invalid approval mode. Expected one of: full, initial-plan, initial-plan-recursive.",
+            received: requested,
+          },
+          400,
+        );
       }
       // Mode is selected at session creation and exposed here for a stable API contract.
       const snapshot = session.snapshot();
       if (snapshot.approvalMode !== requested) {
-        return sendJson(response, {
-          error: "Approval mode cannot be changed after session start.",
-          approvalMode: snapshot.approvalMode,
-          requested,
-        }, 409);
+        return sendJson(
+          response,
+          {
+            error: "Approval mode cannot be changed after session start.",
+            approvalMode: snapshot.approvalMode,
+            requested,
+          },
+          409,
+        );
       }
       return sendJson(response, {
         approvalMode: snapshot.approvalMode,
@@ -554,7 +646,9 @@ async function routeRequest(
   }
 }
 
-function legacySavedSessionPayload(snapshot: ReturnType<InteractiveExecutionSession["snapshot"]>): SavedSessionPayload {
+function legacySavedSessionPayload(
+  snapshot: ReturnType<InteractiveExecutionSession["snapshot"]>,
+): SavedSessionPayload {
   const artifactRefs: Array<{ nodeId: string; ref: unknown }> = [];
   for (const node of snapshot.graph.nodes) {
     for (const ref of node.composer?.artifactRefs ?? []) {
@@ -571,7 +665,11 @@ function legacySavedSessionPayload(snapshot: ReturnType<InteractiveExecutionSess
     memory: {
       version: 1,
       status: "structured_contract_saved",
-      scopes: [...new Set(snapshot.graph.nodes.flatMap((node) => node.composer?.contextPolicy.memoryScopes ?? []))],
+      scopes: [
+        ...new Set(
+          snapshot.graph.nodes.flatMap((node) => node.composer?.contextPolicy.memoryScopes ?? []),
+        ),
+      ],
       contextPolicies: snapshot.graph.nodes
         .filter((node) => node.composer?.contextPolicy)
         .map((node) => ({ nodeId: node.id, policy: node.composer?.contextPolicy })),
@@ -611,10 +709,16 @@ function streamEvents(response: ServerResponse, session: InteractiveExecutionSes
   response.on("close", unsubscribe);
 }
 
-async function serveUiAsset(request: IncomingMessage, response: ServerResponse, uiDistDir: string | undefined): Promise<void> {
+async function serveUiAsset(
+  request: IncomingMessage,
+  response: ServerResponse,
+  uiDistDir: string | undefined,
+): Promise<void> {
   if (!uiDistDir) {
     response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    response.end("<!doctype html><title>RLM UI</title><div id=\"root\">Build the React UI with npm run build:ui.</div>");
+    response.end(
+      '<!doctype html><title>RLM UI</title><div id="root">Build the React UI with npm run build:ui.</div>',
+    );
     return;
   }
 
@@ -626,9 +730,9 @@ async function serveUiAsset(request: IncomingMessage, response: ServerResponse, 
   const filePath = resolve(root, normalizedRel);
   const underDist = relative(root, filePath);
   if (
-    underDist.startsWith(`..${sep}`)
-    || underDist === ".."
-    || underDist.split(sep).includes("..")
+    underDist.startsWith(`..${sep}`) ||
+    underDist === ".." ||
+    underDist.split(sep).includes("..")
   ) {
     response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
     response.end("Forbidden");
@@ -673,9 +777,8 @@ async function readJsonBody(request: IncomingMessage): Promise<Record<string, un
     chunks.push(buf);
   }
   const text = Buffer.concat(chunks).toString("utf8").trim();
-  return text ? JSON.parse(text) as Record<string, unknown> : {};
+  return text ? (JSON.parse(text) as Record<string, unknown>) : {};
 }
-
 
 function sendJson(response: ServerResponse, value: unknown, status = 200): void {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });

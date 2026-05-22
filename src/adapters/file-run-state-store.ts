@@ -37,7 +37,10 @@ export class FileRunStateStore implements RunStateStorePort {
     return this.publicSnapshot(state);
   }
 
-  async createRun(runId: string, seed: Partial<Omit<RunStateSnapshot, "runId" | "version" | "mutationLog">> = {}): Promise<RunStateSnapshot> {
+  async createRun(
+    runId: string,
+    seed: Partial<Omit<RunStateSnapshot, "runId" | "version" | "mutationLog">> = {},
+  ): Promise<RunStateSnapshot> {
     return this.withRunLock(runId, async () => {
       const existing = await this.read(runId);
       if (existing) {
@@ -86,7 +89,13 @@ export class FileRunStateStore implements RunStateStorePort {
     return state?.mutationLog ?? [];
   }
 
-  async buildOperationalReplay(runId: string): Promise<Array<Pick<RunStateMutationRecord, "seq" | "path" | "action" | "accepted" | "reason" | "timestamp">>> {
+  async buildOperationalReplay(
+    runId: string,
+  ): Promise<
+    Array<
+      Pick<RunStateMutationRecord, "seq" | "path" | "action" | "accepted" | "reason" | "timestamp">
+    >
+  > {
     const state = await this.read(runId);
     return (state?.mutationLog ?? []).map((entry) => ({
       seq: entry.seq,
@@ -98,8 +107,13 @@ export class FileRunStateStore implements RunStateStorePort {
     }));
   }
 
-  private authorize(state: PersistedRunState, request: RunStateMutationRequest): string | undefined {
-    const allowedPrefix = state.aclPrefixes.some((prefix) => request.path === prefix || request.path.startsWith(`${prefix}.`));
+  private authorize(
+    state: PersistedRunState,
+    request: RunStateMutationRequest,
+  ): string | undefined {
+    const allowedPrefix = state.aclPrefixes.some(
+      (prefix) => request.path === prefix || request.path.startsWith(`${prefix}.`),
+    );
     if (!allowedPrefix) {
       return "path ACL denied";
     }
@@ -167,7 +181,7 @@ export class FileRunStateStore implements RunStateStorePort {
   private async write(runId: string, state: PersistedRunState): Promise<void> {
     const filePath = this.filePath(runId);
     await mkdir(dirname(filePath), { recursive: true });
-    const tempPath = `${filePath}.${process.pid}.${this.writeCounter += 1}.tmp`;
+    const tempPath = `${filePath}.${process.pid}.${(this.writeCounter += 1)}.tmp`;
     await writeFile(tempPath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
     await rename(tempPath, filePath);
   }
@@ -209,7 +223,12 @@ export class FileRunStateStore implements RunStateStorePort {
   }
 }
 
-function applyPathMutation(state: PersistedRunState, path: string, action: "set" | "delete", value: unknown): void {
+function applyPathMutation(
+  state: PersistedRunState,
+  path: string,
+  action: "set" | "delete",
+  value: unknown,
+): void {
   const parts = path.split(".").filter(Boolean);
   if (parts.length === 0) {
     throw new Error("Mutation path cannot be empty.");

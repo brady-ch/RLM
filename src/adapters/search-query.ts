@@ -14,7 +14,7 @@ export function buildSearchQuery(args: SearchQueryArgs): string {
   const parts = [
     clean(args.rawQuery),
     ...cleanList(args.terms),
-    ...cleanList(args.exactPhrases).map((phrase) => `"${phrase.replaceAll("\"", "\\\"")}"`),
+    ...cleanList(args.exactPhrases).map((phrase) => `"${phrase.replaceAll('"', '\\"')}"`),
     ...cleanList(args.requiredTerms).map((term) => `+${term}`),
     ...cleanList(args.excludedTerms).map((term) => `-${term}`),
     ...cleanList(args.siteFilters).map((site) => `site:${site}`),

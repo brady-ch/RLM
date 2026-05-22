@@ -32,7 +32,7 @@ export class FileVectorIndex {
 
   async replace(records: VectorIndexRecord[]): Promise<void> {
     await mkdir(dirname(this.path), { recursive: true });
-    const temp = `${this.path}.${process.pid}.${this.writeCounter += 1}.tmp`;
+    const temp = `${this.path}.${process.pid}.${(this.writeCounter += 1)}.tmp`;
     await writeFile(temp, `${JSON.stringify(records, null, 2)}\n`, "utf8");
     await rename(temp, this.path);
   }

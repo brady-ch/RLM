@@ -20,9 +20,15 @@ class EchoTool implements ToolPort {
 }
 
 class RecordingModel implements LanguageModelPort {
-  readonly calls: Array<{ options: LanguageModelCompleteOptions; messages: LanguageModelMessage[] }> = [];
+  readonly calls: Array<{
+    options: LanguageModelCompleteOptions;
+    messages: LanguageModelMessage[];
+  }> = [];
 
-  async complete(messages: LanguageModelMessage[], options: LanguageModelCompleteOptions = {}): Promise<LanguageModelResponse> {
+  async complete(
+    messages: LanguageModelMessage[],
+    options: LanguageModelCompleteOptions = {},
+  ): Promise<LanguageModelResponse> {
     this.calls.push({ options, messages });
     if ((options.tools?.length ?? 0) > 0 && this.calls.length === 1) {
       return {

@@ -56,11 +56,17 @@ export class MemoryResolver {
         chunks.push(`Scope ${scopeId} v${scope.version}:\n${JSON.stringify(scope.content)}`);
       } catch (error: unknown) {
         degraded = true;
-        reasons.push(`scope ${scopeId} read failed: ${error instanceof Error ? error.message : String(error)}`);
+        reasons.push(
+          `scope ${scopeId} read failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
 
-    const summary = await this.store.getRollingSummary(this.input.sessionId, scopeIds, Math.floor(charLimit / 2));
+    const summary = await this.store.getRollingSummary(
+      this.input.sessionId,
+      scopeIds,
+      Math.floor(charLimit / 2),
+    );
     if (summary) {
       provenance.push({ kind: "episodic", id: "rolling-summary" });
       chunks.push(`Rolling summary:\n${summary}`);
@@ -72,7 +78,9 @@ export class MemoryResolver {
       if (result?.status === "ready" && result.hits.length > 0) {
         retrievalHits = result.hits;
         provenance.push(...result.hits.map((hit) => ({ kind: "retrieval" as const, id: hit.id })));
-        chunks.push(`Retrieval hits:\n${result.hits.map((hit) => `- ${hit.source}:${hit.scopeId} score=${hit.score.toFixed(3)} ${hit.snippet}`).join("\n")}`);
+        chunks.push(
+          `Retrieval hits:\n${result.hits.map((hit) => `- ${hit.source}:${hit.scopeId} score=${hit.score.toFixed(3)} ${hit.snippet}`).join("\n")}`,
+        );
       } else if (result?.status === "degraded") {
         degraded = true;
         reasons.push(`retrieval degraded: ${result.reason ?? "unknown reason"}`);
@@ -101,7 +109,12 @@ export class MemoryResolver {
     return { text: text ? `<memory_context>\n${text}\n</memory_context>` : "", metadata };
   }
 
-  async appendNodeSummary(input: { nodeId: string; summary: string; scopeIds: string[]; artifactRefs?: string[] }): Promise<void> {
+  async appendNodeSummary(input: {
+    nodeId: string;
+    summary: string;
+    scopeIds: string[];
+    artifactRefs?: string[];
+  }): Promise<void> {
     const entry: EpisodicMemoryEntry = {
       id: `episode-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       sessionId: this.input.sessionId,
@@ -126,7 +139,13 @@ export class MemoryResolver {
     };
   }
 
-  async setPreference(input: { key: string; value: string; source?: string; lifetime?: MemoryScopeLifetime; expectedVersion?: number }): Promise<void> {
+  async setPreference(input: {
+    key: string;
+    value: string;
+    source?: string;
+    lifetime?: MemoryScopeLifetime;
+    expectedVersion?: number;
+  }): Promise<void> {
     const key = input.key.trim();
     const value = input.value.trim();
     if (!key || !value) {

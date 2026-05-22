@@ -62,7 +62,10 @@ test("strict skill path throws on invalid skill", async () => {
   );
 
   await assert.rejects(
-    () => runtime.resolveSkill("parse", [{ name: "parse", absolutePath: "/strict/parse/SKILL.md", valid: false }]),
+    () =>
+      runtime.resolveSkill("parse", [
+        { name: "parse", absolutePath: "/strict/parse/SKILL.md", valid: false },
+      ]),
     /Skill parse error/,
   );
   assert.equal(store.events[0]?.severity, "error");
@@ -118,7 +121,12 @@ test("outage escalation emits warn then error and recovery emits verbose metrics
     () => now,
   );
 
-  await runtime.markDisconnected("req", "store unavailable", [{ id: "n1", type: "mcp", model: "none" }], 2);
+  await runtime.markDisconnected(
+    "req",
+    "store unavailable",
+    [{ id: "n1", type: "mcp", model: "none" }],
+    2,
+  );
   now = 10_100;
   await runtime.tickOutage("req", [{ id: "n1", type: "mcp", model: "none" }], 2);
   now = 60_500;
@@ -212,7 +220,9 @@ test("configured MCP server exposes framed stdio tools", async () => {
   const dir = await mkdtemp(join(tmpdir(), "rlm-mcp-server-"));
   const serverPath = join(dir, "server.mjs");
   try {
-    await writeFile(serverPath, `
+    await writeFile(
+      serverPath,
+      `
 let buffer = "";
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", (chunk) => {
@@ -239,11 +249,15 @@ function handle(request) {
   if (request.method === "tools/list") send(request.id, { tools: [{ name: "echo", description: "Echo", inputSchema: {} }] });
   if (request.method === "tools/call") send(request.id, { content: [{ type: "text", text: "mcp:" + request.params.arguments.text }] });
 }
-`, "utf8");
+`,
+      "utf8",
+    );
     const store = new InMemoryEventStore();
     const runtime = new McpSkillRuntime(
       {
-        mcp: { servers: [{ id: "local", command: process.execPath, args: [serverPath], required: true }] },
+        mcp: {
+          servers: [{ id: "local", command: process.execPath, args: [serverPath], required: true }],
+        },
         skills: {
           searchPaths: [],
           duplicateStrategy: "first_match",

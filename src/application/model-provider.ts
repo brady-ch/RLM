@@ -18,10 +18,12 @@ export interface ModelProviderOptions {
   agent: AgentConfig;
   hostSelection?: RuntimeHostSelection | undefined;
   createModel: (model: string, runtime: ModelRuntimeSelection) => LanguageModelPort;
-  resolveUnavailableHostDecision?: ((input: {
-    requestedHostId: string;
-    availableHostIds: string[];
-  }) => Promise<{ action: "retry" | "switch" | "abort"; hostId?: string }>) | undefined;
+  resolveUnavailableHostDecision?:
+    | ((input: {
+        requestedHostId: string;
+        availableHostIds: string[];
+      }) => Promise<{ action: "retry" | "switch" | "abort"; hostId?: string }>)
+    | undefined;
   recordSelection?: (selection: ModelSelectionRecord) => void;
   logger?: RuntimeLogger | undefined;
 }
@@ -45,9 +47,18 @@ export interface ModelRuntimeSelection {
   allowUnconstrainedToolCalls: boolean;
 }
 
-const SAMPLING_KEYS = ["temperature", "topP", "topK", "repeatPenalty", "maxTokens", "seed"] as const satisfies readonly SamplingParameterName[];
+const SAMPLING_KEYS = [
+  "temperature",
+  "topP",
+  "topK",
+  "repeatPenalty",
+  "maxTokens",
+  "seed",
+] as const satisfies readonly SamplingParameterName[];
 
-const ADAPTER_DEFAULT_SAMPLING: Partial<Record<ModelRuntimeSelection["hostKind"], LanguageModelSamplingOptions>> = {
+const ADAPTER_DEFAULT_SAMPLING: Partial<
+  Record<ModelRuntimeSelection["hostKind"], LanguageModelSamplingOptions>
+> = {
   ollama: {
     temperature: 0.2,
   },
@@ -107,14 +118,21 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       return response;
     }
 
-    const selection = await this.selectModel(completeOptions.purpose, completeOptions.complexityDepth);
+    const selection = await this.selectModel(
+      completeOptions.purpose,
+      completeOptions.complexityDepth,
+    );
     const runtime: ModelRuntimeSelection = {
       hostId: selection.hostId,
       hostKind: selection.hostKind,
       baseUrl: selection.hostEndpoint,
       allowUnconstrainedToolCalls: false,
     };
-    const sampling = this.resolveSampling(selection.model, selection.hostKind, completeOptions.sampling);
+    const sampling = this.resolveSampling(
+      selection.model,
+      selection.hostKind,
+      completeOptions.sampling,
+    );
     const selectionWithSampling: ModelSelectionRecord = { ...selection, sampling };
     this.options.recordSelection?.(selectionWithSampling);
     this.options.logger?.log({
@@ -144,7 +162,11 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
     return response;
   }
 
-  resolveOverrideSelection(completeOptions: LanguageModelCompleteOptions): { model: string; tier: string; estimatedRamMb: number } {
+  resolveOverrideSelection(completeOptions: LanguageModelCompleteOptions): {
+    model: string;
+    tier: string;
+    estimatedRamMb: number;
+  } {
     const selection = completeOptions.overrideModelSelection ?? completeOptions.overrideModel;
     if (!selection) {
       throw new Error("override model selection is required");
@@ -168,12 +190,16 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
     };
   }
 
-  async selectModel(purpose: LanguageModelPurpose | undefined, complexityDepth = 0): Promise<ModelSelectionRecord> {
+  async selectModel(
+    purpose: LanguageModelPurpose | undefined,
+    complexityDepth = 0,
+  ): Promise<ModelSelectionRecord> {
     const normalizedPurpose = purpose ?? "default";
     const configuredSelection = purpose ? this.options.agent.models[purpose] : undefined;
-    const tierName = configuredSelection === "dynamic"
-      ? selectDynamicTier(complexityDepth)
-      : configuredSelection ?? "small";
+    const tierName =
+      configuredSelection === "dynamic"
+        ? selectDynamicTier(complexityDepth)
+        : (configuredSelection ?? "small");
     const tier = resolveModelTier(this.options.config, tierName);
 
     const runtime = await this.resolveRuntimeSelection();
@@ -198,7 +224,10 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
     return mergeSamplingLayers([
       { source: "adapter_default", values: ADAPTER_DEFAULT_SAMPLING[hostKind] },
       { source: "global", values: this.options.config.models.sampling?.defaults },
-      { source: "model_profile", values: this.options.config.models.sampling?.modelProfiles?.[model] },
+      {
+        source: "model_profile",
+        values: this.options.config.models.sampling?.modelProfiles?.[model],
+      },
       { source: "node", values: nodeOverride },
     ]);
   }
@@ -227,7 +256,10 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
         allowUnconstrainedToolCalls: false,
       },
     };
-    const requested = this.options.hostSelection ?? { hostId: "local_ollama", source: "default" as const };
+    const requested = this.options.hostSelection ?? {
+      hostId: "local_ollama",
+      source: "default" as const,
+    };
     let requestedHostId = requested.hostId;
     let host = hosts[requestedHostId];
 
@@ -240,7 +272,9 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
         availableHostIds,
       });
       if (!decision || decision.action === "abort") {
-        throw new Error(`selected model unavailable: requested host "${requestedHostId}" is unavailable`);
+        throw new Error(
+          `selected model unavailable: requested host "${requestedHostId}" is unavailable`,
+        );
       }
       if (decision.action === "retry") {
         host = hosts[requestedHostId];
@@ -265,7 +299,11 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
   }
 }
 
-export function estimateAgentRamMb(config: ProjectConfig, agent: AgentConfig, complexityDepth: number): number {
+export function estimateAgentRamMb(
+  config: ProjectConfig,
+  agent: AgentConfig,
+  complexityDepth: number,
+): number {
   return Math.max(
     ...Object.values(agent.models).map((selection) => {
       const tierName = selection === "dynamic" ? selectDynamicTier(complexityDepth) : selection;
@@ -322,9 +360,6 @@ function mergeSamplingMetadata(
       ...resolved.sources,
       ...adapterMetadata?.sources,
     },
-    warnings: [
-      ...(resolved.warnings ?? []),
-      ...(adapterMetadata?.warnings ?? []),
-    ],
+    warnings: [...(resolved.warnings ?? []), ...(adapterMetadata?.warnings ?? [])],
   };
 }

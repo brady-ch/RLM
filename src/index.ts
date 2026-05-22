@@ -29,17 +29,34 @@ import {
   seedProjectRlmStarter,
 } from "./application/project-config.js";
 import { ResourceCleanup } from "./application/resource-cleanup.js";
-import { createModelFactory, createToolsResolver, readablePath } from "./application/runtime-composition.js";
+import {
+  createModelFactory,
+  createToolsResolver,
+  readablePath,
+} from "./application/runtime-composition.js";
 import { runWorkflow } from "./application/workflow-runner.js";
 import * as guardedShellExtension from "./extensions/tools/guarded-shell.extension.js";
 import * as webFetchExtension from "./extensions/tools/web-fetch.extension.js";
 import * as webSearchExtension from "./extensions/tools/web-search.extension.js";
 import * as workspaceFileWriteExtension from "./extensions/tools/workspace-file-write.extension.js";
-import { CancellationController, createExecutionControl, createInteractiveExecutionSession } from "./application/execution-controller.js";
+import {
+  CancellationController,
+  createExecutionControl,
+  createInteractiveExecutionSession,
+} from "./application/execution-controller.js";
 import { startControlServer, type SessionRuntimeRef } from "./application/control-server.js";
-import { restoreSessionMemory, restoreGraphWorkflowMetadata } from "./application/session-memory-bridge.js";
-import { exportAndSaveGraphWorkflow, loadGraphWorkflow } from "./application/graph-workflow-store.js";
-import { defaultSaveVariant, importSidecarToGraph } from "./application/graph-workflow-serializer.js";
+import {
+  restoreSessionMemory,
+  restoreGraphWorkflowMetadata,
+} from "./application/session-memory-bridge.js";
+import {
+  exportAndSaveGraphWorkflow,
+  loadGraphWorkflow,
+} from "./application/graph-workflow-store.js";
+import {
+  defaultSaveVariant,
+  importSidecarToGraph,
+} from "./application/graph-workflow-serializer.js";
 import type { GraphWorkflowSaveVariant } from "./application/graph-workflow-types.js";
 import { ModelLibraryService } from "./application/model-library.js";
 import { createUiExecutionRunner } from "./application/ui-execution-runner.js";
@@ -71,8 +88,7 @@ async function main(): Promise<void> {
       const answer = await promptLaunchChoice();
       const settled = resolveLaunchMode(process.env, ttyCombined, answer);
       cliArgv = injectLaunchArgv(cliArgv, settled.mode);
-    }
-    else {
+    } else {
       cliArgv = injectLaunchArgv(cliArgv, preliminary.mode);
     }
   }
@@ -126,7 +142,9 @@ async function main(): Promise<void> {
       throw new Error("workflow-export requires --export-session <id>.");
     }
     const saved = await sessionStore.load(sessionId);
-    const sessionGraph = (saved.payload.session as { graph?: import("./domain/types.js").ExecutionGraph }).graph;
+    const sessionGraph = (
+      saved.payload.session as { graph?: import("./domain/types.js").ExecutionGraph }
+    ).graph;
     if (!sessionGraph || sessionGraph.nodes.length === 0) {
       throw new Error(`Saved session "${sessionId}" has no graph to export.`);
     }
@@ -138,13 +156,19 @@ async function main(): Promise<void> {
       graph: sessionGraph,
       projectRoot: process.cwd(),
     });
-    console.log(JSON.stringify({
-      workflowId,
-      path: result.path,
-      variant,
-      nodeCount: sessionGraph.nodes.length,
-      updatedAt: result.sidecar.updatedAt,
-    }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          workflowId,
+          path: result.path,
+          variant,
+          nodeCount: sessionGraph.nodes.length,
+          updatedAt: result.sidecar.updatedAt,
+        },
+        null,
+        2,
+      ),
+    );
     return;
   }
 
@@ -156,24 +180,30 @@ async function main(): Promise<void> {
     const sidecar = await loadGraphWorkflow(workflowId, { projectRoot: process.cwd() });
     const variant = options.variant === "pipeline" ? "pipeline" : "playbook";
     const imported = importSidecarToGraph(sidecar, variant);
-    console.log(JSON.stringify({
-      workflowId,
-      variant: imported.variant,
-      nodeCount: imported.graph.nodes.length,
-      expertNodes: imported.graph.nodes
-        .filter((node) => node.expertAgentId && node.expertAgentId !== "default")
-        .map((node) => ({ id: node.id, expertAgentId: node.expertAgentId })),
-    }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          workflowId,
+          variant: imported.variant,
+          nodeCount: imported.graph.nodes.length,
+          expertNodes: imported.graph.nodes
+            .filter((node) => node.expertAgentId && node.expertAgentId !== "default")
+            .map((node) => ({ id: node.id, expertAgentId: node.expertAgentId })),
+        },
+        null,
+        2,
+      ),
+    );
     return;
   }
 
   let loadedConfig = await loadProjectConfig(options.configPath);
   const legacyMonoConfig = resolve(process.cwd(), "rlm.config.yaml");
   if (
-    options.command === "ui"
-    && options.configPath === undefined
-    && process.env.RLM_SKIP_STARTER_SEED !== "1"
-    && !(await readablePath(legacyMonoConfig))
+    options.command === "ui" &&
+    options.configPath === undefined &&
+    process.env.RLM_SKIP_STARTER_SEED !== "1" &&
+    !(await readablePath(legacyMonoConfig))
   ) {
     const seeded = await seedProjectRlmStarter(process.cwd());
     if (seeded) {
@@ -200,9 +230,11 @@ async function main(): Promise<void> {
     config: projectConfig.memory,
   });
   const cancellation = new CancellationController();
-  const onExecutionEvent = options.jsonStream ? (event: ExecutionEvent) => {
-    process.stdout.write(`${JSON.stringify(event)}\n`);
-  } : undefined;
+  const onExecutionEvent = options.jsonStream
+    ? (event: ExecutionEvent) => {
+        process.stdout.write(`${JSON.stringify(event)}\n`);
+      }
+    : undefined;
   const execution = createExecutionControl({
     planOnly: options.planOnly || options.requireApproval,
     cancellation,
@@ -238,8 +270,14 @@ async function main(): Promise<void> {
     ]),
   );
   extensionHost.loadBuiltins([
-    { path: "src/extensions/tools/guarded-shell.extension.ts", register: guardedShellExtension.register },
-    { path: "src/extensions/tools/workspace-file-write.extension.ts", register: workspaceFileWriteExtension.register },
+    {
+      path: "src/extensions/tools/guarded-shell.extension.ts",
+      register: guardedShellExtension.register,
+    },
+    {
+      path: "src/extensions/tools/workspace-file-write.extension.ts",
+      register: workspaceFileWriteExtension.register,
+    },
     { path: "src/extensions/tools/web-search.extension.ts", register: webSearchExtension.register },
     { path: "src/extensions/tools/web-fetch.extension.ts", register: webFetchExtension.register },
   ]);
@@ -265,13 +303,13 @@ async function main(): Promise<void> {
   }
   const interopTools = [
     createSkillTool(runtimeEvents),
-    ...await createMcpTools(projectConfig.interop?.mcp.servers ?? [], runtimeEvents, (child) => {
+    ...(await createMcpTools(projectConfig.interop?.mcp.servers ?? [], runtimeEvents, (child) => {
       cleanup.track({
         close: async () => {
           child.kill();
         },
       });
-    }),
+    })),
   ];
   for (const tool of interopTools) {
     extensionHost.tools.register(tool);
@@ -313,27 +351,30 @@ async function main(): Promise<void> {
       lifetime: "project",
     });
   }
-  const vectorIndex = new FileVectorIndex({ path: join(process.cwd(), ".rlm", "memory", "vector-index.json") });
+  const vectorIndex = new FileVectorIndex({
+    path: join(process.cwd(), ".rlm", "memory", "vector-index.json"),
+  });
   const embeddingModel = new OllamaEmbeddingModel({
     ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
     ...(process.env.RLM_EMBED_MODEL ? { model: process.env.RLM_EMBED_MODEL } : {}),
   });
-  const createMemoryForRun = (sessionId: string): MemoryResolver => new MemoryResolver(
-    memoryStore,
-    { sessionId },
-    new SemanticMemoryIndex({
-      sessionId,
-      store: memoryStore,
-      embeddings: embeddingModel,
-      index: vectorIndex,
-    }),
-  );
+  const createMemoryForRun = (sessionId: string): MemoryResolver =>
+    new MemoryResolver(
+      memoryStore,
+      { sessionId },
+      new SemanticMemoryIndex({
+        sessionId,
+        store: memoryStore,
+        embeddings: embeddingModel,
+        index: vectorIndex,
+      }),
+    );
   let runtimeMemory = createMemoryForRun(runId);
   logger?.log({
     stage: "interop",
     message: "mcp+skill runtime initialized",
     data: {
-      mcpServers: (projectConfig.interop?.mcp.servers.length ?? 0),
+      mcpServers: projectConfig.interop?.mcp.servers.length ?? 0,
       skillSearchPaths: runtimeEvents.getSkillSearchPaths(),
       skillCache: runtimeEvents.isSkillCacheEnabled(),
     },
@@ -354,16 +395,17 @@ async function main(): Promise<void> {
   });
   try {
     const defaultAgent = selectAgent(registry, options.prompt, options.agent);
-    const createPurposeRoutingModel = (): PurposeRoutingLanguageModel => new PurposeRoutingLanguageModel({
-      config: projectConfig,
-      agent: defaultAgent.config,
-      hostSelection: resolveRuntimeHostSelection(projectConfig, {
-        cliHostId: options.host,
-        env: process.env,
-      }),
-      createModel,
-      logger,
-    });
+    const createPurposeRoutingModel = (): PurposeRoutingLanguageModel =>
+      new PurposeRoutingLanguageModel({
+        config: projectConfig,
+        agent: defaultAgent.config,
+        hostSelection: resolveRuntimeHostSelection(projectConfig, {
+          cliHostId: options.host,
+          env: process.env,
+        }),
+        createModel,
+        logger,
+      });
 
     if (options.command === "plan-node") {
       const session = createInteractiveExecutionSession({
@@ -371,23 +413,46 @@ async function main(): Promise<void> {
         planModel: createPurposeRoutingModel(),
       });
       try {
-        const plan = await session.planNode(options.nodeId ?? "root-composer", { replan: options.replan });
+        const plan = await session.planNode(options.nodeId ?? "root-composer", {
+          replan: options.replan,
+        });
         const graph = session.snapshot().graph;
-        console.log(JSON.stringify({ plannedNodeIds: plan.plannedNodeIds, budget: plan.budget, graphNodeCount: graph.nodes.length }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              plannedNodeIds: plan.plannedNodeIds,
+              budget: plan.budget,
+              graphNodeCount: graph.nodes.length,
+            },
+            null,
+            2,
+          ),
+        );
       } catch (error: unknown) {
         const mutationError = session.toMutationError(error);
-        console.error(JSON.stringify(mutationError ?? { error: error instanceof Error ? error.message : String(error) }, null, 2));
+        console.error(
+          JSON.stringify(
+            mutationError ?? { error: error instanceof Error ? error.message : String(error) },
+            null,
+            2,
+          ),
+        );
         process.exitCode = 1;
       }
       return;
     }
 
     if (options.command === "ui") {
-      const session = createInteractiveExecutionSession({ seedRootPrompt: options.prompt, planModel: createPurposeRoutingModel() });
+      const session = createInteractiveExecutionSession({
+        seedRootPrompt: options.prompt,
+        planModel: createPurposeRoutingModel(),
+      });
       if (options.openSession) {
         const saved = await sessionStore.load(options.openSession);
         if (saved.verification.status !== "complete") {
-          console.error(`Saved session ${saved.id} has ${saved.verification.status} verification; unsafe continuation is blocked.`);
+          console.error(
+            `Saved session ${saved.id} has ${saved.verification.status} verification; unsafe continuation is blocked.`,
+          );
           process.exitCode = 1;
           return;
         }
@@ -478,25 +543,25 @@ async function main(): Promise<void> {
     } as const;
     let result = options.workflow
       ? await runWorkflow({
-        ...runInputBase,
-        workflowId: options.workflow,
-        hostId: options.host,
-        variant: options.variant,
-      })
+          ...runInputBase,
+          workflowId: options.workflow,
+          hostId: options.host,
+          variant: options.variant,
+        })
       : await runConfiguredAgent({
-        prompt: runInputBase.prompt,
-        config: runInputBase.config,
-        projectConfig: runInputBase.projectConfig,
-        agent: selectAgent(registry, options.prompt, options.agent),
-        agentSource: options.agent ? "override" : "auto",
-        memoryManager: runInputBase.memoryManager,
-        hostId: options.host,
-        createModel: runInputBase.createModel,
-        logger: runInputBase.logger,
-        execution,
-        runState,
-        memory: runtimeMemory,
-      });
+          prompt: runInputBase.prompt,
+          config: runInputBase.config,
+          projectConfig: runInputBase.projectConfig,
+          agent: selectAgent(registry, options.prompt, options.agent),
+          agentSource: options.agent ? "override" : "auto",
+          memoryManager: runInputBase.memoryManager,
+          hostId: options.host,
+          createModel: runInputBase.createModel,
+          logger: runInputBase.logger,
+          execution,
+          runState,
+          memory: runtimeMemory,
+        });
     if (options.requireApproval && !options.planOnly) {
       if (!options.approve) {
         await waitForApproval();
@@ -508,28 +573,28 @@ async function main(): Promise<void> {
       });
       result = options.workflow
         ? await runWorkflow({
-          ...runInputBase,
-          workflowId: options.workflow,
-          hostId: options.host,
-          variant: options.variant,
-          execution: executeControl,
-          runState,
-          memory: runtimeMemory,
-        })
+            ...runInputBase,
+            workflowId: options.workflow,
+            hostId: options.host,
+            variant: options.variant,
+            execution: executeControl,
+            runState,
+            memory: runtimeMemory,
+          })
         : await runConfiguredAgent({
-          prompt: runInputBase.prompt,
-          config: runInputBase.config,
-          projectConfig: runInputBase.projectConfig,
-          agent: selectAgent(registry, options.prompt, options.agent),
-          agentSource: options.agent ? "override" : "auto",
-          memoryManager: runInputBase.memoryManager,
-          hostId: options.host,
-          createModel: runInputBase.createModel,
-          logger: runInputBase.logger,
-          execution: executeControl,
-          runState,
-          memory: runtimeMemory,
-        });
+            prompt: runInputBase.prompt,
+            config: runInputBase.config,
+            projectConfig: runInputBase.projectConfig,
+            agent: selectAgent(registry, options.prompt, options.agent),
+            agentSource: options.agent ? "override" : "auto",
+            memoryManager: runInputBase.memoryManager,
+            hostId: options.host,
+            createModel: runInputBase.createModel,
+            logger: runInputBase.logger,
+            execution: executeControl,
+            runState,
+            memory: runtimeMemory,
+          });
     }
     if (loadedConfig.path) {
       result.metadata.configPath = loadedConfig.path;
@@ -568,7 +633,9 @@ function setExitCodeIfRunFailed(result: RecursivePromptResult): void {
 }
 
 async function waitForApproval(): Promise<void> {
-  process.stderr.write("Plan generated. Type 'run' and press Enter to execute, or Ctrl+C to cancel.\n");
+  process.stderr.write(
+    "Plan generated. Type 'run' and press Enter to execute, or Ctrl+C to cancel.\n",
+  );
   const chunks: string[] = [];
   for await (const chunk of process.stdin) {
     chunks.push(chunk.toString());

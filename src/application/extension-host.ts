@@ -74,7 +74,7 @@ export class ExtensionHost {
       const fileUrl = pathToFileURL(absPath).href;
       let mod: ExtensionModule;
       try {
-        mod = await import(fileUrl) as ExtensionModule;
+        mod = (await import(fileUrl)) as ExtensionModule;
       } catch (error: unknown) {
         const cause = error instanceof Error ? error.message : String(error);
         throw new Error(`Failed to load extension at ${absPath}: ${cause}`);

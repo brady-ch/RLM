@@ -10,11 +10,17 @@ import type {
 } from "../src/ports/language-model-port.js";
 
 class CapturePlanModel implements LanguageModelPort {
-  readonly calls: Array<{ messages: LanguageModelMessage[]; options: LanguageModelCompleteOptions }> = [];
+  readonly calls: Array<{
+    messages: LanguageModelMessage[];
+    options: LanguageModelCompleteOptions;
+  }> = [];
 
   constructor(private readonly response: string | Error) {}
 
-  async complete(messages: LanguageModelMessage[], options: LanguageModelCompleteOptions = {}): Promise<LanguageModelResponse> {
+  async complete(
+    messages: LanguageModelMessage[],
+    options: LanguageModelCompleteOptions = {},
+  ): Promise<LanguageModelResponse> {
     this.calls.push({ messages, options });
     if (this.response instanceof Error) {
       throw this.response;
@@ -30,12 +36,24 @@ test("project config accepts plan purpose model routing", async () => {
 });
 
 test("planChildren validates structured child output", async () => {
-  const model = new CapturePlanModel(JSON.stringify({
-    children: [
-      { label: "Design API", prompt: "Design the planner API.", type: "AI", complexity: "medium" },
-      { label: "Validate", prompt: "Validate planner results.", type: "Validator", complexity: "low" },
-    ],
-  }));
+  const model = new CapturePlanModel(
+    JSON.stringify({
+      children: [
+        {
+          label: "Design API",
+          prompt: "Design the planner API.",
+          type: "AI",
+          complexity: "medium",
+        },
+        {
+          label: "Validate",
+          prompt: "Validate planner results.",
+          type: "Validator",
+          complexity: "low",
+        },
+      ],
+    }),
+  );
 
   const result = await planChildren(model, {
     nodeId: "node-1",
@@ -56,14 +74,16 @@ test("planChildren rejects invalid JSON with typed error", async () => {
   const model = new CapturePlanModel("{not json}");
 
   await assert.rejects(
-    () => planChildren(model, {
-      nodeId: "node-1",
-      nodeLabel: "Root",
-      nodePrompt: "Build graph planning",
-      ancestors: [],
-      maxChildren: 5,
-    }),
-    (error: unknown) => error instanceof GraphPlannerError && error.code === "invalid_planner_output",
+    () =>
+      planChildren(model, {
+        nodeId: "node-1",
+        nodeLabel: "Root",
+        nodePrompt: "Build graph planning",
+        ancestors: [],
+        maxChildren: 5,
+      }),
+    (error: unknown) =>
+      error instanceof GraphPlannerError && error.code === "invalid_planner_output",
   );
 });
 
@@ -71,23 +91,24 @@ test("planChildren maps model failure to planning_failed", async () => {
   const model = new CapturePlanModel(new Error("offline"));
 
   await assert.rejects(
-    () => planChildren(model, {
-      nodeId: "node-1",
-      nodeLabel: "Root",
-      nodePrompt: "Build graph planning",
-      ancestors: [],
-      maxChildren: 5,
-    }),
+    () =>
+      planChildren(model, {
+        nodeId: "node-1",
+        nodeLabel: "Root",
+        nodePrompt: "Build graph planning",
+        ancestors: [],
+        maxChildren: 5,
+      }),
     (error: unknown) => error instanceof GraphPlannerError && error.code === "planning_failed",
   );
 });
 
 test("planChildren includes ancestor context in model messages", async () => {
-  const model = new CapturePlanModel(JSON.stringify({
-    children: [
-      { label: "Child", prompt: "Plan child.", type: "AI", complexity: "low" },
-    ],
-  }));
+  const model = new CapturePlanModel(
+    JSON.stringify({
+      children: [{ label: "Child", prompt: "Plan child.", type: "AI", complexity: "low" }],
+    }),
+  );
 
   await planChildren(model, {
     nodeId: "child-1",
@@ -100,7 +121,9 @@ test("planChildren includes ancestor context in model messages", async () => {
     maxChildren: 3,
   });
 
-  const content = model.calls.flatMap((call) => call.messages.map((message) => message.content)).join("\n");
+  const content = model.calls
+    .flatMap((call) => call.messages.map((message) => message.content))
+    .join("\n");
   assert.match(content, /Root Composer/);
   assert.match(content, /Speaker Plan/);
 });

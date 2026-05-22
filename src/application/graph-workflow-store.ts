@@ -30,7 +30,9 @@ export function resolveGraphWorkflowPath(
   return join(resolveGraphWorkflowsDir(projectRoot), `${workflowId}.yaml`);
 }
 
-export async function listGraphWorkflows(projectRoot = process.cwd()): Promise<GraphWorkflowListEntry[]> {
+export async function listGraphWorkflows(
+  projectRoot = process.cwd(),
+): Promise<GraphWorkflowListEntry[]> {
   const dir = resolveGraphWorkflowsDir(projectRoot);
   let entries: string[];
   try {
@@ -52,7 +54,9 @@ export async function listGraphWorkflows(projectRoot = process.cwd()): Promise<G
         path: join(WORKFLOWS_DIR, fileName),
         description: sidecar.description,
         updatedAt: sidecar.updatedAt,
-        variants: (["playbook", "pipeline"] as const).filter((variant) => Boolean(sidecar.variants[variant])),
+        variants: (["playbook", "pipeline"] as const).filter((variant) =>
+          Boolean(sidecar.variants[variant]),
+        ),
       });
     } catch {
       continue;
@@ -62,7 +66,9 @@ export async function listGraphWorkflows(projectRoot = process.cwd()): Promise<G
   return workflows;
 }
 
-export async function loadGraphWorkflowSidecarFromPath(path: string): Promise<GraphWorkflowSidecar> {
+export async function loadGraphWorkflowSidecarFromPath(
+  path: string,
+): Promise<GraphWorkflowSidecar> {
   const raw = await readFile(path, "utf8");
   const parsed = parseYaml(raw) as unknown;
   return parseGraphWorkflowSidecar(parsed);
@@ -110,7 +116,9 @@ export function resolveConfiguredGraphWorkflowPath(
 }
 
 export function availableVariants(sidecar: GraphWorkflowSidecar): GraphWorkflowVariant[] {
-  return (["playbook", "pipeline"] as const).filter((variant) => Boolean(sidecar.variants[variant]));
+  return (["playbook", "pipeline"] as const).filter((variant) =>
+    Boolean(sidecar.variants[variant]),
+  );
 }
 
 export async function graphWorkflowSidecarExists(

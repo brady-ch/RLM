@@ -65,7 +65,11 @@ export class GuardedShellTool implements ToolPort {
       if (isExecError(error)) {
         return {
           status: "error",
-          output: formatShellOutput(error.stdout ?? "", error.stderr ?? error.message, error.code ?? 1),
+          output: formatShellOutput(
+            error.stdout ?? "",
+            error.stderr ?? error.message,
+            error.code ?? 1,
+          ),
         };
       }
 
@@ -84,7 +88,8 @@ export class GuardedShellTool implements ToolPort {
     if (containsBlockedShellSyntax(command)) {
       return {
         status: "error",
-        output: "Shell control operators, redirection, command substitution, and environment assignment are not allowed.",
+        output:
+          "Shell control operators, redirection, command substitution, and environment assignment are not allowed.",
       };
     }
 
@@ -117,7 +122,7 @@ export class GuardedShellTool implements ToolPort {
 function parseCommand(command: string): string[] {
   const parts: string[] = [];
   let current = "";
-  let quote: "\"" | "'" | undefined;
+  let quote: '"' | "'" | undefined;
 
   for (let index = 0; index < command.length; index += 1) {
     const char = command[index];
@@ -125,7 +130,7 @@ function parseCommand(command: string): string[] {
       continue;
     }
 
-    if ((char === "\"" || char === "'") && !quote) {
+    if ((char === '"' || char === "'") && !quote) {
       quote = char;
       continue;
     }
@@ -172,9 +177,13 @@ function isWorkspacePath(workspaceRoot: string, path: string): boolean {
 }
 
 function formatShellOutput(stdout: string, stderr: string, exitCode: number): string {
-  return [`exitCode: ${exitCode}`, `stdout:\n${stdout.trim()}`, `stderr:\n${stderr.trim()}`].join("\n");
+  return [`exitCode: ${exitCode}`, `stdout:\n${stdout.trim()}`, `stderr:\n${stderr.trim()}`].join(
+    "\n",
+  );
 }
 
-function isExecError(error: unknown): error is Error & { code?: number; stdout?: string; stderr?: string } {
+function isExecError(
+  error: unknown,
+): error is Error & { code?: number; stdout?: string; stderr?: string } {
   return error instanceof Error;
 }

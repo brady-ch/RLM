@@ -1,4 +1,8 @@
-import type { EffectiveSamplingMetadata, LanguageModelCompleteOptions, LanguageModelPort } from "../ports/language-model-port.js";
+import type {
+  EffectiveSamplingMetadata,
+  LanguageModelCompleteOptions,
+  LanguageModelPort,
+} from "../ports/language-model-port.js";
 import type { LanguageModelPurpose } from "../ports/language-model-port.js";
 import type { LanguageModelUsage } from "../ports/language-model-port.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
@@ -40,7 +44,13 @@ import { RunStatePersistence } from "./run-state-persistence.js";
 
 const DIRECT = "DIRECT";
 const RECURSIVE = "RECURSIVE";
-const QUALITY_LOOP_PHASES: QualityLoopPhaseName[] = ["draft", "critique", "refine", "gate", "best_of_progress"];
+const QUALITY_LOOP_PHASES: QualityLoopPhaseName[] = [
+  "draft",
+  "critique",
+  "refine",
+  "gate",
+  "best_of_progress",
+];
 
 class QualityLoopManualExit extends Error {
   constructor(public readonly answer: string) {
@@ -62,7 +72,10 @@ export class RecursiveLanguageModel {
   private runStatePersistence: RunStatePersistence | undefined;
   private runStateWrites: Array<Promise<void>> = [];
   private initialApprovalBoundaryPassed = false;
-  private executionNodes = new Map<string, NonNullable<RecursivePromptMetadata["executionGraph"]>["nodes"][number]>();
+  private executionNodes = new Map<
+    string,
+    NonNullable<RecursivePromptMetadata["executionGraph"]>["nodes"][number]
+  >();
   private executionEdges: NonNullable<RecursivePromptMetadata["executionGraph"]>["edges"] = [];
   private readonly toolsByName: Map<string, ToolPort>;
 
@@ -123,7 +136,10 @@ export class RecursiveLanguageModel {
       if (request.execution?.planOnly) {
         this.updateExecutionGraph();
         this.metadata.budget = {
-          estimatedModelCalls: Math.min(config.maxModelCalls, request.config.qualityLoop.maxIterations * QUALITY_LOOP_PHASES.length),
+          estimatedModelCalls: Math.min(
+            config.maxModelCalls,
+            request.config.qualityLoop.maxIterations * QUALITY_LOOP_PHASES.length,
+          ),
           estimatedToolRounds: 0,
           modelCallsUsed: 0,
           modelCallsRemaining: this.maxModelCalls,
@@ -277,12 +293,20 @@ export class RecursiveLanguageModel {
       message: "quality loop started",
     });
 
-    const selectedText = (): string => selectedCandidateId ? candidateTexts.get(selectedCandidateId) ?? "" : "";
-    const finish = (status: QualityLoopStatus, stopReason: NonNullable<QualityLoopMetadata["stopReason"]>, message: string): string => {
+    const selectedText = (): string =>
+      selectedCandidateId ? (candidateTexts.get(selectedCandidateId) ?? "") : "";
+    const finish = (
+      status: QualityLoopStatus,
+      stopReason: NonNullable<QualityLoopMetadata["stopReason"]>,
+      message: string,
+    ): string => {
       metadata.status = status;
       metadata.stopReason = stopReason;
       metadata.message = message;
-      metadata.usage = this.summarizeQualityLoopUsage(metadata, this.modelCalls - loopModelCallsBefore);
+      metadata.usage = this.summarizeQualityLoopUsage(
+        metadata,
+        this.modelCalls - loopModelCallsBefore,
+      );
       if (selectedCandidateId) {
         metadata.selectedCandidateId = selectedCandidateId;
       }
@@ -321,7 +345,9 @@ export class RecursiveLanguageModel {
       }
       return selectedText();
     };
-    const applyManualDecision = (decision: QualityLoopManualDecision | undefined): string | undefined => {
+    const applyManualDecision = (
+      decision: QualityLoopManualDecision | undefined,
+    ): string | undefined => {
       if (!decision) {
         return undefined;
       }
@@ -335,7 +361,8 @@ export class RecursiveLanguageModel {
       this.writeLoopMetadata(task.id, metadata);
       return undefined;
     };
-    const checkManualDecision = (): string | undefined => applyManualDecision(this.execution?.getQualityLoopDecision?.(task.id));
+    const checkManualDecision = (): string | undefined =>
+      applyManualDecision(this.execution?.getQualityLoopDecision?.(task.id));
     let previousGateEvaluation: QualityLoopGateEvaluation | undefined;
 
     const failEvaluatorParse = (
@@ -374,7 +401,11 @@ export class RecursiveLanguageModel {
           return manualBeforeIteration;
         }
         if (this.remainingModelCalls() < 5) {
-          return finish("stopped", "budget_exhausted", "quality loop stopped before partial iteration");
+          return finish(
+            "stopped",
+            "budget_exhausted",
+            "quality loop stopped before partial iteration",
+          );
         }
 
         this.throwIfCancelled(task);
@@ -468,7 +499,10 @@ export class RecursiveLanguageModel {
               metadata.gate = iteration.gateEvaluation;
               phaseRecord.parseStatus = "parsed";
             } else if (phase === "best_of_progress") {
-              const candidateId = phaseRecord.candidateId ?? selectedCandidateId ?? `loop-${task.id}-i${iterationIndex}-${phase}`;
+              const candidateId =
+                phaseRecord.candidateId ??
+                selectedCandidateId ??
+                `loop-${task.id}-i${iterationIndex}-${phase}`;
               selectedCandidateId = candidateId;
               const parsed = parseQualityLoopBestOfProgress(phaseResult.content, candidateId);
               iteration.bestOfProgressEvaluation = parsed.evaluation;
@@ -480,7 +514,11 @@ export class RecursiveLanguageModel {
                   candidate.summary = preview(parsed.answerText, 160);
                 }
               }
-              const selection = selectBestQualityLoopCandidate(metadata, parsed.evaluation, iteration.gateEvaluation);
+              const selection = selectBestQualityLoopCandidate(
+                metadata,
+                parsed.evaluation,
+                iteration.gateEvaluation,
+              );
               selectedCandidateId = selection.selectedCandidateId;
               metadata.selection = selection;
               for (const candidate of metadata.candidates) {
@@ -503,13 +541,20 @@ export class RecursiveLanguageModel {
                 iteration.completedAt = new Date().toISOString();
                 metadata.usage.iterationsCompleted += 1;
                 this.writeLoopMetadata(task.id, metadata);
-                return finish("degraded", "degraded", "quality loop best-of-progress selected an invalid candidate");
+                return finish(
+                  "degraded",
+                  "degraded",
+                  "quality loop best-of-progress selected an invalid candidate",
+                );
               }
             }
           } catch (error: unknown) {
             return failEvaluatorParse(iteration, phaseRecord, phase, error);
           }
-          metadata.usage = this.summarizeQualityLoopUsage(metadata, this.modelCalls - loopModelCallsBefore);
+          metadata.usage = this.summarizeQualityLoopUsage(
+            metadata,
+            this.modelCalls - loopModelCallsBefore,
+          );
           this.writeLoopMetadata(task.id, metadata);
           this.emitExecution({
             type: "execution",
@@ -543,7 +588,11 @@ export class RecursiveLanguageModel {
             return finish("completed", "critique_resolved", "quality loop critique resolved");
           }
           if (!hasMeaningfulImprovement(gateEvaluation, previousGateEvaluation)) {
-            return finish("completed", "no_meaningful_improvement", "quality loop stopped with no meaningful improvement");
+            return finish(
+              "completed",
+              "no_meaningful_improvement",
+              "quality loop stopped with no meaningful improvement",
+            );
           }
           previousGateEvaluation = gateEvaluation;
         }
@@ -590,7 +639,12 @@ export class RecursiveLanguageModel {
       : task.modelOverride
         ? "node_override"
         : "configured";
-    const planned = await this.resolvePlannedModelAssignment(phase, purpose, phaseOverride, task.modelOverride);
+    const planned = await this.resolvePlannedModelAssignment(
+      phase,
+      purpose,
+      phaseOverride,
+      task.modelOverride,
+    );
     this.modelCalls += 1;
     const callNumber = this.modelCalls;
     this.log("completion", "starting quality loop phase", {
@@ -602,11 +656,11 @@ export class RecursiveLanguageModel {
     let manualOutcome: string | undefined;
     const manualPoll = checkManualDecision
       ? setInterval(() => {
-        const outcome = checkManualDecision();
-        if (outcome !== undefined) {
-          manualOutcome = outcome;
-        }
-      }, 50)
+          const outcome = checkManualDecision();
+          if (outcome !== undefined) {
+            manualOutcome = outcome;
+          }
+        }, 50)
       : undefined;
     let response: Awaited<ReturnType<LanguageModelPort["complete"]>>;
     try {
@@ -667,7 +721,10 @@ export class RecursiveLanguageModel {
     nodeOverride: string | undefined,
   ): Promise<Omit<QualityLoopPhaseModelAssignment, "source" | "effectiveModel">> {
     const selectableModel = this.model as LanguageModelPort & {
-      selectModel?: (purpose: LanguageModelPurpose | undefined, complexityDepth?: number) => Promise<{
+      selectModel?: (
+        purpose: LanguageModelPurpose | undefined,
+        complexityDepth?: number,
+      ) => Promise<{
         model: string;
         tier: string;
         hostId?: string | undefined;
@@ -681,7 +738,10 @@ export class RecursiveLanguageModel {
     };
 
     if (phaseOverride) {
-      const resolved = selectableModel.resolveOverrideSelection?.({ purpose, overrideModelSelection: phaseOverride });
+      const resolved = selectableModel.resolveOverrideSelection?.({
+        purpose,
+        overrideModelSelection: phaseOverride,
+      });
       return {
         phase,
         purpose,
@@ -769,7 +829,10 @@ export class RecursiveLanguageModel {
     }
 
     if (this.remainingModelCalls() <= 1) {
-      const answer = await this.answerDirectly(task, "Model call budget is nearly exhausted; answer directly.");
+      const answer = await this.answerDirectly(
+        task,
+        "Model call budget is nearly exhausted; answer directly.",
+      );
       await this.appendMemorySummary(task, answer);
       this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
@@ -799,7 +862,10 @@ export class RecursiveLanguageModel {
     }
 
     if (!this.hasCallReservedForDirectAnswer(config)) {
-      const answer = await this.answerDirectly(task, "Model call budget is nearly exhausted; answer directly.");
+      const answer = await this.answerDirectly(
+        task,
+        "Model call budget is nearly exhausted; answer directly.",
+      );
       await this.appendMemorySummary(task, answer);
       this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
@@ -816,7 +882,10 @@ export class RecursiveLanguageModel {
       children: children.length,
     });
     if (children.length === 0) {
-      const answer = await this.answerDirectly(task, "No useful subtasks were found; answer directly.");
+      const answer = await this.answerDirectly(
+        task,
+        "No useful subtasks were found; answer directly.",
+      );
       await this.appendMemorySummary(task, answer);
       this.markExecutionNodeCompleted(task.id);
       this.log("task", "completed task", {
@@ -836,7 +905,8 @@ export class RecursiveLanguageModel {
 
       try {
         const answer = await this.solve(child, config);
-        const summary = this.remainingModelCalls() > 1 ? await this.summarize(child, answer) : answer;
+        const summary =
+          this.remainingModelCalls() > 1 ? await this.summarize(child, answer) : answer;
         solvedChildren.push({
           id: child.id,
           prompt: child.prompt,
@@ -881,7 +951,12 @@ export class RecursiveLanguageModel {
       },
     ]);
     this.record(task, "classify", task.prompt, output);
-    return output.trim().split(/[\s:.-]+/, 1)[0]?.toUpperCase() ?? DIRECT;
+    return (
+      output
+        .trim()
+        .split(/[\s:.-]+/, 1)[0]
+        ?.toUpperCase() ?? DIRECT
+    );
   }
 
   private async decompose(task: TaskNode, config: RecursiveModelConfig): Promise<TaskNode[]> {
@@ -940,18 +1015,23 @@ export class RecursiveLanguageModel {
       depth: task.depth,
       reason,
     });
-    const output = await this.complete(task, "answer", [
-      {
-        role: "system",
-        content:
-          `Answer the user task directly and concisely. ${reason} ` +
-          `Prefer actionable, specific language over broad commentary.`,
-      },
-      {
-        role: "user",
-        content: task.prompt,
-      },
-    ], true);
+    const output = await this.complete(
+      task,
+      "answer",
+      [
+        {
+          role: "system",
+          content:
+            `Answer the user task directly and concisely. ${reason} ` +
+            `Prefer actionable, specific language over broad commentary.`,
+        },
+        {
+          role: "user",
+          content: task.prompt,
+        },
+      ],
+      true,
+    );
     this.record(task, "answer", task.prompt, output);
     return output;
   }
@@ -964,7 +1044,8 @@ export class RecursiveLanguageModel {
     const output = await this.complete(task, "summarize", [
       {
         role: "system",
-        content: "Compress this solved subtask into the shortest useful summary for a parent synthesis step.",
+        content:
+          "Compress this solved subtask into the shortest useful summary for a parent synthesis step.",
       },
       {
         role: "user",
@@ -985,26 +1066,29 @@ export class RecursiveLanguageModel {
       .map((child, index) => `Subtask ${index + 1}: ${child.prompt}\nSummary: ${child.summary}`)
       .join("\n\n");
 
-    const output = await this.complete(task, "synthesize", [
-      {
-        role: "system",
-        content:
-          "Synthesize the child task summaries into one final answer for the original prompt. " +
-          "Resolve conflicts directly and do not mention the recursion process unless it is relevant.",
-      },
-      {
-        role: "user",
-        content: `Original prompt:\n${task.prompt}\n\nChild summaries:\n${childContext}`,
-      },
-    ], true);
+    const output = await this.complete(
+      task,
+      "synthesize",
+      [
+        {
+          role: "system",
+          content:
+            "Synthesize the child task summaries into one final answer for the original prompt. " +
+            "Resolve conflicts directly and do not mention the recursion process unless it is relevant.",
+        },
+        {
+          role: "user",
+          content: `Original prompt:\n${task.prompt}\n\nChild summaries:\n${childContext}`,
+        },
+      ],
+      true,
+    );
     this.record(task, "synthesize", task.prompt, output);
     return output;
   }
 
   private synthesizeWithoutModel(task: TaskNode, solvedChildren: SolvedTask[]): string {
-    const output = solvedChildren
-      .map((child) => `${child.prompt}: ${child.summary}`)
-      .join("\n");
+    const output = solvedChildren.map((child) => `${child.prompt}: ${child.summary}`).join("\n");
     this.record(task, "synthesize", task.prompt, output);
     return output;
   }
@@ -1099,17 +1183,18 @@ export class RecursiveLanguageModel {
 
         return this.canSpendAnyModelCall()
           ? this.completeWithoutTools(task, kind, [
-            ...conversation,
-            {
-              role: "assistant",
-              content: response.content,
-              toolCalls: response.toolCalls,
-            },
-            {
-              role: "system",
-              content: "Tool use is no longer available. Answer directly from the conversation and tool context already present.",
-            },
-          ])
+              ...conversation,
+              {
+                role: "assistant",
+                content: response.content,
+                toolCalls: response.toolCalls,
+              },
+              {
+                role: "system",
+                content:
+                  "Tool use is no longer available. Answer directly from the conversation and tool context already present.",
+              },
+            ])
           : fallbackFromMessages(conversation);
       }
 
@@ -1169,7 +1254,12 @@ export class RecursiveLanguageModel {
           durationMs,
           output: preview(result.output),
         });
-        this.record(task, result.status === "success" ? "tool-result" : "error", toolCall.name, result.output);
+        this.record(
+          task,
+          result.status === "success" ? "tool-result" : "error",
+          toolCall.name,
+          result.output,
+        );
         conversation.push({
           role: "tool",
           content: result.output,
@@ -1320,7 +1410,9 @@ export class RecursiveLanguageModel {
     return Math.max(0, this.toolRoundLimit);
   }
 
-  private withAgentSystemPrompt(messages: Parameters<LanguageModelPort["complete"]>[0]): Parameters<LanguageModelPort["complete"]>[0] {
+  private withAgentSystemPrompt(
+    messages: Parameters<LanguageModelPort["complete"]>[0],
+  ): Parameters<LanguageModelPort["complete"]>[0] {
     if (!this.agentSystemPrompt) {
       return messages;
     }
@@ -1339,9 +1431,16 @@ export class RecursiveLanguageModel {
       return undefined;
     }
 
-    const policy = task.contextPolicy ?? this.executionNodes.get(task.id)?.composer?.contextPolicy ?? defaultMemoryPolicy();
+    const policy =
+      task.contextPolicy ??
+      this.executionNodes.get(task.id)?.composer?.contextPolicy ??
+      defaultMemoryPolicy();
     try {
-      const packet = await this.memory.buildPacket({ nodeId: task.id, prompt: task.prompt, policy });
+      const packet = await this.memory.buildPacket({
+        nodeId: task.id,
+        prompt: task.prompt,
+        policy,
+      });
       if (!packet) {
         return undefined;
       }
@@ -1377,7 +1476,10 @@ export class RecursiveLanguageModel {
       return;
     }
 
-    const policy = task.contextPolicy ?? this.executionNodes.get(task.id)?.composer?.contextPolicy ?? defaultMemoryPolicy();
+    const policy =
+      task.contextPolicy ??
+      this.executionNodes.get(task.id)?.composer?.contextPolicy ??
+      defaultMemoryPolicy();
     try {
       await this.memory.appendNodeSummary({
         nodeId: task.id,
@@ -1397,7 +1499,12 @@ export class RecursiveLanguageModel {
     }
   }
 
-  private record(task: TaskNode, kind: Parameters<TracePort["record"]>[0]["kind"], prompt: string, output: string): void {
+  private record(
+    task: TaskNode,
+    kind: Parameters<TracePort["record"]>[0]["kind"],
+    prompt: string,
+    output: string,
+  ): void {
     const event: Parameters<TracePort["record"]>[0] = {
       id: task.id,
       depth: task.depth,
@@ -1421,7 +1528,8 @@ export class RecursiveLanguageModel {
 
     this.metadata.tokenUsage.inputTokens += usage.inputTokens ?? 0;
     this.metadata.tokenUsage.outputTokens += usage.outputTokens ?? 0;
-    this.metadata.tokenUsage.totalTokens += usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
+    this.metadata.tokenUsage.totalTokens +=
+      usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
   }
 
   private log(stage: string, message: string, data?: Record<string, unknown>): void {
@@ -1494,7 +1602,8 @@ export class RecursiveLanguageModel {
         status: "ready",
         approvalMode: this.execution?.approvalMode,
         approvalSource: "none",
-        spawnedAfterInitialApproval: this.initialApprovalBoundaryPassed && task.parentId !== undefined,
+        spawnedAfterInitialApproval:
+          this.initialApprovalBoundaryPassed && task.parentId !== undefined,
         autoApprovalPaused: this.execution?.autoApprovalPaused?.() ?? false,
       };
       if (task.parentId) {
@@ -1522,10 +1631,15 @@ export class RecursiveLanguageModel {
     this.updateExecutionGraph();
   }
 
-  private summarizeQualityLoopUsage(metadata: QualityLoopMetadata, modelCallsTotal?: number): QualityLoopMetadata["usage"] {
+  private summarizeQualityLoopUsage(
+    metadata: QualityLoopMetadata,
+    modelCallsTotal?: number,
+  ): QualityLoopMetadata["usage"] {
     return {
       ...metadata.usage,
-      modelCallsTotal: modelCallsTotal ?? Object.values(metadata.usage.phaseCallCounts).reduce((total, count) => total + count, 0),
+      modelCallsTotal:
+        modelCallsTotal ??
+        Object.values(metadata.usage.phaseCallCounts).reduce((total, count) => total + count, 0),
       inputTokens: this.metadata.tokenUsage.inputTokens,
       outputTokens: this.metadata.tokenUsage.outputTokens,
       totalTokens: this.metadata.tokenUsage.totalTokens,
@@ -1594,13 +1708,14 @@ export class RecursiveLanguageModel {
     this.metadata.executionStatus = status;
     this.updateExecutionGraph();
     this.runStateWrites.push(this.persistNodeStatus(nodeId, status));
-    const resolvedDetail: ExecutionStatusUpdateDetail | undefined = status === "cancelled"
-      ? {
-        failureCategory: "cancelled",
-        code: EXECUTION_FAILURE_CODES.cancelled,
-        message: detail?.message ?? this.execution?.cancelReason?.(),
-      }
-      : detail;
+    const resolvedDetail: ExecutionStatusUpdateDetail | undefined =
+      status === "cancelled"
+        ? {
+            failureCategory: "cancelled",
+            code: EXECUTION_FAILURE_CODES.cancelled,
+            message: detail?.message ?? this.execution?.cancelReason?.(),
+          }
+        : detail;
     this.execution?.updateNodeStatus?.(nodeId, status, resolvedDetail);
   }
 
@@ -1631,7 +1746,8 @@ export class RecursiveLanguageModel {
       originalPrompt: existingNode?.originalPrompt ?? task.prompt,
       plannedModel: existingNode?.plannedModel ?? task.modelOverride ?? "resolved-at-runtime",
       modelOverride: existingNode?.modelOverride ?? task.modelOverride,
-      modelOverrideSource: existingNode?.modelOverrideSource ?? (task.modelOverride ? "user" : "none"),
+      modelOverrideSource:
+        existingNode?.modelOverrideSource ?? (task.modelOverride ? "user" : "none"),
       samplingOverride: existingNode?.samplingOverride ?? task.samplingOverride,
       expertAgentId: existingNode?.expertAgentId ?? task.expertAgentId,
       expertAssignmentMode: existingNode?.expertAssignmentMode ?? task.expertAssignmentMode,
@@ -1643,7 +1759,8 @@ export class RecursiveLanguageModel {
       status: "awaiting_approval",
       approvalMode: this.execution?.approvalMode,
       approvalSource: "none",
-      spawnedAfterInitialApproval: this.initialApprovalBoundaryPassed && task.parentId !== undefined,
+      spawnedAfterInitialApproval:
+        this.initialApprovalBoundaryPassed && task.parentId !== undefined,
       autoApprovalPaused: this.execution?.autoApprovalPaused?.() ?? false,
     };
     if (task.parentId) {
@@ -1678,10 +1795,13 @@ export class RecursiveLanguageModel {
       const expertNode = this.executionNodes.get(task.id);
       if (expertNode && decision) {
         expertNode.expertAgentId = decision.expertAgentId ?? expertNode.expertAgentId;
-        expertNode.expertAssignmentMode = decision.expertAssignmentMode ?? expertNode.expertAssignmentMode;
+        expertNode.expertAssignmentMode =
+          decision.expertAssignmentMode ?? expertNode.expertAssignmentMode;
         expertNode.expertRuntime = decision.expertRuntime ?? expertNode.expertRuntime;
-        expertNode.expertToolAllowlist = decision.expertToolAllowlist ?? expertNode.expertToolAllowlist;
-        expertNode.expertPurposeTiers = decision.expertPurposeTiers ?? expertNode.expertPurposeTiers;
+        expertNode.expertToolAllowlist =
+          decision.expertToolAllowlist ?? expertNode.expertToolAllowlist;
+        expertNode.expertPurposeTiers =
+          decision.expertPurposeTiers ?? expertNode.expertPurposeTiers;
         this.updateExecutionGraph();
       }
       return {
@@ -1714,7 +1834,10 @@ export class RecursiveLanguageModel {
     throw new Error(this.execution?.cancelReason?.() ?? "execution cancelled");
   }
 
-  private expertTierFor(task: TaskNode, purpose: LanguageModelPurpose | undefined): string | undefined {
+  private expertTierFor(
+    task: TaskNode,
+    purpose: LanguageModelPurpose | undefined,
+  ): string | undefined {
     if (task.modelOverride || !purpose) {
       return undefined;
     }
@@ -1810,7 +1933,10 @@ export class RecursiveLanguageModel {
 
     const depth = config.maxDepth ?? config.maxDynamicDepth;
     const branchFactor = Math.max(1, config.maxBranches);
-    const maxNodes = depth <= 0 ? 1 : Math.floor((Math.pow(branchFactor, depth + 1) - 1) / (branchFactor - 1 || 1));
+    const maxNodes =
+      depth <= 0
+        ? 1
+        : Math.floor((Math.pow(branchFactor, depth + 1) - 1) / (branchFactor - 1 || 1));
     return Math.min(config.maxModelCalls, 1 + maxNodes * 4);
   }
 
@@ -1867,70 +1993,163 @@ function defaultMemoryPolicy(): ComposerContextPolicy {
   };
 }
 
-const QUALITY_LOOP_RUBRICS: Record<QualityLoopRubricId, {
-  label: string;
-  criteria: QualityLoopRubricCriterion[];
-}> = {
+const QUALITY_LOOP_RUBRICS: Record<
+  QualityLoopRubricId,
+  {
+    label: string;
+    criteria: QualityLoopRubricCriterion[];
+  }
+> = {
   general_answer_quality: {
     label: "General Answer Quality",
     criteria: [
-      { id: "directness", label: "Directness", description: "Answers the user prompt without unnecessary detours." },
-      { id: "correctness", label: "Correctness", description: "Avoids unsupported claims and factual mistakes." },
-      { id: "completeness", label: "Completeness", description: "Covers the important parts of the request." },
+      {
+        id: "directness",
+        label: "Directness",
+        description: "Answers the user prompt without unnecessary detours.",
+      },
+      {
+        id: "correctness",
+        label: "Correctness",
+        description: "Avoids unsupported claims and factual mistakes.",
+      },
+      {
+        id: "completeness",
+        label: "Completeness",
+        description: "Covers the important parts of the request.",
+      },
     ],
   },
   code_engineering: {
     label: "Code and Engineering",
     criteria: [
-      { id: "behavior", label: "Behavior", description: "Implements the requested behavior without regressions." },
-      { id: "integration", label: "Integration", description: "Fits existing code structure, types, and tests." },
-      { id: "verification", label: "Verification", description: "Includes concrete checks for changed behavior." },
+      {
+        id: "behavior",
+        label: "Behavior",
+        description: "Implements the requested behavior without regressions.",
+      },
+      {
+        id: "integration",
+        label: "Integration",
+        description: "Fits existing code structure, types, and tests.",
+      },
+      {
+        id: "verification",
+        label: "Verification",
+        description: "Includes concrete checks for changed behavior.",
+      },
     ],
   },
   planning_architecture: {
     label: "Planning and Architecture",
     criteria: [
       { id: "scope", label: "Scope", description: "Defines clear boundaries and dependencies." },
-      { id: "tradeoffs", label: "Tradeoffs", description: "Surfaces relevant alternatives and consequences." },
-      { id: "sequence", label: "Sequence", description: "Orders work so each step is executable and verifiable." },
+      {
+        id: "tradeoffs",
+        label: "Tradeoffs",
+        description: "Surfaces relevant alternatives and consequences.",
+      },
+      {
+        id: "sequence",
+        label: "Sequence",
+        description: "Orders work so each step is executable and verifiable.",
+      },
     ],
   },
   user_facing_writing: {
     label: "User-Facing Writing",
     criteria: [
-      { id: "audience", label: "Audience Fit", description: "Matches the user's audience and context." },
+      {
+        id: "audience",
+        label: "Audience Fit",
+        description: "Matches the user's audience and context.",
+      },
       { id: "clarity", label: "Clarity", description: "Uses clear language and structure." },
-      { id: "tone", label: "Tone", description: "Maintains the requested tone and level of polish." },
+      {
+        id: "tone",
+        label: "Tone",
+        description: "Maintains the requested tone and level of polish.",
+      },
     ],
   },
   structured_artifact: {
     label: "Structured Artifact",
     criteria: [
-      { id: "schema", label: "Schema Fit", description: "Uses the requested structure and fields." },
-      { id: "parseability", label: "Parseability", description: "Can be consumed by downstream tools." },
-      { id: "coverage", label: "Coverage", description: "Includes all required items without extra ambiguity." },
+      {
+        id: "schema",
+        label: "Schema Fit",
+        description: "Uses the requested structure and fields.",
+      },
+      {
+        id: "parseability",
+        label: "Parseability",
+        description: "Can be consumed by downstream tools.",
+      },
+      {
+        id: "coverage",
+        label: "Coverage",
+        description: "Includes all required items without extra ambiguity.",
+      },
     ],
   },
 };
 
 function selectQualityLoopRubric(prompt: string, task: TaskNode): QualityLoopRubricSelection {
-  const source = `${prompt}\n${task.kind ?? ""}\n${task.artifactContract?.outputSchema ?? ""}`.toLowerCase();
+  const source =
+    `${prompt}\n${task.kind ?? ""}\n${task.artifactContract?.outputSchema ?? ""}`.toLowerCase();
   const candidates: Array<{ id: QualityLoopRubricId; patterns: RegExp[] }> = [
     {
       id: "code_engineering",
-      patterns: [/```/, /\bsrc\//, /\.[cm]?[tj]sx?\b/, /\btest\b/, /\bbug\b/, /\bfix\b/, /\brefactor\b/, /\bimplement\b/, /\btypescript\b/, /\bnode\b/],
+      patterns: [
+        /```/,
+        /\bsrc\//,
+        /\.[cm]?[tj]sx?\b/,
+        /\btest\b/,
+        /\bbug\b/,
+        /\bfix\b/,
+        /\brefactor\b/,
+        /\bimplement\b/,
+        /\btypescript\b/,
+        /\bnode\b/,
+      ],
     },
     {
       id: "planning_architecture",
-      patterns: [/\bplan\b/, /\barchitecture\b/, /\broadmap\b/, /\bdesign\b/, /\btradeoff\b/, /\bsystem\b/, /\bphase\b/],
+      patterns: [
+        /\bplan\b/,
+        /\barchitecture\b/,
+        /\broadmap\b/,
+        /\bdesign\b/,
+        /\btradeoff\b/,
+        /\bsystem\b/,
+        /\bphase\b/,
+      ],
     },
     {
       id: "user_facing_writing",
-      patterns: [/\brewrite\b/, /\bcopy\b/, /\bemail\b/, /\btone\b/, /\bblog\b/, /\bheadline\b/, /\bannouncement\b/, /\buser documentation\b/],
+      patterns: [
+        /\brewrite\b/,
+        /\bcopy\b/,
+        /\bemail\b/,
+        /\btone\b/,
+        /\bblog\b/,
+        /\bheadline\b/,
+        /\bannouncement\b/,
+        /\buser documentation\b/,
+      ],
     },
     {
       id: "structured_artifact",
-      patterns: [/\bjson\b/, /\byaml\b/, /\bschema\b/, /\btable\b/, /\bchecklist\b/, /\bfrontmatter\b/, /\bxml\b/, /\bcsv\b/],
+      patterns: [
+        /\bjson\b/,
+        /\byaml\b/,
+        /\bschema\b/,
+        /\btable\b/,
+        /\bchecklist\b/,
+        /\bfrontmatter\b/,
+        /\bxml\b/,
+        /\bcsv\b/,
+      ],
     },
   ];
 
@@ -2003,12 +2222,18 @@ function extractJsonObject(value: string): unknown {
   }
 }
 
-function parseQualityLoopCritique(value: string, phase: QualityLoopPhaseName): QualityLoopCritiqueEvaluation {
+function parseQualityLoopCritique(
+  value: string,
+  phase: QualityLoopPhaseName,
+): QualityLoopCritiqueEvaluation {
   const parsed = asRecord(extractJsonObject(value), "critique evaluator output");
   const summary = requireString(parsed, "summary");
   const resolved = requireBoolean(parsed, "resolved");
   const issues = parseIssueArray(parsed["issues"], phase);
-  const suggestedImprovements = parseStringArray(parsed["suggestedImprovements"], "suggestedImprovements");
+  const suggestedImprovements = parseStringArray(
+    parsed["suggestedImprovements"],
+    "suggestedImprovements",
+  );
   return { summary, issues, resolved, suggestedImprovements };
 }
 
@@ -2051,18 +2276,22 @@ function parseQualityLoopBestOfProgress(
 }
 
 function gatePasses(evaluation: QualityLoopGateEvaluation): boolean {
-  return evaluation.decision === "pass"
-    && evaluation.score >= evaluation.passThreshold
-    && evaluation.rubricFit
-    && evaluation.critiqueResolved
-    && evaluation.meaningfulImprovement
-    && !evaluation.unresolvedIssues.some((issue) => issue.severity === "error");
+  return (
+    evaluation.decision === "pass" &&
+    evaluation.score >= evaluation.passThreshold &&
+    evaluation.rubricFit &&
+    evaluation.critiqueResolved &&
+    evaluation.meaningfulImprovement &&
+    !evaluation.unresolvedIssues.some((issue) => issue.severity === "error")
+  );
 }
 
 function critiqueResolved(evaluation: QualityLoopGateEvaluation): boolean {
-  return evaluation.score >= evaluation.passThreshold
-    && evaluation.critiqueResolved
-    && evaluation.unresolvedIssues.every((issue) => issue.severity === "info");
+  return (
+    evaluation.score >= evaluation.passThreshold &&
+    evaluation.critiqueResolved &&
+    evaluation.unresolvedIssues.every((issue) => issue.severity === "info")
+  );
 }
 
 function hasMeaningfulImprovement(
@@ -2074,8 +2303,12 @@ function hasMeaningfulImprovement(
   }
 
   const unresolvedCount = (evaluation: QualityLoopGateEvaluation): number =>
-    evaluation.unresolvedIssues.filter((issue) => issue.severity === "warning" || issue.severity === "error").length;
-  return current.score - previous.score >= 0.05 || unresolvedCount(current) < unresolvedCount(previous);
+    evaluation.unresolvedIssues.filter(
+      (issue) => issue.severity === "warning" || issue.severity === "error",
+    ).length;
+  return (
+    current.score - previous.score >= 0.05 || unresolvedCount(current) < unresolvedCount(previous)
+  );
 }
 
 function selectBestQualityLoopCandidate(
@@ -2083,7 +2316,9 @@ function selectBestQualityLoopCandidate(
   evaluation: QualityLoopBestOfProgressEvaluation,
   gate: QualityLoopGateEvaluation | undefined,
 ): QualityLoopSelectionMetadata {
-  const validSelected = metadata.candidates.find((candidate) => candidate.id === evaluation.selectedCandidateId);
+  const validSelected = metadata.candidates.find(
+    (candidate) => candidate.id === evaluation.selectedCandidateId,
+  );
   if (validSelected) {
     validSelected.score = evaluation.score;
     validSelected.selectionScore = scoreQualityLoopCandidate(validSelected, metadata, gate);
@@ -2105,10 +2340,15 @@ function selectBestQualityLoopCandidate(
       candidate.selectionScore = selectionScore;
       return { candidate, selectionScore };
     })
-    .sort((a, b) => b.selectionScore - a.selectionScore || b.candidate.iteration - a.candidate.iteration)[0]?.candidate;
+    .sort(
+      (a, b) =>
+        b.selectionScore - a.selectionScore || b.candidate.iteration - a.candidate.iteration,
+    )[0]?.candidate;
 
   if (!fallback) {
-    throw new Error(`best_of_progress selected invalid candidate id ${evaluation.selectedCandidateId} and no fallback candidate exists`);
+    throw new Error(
+      `best_of_progress selected invalid candidate id ${evaluation.selectedCandidateId} and no fallback candidate exists`,
+    );
   }
 
   return {
@@ -2130,7 +2370,14 @@ function scoreQualityLoopCandidate(
   metadata: QualityLoopMetadata,
   gate: QualityLoopGateEvaluation | undefined,
 ): number {
-  const candidateScore = candidate.score ?? (candidate.phase === "best_of_progress" ? metadata.selection ? undefined : gate?.score : undefined) ?? 0;
+  const candidateScore =
+    candidate.score ??
+    (candidate.phase === "best_of_progress"
+      ? metadata.selection
+        ? undefined
+        : gate?.score
+      : undefined) ??
+    0;
   const iteration = metadata.iterations.find((item) => item.index === candidate.iteration);
   const issuePenalty = (iteration?.unresolvedIssues ?? []).reduce((total, issue) => {
     if (issue.severity === "error") {
@@ -2141,7 +2388,8 @@ function scoreQualityLoopCandidate(
     }
     return total + 0.03;
   }, 0);
-  const phaseBonus = candidate.phase === "refine" ? 0.03 : candidate.phase === "best_of_progress" ? 0.02 : 0;
+  const phaseBonus =
+    candidate.phase === "refine" ? 0.03 : candidate.phase === "best_of_progress" ? 0.02 : 0;
   const recencyBonus = candidate.iteration * 0.001;
   return candidateScore + phaseBonus + recencyBonus - issuePenalty;
 }
@@ -2218,17 +2466,21 @@ function qualityLoopMessages(
   const gate = phaseOutputs.get("gate") ?? "";
   const instructions: Record<QualityLoopPhaseName, string> = {
     draft: "Draft the best direct answer to the user prompt.",
-    critique: "Return JSON only with summary, resolved, issues, and suggestedImprovements after critiquing the draft.",
+    critique:
+      "Return JSON only with summary, resolved, issues, and suggestedImprovements after critiquing the draft.",
     refine: "Refine the draft using the critique while preserving useful content.",
     gate: "Return JSON only with decision, score, passThreshold, rubricFit, critiqueResolved, meaningfulImprovement, rationale, failedConditions, and unresolvedIssues.",
-    best_of_progress: "Return JSON only with selectedCandidateId, answer, rationale, score, and comparisonNotes for the best final answer.",
+    best_of_progress:
+      "Return JSON only with selectedCandidateId, answer, rationale, score, and comparisonNotes for the best final answer.",
   };
   const context = [
     draft ? `Draft:\n${draft}` : "",
     critique ? `Critique:\n${critique}` : "",
     refine ? `Refine:\n${refine}` : "",
     gate ? `Gate:\n${gate}` : "",
-  ].filter(Boolean).join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   return [
     {
@@ -2242,7 +2494,9 @@ function qualityLoopMessages(
   ];
 }
 
-function qualityLoopStopMessage(stopReason: NonNullable<QualityLoopMetadata["stopReason"]>): string {
+function qualityLoopStopMessage(
+  stopReason: NonNullable<QualityLoopMetadata["stopReason"]>,
+): string {
   switch (stopReason) {
     case "budget_exhausted":
       return "quality loop stopped: budget_exhausted";
@@ -2306,7 +2560,9 @@ function fallbackFromMessages(messages: Parameters<LanguageModelPort["complete"]
   return userContent?.trim() || "No additional model calls are available.";
 }
 
-function toModelPurpose(kind: Parameters<TracePort["record"]>[0]["kind"]): LanguageModelPurpose | undefined {
+function toModelPurpose(
+  kind: Parameters<TracePort["record"]>[0]["kind"],
+): LanguageModelPurpose | undefined {
   if (
     kind === "depth" ||
     kind === "classify" ||

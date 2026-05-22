@@ -3,7 +3,11 @@ import test from "node:test";
 import { buildSearchQuery } from "../src/adapters/search-query.js";
 import { WebFetchTool } from "../src/adapters/web-fetch-tool.js";
 import { WebSearchTool, parseUddgLines } from "../src/adapters/web-search-tool.js";
-import { analyzeHtmlContent, stripFluffWords, stripHtmlTags } from "../src/application/content-tree.js";
+import {
+  analyzeHtmlContent,
+  stripFluffWords,
+  stripHtmlTags,
+} from "../src/application/content-tree.js";
 
 test("search query builder applies search operators", () => {
   const query = buildSearchQuery({
@@ -24,19 +28,19 @@ test("search query builder applies search operators", () => {
 });
 
 test("parseUddgLines extracts title, link, and optional snippet", () => {
-  const htmlLine =
-    `<a class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fdocs">Official docs</a>`;
-  assert.deepEqual(parseUddgLines(htmlLine), [{
-    title: "Official docs",
-    link: "https://example.com/docs",
-    snippet: "",
-  }]);
+  const htmlLine = `<a class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fdocs">Official docs</a>`;
+  assert.deepEqual(parseUddgLines(htmlLine), [
+    {
+      title: "Official docs",
+      link: "https://example.com/docs",
+      snippet: "",
+    },
+  ]);
 });
 
 test("web_search returns error when provider serves an interactive challenge", async () => {
   const tool = new WebSearchTool({
-    runCurl: async () =>
-      "<html><div class=\"anomaly-modal__title\">blocked</div></html>",
+    runCurl: async () => '<html><div class="anomaly-modal__title">blocked</div></html>',
   });
 
   const result = await tool.execute({
@@ -131,7 +135,9 @@ test("content analysis strips html and fluff words into scored sections", () => 
 
 test("web fetch tool returns selected content tree sections", async () => {
   const tool = new WebFetchTool({
-    fetchFn: async () => new Response(`
+    fetchFn: async () =>
+      new Response(
+        `
       <html>
         <head><title>Docs</title></head>
         <body>
@@ -141,12 +147,14 @@ test("web fetch tool returns selected content tree sections", async () => {
           <p>General unrelated content.</p>
         </body>
       </html>
-    `, {
-      status: 200,
-      headers: {
-        "content-type": "text/html",
-      },
-    }),
+    `,
+        {
+          status: 200,
+          headers: {
+            "content-type": "text/html",
+          },
+        },
+      ),
   });
 
   const result = await tool.execute({

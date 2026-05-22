@@ -64,16 +64,18 @@ test("file run-state store serializes concurrent mutations without corrupting JS
     await store.createRun("run-1", { metadata: { title: "demo" } });
     await store.registerCapabilityToken("run-1", "executor", "tok-1");
 
-    const results = await Promise.all(Array.from({ length: 12 }, (_, index) =>
-      store.mutate("run-1", {
-        actor: "executor",
-        path: `metadata.concurrent_${index}`,
-        action: "set",
-        expectedVersion: 1,
-        value: index,
-        capabilityToken: "tok-1",
-      })
-    ));
+    const results = await Promise.all(
+      Array.from({ length: 12 }, (_, index) =>
+        store.mutate("run-1", {
+          actor: "executor",
+          path: `metadata.concurrent_${index}`,
+          action: "set",
+          expectedVersion: 1,
+          value: index,
+          capabilityToken: "tok-1",
+        }),
+      ),
+    );
 
     assert.equal(results.filter((result) => result.accepted).length, 1);
     const snapshot = await store.getSnapshot("run-1");

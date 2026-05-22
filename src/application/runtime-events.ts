@@ -45,7 +45,9 @@ export function createRuntimeEvent(input: RuntimeEventInput): RuntimeEvent {
   };
 }
 
-export function createRuntimeEventFingerprint(input: Omit<RuntimeEventInput, "message" | "metrics">): string {
+export function createRuntimeEventFingerprint(
+  input: Omit<RuntimeEventInput, "message" | "metrics">,
+): string {
   const base = `${input.runId}|${input.occurredAt}|${input.code}|${input.source}|${input.subject}|${input.seq}`;
   return createHash("sha256").update(base).digest("hex");
 }

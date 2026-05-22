@@ -4,9 +4,16 @@ import { homedir } from "node:os";
 import { basename, extname, join, resolve } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { z } from "zod";
-import type { QualityLoopConfig, QualityLoopPhaseName, RecursiveModelConfig } from "../domain/types.js";
+import type {
+  QualityLoopConfig,
+  QualityLoopPhaseName,
+  RecursiveModelConfig,
+} from "../domain/types.js";
 import type { ExtensionRegistryEntry } from "../ports/extension-port.js";
-import type { LanguageModelPurpose, LanguageModelSamplingOptions } from "../ports/language-model-port.js";
+import type {
+  LanguageModelPurpose,
+  LanguageModelSamplingOptions,
+} from "../ports/language-model-port.js";
 
 export const MODEL_PURPOSES = [
   "depth",
@@ -23,10 +30,17 @@ export const MODEL_PURPOSES = [
   "quality_loop_best_of_progress",
 ] as const satisfies readonly LanguageModelPurpose[];
 
-export const CORE_MODEL_PURPOSES = ["depth", "classify", "decompose", "answer", "summarize", "synthesize"] as const satisfies readonly LanguageModelPurpose[];
+export const CORE_MODEL_PURPOSES = [
+  "depth",
+  "classify",
+  "decompose",
+  "answer",
+  "summarize",
+  "synthesize",
+] as const satisfies readonly LanguageModelPurpose[];
 
-export type ModelPurpose = typeof MODEL_PURPOSES[number];
-export type CoreModelPurpose = typeof CORE_MODEL_PURPOSES[number];
+export type ModelPurpose = (typeof MODEL_PURPOSES)[number];
+export type CoreModelPurpose = (typeof CORE_MODEL_PURPOSES)[number];
 export type MemoryMode = "auto" | number;
 export type ModelSelection = string | "dynamic";
 
@@ -77,7 +91,9 @@ export function isGraphWorkflowConfig(workflow: WorkflowConfig): workflow is Gra
   return "kind" in workflow && workflow.kind === "graph";
 }
 
-export function isRamQueueWorkflowConfig(workflow: WorkflowConfig): workflow is RamQueueWorkflowConfig {
+export function isRamQueueWorkflowConfig(
+  workflow: WorkflowConfig,
+): workflow is RamQueueWorkflowConfig {
   return "mode" in workflow && workflow.mode === "ram_queue";
 }
 
@@ -146,10 +162,12 @@ export interface ProjectConfig {
   runtime: RecursiveModelConfig;
   agents: Record<string, AgentConfig>;
   workflows: Record<string, WorkflowConfig>;
-  extensions?: {
-    allowlist?: string | undefined;
-    load?: ExtensionRegistryEntry[] | undefined;
-  } | undefined;
+  extensions?:
+    | {
+        allowlist?: string | undefined;
+        load?: ExtensionRegistryEntry[] | undefined;
+      }
+    | undefined;
   interop?: InteropConfig | undefined;
   hosts?: Record<string, ModelHostConfig> | undefined;
   runtimeHost?: string | undefined;
@@ -170,28 +188,30 @@ const samplingOptionsSchema = z.object({
   seed: z.number().int().optional(),
 });
 
-const agentModelsSchema = z.object({
-  depth: modelSelectionSchema,
-  classify: modelSelectionSchema,
-  decompose: modelSelectionSchema,
-  answer: modelSelectionSchema,
-  summarize: modelSelectionSchema,
-  synthesize: modelSelectionSchema,
-  plan: modelSelectionSchema.optional(),
-  quality_loop_draft: modelSelectionSchema.optional(),
-  quality_loop_critique: modelSelectionSchema.optional(),
-  quality_loop_refine: modelSelectionSchema.optional(),
-  quality_loop_gate: modelSelectionSchema.optional(),
-  quality_loop_best_of_progress: modelSelectionSchema.optional(),
-}).transform((models) => ({
-  ...models,
-  quality_loop_draft: models.quality_loop_draft ?? models.answer,
-  quality_loop_critique: models.quality_loop_critique ?? models.answer,
-  quality_loop_refine: models.quality_loop_refine ?? models.answer,
-  quality_loop_gate: models.quality_loop_gate ?? models.answer,
-  quality_loop_best_of_progress: models.quality_loop_best_of_progress ?? models.answer,
-  plan: models.plan ?? models.decompose,
-}));
+const agentModelsSchema = z
+  .object({
+    depth: modelSelectionSchema,
+    classify: modelSelectionSchema,
+    decompose: modelSelectionSchema,
+    answer: modelSelectionSchema,
+    summarize: modelSelectionSchema,
+    synthesize: modelSelectionSchema,
+    plan: modelSelectionSchema.optional(),
+    quality_loop_draft: modelSelectionSchema.optional(),
+    quality_loop_critique: modelSelectionSchema.optional(),
+    quality_loop_refine: modelSelectionSchema.optional(),
+    quality_loop_gate: modelSelectionSchema.optional(),
+    quality_loop_best_of_progress: modelSelectionSchema.optional(),
+  })
+  .transform((models) => ({
+    ...models,
+    quality_loop_draft: models.quality_loop_draft ?? models.answer,
+    quality_loop_critique: models.quality_loop_critique ?? models.answer,
+    quality_loop_refine: models.quality_loop_refine ?? models.answer,
+    quality_loop_gate: models.quality_loop_gate ?? models.answer,
+    quality_loop_best_of_progress: models.quality_loop_best_of_progress ?? models.answer,
+    plan: models.plan ?? models.decompose,
+  }));
 
 const defaultQualityLoopConfig = {
   enabled: false,
@@ -202,14 +222,18 @@ const defaultQualityLoopConfig = {
 const qualityLoopSchema = z.object({
   enabled: z.boolean().default(false),
   maxIterations: z.number().int().positive().default(3),
-  budgetBehavior: z.literal("stop_before_partial_iteration").default("stop_before_partial_iteration"),
-  phaseModels: z.object({
-    draft: modelSelectionSchema.optional(),
-    critique: modelSelectionSchema.optional(),
-    refine: modelSelectionSchema.optional(),
-    gate: modelSelectionSchema.optional(),
-    best_of_progress: modelSelectionSchema.optional(),
-  }).optional(),
+  budgetBehavior: z
+    .literal("stop_before_partial_iteration")
+    .default("stop_before_partial_iteration"),
+  phaseModels: z
+    .object({
+      draft: modelSelectionSchema.optional(),
+      critique: modelSelectionSchema.optional(),
+      refine: modelSelectionSchema.optional(),
+      gate: modelSelectionSchema.optional(),
+      best_of_progress: modelSelectionSchema.optional(),
+    })
+    .optional(),
 });
 
 const runtimeSchema = z.object({
@@ -225,14 +249,19 @@ const runtimeSchema = z.object({
 const configSchema = z.object({
   models: z.object({
     default: z.string().min(1),
-    tiers: z.record(z.string(), z.object({
-      name: z.string().min(1),
-      estimatedRamMb: z.number().int().positive(),
-    })),
-    sampling: z.object({
-      defaults: samplingOptionsSchema.optional(),
-      modelProfiles: z.record(z.string().min(1), samplingOptionsSchema).default({}),
-    }).optional(),
+    tiers: z.record(
+      z.string(),
+      z.object({
+        name: z.string().min(1),
+        estimatedRamMb: z.number().int().positive(),
+      }),
+    ),
+    sampling: z
+      .object({
+        defaults: samplingOptionsSchema.optional(),
+        modelProfiles: z.record(z.string().min(1), samplingOptionsSchema).default({}),
+      })
+      .optional(),
   }),
   memory: z.object({
     maxRamMb: z.union([z.literal("auto"), z.number().int().positive()]),
@@ -248,83 +277,126 @@ const configSchema = z.object({
     maxToolRounds: 3,
     qualityLoop: defaultQualityLoopConfig,
   }),
-  agents: z.record(z.string(), z.object({
-    tools: z.array(z.string().min(1)),
-    models: agentModelsSchema,
-  })),
-  workflows: z.record(z.string(), z.union([
+  agents: z.record(
+    z.string(),
     z.object({
-      kind: z.literal("graph"),
-      path: z.string().min(1).optional(),
-      defaultVariant: z.enum(["playbook", "pipeline"]).optional(),
+      tools: z.array(z.string().min(1)),
+      models: agentModelsSchema,
     }),
-    z.object({
-      mode: z.literal("ram_queue"),
-      agents: z.array(z.string().min(1)).min(1),
-      continueOnError: z.boolean().default(false),
-      qa: z.object({
-        agent: z.string().min(1),
-        validationCommands: z.array(z.string().min(1)).default(["npm test", "npm run build"]),
-        bugfixQueue: z.object({
-          id: z.string().min(1).default("bugfix"),
-          priority: z.number().int().default(100),
-          highestPriorityKeywords: z.array(z.string().min(1)).default(["fail", "error", "regression", "broken", "crash"]),
-        }).default({
-          id: "bugfix",
-          priority: 100,
-          highestPriorityKeywords: ["fail", "error", "regression", "broken", "crash"],
+  ),
+  workflows: z.record(
+    z.string(),
+    z.union([
+      z.object({
+        kind: z.literal("graph"),
+        path: z.string().min(1).optional(),
+        defaultVariant: z.enum(["playbook", "pipeline"]).optional(),
+      }),
+      z.object({
+        mode: z.literal("ram_queue"),
+        agents: z.array(z.string().min(1)).min(1),
+        continueOnError: z.boolean().default(false),
+        qa: z
+          .object({
+            agent: z.string().min(1),
+            validationCommands: z.array(z.string().min(1)).default(["npm test", "npm run build"]),
+            bugfixQueue: z
+              .object({
+                id: z.string().min(1).default("bugfix"),
+                priority: z.number().int().default(100),
+                highestPriorityKeywords: z
+                  .array(z.string().min(1))
+                  .default(["fail", "error", "regression", "broken", "crash"]),
+              })
+              .default({
+                id: "bugfix",
+                priority: 100,
+                highestPriorityKeywords: ["fail", "error", "regression", "broken", "crash"],
+              }),
+          })
+          .optional(),
+        dispatch: z
+          .object({
+            strategy: z.literal("complexity_tiers"),
+            tiers: z
+              .array(
+                z.object({
+                  name: z.string().min(1),
+                  maxEstimatedDepth: z.number().int().nonnegative().optional(),
+                  agents: z.array(z.string().min(1)).min(1),
+                  qa: z.boolean().default(false),
+                }),
+              )
+              .min(1),
+          })
+          .optional(),
+      }),
+    ]),
+  ),
+  extensions: z
+    .object({
+      allowlist: z.string().optional(),
+      load: z
+        .array(
+          z.object({
+            path: z.string().min(1),
+            agents: z.array(z.string().min(1)).default([]),
+          }),
+        )
+        .default([]),
+    })
+    .optional(),
+  interop: z
+    .object({
+      mcp: z
+        .object({
+          servers: z
+            .array(
+              z.object({
+                id: z.string().min(1),
+                command: z.string().min(1),
+                args: z.array(z.string().min(1)).default([]),
+                required: z.boolean().default(false),
+              }),
+            )
+            .default([]),
+        })
+        .default({
+          servers: [],
         }),
-      }).optional(),
-      dispatch: z.object({
-        strategy: z.literal("complexity_tiers"),
-        tiers: z.array(z.object({
-          name: z.string().min(1),
-          maxEstimatedDepth: z.number().int().nonnegative().optional(),
-          agents: z.array(z.string().min(1)).min(1),
-          qa: z.boolean().default(false),
-        })).min(1),
-      }).optional(),
-    }),
-  ])),
-  extensions: z.object({
-    allowlist: z.string().optional(),
-    load: z.array(z.object({
-      path: z.string().min(1),
-      agents: z.array(z.string().min(1)).default([]),
-    })).default([]),
-  }).optional(),
-  interop: z.object({
-    mcp: z.object({
-      servers: z.array(z.object({
-        id: z.string().min(1),
-        command: z.string().min(1),
-        args: z.array(z.string().min(1)).default([]),
-        required: z.boolean().default(false),
-      })).default([]),
-    }).default({
-      servers: [],
-    }),
-    skills: z.object({
-      searchPaths: z.array(z.string().min(1)).default([".codex/skills", ".agents/skills"]),
-      duplicateStrategy: z.literal("first_match").default("first_match"),
-      cache: z.boolean().default(false),
-      pathPolicies: z.array(z.object({
-        path: z.string().min(1),
-        strictness: z.enum(["strict", "lenient"]).default("strict"),
-      })).default([]),
-    }).default({
-      searchPaths: [".codex/skills", ".agents/skills"],
-      duplicateStrategy: "first_match",
-      cache: false,
-      pathPolicies: [],
-    }),
-  }).optional(),
-  hosts: z.record(z.string().min(1), z.object({
-    kind: z.enum(["ollama", "http"]),
-    baseUrl: z.string().min(1),
-    available: z.boolean().optional(),
-    allowUnconstrainedToolCalls: z.boolean().optional(),
-  })).optional(),
+      skills: z
+        .object({
+          searchPaths: z.array(z.string().min(1)).default([".codex/skills", ".agents/skills"]),
+          duplicateStrategy: z.literal("first_match").default("first_match"),
+          cache: z.boolean().default(false),
+          pathPolicies: z
+            .array(
+              z.object({
+                path: z.string().min(1),
+                strictness: z.enum(["strict", "lenient"]).default("strict"),
+              }),
+            )
+            .default([]),
+        })
+        .default({
+          searchPaths: [".codex/skills", ".agents/skills"],
+          duplicateStrategy: "first_match",
+          cache: false,
+          pathPolicies: [],
+        }),
+    })
+    .optional(),
+  hosts: z
+    .record(
+      z.string().min(1),
+      z.object({
+        kind: z.enum(["ollama", "http"]),
+        baseUrl: z.string().min(1),
+        available: z.boolean().optional(),
+        allowUnconstrainedToolCalls: z.boolean().optional(),
+      }),
+    )
+    .optional(),
   runtimeHost: z.string().min(1).optional(),
 });
 
@@ -443,7 +515,10 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
 };
 
 /** JSON-backed clone of baked-in defaults — safe starting point before layered overlays. */
-const DEFAULT_PROJECT_PLAIN = JSON.parse(JSON.stringify(DEFAULT_PROJECT_CONFIG)) as Record<string, unknown>;
+const DEFAULT_PROJECT_PLAIN = JSON.parse(JSON.stringify(DEFAULT_PROJECT_CONFIG)) as Record<
+  string,
+  unknown
+>;
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -458,11 +533,11 @@ function mergeInterop(left: unknown, right: unknown): unknown {
 
   const lm = left as Record<string, unknown>;
   const rm = right as Record<string, unknown>;
-  const lmcp = isPlainRecord(lm["mcp"]) ? lm["mcp"] as Record<string, unknown> : {};
-  const rmcp = isPlainRecord(rm["mcp"]) ? rm["mcp"] as Record<string, unknown> : {};
+  const lmcp = isPlainRecord(lm["mcp"]) ? (lm["mcp"] as Record<string, unknown>) : {};
+  const rmcp = isPlainRecord(rm["mcp"]) ? (rm["mcp"] as Record<string, unknown>) : {};
 
-  const lskills = isPlainRecord(lm["skills"]) ? lm["skills"] as Record<string, unknown> : {};
-  const rskills = isPlainRecord(rm["skills"]) ? rm["skills"] as Record<string, unknown> : {};
+  const lskills = isPlainRecord(lm["skills"]) ? (lm["skills"] as Record<string, unknown>) : {};
+  const rskills = isPlainRecord(rm["skills"]) ? (rm["skills"] as Record<string, unknown>) : {};
 
   return {
     ...lm,
@@ -473,7 +548,10 @@ function mergeInterop(left: unknown, right: unknown): unknown {
 }
 
 /** Layer project/global YAML fragments onto each other — agents and tiers replace by id/key. */
-function mergeYamlLayers(left: Record<string, unknown>, right: Record<string, unknown>): Record<string, unknown> {
+function mergeYamlLayers(
+  left: Record<string, unknown>,
+  right: Record<string, unknown>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = { ...left };
 
   for (const [key, incoming] of Object.entries(right)) {
@@ -518,10 +596,10 @@ function mergeYamlLayers(left: Record<string, unknown>, right: Record<string, un
         ? (rightSamplingRaw as Record<string, unknown>)
         : {};
       const leftProfiles = isPlainRecord(leftSampling["modelProfiles"])
-        ? leftSampling["modelProfiles"] as Record<string, unknown>
+        ? (leftSampling["modelProfiles"] as Record<string, unknown>)
         : {};
       const rightProfiles = isPlainRecord(rightSampling["modelProfiles"])
-        ? rightSampling["modelProfiles"] as Record<string, unknown>
+        ? (rightSampling["modelProfiles"] as Record<string, unknown>)
         : {};
 
       const incomingWithoutTiers = { ...incomingModels };
@@ -608,7 +686,9 @@ async function loadScopedFragments(scopeRoot: string): Promise<Record<string, un
   const agentsDir = join(scopeRoot, "agents");
   const agentsStat = await safeStat(agentsDir);
   if (agentsStat?.isDirectory()) {
-    const entries = [...await readdir(agentsDir)].sort((aName, bName) => aName.localeCompare(bName));
+    const entries = [...(await readdir(agentsDir))].sort((aName, bName) =>
+      aName.localeCompare(bName),
+    );
     const agentsPartial: Record<string, unknown> = {};
     for (const fileName of entries) {
       if (!fileName.endsWith(".yaml") && !fileName.endsWith(".yml")) continue;
@@ -633,7 +713,9 @@ async function loadScopedFragments(scopeRoot: string): Promise<Record<string, un
   const modelsStat = await safeStat(modelsDir);
   if (modelsStat?.isDirectory()) {
     const tiers: Record<string, unknown> = {};
-    const entries = [...await readdir(modelsDir)].sort((aName, bName) => aName.localeCompare(bName));
+    const entries = [...(await readdir(modelsDir))].sort((aName, bName) =>
+      aName.localeCompare(bName),
+    );
     for (const entryName of entries) {
       if (!entryName.endsWith(".yaml") && !entryName.endsWith(".yml")) continue;
       const tierKey = basename(entryName, extname(entryName)).trim();
@@ -711,8 +793,7 @@ export async function loadProjectConfig(path?: string): Promise<LoadedProjectCon
     }
 
     primaryPath ??= legacyExists ? legacyScoped : undefined;
-  }
-  else {
+  } else {
     const discoveredPath = legacyExists ? legacyScoped : await findDefaultConfigPath();
     if (discoveredPath) {
       const discoveredRaw = await readFile(discoveredPath, "utf8");
@@ -759,7 +840,9 @@ export async function seedProjectRlmStarter(projectRoot = process.cwd()): Promis
       stringifyYaml(DEFAULT_PROJECT_CONFIG.models.tiers["small"]),
     );
 
-    console.error("[rlm starter] seeded project-local .rlm/ with sample config, agents/coding.yaml, models/small.yaml");
+    console.error(
+      "[rlm starter] seeded project-local .rlm/ with sample config, agents/coding.yaml, models/small.yaml",
+    );
     return true;
   } catch (error: unknown) {
     const detail = error instanceof Error ? `${error.message} (starter seed)` : "starter seed";
@@ -786,7 +869,10 @@ function mergeQualityLoopPhaseModels(
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
-function mergeResolvedQualityLoop(base: QualityLoopConfig, override?: Partial<QualityLoopConfig> | undefined): QualityLoopConfig {
+function mergeResolvedQualityLoop(
+  base: QualityLoopConfig,
+  override?: Partial<QualityLoopConfig> | undefined,
+): QualityLoopConfig {
   if (!override) {
     return { ...base };
   }
@@ -824,7 +910,10 @@ export function applyModelOverride(config: ProjectConfig, modelOverride?: string
   };
 }
 
-export function resolveRuntimeConfig(config: ProjectConfig, overrides: Partial<RecursiveModelConfig> = {}): RecursiveModelConfig {
+export function resolveRuntimeConfig(
+  config: ProjectConfig,
+  overrides: Partial<RecursiveModelConfig> = {},
+): RecursiveModelConfig {
   const baseRuntime: RecursiveModelConfig = {
     ...DEFAULT_PROJECT_CONFIG.runtime,
     ...config.runtime,
@@ -923,8 +1012,14 @@ async function findDefaultConfigPath(): Promise<string | undefined> {
 function validateConfigReferences(config: ProjectConfig): void {
   for (const [agentId, agent] of Object.entries(config.agents)) {
     for (const [purpose, selection] of Object.entries(agent.models)) {
-      if (selection !== "dynamic" && !config.models.tiers[selection] && selection.trim().length === 0) {
-        throw new Error(`Agent "${agentId}" has invalid model selection for ${purpose}: ${selection}`);
+      if (
+        selection !== "dynamic" &&
+        !config.models.tiers[selection] &&
+        selection.trim().length === 0
+      ) {
+        throw new Error(
+          `Agent "${agentId}" has invalid model selection for ${purpose}: ${selection}`,
+        );
       }
     }
   }
@@ -941,18 +1036,24 @@ function validateConfigReferences(config: ProjectConfig): void {
     }
 
     if (workflow.qa && !config.agents[workflow.qa.agent]) {
-      throw new Error(`Workflow "${workflowId}" references unknown QA agent "${workflow.qa.agent}".`);
+      throw new Error(
+        `Workflow "${workflowId}" references unknown QA agent "${workflow.qa.agent}".`,
+      );
     }
 
     for (const tier of workflow.dispatch?.tiers ?? []) {
       for (const agentId of tier.agents) {
         if (!config.agents[agentId]) {
-          throw new Error(`Workflow "${workflowId}" dispatch tier "${tier.name}" references unknown agent "${agentId}".`);
+          throw new Error(
+            `Workflow "${workflowId}" dispatch tier "${tier.name}" references unknown agent "${agentId}".`,
+          );
         }
       }
 
       if (tier.qa && !workflow.qa) {
-        throw new Error(`Workflow "${workflowId}" dispatch tier "${tier.name}" enables QA but no QA config is present.`);
+        throw new Error(
+          `Workflow "${workflowId}" dispatch tier "${tier.name}" enables QA but no QA config is present.`,
+        );
       }
     }
   }

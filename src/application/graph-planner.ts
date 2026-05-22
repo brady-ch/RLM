@@ -53,39 +53,55 @@ export class GraphPlannerError extends Error {
   }
 }
 
-export async function planChildren(model: LanguageModelPort, context: GraphPlannerContext): Promise<PlanChildrenResult> {
+export async function planChildren(
+  model: LanguageModelPort,
+  context: GraphPlannerContext,
+): Promise<PlanChildrenResult> {
   let response;
   try {
-    response = await model.complete([
-      {
-        role: "system",
-        content: [
-          "You plan direct child nodes for an execution graph.",
-          'Return ONLY JSON in this shape: {"children":[{"label":"","prompt":"","type":"AI","complexity":"medium","agentId":"coding","runtime":"single-pass"}]}.',
-          `Return between 1 and ${context.maxChildren} children.`,
-          "Valid type values: AI, Code, TTS, Splitter, Joiner, Validator.",
-          "Valid complexity values: low, medium, high.",
-          "Valid agentId values: default, coding, qa, product_designer, research.",
-          "Valid runtime values: single-pass, rlm. Use rlm only for high-complexity nodes that need recursive execution.",
-        ].join(" "),
-      },
-      {
-        role: "user",
-        content: [
-          `Target node id: ${context.nodeId}`,
-          `Target label: ${context.nodeLabel}`,
-          `Target prompt: ${context.nodePrompt}`,
-          "Ancestor chain:",
-          context.ancestors.length === 0
-            ? "(none)"
-            : context.ancestors.map((ancestor, index) => `${index + 1}. ${ancestor.label} (${ancestor.id}): ${ancestor.prompt}`).join("\n"),
-          "Protected descendants to preserve during merge:",
-          (context.protectedDescendants ?? []).length === 0
-            ? "(none)"
-            : (context.protectedDescendants ?? []).map((descendant, index) => `${index + 1}. ${descendant.label} (${descendant.id}): ${descendant.prompt}`).join("\n"),
-        ].join("\n"),
-      },
-    ], { purpose: "plan" });
+    response = await model.complete(
+      [
+        {
+          role: "system",
+          content: [
+            "You plan direct child nodes for an execution graph.",
+            'Return ONLY JSON in this shape: {"children":[{"label":"","prompt":"","type":"AI","complexity":"medium","agentId":"coding","runtime":"single-pass"}]}.',
+            `Return between 1 and ${context.maxChildren} children.`,
+            "Valid type values: AI, Code, TTS, Splitter, Joiner, Validator.",
+            "Valid complexity values: low, medium, high.",
+            "Valid agentId values: default, coding, qa, product_designer, research.",
+            "Valid runtime values: single-pass, rlm. Use rlm only for high-complexity nodes that need recursive execution.",
+          ].join(" "),
+        },
+        {
+          role: "user",
+          content: [
+            `Target node id: ${context.nodeId}`,
+            `Target label: ${context.nodeLabel}`,
+            `Target prompt: ${context.nodePrompt}`,
+            "Ancestor chain:",
+            context.ancestors.length === 0
+              ? "(none)"
+              : context.ancestors
+                  .map(
+                    (ancestor, index) =>
+                      `${index + 1}. ${ancestor.label} (${ancestor.id}): ${ancestor.prompt}`,
+                  )
+                  .join("\n"),
+            "Protected descendants to preserve during merge:",
+            (context.protectedDescendants ?? []).length === 0
+              ? "(none)"
+              : (context.protectedDescendants ?? [])
+                  .map(
+                    (descendant, index) =>
+                      `${index + 1}. ${descendant.label} (${descendant.id}): ${descendant.prompt}`,
+                  )
+                  .join("\n"),
+          ].join("\n"),
+        },
+      ],
+      { purpose: "plan" },
+    );
   } catch (error: unknown) {
     const details = error instanceof Error ? error.message : String(error);
     throw new GraphPlannerError("planning_failed", "Graph planning failed.", details);
@@ -93,7 +109,11 @@ export async function planChildren(model: LanguageModelPort, context: GraphPlann
 
   const jsonText = extractJsonObject(response.content);
   if (!jsonText) {
-    throw new GraphPlannerError("invalid_planner_output", "Planner returned invalid output.", "No JSON object found.");
+    throw new GraphPlannerError(
+      "invalid_planner_output",
+      "Planner returned invalid output.",
+      "No JSON object found.",
+    );
   }
 
   try {
@@ -108,7 +128,11 @@ export async function planChildren(model: LanguageModelPort, context: GraphPlann
     };
   } catch (error: unknown) {
     const details = error instanceof Error ? error.message : String(error);
-    throw new GraphPlannerError("invalid_planner_output", "Planner returned invalid output.", details);
+    throw new GraphPlannerError(
+      "invalid_planner_output",
+      "Planner returned invalid output.",
+      details,
+    );
   }
 }
 

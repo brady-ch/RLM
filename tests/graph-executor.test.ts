@@ -31,7 +31,9 @@ class CountingModel implements LanguageModelPort {
   }
 }
 
-function makeNode(partial: Partial<ExecutionGraphNode> & Pick<ExecutionGraphNode, "id">): ExecutionGraphNode {
+function makeNode(
+  partial: Partial<ExecutionGraphNode> & Pick<ExecutionGraphNode, "id">,
+): ExecutionGraphNode {
   return {
     kind: "task",
     label: partial.label ?? partial.id,
@@ -41,7 +43,10 @@ function makeNode(partial: Partial<ExecutionGraphNode> & Pick<ExecutionGraphNode
   };
 }
 
-function buildGraph(nodes: ExecutionGraphNode[], edges: ExecutionGraph["edges"] = []): ExecutionGraph {
+function buildGraph(
+  nodes: ExecutionGraphNode[],
+  edges: ExecutionGraph["edges"] = [],
+): ExecutionGraph {
   return { nodes, edges };
 }
 
@@ -65,26 +70,33 @@ async function createExecutorInput(model: LanguageModelPort) {
   };
 }
 
-function registerChain(session: ReturnType<typeof createInteractiveExecutionSession>, expertRuntime: "single-pass" | "rlm" | undefined): void {
-  session.control.registerNode?.(makeNode({
-    id: "root",
-    label: "Root",
-    prompt: "Root task",
-    depth: 0,
-    status: "ready",
-    expertAgentId: "default",
-    expertRuntime,
-  }));
-  session.control.registerNode?.(makeNode({
-    id: "child-1",
-    parentId: "root",
-    label: "Child 1",
-    prompt: "Child task",
-    depth: 1,
-    status: "ready",
-    expertAgentId: "default",
-    expertRuntime,
-  }));
+function registerChain(
+  session: ReturnType<typeof createInteractiveExecutionSession>,
+  expertRuntime: "single-pass" | "rlm" | undefined,
+): void {
+  session.control.registerNode?.(
+    makeNode({
+      id: "root",
+      label: "Root",
+      prompt: "Root task",
+      depth: 0,
+      status: "ready",
+      expertAgentId: "default",
+      expertRuntime,
+    }),
+  );
+  session.control.registerNode?.(
+    makeNode({
+      id: "child-1",
+      parentId: "root",
+      label: "Child 1",
+      prompt: "Child task",
+      depth: 1,
+      status: "ready",
+      expertAgentId: "default",
+      expertRuntime,
+    }),
+  );
 }
 
 test("topologicalExecutionOrder returns parent-before-child order", () => {
@@ -131,10 +143,7 @@ test("resolveAgent throws for unknown id", async () => {
     agentConfigs: loaded.config.agents,
   });
 
-  assert.throws(
-    () => resolveAgent(registry, "nonexistent"),
-    /Unknown agent "nonexistent"/,
-  );
+  assert.throws(() => resolveAgent(registry, "nonexistent"), /Unknown agent "nonexistent"/);
 });
 
 test("buildExecutionPrompt prefixes ancestor context", () => {
@@ -166,15 +175,17 @@ test("executeGraph marks invalid expertAgentId as failed", async () => {
   const model = new CountingModel();
   const input = await createExecutorInput(model);
   const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
-  session.control.registerNode?.(makeNode({
-    id: "bad-agent",
-    label: "Bad agent",
-    prompt: "Task",
-    depth: 0,
-    status: "ready",
-    expertAgentId: "missing-agent",
-    expertRuntime: "single-pass",
-  }));
+  session.control.registerNode?.(
+    makeNode({
+      id: "bad-agent",
+      label: "Bad agent",
+      prompt: "Task",
+      depth: 0,
+      status: "ready",
+      expertAgentId: "missing-agent",
+      expertRuntime: "single-pass",
+    }),
+  );
   session.beginConfirmedExecution();
 
   await executeGraph(session, input);
@@ -188,25 +199,29 @@ test("executeGraph blocks child when parent fails", async () => {
   const model = new CountingModel();
   const input = await createExecutorInput(model);
   const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
-  session.control.registerNode?.(makeNode({
-    id: "root",
-    label: "Root",
-    prompt: "Root",
-    depth: 0,
-    status: "ready",
-    expertAgentId: "missing-agent",
-    expertRuntime: "single-pass",
-  }));
-  session.control.registerNode?.(makeNode({
-    id: "child",
-    parentId: "root",
-    label: "Child",
-    prompt: "Child",
-    depth: 1,
-    status: "ready",
-    expertAgentId: "default",
-    expertRuntime: "single-pass",
-  }));
+  session.control.registerNode?.(
+    makeNode({
+      id: "root",
+      label: "Root",
+      prompt: "Root",
+      depth: 0,
+      status: "ready",
+      expertAgentId: "missing-agent",
+      expertRuntime: "single-pass",
+    }),
+  );
+  session.control.registerNode?.(
+    makeNode({
+      id: "child",
+      parentId: "root",
+      label: "Child",
+      prompt: "Child",
+      depth: 1,
+      status: "ready",
+      expertAgentId: "default",
+      expertRuntime: "single-pass",
+    }),
+  );
   session.beginConfirmedExecution();
 
   await executeGraph(session, input);
@@ -221,14 +236,16 @@ test("executeGraph fails node with undefined expertRuntime without invoking mode
   const model = new CountingModel();
   const input = await createExecutorInput(model);
   const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
-  session.control.registerNode?.(makeNode({
-    id: "no-runtime",
-    label: "No runtime",
-    prompt: "Task",
-    depth: 0,
-    status: "ready",
-    expertAgentId: "default",
-  }));
+  session.control.registerNode?.(
+    makeNode({
+      id: "no-runtime",
+      label: "No runtime",
+      prompt: "Task",
+      depth: 0,
+      status: "ready",
+      expertAgentId: "default",
+    }),
+  );
   session.beginConfirmedExecution();
 
   await executeGraph(session, input);
@@ -261,16 +278,18 @@ test("executeGraph filters tools via expertToolAllowlist for single-pass", async
   });
   const memoryManager = new MemoryManager({ config: projectConfig.memory });
   const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
-  session.control.registerNode?.(makeNode({
-    id: "allowlisted",
-    label: "Allowlisted",
-    prompt: "Task",
-    depth: 0,
-    status: "ready",
-    expertAgentId: "default",
-    expertRuntime: "single-pass",
-    expertToolAllowlist: ["shell"],
-  }));
+  session.control.registerNode?.(
+    makeNode({
+      id: "allowlisted",
+      label: "Allowlisted",
+      prompt: "Task",
+      depth: 0,
+      status: "ready",
+      expertAgentId: "default",
+      expertRuntime: "single-pass",
+      expertToolAllowlist: ["shell"],
+    }),
+  );
   session.beginConfirmedExecution();
 
   await executeGraph(session, {
@@ -282,5 +301,8 @@ test("executeGraph filters tools via expertToolAllowlist for single-pass", async
     createModel: () => new CountingModel(),
   });
 
-  assert.equal(session.snapshot().graph.nodes.find((node) => node.id === "allowlisted")?.status, "completed");
+  assert.equal(
+    session.snapshot().graph.nodes.find((node) => node.id === "allowlisted")?.status,
+    "completed",
+  );
 });

@@ -18,7 +18,7 @@ export class OllamaEmbeddingModel implements EmbeddingPort {
     if (!response.ok) {
       throw new Error(`Ollama embeddings failed: HTTP ${response.status}`);
     }
-    const payload = await response.json() as { embedding?: number[] };
+    const payload = (await response.json()) as { embedding?: number[] };
     if (!Array.isArray(payload.embedding)) {
       throw new Error("Ollama embeddings response did not include an embedding.");
     }

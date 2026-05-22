@@ -77,7 +77,10 @@ test("file memory store enforces scope ACLs and version conflicts", async () => 
     assert.equal(denied.reason, "memory scope ACL denied");
 
     const audit = await store.listAudit("run-1");
-    assert.deepEqual(audit.map((record) => record.accepted), [true, false, false]);
+    assert.deepEqual(
+      audit.map((record) => record.accepted),
+      [true, false, false],
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -97,7 +100,10 @@ test("memory resolver builds bounded packets and records metadata", async () => 
       patch: { goal: "persist structured memory" },
     });
 
-    const resolver = new MemoryResolver(store, { sessionId: "run-2", now: () => "2026-05-20T00:00:01.000Z" });
+    const resolver = new MemoryResolver(store, {
+      sessionId: "run-2",
+      now: () => "2026-05-20T00:00:01.000Z",
+    });
     await resolver.appendNodeSummary({
       nodeId: "task-1",
       summary: "Implemented the scope document store.",
@@ -133,7 +139,10 @@ test("project preferences survive across run ids and can be deleted", async () =
   const dir = await mkdtemp(join(tmpdir(), "rlm-memory-"));
   try {
     const store = new FileMemoryStore({ baseDir: dir, now: () => "2026-05-20T00:00:00.000Z" });
-    const firstResolver = new MemoryResolver(store, { sessionId: "run-a", now: () => "2026-05-20T00:00:00.000Z" });
+    const firstResolver = new MemoryResolver(store, {
+      sessionId: "run-a",
+      now: () => "2026-05-20T00:00:00.000Z",
+    });
     await firstResolver.setPreference({
       key: "tone",
       value: "be direct",
@@ -141,7 +150,10 @@ test("project preferences survive across run ids and can be deleted", async () =
       lifetime: "project",
     });
 
-    const secondResolver = new MemoryResolver(store, { sessionId: "run-b", now: () => "2026-05-20T00:00:01.000Z" });
+    const secondResolver = new MemoryResolver(store, {
+      sessionId: "run-b",
+      now: () => "2026-05-20T00:00:01.000Z",
+    });
     const beforeDelete = await secondResolver.inspect();
     const scope = beforeDelete.scopes.find((item) => item.scopeId === "project-preferences");
     assert.equal(scope?.lifetime, "project");
@@ -191,7 +203,11 @@ test("semantic memory retrieval injects scoped vector hits", async () => {
       now: () => "2026-05-20T00:00:01.000Z",
     });
     await retrieval.rebuild();
-    const resolver = new MemoryResolver(store, { sessionId: "run-3", now: () => "2026-05-20T00:00:02.000Z" }, retrieval);
+    const resolver = new MemoryResolver(
+      store,
+      { sessionId: "run-3", now: () => "2026-05-20T00:00:02.000Z" },
+      retrieval,
+    );
 
     const packet = await resolver.buildPacket({
       nodeId: "task-9",
@@ -228,22 +244,28 @@ test("semantic retrieval degrades visibly when embeddings fail", async () => {
       patch: { fact: "memory survives retrieval failure" },
     });
     const vectorIndex = new FileVectorIndex({ path: join(dir, "vector-index.json") });
-    await vectorIndex.replace([{
-      id: "scope:session:project-facts",
-      sessionId: "run-4",
-      scopeId: "project-facts",
-      source: "scope",
-      text: "Scope project-facts: {\"fact\":\"memory survives retrieval failure\"}",
-      embedding: [1, 0, 0],
-      updatedAt: "2026-05-20T00:00:00.000Z",
-    }]);
+    await vectorIndex.replace([
+      {
+        id: "scope:session:project-facts",
+        sessionId: "run-4",
+        scopeId: "project-facts",
+        source: "scope",
+        text: 'Scope project-facts: {"fact":"memory survives retrieval failure"}',
+        embedding: [1, 0, 0],
+        updatedAt: "2026-05-20T00:00:00.000Z",
+      },
+    ]);
     const retrieval = new SemanticMemoryIndex({
       sessionId: "run-4",
       store,
       embeddings: new FailingEmbedding(),
       index: vectorIndex,
     });
-    const resolver = new MemoryResolver(store, { sessionId: "run-4", now: () => "2026-05-20T00:00:00.000Z" }, retrieval);
+    const resolver = new MemoryResolver(
+      store,
+      { sessionId: "run-4", now: () => "2026-05-20T00:00:00.000Z" },
+      retrieval,
+    );
 
     const packet = await resolver.buildPacket({
       nodeId: "task-degraded",

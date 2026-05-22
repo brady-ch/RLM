@@ -24,7 +24,11 @@ test("file session store saves complete bundle with memory and vector contract s
     assert.equal(saved.status, "complete");
     assert.equal(saved.verification.unsafeToContinue, false);
     assert.deepEqual(saved.verification.missing, []);
-    assert.ok(saved.verification.sections.some((section) => section.name === "vectorIndex" && section.status === "complete"));
+    assert.ok(
+      saved.verification.sections.some(
+        (section) => section.name === "vectorIndex" && section.status === "complete",
+      ),
+    );
 
     const list = await store.list();
     assert.equal(list[0]?.id, "demo");
@@ -67,23 +71,34 @@ test("file session store reports degraded restore when a section is missing", as
   try {
     const sessionDir = join(dir, "demo");
     await mkdir(sessionDir, { recursive: true });
-    await writeFile(join(sessionDir, "manifest.json"), JSON.stringify({
-      version: 1,
-      id: "demo",
-      name: "Demo",
-      createdAt: "2026-05-21T00:00:00.000Z",
-      updatedAt: "2026-05-21T00:00:00.000Z",
-      sections: {
-        session: { file: "session.json", version: 1 },
-        runState: { file: "run-state.json", version: 1 },
-        artifacts: { file: "artifacts.json", version: 1 },
-        memory: { file: "memory.json", version: 1 },
-        preferences: { file: "preferences.json", version: 1 },
-        vectorIndex: { file: "vector-index.json", version: 1 },
-        graphWorkflowMetadata: { file: "graph-workflow-metadata.json", version: 1 },
-      },
-    }), "utf8");
-    for (const file of ["session.json", "run-state.json", "artifacts.json", "preferences.json", "vector-index.json", "graph-workflow-metadata.json"]) {
+    await writeFile(
+      join(sessionDir, "manifest.json"),
+      JSON.stringify({
+        version: 1,
+        id: "demo",
+        name: "Demo",
+        createdAt: "2026-05-21T00:00:00.000Z",
+        updatedAt: "2026-05-21T00:00:00.000Z",
+        sections: {
+          session: { file: "session.json", version: 1 },
+          runState: { file: "run-state.json", version: 1 },
+          artifacts: { file: "artifacts.json", version: 1 },
+          memory: { file: "memory.json", version: 1 },
+          preferences: { file: "preferences.json", version: 1 },
+          vectorIndex: { file: "vector-index.json", version: 1 },
+          graphWorkflowMetadata: { file: "graph-workflow-metadata.json", version: 1 },
+        },
+      }),
+      "utf8",
+    );
+    for (const file of [
+      "session.json",
+      "run-state.json",
+      "artifacts.json",
+      "preferences.json",
+      "vector-index.json",
+      "graph-workflow-metadata.json",
+    ]) {
       await writeFile(join(sessionDir, file), JSON.stringify({ version: 1, data: {} }), "utf8");
     }
 

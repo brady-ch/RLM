@@ -1,5 +1,9 @@
 import type { AgentProfile } from "../domain/agents.js";
-import type { ModelSelectionTrace, RecursiveModelConfig, RecursivePromptResult } from "../domain/types.js";
+import type {
+  ModelSelectionTrace,
+  RecursiveModelConfig,
+  RecursivePromptResult,
+} from "../domain/types.js";
 import type { LanguageModelPort } from "../ports/language-model-port.js";
 import type { ToolPort } from "../ports/tool-port.js";
 import { InMemoryTrace } from "../adapters/in-memory-trace.js";
@@ -29,10 +33,12 @@ export interface RunConfiguredAgentInput {
   execution?: ExecutionControl | undefined;
   runState?: RuntimeRunState | undefined;
   memory?: RuntimeMemory | undefined;
-  nodeBinding?: {
-    toolAllowlist?: string[] | undefined;
-    purposeTiers?: Partial<Record<LanguageModelPurpose, string>> | undefined;
-  } | undefined;
+  nodeBinding?:
+    | {
+        toolAllowlist?: string[] | undefined;
+        purposeTiers?: Partial<Record<LanguageModelPurpose, string>> | undefined;
+      }
+    | undefined;
 }
 
 class NodeBindingLanguageModel implements LanguageModelPort {
@@ -45,9 +51,10 @@ class NodeBindingLanguageModel implements LanguageModelPort {
     messages: Parameters<LanguageModelPort["complete"]>[0],
     options: Parameters<LanguageModelPort["complete"]>[1] = {},
   ) {
-    const tier = options.purpose && !options.overrideModel && !options.overrideModelSelection
-      ? this.purposeTiers?.[options.purpose]?.trim()
-      : undefined;
+    const tier =
+      options.purpose && !options.overrideModel && !options.overrideModelSelection
+        ? this.purposeTiers?.[options.purpose]?.trim()
+        : undefined;
     return this.inner.complete(messages, {
       ...options,
       overrideModel: tier ? undefined : options.overrideModel,
@@ -64,9 +71,15 @@ function filterAgentTools(agent: AgentProfile, allowlist?: string[]): ToolPort[]
   return agent.tools.filter((tool) => allowed.has(tool.name));
 }
 
-export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promise<RecursivePromptResult> {
+export async function runConfiguredAgent(
+  input: RunConfiguredAgentInput,
+): Promise<RecursivePromptResult> {
   const estimatedDepth = estimatePromptDepth(input.prompt);
-  const requestedRamMb = estimateAgentRamMb(input.projectConfig, input.agent.config, estimatedDepth);
+  const requestedRamMb = estimateAgentRamMb(
+    input.projectConfig,
+    input.agent.config,
+    estimatedDepth,
+  );
   const startedAt = Date.now();
   input.logger?.log({
     stage: "agent",
@@ -147,7 +160,10 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
 
 export function estimatePromptDepth(prompt: string): number {
   const normalized = prompt.toLowerCase();
-  if (prompt.length > 1_500 || /\b(architecture|workflow|multi-agent|migrate|refactor|system)\b/.test(normalized)) {
+  if (
+    prompt.length > 1_500 ||
+    /\b(architecture|workflow|multi-agent|migrate|refactor|system)\b/.test(normalized)
+  ) {
     return 3;
   }
 

@@ -42,7 +42,9 @@ export class FileMemoryStore implements MemoryStorePort {
         documents.set(`${document.lifetime}:${document.scopeId}`, document);
       }
     }
-    return [...documents.values()].sort((a, b) => `${a.lifetime}:${a.scopeId}`.localeCompare(`${b.lifetime}:${b.scopeId}`));
+    return [...documents.values()].sort((a, b) =>
+      `${a.lifetime}:${a.scopeId}`.localeCompare(`${b.lifetime}:${b.scopeId}`),
+    );
   }
 
   async patchScope(request: MemoryScopePatchRequest): Promise<MemoryScopePatchResult> {
@@ -64,7 +66,10 @@ export class FileMemoryStore implements MemoryStorePort {
         content: applyPatch(existing?.content ?? {}, request.patch),
         updatedAt: this.now(),
       };
-      await this.writeJson(this.scopePathForLifetime(request.sessionId, request.scopeId, next.lifetime), next);
+      await this.writeJson(
+        this.scopePathForLifetime(request.sessionId, request.scopeId, next.lifetime),
+        next,
+      );
       await this.appendEpisodicUnlocked({
         id: `episode-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         sessionId: request.sessionId,
@@ -91,11 +96,20 @@ export class FileMemoryStore implements MemoryStorePort {
     return this.readArray<EpisodicMemoryEntry>(this.episodicPath(sessionId));
   }
 
-  async getRollingSummary(sessionId: string, scopeIds: string[], maxChars: number): Promise<string> {
+  async getRollingSummary(
+    sessionId: string,
+    scopeIds: string[],
+    maxChars: number,
+  ): Promise<string> {
     const allowed = new Set(scopeIds);
     const entries = await this.readArray<EpisodicMemoryEntry>(this.episodicPath(sessionId));
     const lines = entries
-      .filter((entry) => !entry.scopeIds || entry.scopeIds.length === 0 || entry.scopeIds.some((scope) => allowed.has(scope)))
+      .filter(
+        (entry) =>
+          !entry.scopeIds ||
+          entry.scopeIds.length === 0 ||
+          entry.scopeIds.some((scope) => allowed.has(scope)),
+      )
       .slice(-12)
       .map((entry) => `- ${entry.type}${entry.nodeId ? ` ${entry.nodeId}` : ""}: ${entry.summary}`);
     return truncate(lines.join("\n"), maxChars);
@@ -103,7 +117,9 @@ export class FileMemoryStore implements MemoryStorePort {
 
   async recordPacketMetadata(metadata: MemoryPacketMetadata): Promise<void> {
     await this.withSessionLock(metadata.sessionId, async () => {
-      const packets = await this.readArray<MemoryPacketMetadata>(this.packetPath(metadata.sessionId));
+      const packets = await this.readArray<MemoryPacketMetadata>(
+        this.packetPath(metadata.sessionId),
+      );
       const filtered = packets.filter((packet) => packet.nodeId !== metadata.nodeId);
       filtered.push(metadata);
       await this.writeJson(this.packetPath(metadata.sessionId), filtered.slice(-200));
@@ -114,7 +130,10 @@ export class FileMemoryStore implements MemoryStorePort {
     return this.readArray<MemoryPacketMetadata>(this.packetPath(sessionId));
   }
 
-  async getLastPacketMetadata(sessionId: string, nodeId: string): Promise<MemoryPacketMetadata | undefined> {
+  async getLastPacketMetadata(
+    sessionId: string,
+    nodeId: string,
+  ): Promise<MemoryPacketMetadata | undefined> {
     const packets = await this.readArray<MemoryPacketMetadata>(this.packetPath(sessionId));
     return packets.findLast((packet) => packet.nodeId === nodeId);
   }
@@ -134,7 +153,10 @@ export class FileMemoryStore implements MemoryStorePort {
           ...scope,
           sessionId,
         };
-        await this.writeJson(this.scopePathForLifetime(sessionId, normalized.scopeId, normalized.lifetime), normalized);
+        await this.writeJson(
+          this.scopePathForLifetime(sessionId, normalized.scopeId, normalized.lifetime),
+          normalized,
+        );
       }
       await this.writeJson(this.episodicPath(sessionId), data.episodic.slice(-500));
       if (data.audit) {
@@ -206,12 +228,16 @@ export class FileMemoryStore implements MemoryStorePort {
 
   private async writeJson(path: string, value: unknown): Promise<void> {
     await mkdir(dirname(path), { recursive: true });
-    const temp = `${path}.${process.pid}.${this.writeCounter += 1}.tmp`;
+    const temp = `${path}.${process.pid}.${(this.writeCounter += 1)}.tmp`;
     await writeFile(temp, `${JSON.stringify(value, null, 2)}\n`, "utf8");
     await rename(temp, path);
   }
 
-  private scopePathForLifetime(sessionId: string, scopeId: string, lifetime: MemoryScopeDocument["lifetime"]): string {
+  private scopePathForLifetime(
+    sessionId: string,
+    scopeId: string,
+    lifetime: MemoryScopeDocument["lifetime"],
+  ): string {
     if (lifetime === "project") {
       return join(this.baseDir, "project", "scopes", `${safe(scopeId)}.json`);
     }
@@ -301,7 +327,10 @@ function truncate(text: string, maxChars: number): string {
   return `${text.slice(0, Math.max(0, maxChars - 15)).trimEnd()}\n[truncated]`;
 }
 
-function applyPatch(existing: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+function applyPatch(
+  existing: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
   const next = { ...existing };
   for (const [key, value] of Object.entries(patch)) {
     if (value === null) {
@@ -314,7 +343,10 @@ function applyPatch(existing: Record<string, unknown>, patch: Record<string, unk
 }
 
 function safe(value: string): string {
-  const normalized = value.trim().replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-");
+  const normalized = value
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-");
   if (!normalized || normalized === "." || normalized === "..") {
     throw new Error("Memory identifiers must contain at least one safe character.");
   }

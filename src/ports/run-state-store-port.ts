@@ -45,9 +45,18 @@ export interface RunStateMutationResult {
 
 export interface RunStateStorePort {
   getSnapshot(runId: string): Promise<RunStateSnapshot | undefined>;
-  createRun(runId: string, seed?: Partial<Omit<RunStateSnapshot, "runId" | "version" | "mutationLog">>): Promise<RunStateSnapshot>;
+  createRun(
+    runId: string,
+    seed?: Partial<Omit<RunStateSnapshot, "runId" | "version" | "mutationLog">>,
+  ): Promise<RunStateSnapshot>;
   registerCapabilityToken?(runId: string, actor: string, token: string): Promise<void>;
   mutate(runId: string, request: RunStateMutationRequest): Promise<RunStateMutationResult>;
   listMutations(runId: string): Promise<RunStateMutationRecord[]>;
-  buildOperationalReplay(runId: string): Promise<Array<Pick<RunStateMutationRecord, "seq" | "path" | "action" | "accepted" | "reason" | "timestamp">>>;
+  buildOperationalReplay(
+    runId: string,
+  ): Promise<
+    Array<
+      Pick<RunStateMutationRecord, "seq" | "path" | "action" | "accepted" | "reason" | "timestamp">
+    >
+  >;
 }

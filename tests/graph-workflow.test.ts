@@ -25,7 +25,9 @@ import { loadProjectConfig } from "../src/application/project-config.js";
 import type { ExecutionGraph, ExecutionGraphNode } from "../src/domain/types.js";
 import { parse as parseYaml } from "yaml";
 
-function makeNode(partial: Partial<ExecutionGraphNode> & Pick<ExecutionGraphNode, "id">): ExecutionGraphNode {
+function makeNode(
+  partial: Partial<ExecutionGraphNode> & Pick<ExecutionGraphNode, "id">,
+): ExecutionGraphNode {
   return {
     kind: "task",
     label: partial.label ?? partial.id,
@@ -107,7 +109,10 @@ test("applyPipelineTemplate replaces root {{input}} only", () => {
 });
 
 test("resolveGraphWorkflowVariant prefers explicit override and smart defaults", () => {
-  assert.equal(resolveGraphWorkflowVariant({ prompt: "", explicitVariant: "pipeline" }), "pipeline");
+  assert.equal(
+    resolveGraphWorkflowVariant({ prompt: "", explicitVariant: "pipeline" }),
+    "pipeline",
+  );
   assert.equal(resolveGraphWorkflowVariant({ prompt: "new task" }), "pipeline");
   assert.equal(resolveGraphWorkflowVariant({ prompt: "", defaultVariant: "playbook" }), "playbook");
   assert.equal(resolveGraphWorkflowVariant({ prompt: "" }), "playbook");
@@ -166,10 +171,7 @@ test("store saves and lists sidecar files", async () => {
 });
 
 test("parseGraphWorkflowSidecar rejects invalid documents", () => {
-  assert.throws(
-    () => parseGraphWorkflowSidecar({ kind: "agent-list" }),
-    /kind must be "graph"/,
-  );
+  assert.throws(() => parseGraphWorkflowSidecar({ kind: "agent-list" }), /kind must be "graph"/);
 });
 
 test("rootPromptSuitableForPipeline detects substitutable roots", () => {

@@ -59,9 +59,10 @@ export function createModelFactory(input: {
     }
 
     const effectiveBaseUrl = input.baseUrlOverride ?? runtime.baseUrl;
-    const created = runtime.hostKind === "http"
-      ? new HttpLanguageModelAdapter({ model, baseUrl: effectiveBaseUrl })
-      : new OllamaLanguageModelAdapter({ model, baseUrl: effectiveBaseUrl });
+    const created =
+      runtime.hostKind === "http"
+        ? new HttpLanguageModelAdapter({ model, baseUrl: effectiveBaseUrl })
+        : new OllamaLanguageModelAdapter({ model, baseUrl: effectiveBaseUrl });
     input.trackCleanup(created);
     input.modelCache.set(modelKey, created);
     return created;

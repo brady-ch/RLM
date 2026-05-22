@@ -37,9 +37,10 @@ export class MemoryManager {
   snapshot(): MemorySnapshot {
     const totalRamMb = bytesToMb(this.totalmemBytes());
     const freeRamMb = bytesToMb(this.freememBytes());
-    const maxRamMb = this.options.config.maxRamMb === "auto"
-      ? Math.max(0, freeRamMb - this.options.config.reserveSystemRamMb)
-      : this.options.config.maxRamMb;
+    const maxRamMb =
+      this.options.config.maxRamMb === "auto"
+        ? Math.max(0, freeRamMb - this.options.config.reserveSystemRamMb)
+        : this.options.config.maxRamMb;
     const usableRamMb = Math.max(0, maxRamMb);
     const availableRamMb = Math.max(0, usableRamMb - this.reservedRamMb);
 

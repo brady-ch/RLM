@@ -38,7 +38,9 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
     `depth: ${result.metadata.depth.selected} (${result.metadata.depth.source})`,
     `modelCalls: ${result.metadata.modelCalls}`,
     `executionStatus: ${result.metadata.executionStatus ?? "completed"}`,
-    ...(isRunFailure(result) ? [`errors: ${errCount}`, `errorPreview: ${singleLine(result.metadata.errors[0] ?? "")}`] : []),
+    ...(isRunFailure(result)
+      ? [`errors: ${errCount}`, `errorPreview: ${singleLine(result.metadata.errors[0] ?? "")}`]
+      : []),
     `tokens: input=${result.metadata.tokenUsage.inputTokens} output=${result.metadata.tokenUsage.outputTokens} total=${result.metadata.tokenUsage.totalTokens} unknown=${result.metadata.tokenUsage.unknownCompletions}`,
   ];
   if (result.metadata.qualityLoop) {
@@ -49,28 +51,40 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
       `qualityLoopQuality: score=${loop.gate?.score ?? loop.selection?.scoreBasis.find((item) => item.startsWith("best_of_progress_score:"))?.split(":")[1] ?? "none"} issues=${loop.unresolvedIssues.length} status=${loop.status}`,
     );
     if (loop.rubric) {
-      lines.push(`qualityLoopRubric: id=${loop.rubric.id} confidence=${loop.rubric.confidence} signals=${loop.rubric.matchedSignals.length}`);
+      lines.push(
+        `qualityLoopRubric: id=${loop.rubric.id} confidence=${loop.rubric.confidence} signals=${loop.rubric.matchedSignals.length}`,
+      );
     }
     if (loop.gate) {
-      lines.push(`qualityLoopGate: decision=${loop.gate.decision} score=${loop.gate.score} threshold=${loop.gate.passThreshold} failedConditions=${loop.gate.failedConditions.length}`);
+      lines.push(
+        `qualityLoopGate: decision=${loop.gate.decision} score=${loop.gate.score} threshold=${loop.gate.passThreshold} failedConditions=${loop.gate.failedConditions.length}`,
+      );
     }
     if (loop.phaseModels) {
       const phaseModels = Object.values(loop.phaseModels)
-        .map((assignment) => `${assignment.phase}:${assignment.plannedSelection}->${assignment.effectiveModel}`)
+        .map(
+          (assignment) =>
+            `${assignment.phase}:${assignment.plannedSelection}->${assignment.effectiveModel}`,
+        )
         .join(" ");
       lines.push(`qualityLoopModels: ${phaseModels}`);
     }
   }
   lines.push(`answer: ${singleLine(result.answer)}`);
   if (result.metadata.executionGraph?.nodes.length) {
-    const autoApprovedNodes = result.metadata.executionGraph.nodes.filter((node) => node.approvalSource === "auto").length;
+    const autoApprovedNodes = result.metadata.executionGraph.nodes.filter(
+      (node) => node.approvalSource === "auto",
+    ).length;
     lines.push(`autoApprovedNodes=${autoApprovedNodes}`);
     lines.push("nodeModels:");
     for (const node of result.metadata.executionGraph.nodes) {
       const sampling = node.effectiveSampling
         ? Object.entries(node.effectiveSampling.values)
-          .map(([key, value]) => `${key}=${value}(${node.effectiveSampling?.sources[key as keyof typeof node.effectiveSampling.values] ?? "unknown"})`)
-          .join(",")
+            .map(
+              ([key, value]) =>
+                `${key}=${value}(${node.effectiveSampling?.sources[key as keyof typeof node.effectiveSampling.values] ?? "unknown"})`,
+            )
+            .join(",")
         : "pending";
       lines.push(
         `- ${node.id} planned=${node.plannedModel ?? "resolved-at-runtime"} override=${node.modelOverride ?? "none"} source=${node.modelOverrideSource ?? "none"} effective=${node.effectiveModel ?? "pending"} sampling=${sampling} approvalMode=${node.approvalMode ?? "full"} approvalSource=${node.approvalSource ?? "none"} spawnedAfterInitialApproval=${String(node.spawnedAfterInitialApproval ?? false)}`,
@@ -80,14 +94,18 @@ function renderCompact(result: RecursivePromptResult, options: RenderOptions): s
   if (result.metadata.modelSelections.length > 0) {
     lines.push("hosts:");
     for (const selection of result.metadata.modelSelections) {
-      lines.push(`- ${selection.purpose}:${selection.hostId ?? "unknown"} (${selection.hostKind ?? "unknown"}) ${selection.hostEndpoint ?? "n/a"}`);
+      lines.push(
+        `- ${selection.purpose}:${selection.hostId ?? "unknown"} (${selection.hostKind ?? "unknown"}) ${selection.hostEndpoint ?? "n/a"}`,
+      );
     }
   }
 
   if (options.includeTrace) {
     lines.push(
       "trace:",
-      ...result.trace.map((event) => `- ${event.id} depth=${event.depth} ${event.kind}: ${singleLine(event.output)}`),
+      ...result.trace.map(
+        (event) => `- ${event.id} depth=${event.depth} ${event.kind}: ${singleLine(event.output)}`,
+      ),
     );
   }
 
@@ -121,11 +139,13 @@ function renderJson(result: RecursivePromptResult, options: RenderOptions): stri
 }
 
 function isRunFailure(result: RecursivePromptResult): boolean {
-  return result.metadata.executionStatus === "failed"
-    || (result.metadata.errors?.length ?? 0) > 0;
+  return result.metadata.executionStatus === "failed" || (result.metadata.errors?.length ?? 0) > 0;
 }
 
-function inferFailureSummary(result: RecursivePromptResult): { category: ExecutionFailureCategory; label: string } {
+function inferFailureSummary(result: RecursivePromptResult): {
+  category: ExecutionFailureCategory;
+  label: string;
+} {
   const toolErr = result.metadata.toolCalls.some((call) => call.status === "error");
   if (toolErr) {
     return { category: "tool", label: labelForCategory("tool") };

@@ -12,7 +12,11 @@ import {
 
 export class GraphWorkflowSerializerError extends Error {
   constructor(
-    public readonly code: "invalid_sidecar" | "missing_variant" | "missing_template" | "empty_graph",
+    public readonly code:
+      | "invalid_sidecar"
+      | "missing_variant"
+      | "missing_template"
+      | "empty_graph",
     message: string,
   ) {
     super(message);
@@ -69,7 +73,9 @@ function serializeGraphForExport(graph: ExecutionGraph): SerializedGraphWorkflow
   };
 }
 
-function createPipelineGraphFromPlaybook(playbook: SerializedGraphWorkflowGraph): SerializedGraphWorkflowGraph {
+function createPipelineGraphFromPlaybook(
+  playbook: SerializedGraphWorkflowGraph,
+): SerializedGraphWorkflowGraph {
   const root = findGraphRootNode(playbook as ExecutionGraph);
   if (!root) {
     throw new GraphWorkflowSerializerError("empty_graph", "Graph has no root node.");
@@ -87,9 +93,9 @@ function createPipelineGraphFromPlaybook(playbook: SerializedGraphWorkflowGraph)
         originalPrompt: node.prompt ?? node.label,
         composer: node.composer
           ? {
-            ...node.composer,
-            prompt: "{{input}}",
-          }
+              ...node.composer,
+              prompt: "{{input}}",
+            }
           : undefined,
       };
     }),
@@ -138,7 +144,8 @@ function deserializeNode(node: SerializedGraphWorkflowNode): ExecutionGraphNode 
   if (node.modelOverride !== undefined) result.modelOverride = node.modelOverride;
   if (node.modelOverrideSource !== undefined) result.modelOverrideSource = node.modelOverrideSource;
   if (node.expertAgentId !== undefined) result.expertAgentId = node.expertAgentId;
-  if (node.expertAssignmentMode !== undefined) result.expertAssignmentMode = node.expertAssignmentMode;
+  if (node.expertAssignmentMode !== undefined)
+    result.expertAssignmentMode = node.expertAssignmentMode;
   if (node.expertRuntime !== undefined) result.expertRuntime = node.expertRuntime;
   if (node.expertToolAllowlist !== undefined) result.expertToolAllowlist = node.expertToolAllowlist;
   if (node.expertPurposeTiers !== undefined) result.expertPurposeTiers = node.expertPurposeTiers;
@@ -167,22 +174,34 @@ export function parseGraphWorkflowSidecar(raw: unknown): GraphWorkflowSidecar {
 
   const schemaVersion = doc["schemaVersion"];
   if (typeof schemaVersion !== "number" || !Number.isInteger(schemaVersion)) {
-    throw new GraphWorkflowSerializerError("invalid_sidecar", "Sidecar schemaVersion must be an integer.");
+    throw new GraphWorkflowSerializerError(
+      "invalid_sidecar",
+      "Sidecar schemaVersion must be an integer.",
+    );
   }
 
   const graphId = doc["graphId"];
   if (typeof graphId !== "string" || graphId.trim().length === 0) {
-    throw new GraphWorkflowSerializerError("invalid_sidecar", "Sidecar graphId must be a non-empty string.");
+    throw new GraphWorkflowSerializerError(
+      "invalid_sidecar",
+      "Sidecar graphId must be a non-empty string.",
+    );
   }
 
   const updatedAt = doc["updatedAt"];
   if (typeof updatedAt !== "string" || updatedAt.trim().length === 0) {
-    throw new GraphWorkflowSerializerError("invalid_sidecar", "Sidecar updatedAt must be a non-empty string.");
+    throw new GraphWorkflowSerializerError(
+      "invalid_sidecar",
+      "Sidecar updatedAt must be a non-empty string.",
+    );
   }
 
   const variantsRaw = doc["variants"];
   if (!variantsRaw || typeof variantsRaw !== "object") {
-    throw new GraphWorkflowSerializerError("invalid_sidecar", "Sidecar variants must be a mapping.");
+    throw new GraphWorkflowSerializerError(
+      "invalid_sidecar",
+      "Sidecar variants must be a mapping.",
+    );
   }
 
   const variants: GraphWorkflowSidecar["variants"] = {};
@@ -192,20 +211,32 @@ export function parseGraphWorkflowSidecar(raw: unknown): GraphWorkflowSidecar {
       continue;
     }
     if (typeof variantRaw !== "object") {
-      throw new GraphWorkflowSerializerError("invalid_sidecar", `Variant "${key}" must be a mapping.`);
+      throw new GraphWorkflowSerializerError(
+        "invalid_sidecar",
+        `Variant "${key}" must be a mapping.`,
+      );
     }
     const graphRaw = (variantRaw as Record<string, unknown>)["graph"];
     if (!graphRaw || typeof graphRaw !== "object") {
-      throw new GraphWorkflowSerializerError("invalid_sidecar", `Variant "${key}" is missing graph.`);
+      throw new GraphWorkflowSerializerError(
+        "invalid_sidecar",
+        `Variant "${key}" is missing graph.`,
+      );
     }
     const graphDoc = graphRaw as Record<string, unknown>;
     const nodes = graphDoc["nodes"];
     const edges = graphDoc["edges"];
     if (!Array.isArray(nodes)) {
-      throw new GraphWorkflowSerializerError("invalid_sidecar", `Variant "${key}" graph.nodes must be an array.`);
+      throw new GraphWorkflowSerializerError(
+        "invalid_sidecar",
+        `Variant "${key}" graph.nodes must be an array.`,
+      );
     }
     if (!Array.isArray(edges)) {
-      throw new GraphWorkflowSerializerError("invalid_sidecar", `Variant "${key}" graph.edges must be an array.`);
+      throw new GraphWorkflowSerializerError(
+        "invalid_sidecar",
+        `Variant "${key}" graph.edges must be an array.`,
+      );
     }
     variants[key] = {
       graph: {
@@ -217,7 +248,10 @@ export function parseGraphWorkflowSidecar(raw: unknown): GraphWorkflowSidecar {
   }
 
   if (!variants.playbook && !variants.pipeline) {
-    throw new GraphWorkflowSerializerError("invalid_sidecar", "Sidecar must include playbook and/or pipeline variant.");
+    throw new GraphWorkflowSerializerError(
+      "invalid_sidecar",
+      "Sidecar must include playbook and/or pipeline variant.",
+    );
   }
 
   const description = doc["description"];
@@ -235,8 +269,9 @@ export function importSidecarToGraph(
   sidecar: GraphWorkflowSidecar,
   variant: GraphWorkflowVariant,
 ): GraphWorkflowImportResult {
-  const variantGraph = sidecar.variants[variant]?.graph
-    ?? (variant === "playbook" ? sidecar.variants.pipeline?.graph : sidecar.variants.playbook?.graph);
+  const variantGraph =
+    sidecar.variants[variant]?.graph ??
+    (variant === "playbook" ? sidecar.variants.pipeline?.graph : sidecar.variants.playbook?.graph);
   if (!variantGraph) {
     throw new GraphWorkflowSerializerError(
       "missing_variant",
@@ -251,7 +286,10 @@ export function importSidecarToGraph(
   };
 }
 
-export function applyPipelineTemplate(graph: ExecutionGraph, input: { input: string }): ExecutionGraph {
+export function applyPipelineTemplate(
+  graph: ExecutionGraph,
+  input: { input: string },
+): ExecutionGraph {
   const root = findGraphRootNode(graph);
   if (!root) {
     throw new GraphWorkflowSerializerError("empty_graph", "Graph has no root node.");
@@ -271,9 +309,12 @@ export function applyPipelineTemplate(graph: ExecutionGraph, input: { input: str
         label: node.label.replace(/\{\{input\}\}/g, templateValue),
         composer: node.composer
           ? {
-            ...node.composer,
-            prompt: (node.composer.prompt ?? node.prompt ?? node.label).replace(/\{\{input\}\}/g, templateValue),
-          }
+              ...node.composer,
+              prompt: (node.composer.prompt ?? node.prompt ?? node.label).replace(
+                /\{\{input\}\}/g,
+                templateValue,
+              ),
+            }
           : undefined,
       };
     }),

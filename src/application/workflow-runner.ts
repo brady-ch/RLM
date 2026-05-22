@@ -58,8 +58,8 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
     const configured = Object.keys(input.projectConfig.workflows);
     const diskHint = ".rlm/workflows/<id>.yaml";
     throw new Error(
-      `Unknown workflow "${input.workflowId}". Configured: ${configured.join(", ") || "(none)"}. `
-      + `Graph sidecars may be resolved from ${diskHint}.`,
+      `Unknown workflow "${input.workflowId}". Configured: ${configured.join(", ") || "(none)"}. ` +
+        `Graph sidecars may be resolved from ${diskHint}.`,
     );
   }
 
@@ -117,9 +117,9 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
       [],
       dispatch.qa
         ? {
-          agent: dispatch.qa.agent,
-          validationCommands: [],
-        }
+            agent: dispatch.qa.agent,
+            validationCommands: [],
+          }
         : undefined,
       [],
       "planned",
@@ -198,7 +198,11 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
   }
 
   const validationResults = dispatch.qa
-    ? await runValidationCommands(dispatch.qa.validationCommands, input.runValidationCommand, input.logger)
+    ? await runValidationCommands(
+        dispatch.qa.validationCommands,
+        input.runValidationCommand,
+        input.logger,
+      )
     : [];
   for (const validation of validationResults) {
     if (validation.status === "error") {
@@ -275,7 +279,10 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
     if (qaSlot) {
       if (qaRejected || !qaResult) {
         qaSlot.terminalStatus = "failed";
-      } else if (qaResult.metadata.errors.length > 0 || qaResult.metadata.executionStatus === "failed") {
+      } else if (
+        qaResult.metadata.errors.length > 0 ||
+        qaResult.metadata.executionStatus === "failed"
+      ) {
         qaSlot.terminalStatus = "failed";
       }
     }
@@ -288,9 +295,9 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
     errors,
     dispatch.qa
       ? {
-        agent: dispatch.qa.agent,
-        validationCommands: validationResults,
-      }
+          agent: dispatch.qa.agent,
+          validationCommands: validationResults,
+        }
       : undefined,
     queues,
     "executed",
@@ -330,9 +337,11 @@ function selectWorkflowDispatch(
   }
 
   const estimatedDepth = estimatePromptDepth(prompt);
-  const tier = workflow.dispatch.tiers.find((candidate) =>
-    candidate.maxEstimatedDepth === undefined || estimatedDepth <= candidate.maxEstimatedDepth
-  ) ?? workflow.dispatch.tiers.at(-1);
+  const tier =
+    workflow.dispatch.tiers.find(
+      (candidate) =>
+        candidate.maxEstimatedDepth === undefined || estimatedDepth <= candidate.maxEstimatedDepth,
+    ) ?? workflow.dispatch.tiers.at(-1);
 
   if (!tier) {
     return {
@@ -390,18 +399,19 @@ function combineWorkflowResults(
   maxToolRounds: number,
 ): RecursivePromptResult {
   const trace: TraceEvent[] = results.flatMap((result) => result.trace);
-  const answer = planExecutionStatus === "planned"
-    ? ""
-    : graphSlots
-      .map((slot) => {
-        const match = results.find((result) => result.metadata.agent.id === slot.agentId);
-        if (match) {
-          return `## ${slot.agentId}\n${match.answer}`;
-        }
-        const errLine = errors.find((line) => line.startsWith(`${slot.agentId}:`));
-        return `## ${slot.agentId}\n${errLine ?? "(agent did not return a result)"}`;
-      })
-      .join("\n\n");
+  const answer =
+    planExecutionStatus === "planned"
+      ? ""
+      : graphSlots
+          .map((slot) => {
+            const match = results.find((result) => result.metadata.agent.id === slot.agentId);
+            if (match) {
+              return `## ${slot.agentId}\n${match.answer}`;
+            }
+            const errLine = errors.find((line) => line.startsWith(`${slot.agentId}:`));
+            return `## ${slot.agentId}\n${errLine ?? "(agent did not return a result)"}`;
+          })
+          .join("\n\n");
   const first = results.find(Boolean);
   const agents = graphSlots.map((slot) => slot.agentId);
   const anySlotFailed = graphSlots.some((slot) => slot.terminalStatus === "failed");
@@ -440,7 +450,8 @@ function combineWorkflowResults(
       modelCallsUsed: results.reduce((total, result) => total + result.metadata.modelCalls, 0),
       modelCallsRemaining: Math.max(
         0,
-        maxModelCalls * Math.max(1, agents.length) - results.reduce((total, result) => total + result.metadata.modelCalls, 0),
+        maxModelCalls * Math.max(1, agents.length) -
+          results.reduce((total, result) => total + result.metadata.modelCalls, 0),
       ),
       toolCallsUsed: results.flatMap((result) => result.metadata.toolCalls).length,
     },
@@ -456,7 +467,8 @@ function combineWorkflowResults(
         inputTokens: total.inputTokens + result.metadata.tokenUsage.inputTokens,
         outputTokens: total.outputTokens + result.metadata.tokenUsage.outputTokens,
         totalTokens: total.totalTokens + result.metadata.tokenUsage.totalTokens,
-        unknownCompletions: total.unknownCompletions + result.metadata.tokenUsage.unknownCompletions,
+        unknownCompletions:
+          total.unknownCompletions + result.metadata.tokenUsage.unknownCompletions,
       }),
       {
         inputTokens: 0,
@@ -466,10 +478,7 @@ function combineWorkflowResults(
       },
     ),
     toolCalls: results.flatMap((result) => result.metadata.toolCalls),
-    errors: [
-      ...results.flatMap((result) => result.metadata.errors),
-      ...errors,
-    ],
+    errors: [...results.flatMap((result) => result.metadata.errors), ...errors],
   };
   if (first?.metadata.configPath) {
     metadata.configPath = first.metadata.configPath;
@@ -542,7 +551,11 @@ async function runValidationCommand(command: string): Promise<ValidationCommandR
       return {
         command,
         status: "error",
-        output: formatCommandOutput(execError.stdout ?? "", execError.stderr ?? execError.message, execError.code ?? 1),
+        output: formatCommandOutput(
+          execError.stdout ?? "",
+          execError.stderr ?? execError.message,
+          execError.code ?? 1,
+        ),
       };
     }
 
@@ -559,7 +572,9 @@ function buildQaPrompt(
   results: RecursivePromptResult[],
   validationResults: ValidationCommandResult[],
 ): string {
-  const agentSummaries = results.map((result) => `## ${result.metadata.agent.id}\n${result.answer}`).join("\n\n");
+  const agentSummaries = results
+    .map((result) => `## ${result.metadata.agent.id}\n${result.answer}`)
+    .join("\n\n");
   const validations = validationResults
     .map((result) => `- ${result.command}: ${result.status}\n${result.output}`)
     .join("\n\n");
@@ -584,7 +599,10 @@ export function buildBugfixQueue(
 ): WorkflowTaskQueue {
   const items: WorkflowTaskQueueItem[] = [];
   for (const task of extractBugfixTasks(qaAnswer)) {
-    const keywords = task.keywords.length > 0 ? task.keywords : inferTaskKeywords(task.task, config.highestPriorityKeywords);
+    const keywords =
+      task.keywords.length > 0
+        ? task.keywords
+        : inferTaskKeywords(task.task, config.highestPriorityKeywords);
     if (hasExistingHighestPriorityKeyword(items, keywords, config.highestPriorityKeywords)) {
       continue;
     }
@@ -608,7 +626,9 @@ function extractBugfixTasks(answer: string): Array<{ task: string; keywords: str
   const tasks: Array<{ task: string; keywords: string[] }> = [];
   const lines = answer.split(/\r?\n/);
   for (const line of lines) {
-    const match = line.match(/^\s*(?:[-*]\s*)?BUGFIX(?:\[(?<keywords>[^\]]+)\])?\s*:\s*(?<task>.+?)\s*$/i);
+    const match = line.match(
+      /^\s*(?:[-*]\s*)?BUGFIX(?:\[(?<keywords>[^\]]+)\])?\s*:\s*(?<task>.+?)\s*$/i,
+    );
     if (!match?.groups) {
       continue;
     }
@@ -638,13 +658,19 @@ function hasExistingHighestPriorityKeyword(
   const candidateHighest = new Set(
     candidateKeywords
       .map((keyword) => keyword.toLowerCase())
-      .filter((keyword) => highestPriorityKeywords.some((priorityKeyword) => priorityKeyword.toLowerCase() === keyword)),
+      .filter((keyword) =>
+        highestPriorityKeywords.some(
+          (priorityKeyword) => priorityKeyword.toLowerCase() === keyword,
+        ),
+      ),
   );
   if (candidateHighest.size === 0) {
     return false;
   }
 
-  return items.some((item) => item.keywords.some((keyword) => candidateHighest.has(keyword.toLowerCase())));
+  return items.some((item) =>
+    item.keywords.some((keyword) => candidateHighest.has(keyword.toLowerCase())),
+  );
 }
 
 function findWorkflowAgent(registry: AgentRegistry, workflowId: string, agentId: string) {
@@ -659,7 +685,7 @@ function findWorkflowAgent(registry: AgentRegistry, workflowId: string, agentId:
 function parseCommand(command: string): string[] {
   const parts: string[] = [];
   let current = "";
-  let quote: "\"" | "'" | undefined;
+  let quote: '"' | "'" | undefined;
 
   for (let index = 0; index < command.length; index += 1) {
     const char = command[index];
@@ -667,7 +693,7 @@ function parseCommand(command: string): string[] {
       continue;
     }
 
-    if ((char === "\"" || char === "'") && !quote) {
+    if ((char === '"' || char === "'") && !quote) {
       quote = char;
       continue;
     }
@@ -696,7 +722,9 @@ function parseCommand(command: string): string[] {
 }
 
 function formatCommandOutput(stdout: string, stderr: string, exitCode: number): string {
-  return [`exitCode: ${exitCode}`, `stdout:\n${stdout.trim()}`, `stderr:\n${stderr.trim()}`].join("\n");
+  return [`exitCode: ${exitCode}`, `stdout:\n${stdout.trim()}`, `stderr:\n${stderr.trim()}`].join(
+    "\n",
+  );
 }
 
 function resolveProjectRoot(configPath: string): string {

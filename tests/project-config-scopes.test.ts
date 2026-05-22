@@ -3,7 +3,11 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { loadProjectConfig, resolveRuntimeConfig, seedProjectRlmStarter } from "../src/application/project-config.js";
+import {
+  loadProjectConfig,
+  resolveRuntimeConfig,
+  seedProjectRlmStarter,
+} from "../src/application/project-config.js";
 import { resolveLaunchMode } from "../src/cli/first-run.js";
 
 test("layered config lets project agent override global agent with same id", async () => {
@@ -67,8 +71,7 @@ models:
 
     assert.ok(loaded.config.agents["a"]?.tools.includes("web_search"));
     assert.ok(loaded.config.agents["b"]?.tools.includes("web_fetch"));
-  }
-  finally {
+  } finally {
     process.chdir(prevCwd);
     process.env.HOME = prevHome;
     process.env.USERPROFILE = prevUserProfile;
@@ -94,13 +97,15 @@ test("invalid scoped yaml surfaces the file path in the error message", async ()
   process.chdir(projectRoot);
 
   try {
-    await assert.rejects(() => loadProjectConfig(), (error: unknown) => {
-      const message = error instanceof Error ? error.message : "";
-      assert.ok(message.includes(brokenFile), message);
-      return true;
-    });
-  }
-  finally {
+    await assert.rejects(
+      () => loadProjectConfig(),
+      (error: unknown) => {
+        const message = error instanceof Error ? error.message : "";
+        assert.ok(message.includes(brokenFile), message);
+        return true;
+      },
+    );
+  } finally {
     process.chdir(prevCwd);
     process.env.HOME = prevHome;
     process.env.USERPROFILE = prevUserProfile;
@@ -129,8 +134,7 @@ test("starter seed writes project .rlm once and skips duplicates", async () => {
     assert.equal(await seedProjectRlmStarter(sandbox), false);
     const reloaded = await loadProjectConfig();
     assert.ok(reloaded.config.agents["coding"]);
-  }
-  finally {
+  } finally {
     process.chdir(prevCwd);
     await rm(sandbox, { recursive: true, force: true });
   }
@@ -149,8 +153,7 @@ test("quality loop config defaults to disabled bounded runtime", async () => {
       maxIterations: 3,
       budgetBehavior: "stop_before_partial_iteration",
     });
-  }
-  finally {
+  } finally {
     await rm(sandbox, { recursive: true, force: true });
   }
 });
@@ -159,13 +162,17 @@ test("quality loop config accepts explicit bounded runtime", async () => {
   const sandbox = await mkdtemp(join(tmpdir(), "rlm-quality-loop-explicit-"));
   try {
     const configPath = join(sandbox, "rlm.config.yaml");
-    await writeFile(configPath, `
+    await writeFile(
+      configPath,
+      `
 runtime:
   qualityLoop:
     enabled: true
     maxIterations: 5
     budgetBehavior: stop_before_partial_iteration
-`, "utf8");
+`,
+      "utf8",
+    );
 
     const loaded = await loadProjectConfig(configPath);
 
@@ -174,8 +181,7 @@ runtime:
       maxIterations: 5,
       budgetBehavior: "stop_before_partial_iteration",
     });
-  }
-  finally {
+  } finally {
     await rm(sandbox, { recursive: true, force: true });
   }
 });
@@ -184,21 +190,27 @@ test("quality loop config rejects invalid max iterations", async () => {
   const sandbox = await mkdtemp(join(tmpdir(), "rlm-quality-loop-invalid-"));
   try {
     const configPath = join(sandbox, "rlm.config.yaml");
-    await writeFile(configPath, `
+    await writeFile(
+      configPath,
+      `
 runtime:
   qualityLoop:
     enabled: true
     maxIterations: 0
     budgetBehavior: stop_before_partial_iteration
-`, "utf8");
+`,
+      "utf8",
+    );
 
-    await assert.rejects(() => loadProjectConfig(configPath), (error: unknown) => {
-      const message = error instanceof Error ? error.message : "";
-      assert.ok(message.includes("maxIterations"), message);
-      return true;
-    });
-  }
-  finally {
+    await assert.rejects(
+      () => loadProjectConfig(configPath),
+      (error: unknown) => {
+        const message = error instanceof Error ? error.message : "";
+        assert.ok(message.includes("maxIterations"), message);
+        return true;
+      },
+    );
+  } finally {
     await rm(sandbox, { recursive: true, force: true });
   }
 });
@@ -207,7 +219,9 @@ test("resolveRuntimeConfig deep-merges qualityLoop.phaseModels with CLI override
   const sandbox = await mkdtemp(join(tmpdir(), "rlm-quality-loop-phase-merge-"));
   try {
     const configPath = join(sandbox, "rlm.config.yaml");
-    await writeFile(configPath, `
+    await writeFile(
+      configPath,
+      `
 runtime:
   qualityLoop:
     enabled: false
@@ -216,7 +230,9 @@ runtime:
     phaseModels:
       gate: large
       critique: small
-`, "utf8");
+`,
+      "utf8",
+    );
 
     const loaded = await loadProjectConfig(configPath);
     const runtime = resolveRuntimeConfig(loaded.config, {
@@ -235,8 +251,7 @@ runtime:
         critique: "small",
       },
     });
-  }
-  finally {
+  } finally {
     await rm(sandbox, { recursive: true, force: true });
   }
 });
@@ -245,12 +260,16 @@ test("resolveRuntimeConfig merges phaseModels from YAML and partial CLI phaseMod
   const sandbox = await mkdtemp(join(tmpdir(), "rlm-quality-loop-phase-both-"));
   try {
     const configPath = join(sandbox, "rlm.config.yaml");
-    await writeFile(configPath, `
+    await writeFile(
+      configPath,
+      `
 runtime:
   qualityLoop:
     phaseModels:
       gate: large
-`, "utf8");
+`,
+      "utf8",
+    );
 
     const loaded = await loadProjectConfig(configPath);
     const runtime = resolveRuntimeConfig(loaded.config, {
@@ -265,8 +284,7 @@ runtime:
       gate: "large",
       refine: "medium",
     });
-  }
-  finally {
+  } finally {
     await rm(sandbox, { recursive: true, force: true });
   }
 });
@@ -275,7 +293,9 @@ test("project config accepts optional sampling defaults and model profiles", asy
   const sandbox = await mkdtemp(join(tmpdir(), "rlm-sampling-config-"));
   try {
     const configPath = join(sandbox, "rlm.config.yaml");
-    await writeFile(configPath, `
+    await writeFile(
+      configPath,
+      `
 models:
   sampling:
     defaults:
@@ -285,7 +305,9 @@ models:
       granite4.1:3b:
         temperature: 0.2
         maxTokens: 512
-`, "utf8");
+`,
+      "utf8",
+    );
 
     const loaded = await loadProjectConfig(configPath);
 
@@ -301,8 +323,7 @@ models:
         },
       },
     });
-  }
-  finally {
+  } finally {
     await rm(sandbox, { recursive: true, force: true });
   }
 });

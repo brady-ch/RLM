@@ -114,7 +114,10 @@ export function restoreGraphWorkflowMetadata(payload: SavedSessionPayload): {
   degraded: boolean;
   note?: string;
 } {
-  const raw = payload.graphWorkflowMetadata as Partial<SavedGraphWorkflowMetadataSection> | null | undefined;
+  const raw = payload.graphWorkflowMetadata as
+    | Partial<SavedGraphWorkflowMetadataSection>
+    | null
+    | undefined;
   if (!raw || raw.version !== 1) {
     const note = "Session saved before v1.5 graph workflow metadata; workflow link not restored.";
     return {
@@ -151,7 +154,10 @@ export async function restoreSessionMemory(input: {
     });
   }
 
-  const vectorSection = input.payload.vectorIndex as Partial<SavedVectorIndexSection> | null | undefined;
+  const vectorSection = input.payload.vectorIndex as
+    | Partial<SavedVectorIndexSection>
+    | null
+    | undefined;
   if (vectorSection?.version === 2 && Array.isArray(vectorSection.records)) {
     await input.vectorIndex.mergeSessionRecords(runId, vectorSection.records);
   }

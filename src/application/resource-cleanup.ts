@@ -35,18 +35,20 @@ export class ResourceCleanup {
       },
     });
 
-    await Promise.all(resources.map(async (resource) => {
-      try {
-        await resource.close();
-      } catch (error: unknown) {
-        this.logger?.log({
-          stage: "shutdown",
-          message: "resource close failed",
-          data: {
-            error: error instanceof Error ? error.message : String(error),
-          },
-        });
-      }
-    }));
+    await Promise.all(
+      resources.map(async (resource) => {
+        try {
+          await resource.close();
+        } catch (error: unknown) {
+          this.logger?.log({
+            stage: "shutdown",
+            message: "resource close failed",
+            data: {
+              error: error instanceof Error ? error.message : String(error),
+            },
+          });
+        }
+      }),
+    );
   }
 }

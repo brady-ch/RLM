@@ -1,7 +1,11 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import type { InteropConfig, McpServerConfig, SkillPathPolicyConfig } from "./project-config.js";
-import { createRuntimeEvent, type RuntimeEvent, type RuntimeEventSeverity } from "./runtime-events.js";
+import {
+  createRuntimeEvent,
+  type RuntimeEvent,
+  type RuntimeEventSeverity,
+} from "./runtime-events.js";
 
 export interface SequenceAllocator {
   nextSeq(runId: string): Promise<number>;
@@ -120,7 +124,10 @@ export class McpSkillRuntime {
     return this.config.skills.cache;
   }
 
-  async resolveSkill(name: string, candidates: SkillCandidate[]): Promise<ResolvedSkill | undefined> {
+  async resolveSkill(
+    name: string,
+    candidates: SkillCandidate[],
+  ): Promise<ResolvedSkill | undefined> {
     const warnings: RuntimeEvent[] = [];
     const ordered = orderCandidatesByPath(candidates, this.getSkillSearchPaths());
     for (const candidate of ordered) {
@@ -140,7 +147,9 @@ export class McpSkillRuntime {
 
         warnings.push(event);
         if (strictness === "strict") {
-          throw new Error(`Skill parse error at ${candidate.absolutePath}: ${candidate.reason ?? "unknown"}`);
+          throw new Error(
+            `Skill parse error at ${candidate.absolutePath}: ${candidate.reason ?? "unknown"}`,
+          );
         }
         continue;
       }
@@ -150,7 +159,12 @@ export class McpSkillRuntime {
     return undefined;
   }
 
-  async markDisconnected(serverId: string, reason: string, affectedNodes: Array<{ id: string; type: string; model: string }>, pendingCheckpointCount: number): Promise<void> {
+  async markDisconnected(
+    serverId: string,
+    reason: string,
+    affectedNodes: Array<{ id: string; type: string; model: string }>,
+    pendingCheckpointCount: number,
+  ): Promise<void> {
     const state = this.getServerState(serverId);
     state.connected = false;
     state.pauseReason = reason;
@@ -168,7 +182,11 @@ export class McpSkillRuntime {
     });
   }
 
-  async tickOutage(serverId: string, affectedNodes: Array<{ id: string; type: string; model: string }>, pendingCheckpointCount: number): Promise<void> {
+  async tickOutage(
+    serverId: string,
+    affectedNodes: Array<{ id: string; type: string; model: string }>,
+    pendingCheckpointCount: number,
+  ): Promise<void> {
     const state = this.getServerState(serverId);
     if (state.connected || state.pausedAtMs === undefined) {
       return;
@@ -176,7 +194,8 @@ export class McpSkillRuntime {
 
     state.blockedEvents += 1;
     const duration = this.now() - state.pausedAtMs;
-    const nextSeverity = duration >= ERROR_THRESHOLD_MS ? "error" : duration >= WARN_THRESHOLD_MS ? "warn" : "info";
+    const nextSeverity =
+      duration >= ERROR_THRESHOLD_MS ? "error" : duration >= WARN_THRESHOLD_MS ? "warn" : "info";
     if (nextSeverity === state.escalatedSeverity || nextSeverity === "info") {
       return;
     }
@@ -192,7 +211,11 @@ export class McpSkillRuntime {
     });
   }
 
-  async markReconnected(serverId: string, affectedNodes: Array<{ id: string; type: string; model: string }>, pendingCheckpointCount: number): Promise<void> {
+  async markReconnected(
+    serverId: string,
+    affectedNodes: Array<{ id: string; type: string; model: string }>,
+    pendingCheckpointCount: number,
+  ): Promise<void> {
     const state = this.getServerState(serverId);
     if (state.pausedAtMs === undefined) {
       state.connected = true;
@@ -251,7 +274,11 @@ export class McpSkillRuntime {
     return state;
   }
 
-  private outageMetrics(state: McpState, affectedNodes: Array<{ id: string; type: string; model: string }>, pendingCheckpointCount: number): Record<string, unknown> {
+  private outageMetrics(
+    state: McpState,
+    affectedNodes: Array<{ id: string; type: string; model: string }>,
+    pendingCheckpointCount: number,
+  ): Record<string, unknown> {
     const outageDuration = state.pausedAtMs === undefined ? 0 : this.now() - state.pausedAtMs;
     return {
       outage_duration_ms: outageDuration,
@@ -293,7 +320,10 @@ export class McpSkillRuntime {
   }
 }
 
-function orderCandidatesByPath(candidates: SkillCandidate[], searchPaths: string[]): SkillCandidate[] {
+function orderCandidatesByPath(
+  candidates: SkillCandidate[],
+  searchPaths: string[],
+): SkillCandidate[] {
   const ordered: SkillCandidate[] = [];
   for (const pathPrefix of searchPaths.map((path) => resolve(path))) {
     for (const candidate of candidates) {

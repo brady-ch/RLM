@@ -7,16 +7,31 @@ import type { ToolExecutionResult, ToolPort } from "../ports/tool-port.js";
 const execFileAsync = promisify(execFile);
 
 const searchSchema = z.object({
-  rawQuery: z.string().optional().describe("Optional free-form query text combined with structured fields."),
+  rawQuery: z
+    .string()
+    .optional()
+    .describe("Optional free-form query text combined with structured fields."),
   terms: z.array(z.string()).optional().describe("General search terms."),
   exactPhrases: z.array(z.string()).optional().describe("Phrases to wrap in quotes."),
   requiredTerms: z.array(z.string()).optional().describe("Terms to require with +term syntax."),
   excludedTerms: z.array(z.string()).optional().describe("Terms to exclude with -term syntax."),
   siteFilters: z.array(z.string()).optional().describe("Domains to restrict with site:domain."),
   fileType: z.string().optional().describe("File type to restrict with filetype:, such as pdf."),
-  after: z.string().optional().describe("Lower date bound as YYYY-MM-DD, emitted as after:YYYY-MM-DD."),
-  before: z.string().optional().describe("Upper date bound as YYYY-MM-DD, emitted as before:YYYY-MM-DD."),
-  num: z.number().int().positive().max(10).optional().describe("Number of results to return. Defaults to 5."),
+  after: z
+    .string()
+    .optional()
+    .describe("Lower date bound as YYYY-MM-DD, emitted as after:YYYY-MM-DD."),
+  before: z
+    .string()
+    .optional()
+    .describe("Upper date bound as YYYY-MM-DD, emitted as before:YYYY-MM-DD."),
+  num: z
+    .number()
+    .int()
+    .positive()
+    .max(10)
+    .optional()
+    .describe("Number of results to return. Defaults to 5."),
 });
 
 /** DuckDuckGo Lite; HTML includes redirect links with uddg= target URLs when access is not blocked. */
@@ -90,12 +105,14 @@ export class WebSearchTool implements ToolPort {
       }
 
       const reduced = await filterHtmlForSearchResults(html, this.sedPath);
-      const results = parseUddgLines(reduced).slice(0, num).map((row, index) => ({
-        position: index + 1,
-        title: row.title,
-        link: row.link,
-        snippet: row.snippet,
-      }));
+      const results = parseUddgLines(reduced)
+        .slice(0, num)
+        .map((row, index) => ({
+          position: index + 1,
+          title: row.title,
+          link: row.link,
+          snippet: row.snippet,
+        }));
 
       return {
         status: "success",
@@ -110,17 +127,25 @@ export class WebSearchTool implements ToolPort {
   }
 }
 
-async function fetchHtmlWithCurl(url: string, curlPath: string, timeoutSeconds: number): Promise<string> {
+async function fetchHtmlWithCurl(
+  url: string,
+  curlPath: string,
+  timeoutSeconds: number,
+): Promise<string> {
   try {
-    const { stdout } = await execFileAsync(curlPath, [
-      "-sS",
-      "-L",
-      "--max-time",
-      String(timeoutSeconds),
-      "-A",
-      "Mozilla/5.0 (compatible; RLM-web-search/1.0)",
-      url,
-    ], { maxBuffer: 4_000_000, encoding: "utf8" });
+    const { stdout } = await execFileAsync(
+      curlPath,
+      [
+        "-sS",
+        "-L",
+        "--max-time",
+        String(timeoutSeconds),
+        "-A",
+        "Mozilla/5.0 (compatible; RLM-web-search/1.0)",
+        url,
+      ],
+      { maxBuffer: 4_000_000, encoding: "utf8" },
+    );
     return stdout;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
@@ -198,7 +223,8 @@ export function parseUddgLines(reduced: string): UddgRow[] {
     }
     seen.add(link);
 
-    const snippetMatch = /class="[^"]*result-snippet[^"]*"[^>]*>([^<]*)</i.exec(line) ??
+    const snippetMatch =
+      /class="[^"]*result-snippet[^"]*"[^>]*>([^<]*)</i.exec(line) ??
       /class="[^"]*result__snippet[^"]*"[^>]*>([^<]*)</i.exec(line);
     const snippetRaw = snippetMatch?.[1];
     const snippet = snippetRaw !== undefined ? stripTags(snippetRaw.trim()).slice(0, 240) : "";
@@ -210,5 +236,8 @@ export function parseUddgLines(reduced: string): UddgRow[] {
 }
 
 function stripTags(s: string): string {
-  return s.replaceAll(/<[^>]+>/g, " ").replaceAll(/\s+/g, " ").trim();
+  return s
+    .replaceAll(/<[^>]+>/g, " ")
+    .replaceAll(/\s+/g, " ")
+    .trim();
 }

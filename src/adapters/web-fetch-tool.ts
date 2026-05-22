@@ -4,8 +4,17 @@ import type { ToolExecutionResult, ToolPort } from "../ports/tool-port.js";
 
 const webFetchSchema = z.object({
   url: z.string().url().describe("HTTP or HTTPS URL to fetch and analyze."),
-  query: z.string().optional().describe("Research question or keyword query used to score page sections."),
-  maxSections: z.number().int().positive().max(10).optional().describe("Maximum selected content sections to return. Defaults to 5."),
+  query: z
+    .string()
+    .optional()
+    .describe("Research question or keyword query used to score page sections."),
+  maxSections: z
+    .number()
+    .int()
+    .positive()
+    .max(10)
+    .optional()
+    .describe("Maximum selected content sections to return. Defaults to 5."),
 });
 
 export interface WebFetchToolOptions {
@@ -62,7 +71,11 @@ export class WebFetchTool implements ToolPort {
       }
 
       const html = await response.text();
-      const analysis = analyzeHtmlContent(html, parsed.data.query ?? "", parsed.data.maxSections ?? 5);
+      const analysis = analyzeHtmlContent(
+        html,
+        parsed.data.query ?? "",
+        parsed.data.maxSections ?? 5,
+      );
       return {
         status: "success",
         output: JSON.stringify({

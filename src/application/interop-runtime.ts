@@ -82,7 +82,12 @@ export async function createMcpTools(
         });
       }
     } catch (error: unknown) {
-      await runtime.markDisconnected(server.id, error instanceof Error ? error.message : String(error), [], 0);
+      await runtime.markDisconnected(
+        server.id,
+        error instanceof Error ? error.message : String(error),
+        [],
+        0,
+      );
       if (server.required) {
         throw error;
       }
@@ -94,8 +99,9 @@ export async function createMcpTools(
 async function toSkillCandidate(path: string): Promise<SkillCandidate> {
   const content = await readFile(path, "utf8");
   const frontmatter = content.match(/^---\n([\s\S]*?)\n---/);
-  const name = frontmatter?.[1]?.match(/^name:\s*["']?([^"'\n]+)["']?\s*$/m)?.[1]?.trim()
-    ?? basename(resolve(path, ".."));
+  const name =
+    frontmatter?.[1]?.match(/^name:\s*["']?([^"'\n]+)["']?\s*$/m)?.[1]?.trim() ??
+    basename(resolve(path, ".."));
   return {
     name,
     absolutePath: resolve(path),
@@ -128,7 +134,10 @@ type McpToolDescriptor = {
 class StdioMcpClient {
   readonly process: ChildProcessWithoutNullStreams;
   private nextId = 1;
-  private readonly pending = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>();
+  private readonly pending = new Map<
+    number,
+    { resolve: (value: unknown) => void; reject: (error: Error) => void }
+  >();
   private buffer = "";
 
   constructor(private readonly server: McpServerConfig) {
@@ -152,7 +161,11 @@ class StdioMcpClient {
 
   async listTools(): Promise<McpToolDescriptor[]> {
     const result = await this.request("tools/list", {});
-    if (!result || typeof result !== "object" || !Array.isArray((result as { tools?: unknown }).tools)) {
+    if (
+      !result ||
+      typeof result !== "object" ||
+      !Array.isArray((result as { tools?: unknown }).tools)
+    ) {
       return [];
     }
     return (result as { tools: McpToolDescriptor[] }).tools;
@@ -251,9 +264,13 @@ function stringifyToolResult(result: unknown): string {
   if (typeof result === "string") {
     return result;
   }
-  if (result && typeof result === "object" && Array.isArray((result as { content?: unknown }).content)) {
+  if (
+    result &&
+    typeof result === "object" &&
+    Array.isArray((result as { content?: unknown }).content)
+  ) {
     return (result as { content: Array<{ text?: unknown; type?: unknown }> }).content
-      .map((item) => typeof item.text === "string" ? item.text : JSON.stringify(item))
+      .map((item) => (typeof item.text === "string" ? item.text : JSON.stringify(item)))
       .join("\n");
   }
   return JSON.stringify(result);

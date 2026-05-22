@@ -1,7 +1,11 @@
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 import type { RunStateStorePort } from "../ports/run-state-store-port.js";
 import type { ExecutionFailureCategory } from "./execution-failure.js";
-import type { EffectiveSamplingMetadata, LanguageModelPurpose, LanguageModelSamplingOptions } from "../ports/language-model-port.js";
+import type {
+  EffectiveSamplingMetadata,
+  LanguageModelPurpose,
+  LanguageModelSamplingOptions,
+} from "../ports/language-model-port.js";
 import type { MemoryPacketMetadata } from "../ports/memory-store-port.js";
 
 export interface RecursiveModelConfig {
@@ -225,8 +229,17 @@ export interface RuntimeRunState {
 }
 
 export interface RuntimeMemory {
-  buildPacket(input: { nodeId: string; prompt: string; policy: ComposerContextPolicy }): Promise<{ text: string; metadata: MemoryPacketMetadata } | undefined>;
-  appendNodeSummary(input: { nodeId: string; summary: string; scopeIds: string[]; artifactRefs?: string[] }): Promise<void>;
+  buildPacket(input: {
+    nodeId: string;
+    prompt: string;
+    policy: ComposerContextPolicy;
+  }): Promise<{ text: string; metadata: MemoryPacketMetadata } | undefined>;
+  appendNodeSummary(input: {
+    nodeId: string;
+    summary: string;
+    scopeIds: string[];
+    artifactRefs?: string[];
+  }): Promise<void>;
 }
 
 export interface RecursivePromptResult {
@@ -303,11 +316,13 @@ export interface ComposerArtifactRef {
   orderingKey?: string | undefined;
   metadata?: Record<string, string | number | boolean> | undefined;
   /** Last-known validation from runtime events (e.g. run-state / artifact policy). */
-  validation?: {
-    state: "validated" | "skipped" | "failed";
-    reason?: string | undefined;
-    policy?: "strict" | "lenient" | undefined;
-  } | undefined;
+  validation?:
+    | {
+        state: "validated" | "skipped" | "failed";
+        reason?: string | undefined;
+        policy?: "strict" | "lenient" | undefined;
+      }
+    | undefined;
 }
 
 export interface ComposerPlanBudget {
@@ -343,12 +358,14 @@ export interface NodeComposer {
   planBudget: ComposerPlanBudget;
   plannedBy?: "model" | "user" | undefined;
   protectedReasons?: string[] | undefined;
-  pendingPlan?: {
-    parentNodeId: string;
-    childNodeIds: string[];
-    createdAt: string;
-    summary: string;
-  } | undefined;
+  pendingPlan?:
+    | {
+        parentNodeId: string;
+        childNodeIds: string[];
+        createdAt: string;
+        summary: string;
+      }
+    | undefined;
 }
 
 export interface SolvedTask {
@@ -364,15 +381,19 @@ export interface RecursivePromptMetadata {
     source: "auto" | "override";
   };
   configPath?: string | undefined;
-  workflow?: {
-    id: string;
-    agents: string[];
-    variant?: "playbook" | "pipeline" | undefined;
-    qa?: {
-      agent: string;
-      validationCommands: ValidationCommandResult[];
-    } | undefined;
-  } | undefined;
+  workflow?:
+    | {
+        id: string;
+        agents: string[];
+        variant?: "playbook" | "pipeline" | undefined;
+        qa?:
+          | {
+              agent: string;
+              validationCommands: ValidationCommandResult[];
+            }
+          | undefined;
+      }
+    | undefined;
   workflowQueues?: WorkflowTaskQueue[] | undefined;
   executionGraph?: ExecutionGraph | undefined;
   executionStatus?: ExecutionStatus | undefined;
@@ -469,11 +490,13 @@ export interface ExecutionEvent {
   status: ExecutionStatus;
   nodeId?: string | undefined;
   subtype?: "code_execution" | undefined;
-  artifactValidation?: {
-    accepted: boolean;
-    policy: "strict" | "lenient";
-    reason: string;
-  } | undefined;
+  artifactValidation?:
+    | {
+        accepted: boolean;
+        policy: "strict" | "lenient";
+        reason: string;
+      }
+    | undefined;
   modelCallsUsed?: number | undefined;
   modelCallsRemaining?: number | undefined;
   toolCallsUsed?: number | undefined;
@@ -499,11 +522,15 @@ export interface ExecutionControl {
   cancelReason?: () => string | undefined;
   onEvent?: ((event: ExecutionEvent) => void) | undefined;
   registerNode?: ((node: ExecutionGraphNode) => void) | undefined;
-  updateNodeStatus?: ((nodeId: string, status: ExecutionStatus, detail?: ExecutionStatusUpdateDetail) => void) | undefined;
+  updateNodeStatus?:
+    | ((nodeId: string, status: ExecutionStatus, detail?: ExecutionStatusUpdateDetail) => void)
+    | undefined;
   waitForNodeApproval?: ((node: ExecutionGraphNode) => Promise<NodeApprovalDecision>) | undefined;
   pauseFutureAutoApprovals?: (() => void) | undefined;
   autoApprovalPaused?: (() => boolean) | undefined;
-  requestClarification?: ((input: { nodeId: string; promptText: string }) => Promise<string>) | undefined;
+  requestClarification?:
+    | ((input: { nodeId: string; promptText: string }) => Promise<string>)
+    | undefined;
   getClarificationHistory?: (() => ClarificationRecord[]) | undefined;
   getQualityLoopDecision?: ((nodeId: string) => QualityLoopManualDecision | undefined) | undefined;
 }

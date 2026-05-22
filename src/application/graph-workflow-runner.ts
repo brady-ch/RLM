@@ -84,8 +84,9 @@ export function validateGraphForRun(
 
   for (const node of graph.nodes) {
     const agentId = node.expertAgentId ?? "default";
-    const knownAgent = registry.profiles.some((profile) => profile.id === agentId)
-      || Boolean(projectConfig.agents[agentId]);
+    const knownAgent =
+      registry.profiles.some((profile) => profile.id === agentId) ||
+      Boolean(projectConfig.agents[agentId]);
     if (!knownAgent) {
       throw new GraphWorkflowRunError(
         "missing_agent",
@@ -169,7 +170,9 @@ function buildGraphWorkflowResult(
   };
 }
 
-export async function runGraphWorkflow(input: RunGraphWorkflowInput): Promise<RecursivePromptResult> {
+export async function runGraphWorkflow(
+  input: RunGraphWorkflowInput,
+): Promise<RecursivePromptResult> {
   let sidecar;
   try {
     sidecar = await loadGraphWorkflow(input.workflowId, {
@@ -239,7 +242,13 @@ export async function runGraphWorkflow(input: RunGraphWorkflowInput): Promise<Re
     session.finishConfirmedExecution();
   }
 
-  const result = buildGraphWorkflowResult(session, input.workflowId, variant, input.config.maxModelCalls, input.config.maxToolRounds);
+  const result = buildGraphWorkflowResult(
+    session,
+    input.workflowId,
+    variant,
+    input.config.maxModelCalls,
+    input.config.maxToolRounds,
+  );
   input.logger?.log({
     stage: "workflow",
     message: "completed graph workflow",

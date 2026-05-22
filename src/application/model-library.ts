@@ -99,7 +99,9 @@ export class ModelLibraryService {
       }),
       installed,
       jobs: [...this.jobs.values()],
-      tiers: Object.fromEntries(Object.entries(this.input.config.models.tiers).map(([tier, model]) => [tier, model.name])),
+      tiers: Object.fromEntries(
+        Object.entries(this.input.config.models.tiers).map(([tier, model]) => [tier, model.name]),
+      ),
     };
   }
 
@@ -115,7 +117,12 @@ export class ModelLibraryService {
     if (!response.ok) {
       throw new Error(`Hugging Face search failed: HTTP ${response.status}`);
     }
-    const payload = await response.json() as Array<{ id?: string; modelId?: string; tags?: string[]; downloads?: number }>;
+    const payload = (await response.json()) as Array<{
+      id?: string;
+      modelId?: string;
+      tags?: string[];
+      downloads?: number;
+    }>;
     return {
       query: normalized,
       results: payload.map((item) => {
@@ -131,7 +138,9 @@ export class ModelLibraryService {
             : "Unsupported for v1 direct install; Phase 22 only installs curated Ollama models.",
           tags,
           status: ggufCompatible ? "unsupported" : "unsupported",
-          reason: ggufCompatible ? "GGUF import requires a follow-up mapping step." : "No compatible GGUF signal found.",
+          reason: ggufCompatible
+            ? "GGUF import requires a follow-up mapping step."
+            : "No compatible GGUF signal found.",
         };
       }),
     };
@@ -146,7 +155,9 @@ export class ModelLibraryService {
     if (!allowed.has(normalized)) {
       throw new Error(`Model "${normalized}" is not a curated Ollama model.`);
     }
-    const existing = [...this.jobs.values()].find((job) => job.model === normalized && (job.status === "queued" || job.status === "running"));
+    const existing = [...this.jobs.values()].find(
+      (job) => job.model === normalized && (job.status === "queued" || job.status === "running"),
+    );
     if (existing) {
       return existing;
     }
@@ -180,7 +191,9 @@ export class ModelLibraryService {
     if (tier === "small") {
       this.input.config.models.default = model;
     }
-    return Object.fromEntries(Object.entries(this.input.config.models.tiers).map(([key, value]) => [key, value.name]));
+    return Object.fromEntries(
+      Object.entries(this.input.config.models.tiers).map(([key, value]) => [key, value.name]),
+    );
   }
 
   private async listInstalled(): Promise<ModelLibraryEntry[]> {
@@ -189,33 +202,39 @@ export class ModelLibraryService {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-      const payload = await response.json() as { models?: Array<{ name?: string; size?: number }> };
+      const payload = (await response.json()) as {
+        models?: Array<{ name?: string; size?: number }>;
+      };
       return (payload.models ?? []).flatMap((item) => {
         const name = item.name?.trim();
         if (!name) {
           return [];
         }
-        return [{
-          id: name,
-          label: name,
-          source: "installed" as const,
-          ollamaModel: name,
-          description: "Installed Ollama model.",
-          tags: ["installed"],
-          status: "installed" as const,
-        }];
+        return [
+          {
+            id: name,
+            label: name,
+            source: "installed" as const,
+            ollamaModel: name,
+            description: "Installed Ollama model.",
+            tags: ["installed"],
+            status: "installed" as const,
+          },
+        ];
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      return [{
-        id: "ollama-unavailable",
-        label: "Ollama unavailable",
-        source: "installed",
-        description: "Installed model list could not be loaded.",
-        tags: ["error"],
-        status: "failed",
-        reason: message,
-      }];
+      return [
+        {
+          id: "ollama-unavailable",
+          label: "Ollama unavailable",
+          source: "installed",
+          description: "Installed model list could not be loaded.",
+          tags: ["error"],
+          status: "failed",
+          reason: message,
+        },
+      ];
     }
   }
 

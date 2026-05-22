@@ -60,12 +60,7 @@ export function summarizeRunFromNodes(nodes: NodeRunSummaryInput[]): {
     return { terminal: "planned" };
   }
 
-  const terminalStates: ExecutionStatus[] = [
-    "completed",
-    "skipped",
-    "failed",
-    "cancelled",
-  ];
+  const terminalStates: ExecutionStatus[] = ["completed", "skipped", "failed", "cancelled"];
   const allTerminal = nodes.every((node) => terminalStates.includes(node.status));
   if (!allTerminal) {
     const running = nodes.find((n) => n.status === "running" || n.status === "awaiting_approval");

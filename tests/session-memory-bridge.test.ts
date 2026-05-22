@@ -22,7 +22,10 @@ class StubEmbeddings {
 test("buildSavedSessionPayload exports live memory and vector records for runId", async () => {
   const dir = await mkdtemp(join(tmpdir(), "rlm-bridge-save-"));
   try {
-    const memoryStore = new FileMemoryStore({ baseDir: join(dir, "memory"), now: () => "2026-05-21T00:00:00.000Z" });
+    const memoryStore = new FileMemoryStore({
+      baseDir: join(dir, "memory"),
+      now: () => "2026-05-21T00:00:00.000Z",
+    });
     const vectorIndex = new FileVectorIndex({ path: join(dir, "vector-index.json") });
     const runId = "run-save-test";
     await memoryStore.patchScope({
@@ -43,15 +46,17 @@ test("buildSavedSessionPayload exports live memory and vector records for runId"
       scopeIds: ["notes"],
       timestamp: "2026-05-21T00:00:00.000Z",
     });
-    await vectorIndex.replace([{
-      id: "scope:session:notes",
-      sessionId: runId,
-      scopeId: "notes",
-      source: "scope",
-      text: "Scope notes",
-      embedding: [1, 2, 3],
-      updatedAt: "2026-05-21T00:00:00.000Z",
-    } satisfies VectorIndexRecord]);
+    await vectorIndex.replace([
+      {
+        id: "scope:session:notes",
+        sessionId: runId,
+        scopeId: "notes",
+        source: "scope",
+        text: "Scope notes",
+        embedding: [1, 2, 3],
+        updatedAt: "2026-05-21T00:00:00.000Z",
+      } satisfies VectorIndexRecord,
+    ]);
 
     const payload = await buildSavedSessionPayload({
       snapshot: {
@@ -78,7 +83,10 @@ test("buildSavedSessionPayload exports live memory and vector records for runId"
 test("restoreSessionMemory rebinds episodic data under saved runId", async () => {
   const dir = await mkdtemp(join(tmpdir(), "rlm-bridge-restore-"));
   try {
-    const memoryStore = new FileMemoryStore({ baseDir: join(dir, "memory"), now: () => "2026-05-21T00:00:00.000Z" });
+    const memoryStore = new FileMemoryStore({
+      baseDir: join(dir, "memory"),
+      now: () => "2026-05-21T00:00:00.000Z",
+    });
     const vectorIndex = new FileVectorIndex({ path: join(dir, "vector-index.json") });
     const runId = "run-restore-test";
     const payload = await buildSavedSessionPayload({
@@ -93,7 +101,12 @@ test("restoreSessionMemory rebinds episodic data under saved runId", async () =>
       memoryStore,
       vectorIndex,
     });
-    await memoryStore.restoreSessionData("other-run", { scopes: [], episodic: [], audit: [], packets: [] });
+    await memoryStore.restoreSessionData("other-run", {
+      scopes: [],
+      episodic: [],
+      audit: [],
+      packets: [],
+    });
 
     const restoredRunId = await restoreSessionMemory({ payload, memoryStore, vectorIndex });
     assert.equal(restoredRunId, runId);
@@ -105,13 +118,24 @@ test("restoreSessionMemory rebinds episodic data under saved runId", async () =>
 });
 
 test("readRunIdFromPayload prefers saved runId", () => {
-  const runId = readRunIdFromPayload({
-    session: {},
-    artifacts: {},
-    memory: { version: 2, runId: "run-saved", status: "saved", scopes: [], episodic: [], audit: [], packets: [] },
-    preferences: {},
-    vectorIndex: {},
-  }, "run-fallback");
+  const runId = readRunIdFromPayload(
+    {
+      session: {},
+      artifacts: {},
+      memory: {
+        version: 2,
+        runId: "run-saved",
+        status: "saved",
+        scopes: [],
+        episodic: [],
+        audit: [],
+        packets: [],
+      },
+      preferences: {},
+      vectorIndex: {},
+    },
+    "run-fallback",
+  );
   assert.equal(runId, "run-saved");
 });
 
@@ -120,11 +144,35 @@ test("vector index merge preserves other session records", async () => {
   try {
     const vectorIndex = new FileVectorIndex({ path: join(dir, "vector-index.json") });
     await vectorIndex.replace([
-      { id: "a", sessionId: "run-a", scopeId: "s1", source: "scope", text: "a", embedding: [1], updatedAt: "t" },
-      { id: "b", sessionId: "run-b", scopeId: "s2", source: "scope", text: "b", embedding: [2], updatedAt: "t" },
+      {
+        id: "a",
+        sessionId: "run-a",
+        scopeId: "s1",
+        source: "scope",
+        text: "a",
+        embedding: [1],
+        updatedAt: "t",
+      },
+      {
+        id: "b",
+        sessionId: "run-b",
+        scopeId: "s2",
+        source: "scope",
+        text: "b",
+        embedding: [2],
+        updatedAt: "t",
+      },
     ]);
     await vectorIndex.mergeSessionRecords("run-a", [
-      { id: "a2", sessionId: "run-a", scopeId: "s1", source: "scope", text: "a2", embedding: [3], updatedAt: "t" },
+      {
+        id: "a2",
+        sessionId: "run-a",
+        scopeId: "s1",
+        source: "scope",
+        text: "a2",
+        embedding: [3],
+        updatedAt: "t",
+      },
     ]);
     const records = await vectorIndex.read();
     assert.equal(records.filter((record) => record.sessionId === "run-a").length, 1);
@@ -158,9 +206,15 @@ test("semantic memory search does not synchronously rebuild on empty index", asy
 test("saved session round trip through FileSessionStore keeps memory section", async () => {
   const dir = await mkdtemp(join(tmpdir(), "rlm-session-roundtrip-"));
   try {
-    const memoryStore = new FileMemoryStore({ baseDir: join(dir, "memory"), now: () => "2026-05-21T00:00:00.000Z" });
+    const memoryStore = new FileMemoryStore({
+      baseDir: join(dir, "memory"),
+      now: () => "2026-05-21T00:00:00.000Z",
+    });
     const vectorIndex = new FileVectorIndex({ path: join(dir, "vector-index.json") });
-    const sessionStore = new FileSessionStore({ baseDir: join(dir, "sessions"), now: () => "2026-05-21T00:00:00.000Z" });
+    const sessionStore = new FileSessionStore({
+      baseDir: join(dir, "sessions"),
+      now: () => "2026-05-21T00:00:00.000Z",
+    });
     const runId = "run-roundtrip";
     await memoryStore.appendEpisodic({
       id: "ep-round",
@@ -186,7 +240,10 @@ test("saved session round trip through FileSessionStore keeps memory section", a
     assert.equal(saved.status, "complete");
     const loaded = await sessionStore.load("demo");
     assert.equal(readRunIdFromPayload(loaded.payload, "fallback"), runId);
-    assert.equal((loaded.payload.memory as { episodic: Array<{ summary: string }> }).episodic[0]?.summary, "saved summary");
+    assert.equal(
+      (loaded.payload.memory as { episodic: Array<{ summary: string }> }).episodic[0]?.summary,
+      "saved summary",
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

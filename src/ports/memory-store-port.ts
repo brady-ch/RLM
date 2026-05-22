@@ -57,8 +57,20 @@ export interface MemoryPacketMetadata {
   truncated: boolean;
   degraded: boolean;
   reasons: string[];
-  provenance: Array<{ kind: "scope" | "episodic" | "retrieval"; id: string; version?: number | undefined }>;
-  retrievalHits?: Array<{ id: string; scopeId: string; source: "scope" | "episodic" | "artifact"; snippet: string; score: number }> | undefined;
+  provenance: Array<{
+    kind: "scope" | "episodic" | "retrieval";
+    id: string;
+    version?: number | undefined;
+  }>;
+  retrievalHits?:
+    | Array<{
+        id: string;
+        scopeId: string;
+        source: "scope" | "episodic" | "artifact";
+        snippet: string;
+        score: number;
+      }>
+    | undefined;
   createdAt: string;
 }
 
@@ -72,5 +84,8 @@ export interface MemoryStorePort {
   getRollingSummary(sessionId: string, scopeIds: string[], maxChars: number): Promise<string>;
   recordPacketMetadata(metadata: MemoryPacketMetadata): Promise<void>;
   listPacketMetadata(sessionId: string): Promise<MemoryPacketMetadata[]>;
-  getLastPacketMetadata(sessionId: string, nodeId: string): Promise<MemoryPacketMetadata | undefined>;
+  getLastPacketMetadata(
+    sessionId: string,
+    nodeId: string,
+  ): Promise<MemoryPacketMetadata | undefined>;
 }

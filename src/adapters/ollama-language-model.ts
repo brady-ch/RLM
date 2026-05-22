@@ -37,7 +37,10 @@ export class OllamaLanguageModelAdapter implements LanguageModelPort {
     this.client = new ChatOllama(fields);
   }
 
-  async complete(messages: LanguageModelMessage[], options: LanguageModelCompleteOptions = {}): Promise<LanguageModelResponse> {
+  async complete(
+    messages: LanguageModelMessage[],
+    options: LanguageModelCompleteOptions = {},
+  ): Promise<LanguageModelResponse> {
     const client = this.createClient(options.sampling);
     let response: Awaited<ReturnType<typeof this.client.invoke>>;
     if (options.tools && options.tools.length > 0 && options.constrainedToolCalling) {
@@ -64,12 +67,16 @@ export class OllamaLanguageModelAdapter implements LanguageModelPort {
         response = selectionPass;
       }
     } else {
-      const runnable = options.tools && options.tools.length > 0 ? client.bindTools(options.tools) : client;
+      const runnable =
+        options.tools && options.tools.length > 0 ? client.bindTools(options.tools) : client;
       response = await runnable.invoke(messages.map(toLangChainMessage));
     }
-    const content = typeof response.content === "string"
-      ? response.content
-      : response.content.map((part) => (typeof part === "string" ? part : JSON.stringify(part))).join("");
+    const content =
+      typeof response.content === "string"
+        ? response.content
+        : response.content
+            .map((part) => (typeof part === "string" ? part : JSON.stringify(part)))
+            .join("");
 
     return {
       content,
