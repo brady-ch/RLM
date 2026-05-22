@@ -25,7 +25,7 @@
 
 - [x] **Phase 43: Boundary Fixes** — Fix three ARCH-02 violations; introduce ExtensionHostPort; establish regression gate (1/1 plan) — 2026-05-22
 - [x] **Phase 44: Runtime & Interop Split** — Move composition and MCP/skill interop to `src/runtime/` with init-order test (1/1 plan) — 2026-05-22
-- [ ] **Phase 45: Application Concern Grouping** — Group `application/` by execution, graph, memory, plugins, control-server
+- [x] **Phase 45: Application Concern Grouping** — Group `application/` by execution, graph, memory, plugins, control-server (1/1 plan) — 2026-05-22
 - [ ] **Phase 46: Plugin Taxonomy & Builtin Migration** — Manifest schema, PluginLoader, builtin migration, legacy YAML compat
 - [ ] **Phase 47: Concern Map, Tests Mirror & Depcruise Rules** — AGENTS.md taxonomy, mirrored tests, new path rules
 - [ ] **Phase 48: Dependency-Cruiser Ratchet** — Empty baseline, warn→error severity, strict `npm run check`
@@ -104,7 +104,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   2. Former flat root files (agent-runner, workflow-runner, graph-planner, memory-manager, etc.) live under their concern folder or behind a facade re-export
   3. Contributor opening `application/` can find execution, graph, memory, and plugin-manager code by concern without scanning a flat directory
   4. Existing CLI, control-server, and session flows work unchanged after moves
-**Plans**: TBD
+**Plans**: 1/1 complete
 
 ### Phase 46: Plugin Taxonomy & Builtin Migration
 **Goal**: Plugins are first-class registration packages with manifest schema, unified discovery, and built-in tools migrated to the same contract as external plugins.
@@ -188,7 +188,7 @@ Phases execute in numeric order: 43 → 44 → … → 51
 |-------|-----------|----------------|--------|-----------|
 | 43. Boundary Fixes | v1.7 | 1/1 | Complete | 2026-05-22 |
 | 44. Runtime & Interop Split | v1.7 | 1/1 | Complete   | 2026-05-22 |
-| 45. Application Concern Grouping | v1.7 | 0/TBD | Not started | - |
+| 45. Application Concern Grouping | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 46. Plugin Taxonomy & Builtin Migration | v1.7 | 0/TBD | Not started | - |
 | 47. Concern Map, Tests Mirror & Depcruise Rules | v1.7 | 0/TBD | Not started | - |
 | 48. Dependency-Cruiser Ratchet | v1.7 | 0/TBD | Not started | - |

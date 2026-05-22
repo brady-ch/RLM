@@ -14,7 +14,7 @@
 ### Concern Taxonomy (src + project)
 
 - [ ] **TAXN-01**: Publish a canonical concern map in `AGENTS.md` covering `src/` top-level areas (`cli`, `application`, `domain`, `ports`, `runtime`, `plugins`, `adapters`) and how `tests/`, `ui/`, and `scripts/` relate to each concern.
-- [ ] **TAXN-02**: `src/application/` groups modules by concern — at minimum `execution/`, `graph/`, `memory/`, `plugins/` (manager), and `control-server/` — with flat root files reduced to facades or moved behind concern folders.
+- [x] **TAXN-02**: `src/application/` groups modules by concern — at minimum `execution/`, `graph/`, `memory/`, `plugins/` (manager), and `control-server/` — with flat root files reduced to facades or moved behind concern folders.
 - [x] **TAXN-03**: `src/runtime/` owns composition and interop wiring (`composition/`, `interop/`); `application/` no longer hosts `extension-host`, `runtime-composition`, `interop-runtime`, or `mcp-skill-runtime` after extraction.
 - [ ] **TAXN-04**: `src/plugins/` owns registration/distribution packages; `src/adapters/` retains infrastructure port implementations only (persistence, model hosts, tracing) — no new tool implementations land in `adapters/tools/` after migration.
 - [ ] **TAXN-05**: `tests/` layout mirrors the stabilized `src/` concern map (e.g. `tests/runtime/`, `tests/plugins/`, `tests/application/graph/`) with shared helpers remaining in `tests/helpers/`.
@@ -108,7 +108,7 @@
 | REG-01 | Phase 43 | Pending |
 | REG-02 | Phase 43 | Pending |
 | TAXN-01 | Phase 47 | Pending |
-| TAXN-02 | Phase 45 | Pending |
+| TAXN-02 | Phase 45 | Complete |
 | TAXN-03 | Phase 44 | Complete |
 | TAXN-04 | Phase 46 | Pending |
 | TAXN-05 | Phase 47 | Pending |
