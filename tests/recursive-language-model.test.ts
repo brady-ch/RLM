@@ -3982,7 +3982,9 @@ workflows:
     assert.equal(loaded.config.models.default, "small-model");
     assert.equal(loaded.config.runtime.maxModelCalls, 9);
     assert.equal(loaded.config.runtime.maxBranches, 5);
-    assert.deepEqual(loaded.config.workflows["default"]?.agents, ["research", "coding"]);
+    const defaultWorkflow = loaded.config.workflows["default"];
+    assert.ok(defaultWorkflow && "agents" in defaultWorkflow);
+    assert.deepEqual(defaultWorkflow.agents, ["research", "coding"]);
     assert.deepEqual(resolveRuntimeConfig(loaded.config, { maxModelCalls: 3 }), {
       maxDynamicDepth: 2,
       maxBranches: 5,

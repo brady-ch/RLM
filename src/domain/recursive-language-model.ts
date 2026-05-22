@@ -610,12 +610,13 @@ export class RecursiveLanguageModel {
       : undefined;
     let response: Awaited<ReturnType<LanguageModelPort["complete"]>>;
     try {
+      const expertTier = phaseOverride ? undefined : this.expertTierFor(task, purpose);
       response = await this.model.complete(this.withAgentSystemPrompt(messages), {
         tools: [],
         purpose,
         complexityDepth: this.metadata.depth.selected,
-        overrideModel: phaseOverride ? undefined : task.modelOverride,
-        overrideModelSelection: phaseOverride,
+        overrideModel: phaseOverride || expertTier ? undefined : task.modelOverride,
+        overrideModelSelection: phaseOverride ?? expertTier,
         constrainedToolCalling: false,
         sampling: task.samplingOverride,
       });
@@ -1036,12 +1037,15 @@ export class RecursiveLanguageModel {
         toolsEnabled: allowTools,
         prompt: preview(messages.at(-1)?.content ?? ""),
       });
+      const purpose = toModelPurpose(kind);
+      const expertTier = this.expertTierFor(task, purpose);
       const response = await this.model.complete(this.withAgentSystemPrompt(conversation), {
-        tools: allowTools ? [...this.toolsByName.values()] : [],
-        purpose: toModelPurpose(kind),
+        tools: allowTools ? this.toolsForTask(task) : [],
+        purpose,
         complexityDepth: this.metadata.depth.selected,
-        overrideModel: task.modelOverride,
-        constrainedToolCalling: allowTools && this.toolsByName.size > 0,
+        overrideModel: expertTier ? undefined : task.modelOverride,
+        overrideModelSelection: expertTier,
+        constrainedToolCalling: allowTools && this.toolsForTask(task).length > 0,
         sampling: task.samplingOverride,
       });
       this.updateExecutionNodeModel(task.id, response.model, task.modelOverride, response.sampling);
@@ -1204,11 +1208,14 @@ export class RecursiveLanguageModel {
       toolsEnabled: false,
       prompt: preview(messages.at(-1)?.content ?? ""),
     });
+    const purpose = toModelPurpose(kind);
+    const expertTier = this.expertTierFor(task, purpose);
     const response = await this.model.complete(this.withAgentSystemPrompt(messages), {
       tools: [],
-      purpose: toModelPurpose(kind),
+      purpose,
       complexityDepth: this.metadata.depth.selected,
-      overrideModel: task.modelOverride,
+      overrideModel: expertTier ? undefined : task.modelOverride,
+      overrideModelSelection: expertTier,
       constrainedToolCalling: false,
       sampling: task.samplingOverride,
     });
@@ -1477,6 +1484,11 @@ export class RecursiveLanguageModel {
         modelOverride: task.modelOverride,
         modelOverrideSource: task.modelOverride ? "user" : "none",
         samplingOverride: task.samplingOverride,
+        expertAgentId: task.expertAgentId,
+        expertAssignmentMode: task.expertAssignmentMode,
+        expertRuntime: task.expertRuntime,
+        expertToolAllowlist: task.expertToolAllowlist,
+        expertPurposeTiers: task.expertPurposeTiers,
         editableFields: ["prompt"],
         depth: task.depth,
         status: "ready",
@@ -1621,6 +1633,11 @@ export class RecursiveLanguageModel {
       modelOverride: existingNode?.modelOverride ?? task.modelOverride,
       modelOverrideSource: existingNode?.modelOverrideSource ?? (task.modelOverride ? "user" : "none"),
       samplingOverride: existingNode?.samplingOverride ?? task.samplingOverride,
+      expertAgentId: existingNode?.expertAgentId ?? task.expertAgentId,
+      expertAssignmentMode: existingNode?.expertAssignmentMode ?? task.expertAssignmentMode,
+      expertRuntime: existingNode?.expertRuntime ?? task.expertRuntime,
+      expertToolAllowlist: existingNode?.expertToolAllowlist ?? task.expertToolAllowlist,
+      expertPurposeTiers: existingNode?.expertPurposeTiers ?? task.expertPurposeTiers,
       editableFields: ["prompt"],
       depth: task.depth,
       status: "awaiting_approval",
@@ -1658,12 +1675,26 @@ export class RecursiveLanguageModel {
           this.updateExecutionGraph();
         }
       }
+      const expertNode = this.executionNodes.get(task.id);
+      if (expertNode && decision) {
+        expertNode.expertAgentId = decision.expertAgentId ?? expertNode.expertAgentId;
+        expertNode.expertAssignmentMode = decision.expertAssignmentMode ?? expertNode.expertAssignmentMode;
+        expertNode.expertRuntime = decision.expertRuntime ?? expertNode.expertRuntime;
+        expertNode.expertToolAllowlist = decision.expertToolAllowlist ?? expertNode.expertToolAllowlist;
+        expertNode.expertPurposeTiers = decision.expertPurposeTiers ?? expertNode.expertPurposeTiers;
+        this.updateExecutionGraph();
+      }
       return {
         ...task,
         prompt: decision?.prompt ?? task.prompt,
         modelOverride: decision?.modelOverride ?? task.modelOverride,
         samplingOverride: decision?.samplingOverride ?? task.samplingOverride,
         contextPolicy: decision?.contextPolicy ?? task.contextPolicy,
+        expertAgentId: decision?.expertAgentId ?? task.expertAgentId,
+        expertAssignmentMode: decision?.expertAssignmentMode ?? task.expertAssignmentMode,
+        expertRuntime: decision?.expertRuntime ?? task.expertRuntime,
+        expertToolAllowlist: decision?.expertToolAllowlist ?? task.expertToolAllowlist,
+        expertPurposeTiers: decision?.expertPurposeTiers ?? task.expertPurposeTiers,
       };
     }
     if (decision.status === "skipped") {
@@ -1681,6 +1712,23 @@ export class RecursiveLanguageModel {
       message: this.execution?.cancelReason?.(),
     });
     throw new Error(this.execution?.cancelReason?.() ?? "execution cancelled");
+  }
+
+  private expertTierFor(task: TaskNode, purpose: LanguageModelPurpose | undefined): string | undefined {
+    if (task.modelOverride || !purpose) {
+      return undefined;
+    }
+    const tier = task.expertPurposeTiers?.[purpose]?.trim();
+    return tier || undefined;
+  }
+
+  private toolsForTask(task: TaskNode): ToolPort[] {
+    const allTools = [...this.toolsByName.values()];
+    if (!task.expertToolAllowlist || task.expertToolAllowlist.length === 0) {
+      return allTools;
+    }
+    const allowed = new Set(task.expertToolAllowlist.map((tool) => tool.trim()).filter(Boolean));
+    return allTools.filter((tool) => allowed.has(tool.name));
   }
 
   private updateExecutionGraph(): void {

@@ -27,6 +27,7 @@ export type LanguageModelPurpose =
   | "answer"
   | "summarize"
   | "synthesize"
+  | "plan"
   | "quality_loop_draft"
   | "quality_loop_critique"
   | "quality_loop_refine"

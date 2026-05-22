@@ -34,6 +34,7 @@ agents:
       answer: small
       summarize: small
       synthesize: small
+      plan: medium
   coding:
     tools: [shell, write_file, web_search, web_fetch]
     models:
@@ -43,6 +44,7 @@ agents:
       answer: small
       summarize: small
       synthesize: small
+      plan: medium
   qa:
     tools: [shell, write_file]
     models:
@@ -52,6 +54,7 @@ agents:
       answer: small
       summarize: small
       synthesize: small
+      plan: medium
   product_designer:
     tools: [web_search, web_fetch, write_file]
     models:
@@ -61,6 +64,7 @@ agents:
       answer: small
       summarize: small
       synthesize: small
+      plan: medium
   research:
     tools: [web_search, web_fetch]
     models:
@@ -70,6 +74,7 @@ agents:
       answer: small
       summarize: small
       synthesize: small
+      plan: medium
 
 workflows:
   default:

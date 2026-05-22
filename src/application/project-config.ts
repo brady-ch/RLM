@@ -15,6 +15,7 @@ export const MODEL_PURPOSES = [
   "answer",
   "summarize",
   "synthesize",
+  "plan",
   "quality_loop_draft",
   "quality_loop_critique",
   "quality_loop_refine",
@@ -56,12 +57,28 @@ export interface WorkflowDispatchTierConfig {
   maxEstimatedDepth?: number | undefined;
 }
 
-export interface WorkflowConfig {
+export interface RamQueueWorkflowConfig {
   mode: "ram_queue";
   agents: string[];
   continueOnError: boolean;
   qa?: WorkflowQaConfig | undefined;
   dispatch?: WorkflowDispatchConfig | undefined;
+}
+
+export interface GraphWorkflowConfig {
+  kind: "graph";
+  path?: string | undefined;
+  defaultVariant?: "playbook" | "pipeline" | undefined;
+}
+
+export type WorkflowConfig = RamQueueWorkflowConfig | GraphWorkflowConfig;
+
+export function isGraphWorkflowConfig(workflow: WorkflowConfig): workflow is GraphWorkflowConfig {
+  return "kind" in workflow && workflow.kind === "graph";
+}
+
+export function isRamQueueWorkflowConfig(workflow: WorkflowConfig): workflow is RamQueueWorkflowConfig {
+  return "mode" in workflow && workflow.mode === "ram_queue";
 }
 
 export interface WorkflowQaConfig {
@@ -160,6 +177,7 @@ const agentModelsSchema = z.object({
   answer: modelSelectionSchema,
   summarize: modelSelectionSchema,
   synthesize: modelSelectionSchema,
+  plan: modelSelectionSchema.optional(),
   quality_loop_draft: modelSelectionSchema.optional(),
   quality_loop_critique: modelSelectionSchema.optional(),
   quality_loop_refine: modelSelectionSchema.optional(),
@@ -172,6 +190,7 @@ const agentModelsSchema = z.object({
   quality_loop_refine: models.quality_loop_refine ?? models.answer,
   quality_loop_gate: models.quality_loop_gate ?? models.answer,
   quality_loop_best_of_progress: models.quality_loop_best_of_progress ?? models.answer,
+  plan: models.plan ?? models.decompose,
 }));
 
 const defaultQualityLoopConfig = {
@@ -233,33 +252,40 @@ const configSchema = z.object({
     tools: z.array(z.string().min(1)),
     models: agentModelsSchema,
   })),
-  workflows: z.record(z.string(), z.object({
-    mode: z.literal("ram_queue"),
-    agents: z.array(z.string().min(1)).min(1),
-    continueOnError: z.boolean().default(false),
-    qa: z.object({
-      agent: z.string().min(1),
-      validationCommands: z.array(z.string().min(1)).default(["npm test", "npm run build"]),
-      bugfixQueue: z.object({
-        id: z.string().min(1).default("bugfix"),
-        priority: z.number().int().default(100),
-        highestPriorityKeywords: z.array(z.string().min(1)).default(["fail", "error", "regression", "broken", "crash"]),
-      }).default({
-        id: "bugfix",
-        priority: 100,
-        highestPriorityKeywords: ["fail", "error", "regression", "broken", "crash"],
-      }),
-    }).optional(),
-    dispatch: z.object({
-      strategy: z.literal("complexity_tiers"),
-      tiers: z.array(z.object({
-        name: z.string().min(1),
-        maxEstimatedDepth: z.number().int().nonnegative().optional(),
-        agents: z.array(z.string().min(1)).min(1),
-        qa: z.boolean().default(false),
-      })).min(1),
-    }).optional(),
-  })),
+  workflows: z.record(z.string(), z.union([
+    z.object({
+      kind: z.literal("graph"),
+      path: z.string().min(1).optional(),
+      defaultVariant: z.enum(["playbook", "pipeline"]).optional(),
+    }),
+    z.object({
+      mode: z.literal("ram_queue"),
+      agents: z.array(z.string().min(1)).min(1),
+      continueOnError: z.boolean().default(false),
+      qa: z.object({
+        agent: z.string().min(1),
+        validationCommands: z.array(z.string().min(1)).default(["npm test", "npm run build"]),
+        bugfixQueue: z.object({
+          id: z.string().min(1).default("bugfix"),
+          priority: z.number().int().default(100),
+          highestPriorityKeywords: z.array(z.string().min(1)).default(["fail", "error", "regression", "broken", "crash"]),
+        }).default({
+          id: "bugfix",
+          priority: 100,
+          highestPriorityKeywords: ["fail", "error", "regression", "broken", "crash"],
+        }),
+      }).optional(),
+      dispatch: z.object({
+        strategy: z.literal("complexity_tiers"),
+        tiers: z.array(z.object({
+          name: z.string().min(1),
+          maxEstimatedDepth: z.number().int().nonnegative().optional(),
+          agents: z.array(z.string().min(1)).min(1),
+          qa: z.boolean().default(false),
+        })).min(1),
+      }).optional(),
+    }),
+  ])),
   extensions: z.object({
     allowlist: z.string().optional(),
     load: z.array(z.object({
@@ -875,6 +901,7 @@ function defaultAgentModels(): AgentConfig["models"] {
     answer: "dynamic",
     summarize: "small",
     synthesize: "medium",
+    plan: "medium",
     quality_loop_draft: "dynamic",
     quality_loop_critique: "dynamic",
     quality_loop_refine: "dynamic",
@@ -903,6 +930,10 @@ function validateConfigReferences(config: ProjectConfig): void {
   }
 
   for (const [workflowId, workflow] of Object.entries(config.workflows)) {
+    if (isGraphWorkflowConfig(workflow)) {
+      continue;
+    }
+
     for (const agentId of workflow.agents) {
       if (!config.agents[agentId]) {
         throw new Error(`Workflow "${workflowId}" references unknown agent "${agentId}".`);

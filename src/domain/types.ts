@@ -1,7 +1,7 @@
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 import type { RunStateStorePort } from "../ports/run-state-store-port.js";
 import type { ExecutionFailureCategory } from "./execution-failure.js";
-import type { EffectiveSamplingMetadata, LanguageModelSamplingOptions } from "../ports/language-model-port.js";
+import type { EffectiveSamplingMetadata, LanguageModelPurpose, LanguageModelSamplingOptions } from "../ports/language-model-port.js";
 import type { MemoryPacketMetadata } from "../ports/memory-store-port.js";
 
 export interface RecursiveModelConfig {
@@ -264,6 +264,11 @@ export interface TaskNode {
   modelOverride?: string | undefined;
   samplingOverride?: LanguageModelSamplingOptions | undefined;
   contextPolicy?: ComposerContextPolicy | undefined;
+  expertAgentId?: string | undefined;
+  expertAssignmentMode?: ExpertAssignmentMode | undefined;
+  expertRuntime?: ExpertRuntimeMode | undefined;
+  expertToolAllowlist?: string[] | undefined;
+  expertPurposeTiers?: Partial<Record<LanguageModelPurpose, string>> | undefined;
 }
 
 export interface ArtifactContract {
@@ -276,6 +281,8 @@ export interface ArtifactContract {
 export type ComposerNodeType = "AI" | "Code" | "TTS" | "Splitter" | "Joiner" | "Validator";
 
 export type ComposerComplexity = "low" | "medium" | "high";
+export type ExpertRuntimeMode = "single-pass" | "rlm";
+export type ExpertAssignmentMode = "planner" | "custom";
 
 export interface ComposerPort {
   id: string;
@@ -334,6 +341,8 @@ export interface NodeComposer {
   complexity: ComposerComplexity;
   recommendedAction: "run" | "plan" | "break_down" | "review";
   planBudget: ComposerPlanBudget;
+  plannedBy?: "model" | "user" | undefined;
+  protectedReasons?: string[] | undefined;
   pendingPlan?: {
     parentNodeId: string;
     childNodeIds: string[];
@@ -358,6 +367,7 @@ export interface RecursivePromptMetadata {
   workflow?: {
     id: string;
     agents: string[];
+    variant?: "playbook" | "pipeline" | undefined;
     qa?: {
       agent: string;
       validationCommands: ValidationCommandResult[];
@@ -418,6 +428,11 @@ export interface ExecutionGraphNode {
   effectiveModel?: string | undefined;
   modelOverride?: string | undefined;
   modelOverrideSource?: "user" | "none" | undefined;
+  expertAgentId?: string | undefined;
+  expertAssignmentMode?: ExpertAssignmentMode | undefined;
+  expertRuntime?: ExpertRuntimeMode | undefined;
+  expertToolAllowlist?: string[] | undefined;
+  expertPurposeTiers?: Partial<Record<LanguageModelPurpose, string>> | undefined;
   samplingOverride?: LanguageModelSamplingOptions | undefined;
   effectiveSampling?: EffectiveSamplingMetadata | undefined;
   editableFields?: Array<"prompt"> | undefined;
@@ -499,6 +514,11 @@ export interface NodeApprovalDecision {
   modelOverride?: string | undefined;
   samplingOverride?: LanguageModelSamplingOptions | undefined;
   contextPolicy?: ComposerContextPolicy | undefined;
+  expertAgentId?: string | undefined;
+  expertAssignmentMode?: ExpertAssignmentMode | undefined;
+  expertRuntime?: ExpertRuntimeMode | undefined;
+  expertToolAllowlist?: string[] | undefined;
+  expertPurposeTiers?: Partial<Record<LanguageModelPurpose, string>> | undefined;
   approvalSource?: "manual" | "auto" | "none" | undefined;
   approvalReason?: string | undefined;
 }
