@@ -8,7 +8,8 @@ pub mod runtime;
 
 pub use extension_host::ExtensionHost;
 pub use registry_service::{
-    PluginDoctorResult, PluginListItem, PluginMutationResult, PluginRegistryService,
+    PluginDoctorIssue, PluginDoctorResult, PluginListItem, PluginMutationResult,
+    PluginRegistryService,
 };
 pub use runtime::{
     build_runtime_context, resolve_tools_for_agent, BuildRuntimeContextInput, CompositionInitStage,

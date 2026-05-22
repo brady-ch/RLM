@@ -24,6 +24,8 @@ pub struct RuntimeContext {
     pub extension_host: ExtensionHost,
     pub tools: Vec<Arc<dyn Tool>>,
     pub init_stages: Vec<CompositionInitStage>,
+    pub interop_warnings: Vec<String>,
+    _mcp_clients: Vec<Arc<crate::interop::StdioMcpClient>>,
 }
 
 impl Clone for RuntimeContext {
@@ -32,6 +34,8 @@ impl Clone for RuntimeContext {
             extension_host: self.extension_host.clone(),
             tools: self.tools.clone(),
             init_stages: self.init_stages.clone(),
+            interop_warnings: self.interop_warnings.clone(),
+            _mcp_clients: self._mcp_clients.clone(),
         }
     }
 }
@@ -42,7 +46,9 @@ pub struct BuildRuntimeContextInput<'a> {
     pub on_init_stage: Option<CompositionInitStageRecorder>,
 }
 
-pub fn build_runtime_context(input: BuildRuntimeContextInput<'_>) -> RuntimeContext {
+pub fn build_runtime_context(
+    input: BuildRuntimeContextInput<'_>,
+) -> Result<RuntimeContext, String> {
     let mut stages = Vec::new();
     let record = |stage: CompositionInitStage, stages: &mut Vec<CompositionInitStage>| {
         stages.push(stage);
@@ -55,7 +61,7 @@ pub fn build_runtime_context(input: BuildRuntimeContextInput<'_>) -> RuntimeCont
     load_builtins(&mut extension_host, input.project_root);
     record("plugins", &mut stages);
 
-    // MCP/skill interop stub — full client deferred to post-v1.8 (INFR-02).
+    let mcp = crate::interop::load_mcp_interop(input.project_config, &mut extension_host)?;
     record("interop", &mut stages);
 
     let tools = extension_host.all_tools();
@@ -65,11 +71,13 @@ pub fn build_runtime_context(input: BuildRuntimeContextInput<'_>) -> RuntimeCont
     record("agent-registry", &mut stages);
     record("models", &mut stages);
 
-    RuntimeContext {
+    Ok(RuntimeContext {
         extension_host,
         tools,
         init_stages: stages,
-    }
+        interop_warnings: mcp.warnings,
+        _mcp_clients: mcp.clients,
+    })
 }
 
 pub fn resolve_tools_for_agent(
@@ -105,7 +113,8 @@ mod tests {
             project_root: temp.path(),
             project_config: None,
             on_init_stage: None,
-        });
+        })
+        .expect("runtime");
         assert_eq!(ctx.init_stages, COMPOSITION_INIT_ORDER);
     }
 
@@ -116,7 +125,8 @@ mod tests {
             project_root: temp.path(),
             project_config: None,
             on_init_stage: None,
-        });
+        })
+        .expect("runtime");
         let names: HashSet<_> = ctx.tools.iter().map(|t| t.name().to_string()).collect();
         assert!(names.contains("shell"));
         assert!(names.contains("write_file"));

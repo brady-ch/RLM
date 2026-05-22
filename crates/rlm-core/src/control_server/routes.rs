@@ -13,13 +13,13 @@ use crate::domain::types::{
     DeleteStrategy, ExpertRuntimeMode, GraphPosition, GraphViewport, ReplanChoice, SessionSnapshot,
 };
 use crate::execution::InteractiveExecutionSession;
+use crate::graph::{
+    apply_pipeline_template, build_import_session_snapshot, execute_graph,
+    export_and_save_graph_workflow, graph_has_pipeline_template, import_sidecar_to_graph,
+    list_graph_workflows, load_graph_workflow, GraphExecutorInput,
+};
 use crate::memory::{
     build_saved_session_payload, restore_graph_workflow_metadata, restore_session_memory,
-};
-use crate::graph::{
-    apply_pipeline_template, build_import_session_snapshot, execute_graph, export_and_save_graph_workflow,
-    graph_has_pipeline_template, import_sidecar_to_graph, list_graph_workflows, load_graph_workflow,
-    GraphExecutorInput,
 };
 use crate::ports::LanguageModel;
 
@@ -63,7 +63,10 @@ pub fn build_router(state: Arc<RouterState>) -> Router {
         .route("/api/graph-workflows/import", post(graph_workflows_import))
         .route("/api/memory", get(memory))
         .route("/api/memory/preferences", post(memory_preferences_set))
-        .route("/api/memory/preferences/{key}", delete(memory_preferences_delete))
+        .route(
+            "/api/memory/preferences/{key}",
+            delete(memory_preferences_delete),
+        )
         .route("/api/model-library", get(model_library))
         .route("/api/model-library/search", get(model_library_search))
         .route("/api/model-library/install", post(model_library_install))
@@ -766,10 +769,13 @@ async fn memory_inspect_payload(
         });
     }
     let semantic = state.memory_index(session_id).await;
-    let snapshot = semantic.store().inspect(session_id).map_err(|err| ApiError {
-        status: StatusCode::INTERNAL_SERVER_ERROR,
-        body: json!({ "error": err.to_string() }),
-    })?;
+    let snapshot = semantic
+        .store()
+        .inspect(session_id)
+        .map_err(|err| ApiError {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            body: json!({ "error": err.to_string() }),
+        })?;
     let vector_index = semantic.status().await;
     let mut value = serde_json::to_value(snapshot).map_err(|err| ApiError {
         status: StatusCode::INTERNAL_SERVER_ERROR,
@@ -1012,9 +1018,7 @@ async fn memory_preferences_set(
             body: json!({ "error": err.to_string() }),
         })?;
     semantic.enqueue_rebuild();
-    memory_inspect_payload(&state, &session_id)
-        .await
-        .map(Json)
+    memory_inspect_payload(&state, &session_id).await.map(Json)
 }
 
 async fn memory_preferences_delete(
@@ -1037,9 +1041,7 @@ async fn memory_preferences_delete(
             body: json!({ "error": err.to_string() }),
         })?;
     semantic.enqueue_rebuild();
-    memory_inspect_payload(&state, &session_id)
-        .await
-        .map(Json)
+    memory_inspect_payload(&state, &session_id).await.map(Json)
 }
 
 async fn saved_sessions(State(state): State<Arc<RouterState>>) -> impl IntoResponse {
@@ -1297,7 +1299,20 @@ async fn plugins_doctor(State(state): State<Arc<RouterState>>) -> impl IntoRespo
             .into_response();
     };
     match registry.doctor(false).await {
-        Ok(result) => Json(serde_json::to_value(result).unwrap_or(json!({}))).into_response(),
+        Ok(mut result) => {
+            if let Some(runtime) = state.runtime_context.as_ref() {
+                for warning in &runtime.interop_warnings {
+                    result.issues.push(crate::plugins::PluginDoctorIssue {
+                        code: "mcp_not_connected".into(),
+                        severity: "warn".into(),
+                        message: warning.clone(),
+                        plugin_id: None,
+                        path: None,
+                    });
+                }
+            }
+            Json(serde_json::to_value(result).unwrap_or(json!({}))).into_response()
+        }
         Err(err) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "error": err })),
