@@ -2,6 +2,77 @@
 
 This repository is a **recursive language model CLI**: CLI entry in `src/index.ts` composes a `RuntimeContext` via `src/runtime/composition/` (facaded through `src/application/bootstrap/`), orchestration in `src/application/`, recursion policy in `src/domain/` (orchestrator + `domain/recursion/` helpers), I/O in `src/cli/`, boundaries in `src/ports/`, infrastructure adapters under `src/adapters/` (`persistence/`, `models/`), plugin packages under `src/plugins/`, and runtime wiring under `src/runtime/` (`composition/`, `interop/`). The local control plane lives under `src/application/control-server/` (HTTP handlers in `handlers/`).
 
+## Concern map
+
+Canonical layer boundaries for `src/` and how supporting directories relate. **Dependency direction flows inward:** outer layers (CLI, application) orchestrate; inner layers (domain, ports) define policy and contracts; runtime and plugins wire capabilities at the composition root; adapters implement port contracts for I/O.
+
+```
+cli ──► application ──► domain
+  │         │              ▲
+  │         ▼              │ (types only)
+  └──► runtime/composition ├── ports ◄── adapters (persistence, models)
+              │              ▲
+              ├── interop    │
+              └── plugins/builtin ──► register(host) on ExtensionHostPort
+```
+
+| Concern | Path | Role | May import |
+|---------|------|------|------------|
+| **cli** | `src/cli/` | Args, run-mode dispatch, stderr logging, shutdown | application facades, ports (types), bootstrap entry |
+| **application** | `src/application/` | Use cases: execution, graph, memory, config, control-server, plugin manager facade | domain, ports, runtime facades via bootstrap |
+| **domain** | `src/domain/` | Recursion policy, agent profiles, shared result types | ports (interfaces), domain/recursion helpers only |
+| **ports** | `src/ports/` | Interface contracts (models, tools, stores, extension host) | nothing in `src/` except other ports |
+| **runtime** | `src/runtime/` | Composition root + interop (MCP/skills); builds `RuntimeContext` | application modules needed for wiring, ports, plugins (load/register), adapters via bootstrap |
+| **plugins** | `src/plugins/` | Manifest schema, loader, builtin/external packages | ports, adapters (tool impl), other plugins/builtin only |
+| **adapters** | `src/adapters/` | Infrastructure: persistence stores, model hosts, tracing | ports, domain (types), plugins/builtin re-exports for transitional imports |
+
+**Supporting directories (not `src/` layers):**
+
+| Path | Relates to | Notes |
+|------|------------|-------|
+| `tests/` | Mirrors `src/` concerns | `tests/helpers/` shared fixtures; `tests/integration/` cross-cutting; layout matches table below |
+| `ui/` | cli + application/control-server | React UI; talks to control-server HTTP API, not domain directly |
+| `scripts/` | cli packaging, desktop, dev tooling | Build/release helpers; no production import from `src/` |
+
+### Tests mirror
+
+| `src/` concern | `tests/` path |
+|----------------|---------------|
+| `application/config/` | `tests/application/config/` |
+| `application/bootstrap/` | `tests/application/bootstrap/` |
+| `application/graph/` | `tests/application/graph/` |
+| `application/memory/` | `tests/application/memory/` |
+| `application/execution/` | `tests/application/execution/` |
+| `domain/` | `tests/domain/` |
+| `runtime/composition/` | `tests/runtime/composition/` |
+| `runtime/interop/` | `tests/runtime/interop/` |
+| `plugins/` | `tests/plugins/` |
+| `adapters/persistence/` | `tests/adapters/persistence/` |
+| cross-cutting | `tests/integration/` |
+| shared | `tests/helpers/` |
+
+### Dependency-cruiser rules
+
+Boundary rules live in `.dependency-cruiser.js` (warn severity until Phase 48 ratchet). Rule names reference this concern map:
+
+| Rule | Forbidden arc | Concern map rationale |
+|------|---------------|----------------------|
+| `no-domain-to-application` | domain → application | Domain holds policy, not orchestration |
+| `no-domain-to-adapters` | domain → adapters | Domain stays free of concrete I/O |
+| `no-domain-to-cli` | domain → cli | Domain stays free of CLI surface |
+| `no-ports-to-application` | ports → application | Ports are interfaces only |
+| `no-ports-to-adapters` | ports → adapters | Ports must not reference implementations |
+| `no-ports-to-cli` | ports → cli | Ports stay transport-agnostic |
+| `no-adapters-to-application` | adapters → application | Adapters implement ports, not use cases |
+| `no-adapters-to-cli` | adapters → cli | Adapters stay below CLI |
+| `no-plugins-to-application` | plugins → application | Plugins register via `ExtensionHostPort`, not orchestration |
+| `no-plugins-to-cli` | plugins → cli | Plugins never import CLI |
+| `no-plugins-to-domain` | plugins → domain | Plugins register tools; domain policy stays separate |
+| `no-runtime-to-cli` | runtime → cli | Runtime composition stays below CLI (known exception tracked for Phase 48) |
+| `no-builtin-plugin-to-external-loader` | plugins/builtin → plugins/external | Built-ins must not depend on external install machinery |
+
+Run `npm run depcruise:ci` (or `dependency-cruise src --config .dependency-cruiser.js`) to verify. Phase 48 ratchets severity to `error` and removes `--ignore-known` when baseline is empty.
+
 ## Layout
 
 | Area | Role |
@@ -24,9 +95,12 @@ This repository is a **recursive language model CLI**: CLI entry in `src/index.t
 | [`src/ports/`](src/ports/) | Interfaces: language model, tools, trace, runtime logger, stores, extension host, etc. |
 | [`src/adapters/`](src/adapters/) | Infrastructure only: persistence stores, model hosts, tracing; barrel [`src/adapters/index.ts`](src/adapters/index.ts) re-exports builtin tool classes from `plugins/builtin/` for tests and transitional imports. |
 | [`tests/helpers/`](tests/helpers/) | Shared mocks and fixtures for engine and integration tests. |
-| [`tests/domain/recursion/`](tests/domain/recursion/) | Engine tests aligned with `domain/recursion/` plus `recursive-language-model` integration coverage. |
-| [`tests/plugins/`](tests/plugins/) | Plugin manifest validation and loader discovery tests. |
-| [`tests/`](tests/) | Remaining integration and subsystem tests (`*.test.ts` under `tests/` and subfolders; `npm test` runs all compiled files under `dist/tests`). |
+| [`tests/domain/`](tests/domain/) | Domain and recursion tests mirroring `src/domain/`. |
+| [`tests/application/`](tests/application/) | Application concern tests (config, bootstrap, graph, memory, execution). |
+| [`tests/runtime/`](tests/runtime/) | Runtime composition and interop tests mirroring `src/runtime/`. |
+| [`tests/plugins/`](tests/plugins/) | Plugin manifest validation, loader discovery, and builtin tool tests. |
+| [`tests/adapters/`](tests/adapters/) | Adapter infrastructure tests (persistence stores, etc.). |
+| [`tests/integration/`](tests/integration/) | Cross-cutting integration suites. |
 
 ## Plugin taxonomy
 
@@ -60,4 +134,4 @@ For install, usage, and configuration fields, start with [`README.md`](README.md
 
 - Project initialized for recursive workflow planning/execution UX hardening.
 - Active roadmap: `.planning/ROADMAP.md` (milestone v1.7 adapter & plugin taxonomy).
-- Current focus: Phase 46 — plugin taxonomy and built-in migration complete; Phase 47+ adds concern map tests and depcruise ratchet.
+- Current focus: Phase 47 — concern map, tests mirror, and depcruise rules for plugins/runtime; Phase 48 ratchets severity to error.
