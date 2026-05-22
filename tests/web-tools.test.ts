@@ -3,14 +3,12 @@ import test from "node:test";
 import {
   WebFetchTool,
   WebSearchTool,
+  analyzeHtmlContent,
   buildSearchQuery,
   parseUddgLines,
-} from "../src/adapters/index.js";
-import {
-  analyzeHtmlContent,
   stripFluffWords,
   stripHtmlTags,
-} from "../src/adapters/tools/content-tree.js";
+} from "../src/adapters/index.js";
 
 test("search query builder applies search operators", () => {
   const query = buildSearchQuery({
