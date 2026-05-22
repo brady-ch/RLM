@@ -28,9 +28,9 @@ v1.6 is a behavior-preserving architecture cleanup: land dev-tooling guardrails,
 - [x] **Phase 37: Config Layer Split** — Focused `application/config/` modules with barrel facade and unit tests (2026-05-22).
 - [x] **Phase 38: Runtime Bootstrap** — `RuntimeContext`, `buildRuntimeContext()`, slim `index.ts`, and `cli/run-modes/*` (2026-05-22).
 - [x] **Phase 39: Adapters & Tools Taxonomy** — Group tools, persistence, and model adapters by concern with aligned extension shims.
-- [ ] **Phase 40: Domain Engine Decomposition** — `domain/recursion/` concern modules with orchestrator retaining flow.
+- [ ] **Phase 40: Domain Engine Decomposition** — `domain/recursion/` concern modules with orchestrator retaining flow (follow-up peels optional).
 - [x] **Phase 41: Control-Server Boundary** — Handler modules with bootstrap-injected dependencies and transport-only routes (2026-05-22).
-- [ ] **Phase 42: Test Restructure & Docs** — Subsystem-aligned tests, shared helpers, and updated AGENTS.md contributor map.
+- [x] **Phase 42: Test Restructure & Docs** — Subsystem-aligned tests, shared helpers, and updated AGENTS.md contributor map (2026-05-22).
 
 <details>
 <summary>✅ v1.5 Dynamic Graph Authoring (Phases 30-35) — SHIPPED 2026-05-22</summary>
@@ -184,7 +184,7 @@ Phases execute in numeric order: 36 → 37 → 38 → 39 → 40 → 41 → 42
 | 39. Adapters & Tools Taxonomy | v1.6 | 1/1 | Complete | 2026-05-22 |
 | 40. Domain Engine Decomposition | v1.6 | 0/TBD | Not started | - |
 | 41. Control-Server Boundary | v1.6 | 1/1 | Complete | 2026-05-22 |
-| 42. Test Restructure & Docs | v1.6 | 0/TBD | Not started | - |
+| 42. Test Restructure & Docs | v1.6 | 1/1 | Complete   | 2026-05-22 |
 | 30-35 Dynamic Graph Authoring | v1.5 | 18/18 | Complete | 2026-05-22 |
 | 25-29, 29.1 Session Memory | v1.4 | 6/6 | Complete | 2026-05-21 |
 | 21-24 Desktop Product | v1.3 | archived | Complete | 2026-05-21 |

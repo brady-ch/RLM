@@ -8,8 +8,8 @@
 
 ### Regression Gate
 
-- [ ] **REG-01**: All existing tests pass after each extraction phase; no intentional behavior changes to CLI flags, config semantics, control-server API, or graph/session/memory flows.
-- [ ] **REG-02**: `npm run check` (typecheck + test, extended with lint/depcruise when tooling lands) remains the CI gate and stays green throughout the milestone.
+- [x] **REG-01**: All existing tests pass after each extraction phase; no intentional behavior changes to CLI flags, config semantics, control-server API, or graph/session/memory flows.
+- [x] **REG-02**: `npm run check` (typecheck + test, extended with lint/depcruise when tooling lands) remains the CI gate and stays green throughout the milestone.
 
 ### Dev Tooling
 
@@ -47,7 +47,7 @@
 
 ### Domain Engine
 
-- [ ] **RLM-01**: `recursive-language-model.ts` decomposes into `domain/recursion/` concern modules (budget guard, tool-round loop, quality loop, execution-graph sync, prompt utilities). _**Progress (2026-05-22):** budget guard, execution-graph sync, and prompt utilities are extracted; tool-round loop and quality loop remain in orchestrator pending `40-04`/`40-05`._
+- [ ] **RLM-01**: `recursive-language-model.ts` decomposes into `domain/recursion/` concern modules (budget guard, tool-round loop, quality loop, execution-graph sync, prompt utilities). _**Progress (2026-05-22):** budget guard, execution-graph sync, prompt utilities, and tool-round completion (`tool-round-loop.ts`) are extracted; quality-loop orchestration remains in the class._
 - [x] **RLM-02**: The orchestrator class retains top-level recursion flow; extracted modules are pure or narrowly-scoped helpers first, then integrated without semantics drift.
 - [x] **RLM-03**: Domain modules do not import application-layer types; dependency direction stays domain → ports only.
 - [x] **RLM-04**: Each extraction slice passes RLM, graph-executor, and integration test suites before the next peel.
@@ -62,16 +62,16 @@
 
 ### Test Structure
 
-- [ ] **TEST-01**: Shared test helpers extract to `tests/helpers/` before large test file splits.
-- [ ] **TEST-02**: `recursive-language-model.test.ts` splits into subsystem-aligned files under `tests/domain/recursion/` (and related paths) mirroring new module boundaries.
-- [ ] **TEST-03**: Config and bootstrap modules gain focused unit tests at extraction boundaries.
-- [ ] **TEST-04**: Integration anchor tests (`integration-v15`, graph-workflow, session-memory suites) remain intact and green; test count parity verified before/after splits.
-- [ ] **TEST-05**: Test blocks move verbatim during splits; assertion changes require structural justification only.
+- [x] **TEST-01**: Shared test helpers extract to `tests/helpers/` before large test file splits.
+- [x] **TEST-02**: `recursive-language-model.test.ts` splits into subsystem-aligned files under `tests/domain/recursion/` (and related paths) mirroring new module boundaries.
+- [x] **TEST-03**: Config and bootstrap modules gain focused unit tests at extraction boundaries.
+- [x] **TEST-04**: Integration anchor tests (`integration-v15`, graph-workflow, session-memory suites) remain intact and green; test count parity verified before/after splits.
+- [x] **TEST-05**: Test blocks move verbatim during splits; assertion changes require structural justification only.
 
 ### Documentation
 
-- [ ] **DOC-01**: `AGENTS.md` updated to reflect new module homes (config/, bootstrap/, domain/recursion/, adapters/tools|persistence|models/, control-server/handlers/).
-- [ ] **DOC-02**: Contributor guidance documents where to add new tools, adapters, config fields, and runtime wiring after the refactor.
+- [x] **DOC-01**: `AGENTS.md` updated to reflect new module homes (config/, bootstrap/, domain/recursion/, adapters/tools|persistence|models/, control-server/handlers/).
+- [x] **DOC-02**: Contributor guidance documents where to add new tools, adapters, config fields, and runtime wiring after the refactor.
 
 ## Future Requirements
 
@@ -104,8 +104,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | 36-42 (cross-cutting gate in every phase) | Pending — Phases 36–39 gates green (`npm run check`); milestone-wide sign-off remains open through Phase 42 |
-| REG-02 | 36-42 (cross-cutting gate in every phase) | Pending — Phases 36–39 gates green; milestone-wide sign-off remains open through Phase 42 |
+| REG-01 | 36-42 (cross-cutting gate in every phase) | Met — Phase 42 closeout verified `npm run check` (`42-VERIFICATION.md`) |
+| REG-02 | 36-42 (cross-cutting gate in every phase) | Met — same |
 | TOOL-01 | Phase 36 | Complete |
 | TOOL-02 | Phase 36 | Complete |
 | TOOL-03 | Phase 36 | Complete |
@@ -133,17 +133,17 @@
 | RLM-03 | Phase 40 | Met |
 | RLM-04 | Phase 40 | Met |
 | RLM-05 | Phase 40 | Met (`40-RESEARCH.md`) |
-| CTRL-01 | Phase 41 | Pending |
-| CTRL-02 | Phase 41 | Pending |
-| CTRL-03 | Phase 41 | Pending |
-| CTRL-04 | Phase 41 | Pending |
-| TEST-01 | Phase 42 | Pending |
-| TEST-02 | Phase 42 | Pending |
-| TEST-03 | Phase 42 | Pending |
-| TEST-04 | Phase 42 | Pending |
-| TEST-05 | Phase 42 | Pending |
-| DOC-01 | Phase 42 | Pending |
-| DOC-02 | Phase 42 | Pending |
+| CTRL-01 | Phase 41 | Complete |
+| CTRL-02 | Phase 41 | Complete |
+| CTRL-03 | Phase 41 | Complete |
+| CTRL-04 | Phase 41 | Complete |
+| TEST-01 | Phase 42 | Complete |
+| TEST-02 | Phase 42 | Complete |
+| TEST-03 | Phase 42 | Complete |
+| TEST-04 | Phase 42 | Complete |
+| TEST-05 | Phase 42 | Complete |
+| DOC-01 | Phase 42 | Complete |
+| DOC-02 | Phase 42 | Complete |
 
 ---
 *Last updated: 2026-05-22 — v1.6 roadmap traceability mapped (40/40 requirements)*
