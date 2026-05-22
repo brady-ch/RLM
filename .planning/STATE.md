@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Rust Runtime Migration
-status: Awaiting next milestone
-last_updated: "2026-05-22T20:55:00.000Z"
-last_activity: 2026-05-22 — Milestone v1.8 completed and archived
+status: verifying
+last_updated: "2026-05-22T21:07:29.052Z"
+last_activity: 2026-05-22
 progress:
-  total_phases: 11
-  completed_phases: 11
-  total_plans: 18
-  completed_plans: 18
+  total_phases: 1
+  completed_phases: 1
+  total_plans: 5
+  completed_plans: 5
   percent: 100
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Planning next milestone (`/gsd-new-milestone`)
+**Current focus:** Phase 01 — close-v1-8-tech-debt
 
 ## Current Position
 
-Phase: Milestone v1.8 complete  
-Plan: —  
-Status: Awaiting next milestone  
-Last activity: 2026-05-22 — Milestone v1.8 archived with tech_debt audit status
+Phase: 01 (close-v1-8-tech-debt) — EXECUTING
+Plan: 5 of 5
+Status: Phase complete — ready for verification
+Last activity: 2026-05-22
 
 Progress: [██████████] 100%
 

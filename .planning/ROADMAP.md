@@ -116,8 +116,8 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 **Plans:** 5 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — UI bundle: pause-auto-approvals, HF download, secondary CSS, graph modals
-- [ ] 01-02-PLAN.md — REG-01 human UAT checklist on Rust-served UI
-- [ ] 01-03-PLAN.md — MCP stdio client Rust port and runtime wiring
-- [ ] 01-04-PLAN.md — Rust CLI ask execution (workflow staged)
-- [ ] 01-05-PLAN.md — Run-state checkpoint/cursor extension + gap doc
+- [x] 01-01-PLAN.md — UI bundle: pause-auto-approvals, HF download, secondary CSS, graph modals
+- [x] 01-02-PLAN.md — REG-01 human UAT checklist on Rust-served UI
+- [x] 01-03-PLAN.md — MCP stdio client Rust port and runtime wiring
+- [x] 01-04-PLAN.md — Rust CLI ask execution (workflow staged)
+- [x] 01-05-PLAN.md — Run-state checkpoint/cursor extension + gap doc
