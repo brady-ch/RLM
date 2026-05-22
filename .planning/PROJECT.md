@@ -2,9 +2,9 @@
 
 ## Current State
 
-**Latest shipped milestone:** v1.8 — Rust Runtime Migration (2026-05-22)  
+**Latest shipped milestone:** v1.8 — Rust Runtime Migration (2026-05-22; Phase 1 tech-debt closure 2026-05-22)  
 **Next milestone:** Planning via `/gsd-new-milestone`  
-**Audit status:** tech_debt — 22/28 requirements satisfied; 6 partial deferrals documented in `.planning/milestones/v1.8-MILESTONE-AUDIT.md`
+**Audit status:** tech_debt — Phase 1 closure 6/6 areas; documented deferrals in STATE.md
 
 v1.8 shipped a Rust-only runtime (`rlm-core`, `rlm-cli`) embedded in Tauri with no bundled Node. The Axum control server preserves the existing HTTP/SSE contract; persistence, recursive engine, graph executor, vector index, model library, plugins, and CLI parity CI all run in Rust. Phase 60.1 closed session/memory route gaps; Phase 61 rewrote the UI shell to a canvas-first AppShell (GraphCanvas, slim Run panel, Advanced hub). **471+** TypeScript tests and **67+** Rust integration tests green; ~15k LOC Rust workspace.
 

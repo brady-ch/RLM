@@ -2,11 +2,13 @@
 
 ## v1.8 Rust Runtime Migration (Shipped: 2026-05-22)
 
-**Phases completed:** 11 phases (52–61), 18 plans, 16 tasks  
-**Audit status:** tech_debt (22/28 requirements satisfied; 6 partial deferrals)  
-**Known deferred items at close:** 12 (see STATE.md Deferred Items)
+**Phases completed:** 12 phases (1, 52–61), 23 plans  
+**Audit status:** tech_debt — Phase 1 post-ship closure 6/6 areas; prior audit 22/28 requirements  
+**Known deferred items at close:** see STATE.md Deferred Items
 
 **Key accomplishments:**
+
+- **Phase 1 (2026-05-22):** Closed v1.8 tech debt — UI regressions (pause control, HF download, graph modals), REG-01 UAT, Rust MCP stdio client, `rlm ask`, run-state resumeCursor
 
 - Rust workspace (`rlm-core`, `rlm-cli`) with Axum control server preserving HTTP/SSE contract and golden fixture gates
 - Persistence ports: lossless `.rlm/` dual-read, session save/reopen, memory preferences, YAML config validation
@@ -17,13 +19,12 @@
 - Phase 60.1 gap closure: session routes, chat refine, clarification abort, run-state wiring
 - Phase 61 UI shell rewrite: AppShell, GraphCanvas, slim Run panel, Advanced hub (canvas-first)
 
-### Known Gaps (tech debt)
+### Known Gaps (tech debt — updated after Phase 1 closure)
 
-- **CLI-01 partial:** Full ask/workflow/session CLI execution remains Node-only (`RLM_RUNTIME=node`)
-- **PLUG-03 partial:** MCP/skill interop stub; full client deferred (INFR-02)
-- **PERS-03 partial:** Run-state checkpoint/resume minimal wiring only
-- **REG-01:** Phase 61 human UAT checklist not operator-signed
-- **UI regressions:** pause-auto-approvals control dropped from TopBar; HF download not wired to `/api/model-library/download`
+- **CLI-01 partial:** Full workflow CLI on Rust deferred (ask path shipped)
+- **PLUG-03 partial:** MCP stdio client shipped; skill interop depth deferred
+- **PERS-03 partial:** resumeCursor persisted; cross-session consumer deferred (`PERS-03-GAP.md`)
+- **REG-01:** Phase 1 operator-signed; Phase 61 human UAT items with live Ollama skipped
 - **PACK-03:** `.deb` smoke deferred on CI hosts without GTK/dbus
 
 **Archive:** `.planning/milestones/v1.8-ROADMAP.md`  
