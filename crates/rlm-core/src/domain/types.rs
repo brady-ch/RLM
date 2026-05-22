@@ -70,6 +70,8 @@ pub struct ExecutionGraphNode {
     pub composer: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub editable_fields: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub r#loop: Option<QualityLoopMetadata>,
 }
 
 impl Default for ExecutionGraphNode {
@@ -97,6 +99,7 @@ impl Default for ExecutionGraphNode {
             sampling_override: None,
             composer: None,
             editable_fields: None,
+            r#loop: None,
         }
     }
 }
@@ -361,16 +364,333 @@ pub struct RecursiveModelConfig {
     pub quality_loop: Option<QualityLoopConfig>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QualityLoopPhaseName {
+    Draft,
+    Critique,
+    Refine,
+    Gate,
+    #[serde(rename = "best_of_progress")]
+    BestOfProgress,
+}
+
+impl QualityLoopPhaseName {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Draft => "draft",
+            Self::Critique => "critique",
+            Self::Refine => "refine",
+            Self::Gate => "gate",
+            Self::BestOfProgress => "best_of_progress",
+        }
+    }
+
+    pub const ALL: [Self; 5] = [
+        Self::Draft,
+        Self::Critique,
+        Self::Refine,
+        Self::Gate,
+        Self::BestOfProgress,
+    ];
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QualityLoopStopReason {
+    Passed,
+    CritiqueResolved,
+    NoMeaningfulImprovement,
+    MaxIterations,
+    BudgetExhausted,
+    HumanAccepted,
+    Stopped,
+    Degraded,
+    Failed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QualityLoopStatus {
+    Idle,
+    Running,
+    Completed,
+    Stopped,
+    Degraded,
+    Failed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QualityLoopBudgetBehavior {
+    StopBeforePartialIteration,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QualityLoopConfig {
     pub enabled: bool,
     #[serde(default = "default_max_iterations")]
     pub max_iterations: u32,
+    #[serde(default = "default_quality_loop_budget_behavior")]
+    pub budget_behavior: QualityLoopBudgetBehavior,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phase_models: Option<HashMap<String, String>>,
 }
 
 fn default_max_iterations() -> u32 {
     3
+}
+
+fn default_quality_loop_budget_behavior() -> QualityLoopBudgetBehavior {
+    QualityLoopBudgetBehavior::StopBeforePartialIteration
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QualityLoopModelSource {
+    Configured,
+    PhaseOverride,
+    NodeOverride,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopPhaseModelAssignment {
+    pub phase: QualityLoopPhaseName,
+    pub purpose: String,
+    pub planned_selection: String,
+    pub planned_model: String,
+    pub effective_model: String,
+    pub tier: String,
+    pub source: QualityLoopModelSource,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopManualDecision {
+    pub action: String,
+    pub reason: String,
+    pub requested_at: String,
+    pub source: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopPhaseCallCounts {
+    pub draft: u32,
+    pub critique: u32,
+    pub refine: u32,
+    pub gate: u32,
+    #[serde(rename = "best_of_progress")]
+    pub best_of_progress: u32,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopUsageSummary {
+    pub iterations_started: u32,
+    pub iterations_completed: u32,
+    pub phase_call_counts: QualityLoopPhaseCallCounts,
+    pub model_calls_total: u32,
+    pub input_tokens: u32,
+    pub output_tokens: u32,
+    pub total_tokens: u32,
+    pub unknown_completions: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopIssue {
+    pub id: String,
+    pub severity: String,
+    pub text: String,
+    pub source_phase: QualityLoopPhaseName,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopCandidateSummary {
+    pub id: String,
+    pub iteration: u32,
+    pub phase: QualityLoopPhaseName,
+    pub summary: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub score: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub selection_score: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub selection_rationale: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_selected: Option<bool>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenUsageTrace {
+    pub input_tokens: u32,
+    pub output_tokens: u32,
+    pub total_tokens: u32,
+    pub unknown_completions: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QualityLoopEvaluatorParseStatus {
+    Parsed,
+    Degraded,
+    Failed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopPhaseRecord {
+    pub phase: QualityLoopPhaseName,
+    pub status: QualityLoopStatus,
+    pub started_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub candidate_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub planned_model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_purpose: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_selection: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_source: Option<QualityLoopModelSource>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usage: Option<TokenUsageTrace>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unresolved_issues: Option<Vec<QualityLoopIssue>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parse_status: Option<QualityLoopEvaluatorParseStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parse_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopCritiqueEvaluation {
+    pub summary: String,
+    pub issues: Vec<QualityLoopIssue>,
+    pub resolved: bool,
+    pub suggested_improvements: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopGateEvaluation {
+    pub decision: String,
+    pub score: f64,
+    pub pass_threshold: f64,
+    pub rubric_fit: bool,
+    pub critique_resolved: bool,
+    pub meaningful_improvement: bool,
+    pub rationale: String,
+    pub failed_conditions: Vec<String>,
+    pub unresolved_issues: Vec<QualityLoopIssue>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopBestOfProgressEvaluation {
+    pub selected_candidate_id: String,
+    pub rationale: String,
+    pub score: f64,
+    pub comparison_notes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopSelectionMetadata {
+    pub selected_candidate_id: String,
+    pub rationale: String,
+    pub score_basis: Vec<String>,
+    pub comparison_notes: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fallback_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invalid_candidate_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopIterationRecord {
+    pub index: u32,
+    pub status: QualityLoopStatus,
+    pub started_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<String>,
+    pub phases: Vec<QualityLoopPhaseRecord>,
+    pub candidates: Vec<QualityLoopCandidateSummary>,
+    pub unresolved_issues: Vec<QualityLoopIssue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub critique_evaluation: Option<QualityLoopCritiqueEvaluation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gate_evaluation: Option<QualityLoopGateEvaluation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub best_of_progress_evaluation: Option<QualityLoopBestOfProgressEvaluation>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QualityLoopRubricId {
+    GeneralAnswerQuality,
+    CodeEngineering,
+    PlanningArchitecture,
+    UserFacingWriting,
+    StructuredArtifact,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopRubricCriterion {
+    pub id: String,
+    pub label: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopRubricSelection {
+    pub id: QualityLoopRubricId,
+    pub label: String,
+    pub rationale: String,
+    pub matched_signals: Vec<String>,
+    pub confidence: f64,
+    pub criteria: Vec<QualityLoopRubricCriterion>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QualityLoopMetadata {
+    pub config: QualityLoopConfig,
+    pub status: QualityLoopStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rubric: Option<QualityLoopRubricSelection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gate: Option<QualityLoopGateEvaluation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub selection: Option<QualityLoopSelectionMetadata>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phase_models: Option<HashMap<String, QualityLoopPhaseModelAssignment>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop_reason: Option<QualityLoopStopReason>,
+    pub usage: QualityLoopUsageSummary,
+    pub iterations: Vec<QualityLoopIterationRecord>,
+    pub candidates: Vec<QualityLoopCandidateSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub selected_candidate_id: Option<String>,
+    pub unresolved_issues: Vec<QualityLoopIssue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -424,6 +744,8 @@ pub struct RecursivePromptMetadata {
     pub budget: Option<ExecutionBudget>,
     pub model_calls: u32,
     pub errors: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quality_loop: Option<QualityLoopMetadata>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

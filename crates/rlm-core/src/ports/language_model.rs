@@ -67,11 +67,15 @@ impl LanguageModel for QueueModel {
         _options: LanguageModelCompleteOptions<'_>,
     ) -> LanguageModelResponse {
         let mut queue = self.responses.lock().await;
-        queue.pop().unwrap_or(LanguageModelResponse {
-            content: String::new(),
-            model: Some("mock".into()),
-            tool_calls: Vec::new(),
-        })
+        if queue.is_empty() {
+            LanguageModelResponse {
+                content: String::new(),
+                model: Some("mock".into()),
+                tool_calls: Vec::new(),
+            }
+        } else {
+            queue.remove(0)
+        }
     }
 }
 

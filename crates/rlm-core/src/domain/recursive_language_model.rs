@@ -6,12 +6,14 @@ use async_trait::async_trait;
 use crate::domain::recursion::{
     build_live_execution_metadata, can_spend_any_model_call, clamp,
     has_call_reserved_for_direct_answer, is_code_task, limit_prompt, parse_first_integer, preview,
-    remaining_model_calls, run_completion_with_tool_rounds, ModelCompletionHost,
+    remaining_model_calls, run_completion_with_tool_rounds, run_quality_loop, ModelCompletionHost,
+    QualityLoopHost, QUALITY_LOOP_PHASES,
 };
 use crate::domain::types::{
     ChatMessage, DepthMetadata, ExecutionEvent, ExecutionGraphEdge, ExecutionGraphNode,
     ExecutionStatus, ExecutionStatusUpdateDetail, NodeApprovalDecision, NodeApprovalStatus,
-    RecursiveModelConfig, RecursivePromptMetadata, RecursivePromptResult, SolvedTask, TaskNode,
+    QualityLoopManualDecision, QualityLoopMetadata, QualityLoopUsageSummary, RecursiveModelConfig,
+    RecursivePromptMetadata, RecursivePromptResult, SolvedTask, TaskNode, TokenUsageTrace,
     TraceEvent,
 };
 use crate::ports::{LanguageModel, Tool, Trace};
@@ -33,6 +35,9 @@ pub trait ExecutionControl: Send + Sync {
         detail: Option<ExecutionStatusUpdateDetail>,
     );
     async fn wait_for_node_approval(&self, node: ExecutionGraphNode) -> NodeApprovalDecision;
+    fn get_quality_loop_decision(&self, _node_id: &str) -> Option<QualityLoopManualDecision> {
+        None
+    }
 }
 
 pub struct RecursiveLanguageModel {
@@ -52,6 +57,7 @@ struct EngineState {
     execution_nodes: HashMap<String, ExecutionGraphNode>,
     execution_edges: Vec<ExecutionGraphEdge>,
     tool_calls_len: u32,
+    token_usage: TokenUsageTrace,
 }
 
 impl RecursiveLanguageModel {
@@ -78,6 +84,7 @@ impl RecursiveLanguageModel {
                 execution_nodes: HashMap::new(),
                 execution_edges: Vec::new(),
                 tool_calls_len: 0,
+                token_usage: TokenUsageTrace::default(),
             }),
         }
     }
@@ -177,6 +184,11 @@ impl RecursiveLanguageModel {
         config: RecursiveModelConfig,
         execution: Option<Arc<dyn ExecutionControl>>,
     ) -> Result<RecursivePromptResult, String> {
+        let loop_config = config.quality_loop.as_ref().filter(|q| q.enabled).cloned();
+        let Some(loop_config) = loop_config else {
+            return Err("quality loop config missing".into());
+        };
+
         let mut effective = config.clone();
         effective.max_depth = effective.max_depth.or(Some(0));
 
@@ -202,8 +214,36 @@ impl RecursiveLanguageModel {
                 ExecutionStatus::Running
             },
         );
+        self.emit_execution(
+            &execution,
+            if execution.as_ref().is_some_and(|e| e.plan_only()) {
+                ExecutionStatus::Planned
+            } else {
+                ExecutionStatus::Running
+            },
+            Some(root.id.clone()),
+            if execution.as_ref().is_some_and(|e| e.plan_only()) {
+                "quality loop plan created"
+            } else {
+                "quality loop started"
+            },
+        );
 
         if execution.as_ref().is_some_and(|e| e.plan_only()) {
+            let phase_count = QUALITY_LOOP_PHASES.len() as u32;
+            {
+                let mut state = self.state.lock().expect("engine lock");
+                state.metadata.budget = Some(crate::domain::types::ExecutionBudget {
+                    estimated_model_calls: loop_config
+                        .max_iterations
+                        .saturating_mul(phase_count)
+                        .min(effective.max_model_calls),
+                    estimated_tool_rounds: 0,
+                    model_calls_used: 0,
+                    model_calls_remaining: state.max_model_calls,
+                    tool_calls_used: 0,
+                });
+            }
             self.update_execution_graph(&effective);
             return Ok(self.build_result());
         }
@@ -217,26 +257,12 @@ impl RecursiveLanguageModel {
             return Ok(self.build_result());
         }
 
-        let answer = self
-            .complete(
-                &root,
-                "answer",
-                vec![
-                    ChatMessage {
-                        role: "system".into(),
-                        content: "Draft the best answer for the quality loop.".into(),
-                    },
-                    ChatMessage {
-                        role: "user".into(),
-                        content: root.prompt.clone(),
-                    },
-                ],
-                false,
-                execution.clone(),
-            )
-            .await?;
-        self.mark_execution_node_completed(&root.id, &execution);
-        self.set_execution_status(&execution, ExecutionStatus::Completed);
+        let host = QualityLoopHostAdapter {
+            engine: self,
+            execution: execution.clone(),
+            config: effective.clone(),
+        };
+        let answer = run_quality_loop(&host, &root, &effective).await;
         {
             let mut state = self.state.lock().expect("engine lock");
             state.metadata.model_calls = state.model_calls;
@@ -906,6 +932,206 @@ impl RecursiveLanguageModel {
             ctrl.update_node_status(node_id, status, None);
         }
     }
+
+    fn write_loop_metadata(
+        &self,
+        node_id: &str,
+        metadata: &QualityLoopMetadata,
+        execution: &Option<Arc<dyn ExecutionControl>>,
+    ) {
+        let node_snapshot = {
+            let mut state = self.state.lock().expect("engine lock");
+            state.metadata.quality_loop = Some(metadata.clone());
+            if let Some(node) = state.execution_nodes.get_mut(node_id) {
+                node.r#loop = Some(metadata.clone());
+                Some(node.clone())
+            } else {
+                None
+            }
+        };
+        if let (Some(node), Some(ctrl)) = (node_snapshot, execution) {
+            ctrl.register_node(node);
+        }
+    }
+
+    fn summarize_quality_loop_usage(
+        &self,
+        metadata: &QualityLoopMetadata,
+        model_calls_total: Option<u32>,
+    ) -> QualityLoopUsageSummary {
+        let state = self.state.lock().expect("engine lock");
+        let mut usage = metadata.usage.clone();
+        usage.model_calls_total = model_calls_total.unwrap_or_else(|| {
+            usage.phase_call_counts.draft
+                + usage.phase_call_counts.critique
+                + usage.phase_call_counts.refine
+                + usage.phase_call_counts.gate
+                + usage.phase_call_counts.best_of_progress
+        });
+        usage.input_tokens = state.token_usage.input_tokens;
+        usage.output_tokens = state.token_usage.output_tokens;
+        usage.total_tokens = state.token_usage.total_tokens;
+        usage.unknown_completions = state.token_usage.unknown_completions;
+        usage
+    }
+}
+
+struct QualityLoopHostAdapter<'a> {
+    engine: &'a RecursiveLanguageModel,
+    execution: Option<Arc<dyn ExecutionControl>>,
+    config: RecursiveModelConfig,
+}
+
+#[async_trait]
+impl QualityLoopHost for QualityLoopHostAdapter<'_> {
+    fn model(&self) -> &dyn LanguageModel {
+        self.engine.model.as_ref()
+    }
+
+    fn get_model_calls(&self) -> u32 {
+        self.engine.get_model_calls()
+    }
+
+    fn get_max_model_calls(&self) -> u32 {
+        self.engine.get_max_model_calls()
+    }
+
+    fn consume_model_call(&self) {
+        self.engine.state.lock().expect("engine lock").model_calls += 1;
+    }
+
+    fn get_tool_calls_used_count(&self) -> u32 {
+        self.engine
+            .state
+            .lock()
+            .expect("engine lock")
+            .tool_calls_len
+    }
+
+    fn get_token_usage(&self) -> TokenUsageTrace {
+        self.engine
+            .state
+            .lock()
+            .expect("engine lock")
+            .token_usage
+            .clone()
+    }
+
+    fn get_depth_selected(&self) -> i32 {
+        self.engine
+            .state
+            .lock()
+            .expect("engine lock")
+            .metadata
+            .depth
+            .selected
+    }
+
+    fn throw_if_cancelled(&self, task: &TaskNode) -> Result<(), String> {
+        self.engine.throw_if_cancelled(task, &self.execution)
+    }
+
+    fn is_execution_cancelled(&self) -> bool {
+        self.execution.as_ref().is_some_and(|e| e.is_cancelled())
+    }
+
+    fn push_metadata_error(&self, message: &str) {
+        self.engine
+            .state
+            .lock()
+            .expect("engine lock")
+            .metadata
+            .errors
+            .push(message.into());
+    }
+
+    fn emit_execution(&self, event: ExecutionEvent) {
+        if let Some(ctrl) = &self.execution {
+            ctrl.on_event(event);
+        }
+    }
+
+    fn write_loop_metadata(&self, node_id: &str, metadata: &QualityLoopMetadata) {
+        self.engine
+            .write_loop_metadata(node_id, metadata, &self.execution);
+        self.engine.update_execution_graph(&self.config);
+    }
+
+    fn mark_execution_node_running(&self, node_id: &str) {
+        self.engine
+            .mark_execution_node_running(node_id, &self.execution);
+    }
+
+    fn mark_execution_node_completed(&self, node_id: &str) {
+        self.engine
+            .mark_execution_node_completed(node_id, &self.execution);
+    }
+
+    fn mark_execution_node_failed(
+        &self,
+        node_id: &str,
+        status: ExecutionStatus,
+        detail: Option<ExecutionStatusUpdateDetail>,
+    ) {
+        {
+            let mut state = self.engine.state.lock().expect("engine lock");
+            if let Some(node) = state.execution_nodes.get_mut(node_id) {
+                node.status = status;
+            }
+        }
+        if let Some(ctrl) = &self.execution {
+            ctrl.update_node_status(node_id, status, detail);
+        }
+    }
+
+    fn set_metadata_execution_status(&self, status: ExecutionStatus) {
+        self.engine.set_execution_status(&self.execution, status);
+    }
+
+    fn summarize_quality_loop_usage(
+        &self,
+        metadata: &QualityLoopMetadata,
+        model_calls_total: Option<u32>,
+    ) -> QualityLoopUsageSummary {
+        self.engine
+            .summarize_quality_loop_usage(metadata, model_calls_total)
+    }
+
+    fn with_agent_system_prompt(&self, messages: Vec<ChatMessage>) -> Vec<ChatMessage> {
+        let prompt = self
+            .engine
+            .state
+            .lock()
+            .expect("engine lock")
+            .agent_system_prompt
+            .clone();
+        if prompt.is_empty() {
+            messages
+        } else {
+            let mut out = vec![ChatMessage {
+                role: "system".into(),
+                content: prompt,
+            }];
+            out.extend(messages);
+            out
+        }
+    }
+
+    fn update_execution_node_model(&self, node_id: &str, effective_model: Option<String>) {
+        if let Some(model) = effective_model {
+            let mut state = self.engine.state.lock().expect("engine lock");
+            if let Some(node) = state.execution_nodes.get_mut(node_id) {
+                let _ = model;
+                let _ = node;
+            }
+        }
+    }
+
+    fn get_quality_loop_decision(&self, node_id: &str) -> Option<QualityLoopManualDecision> {
+        self.execution
+            .as_ref()
+            .and_then(|ctrl| ctrl.get_quality_loop_decision(node_id))
+    }
 }
 
 struct EngineHost<'a> {
@@ -1051,6 +1277,7 @@ fn empty_metadata() -> RecursivePromptMetadata {
         budget: None,
         model_calls: 0,
         errors: Vec::new(),
+        quality_loop: None,
     }
 }
 

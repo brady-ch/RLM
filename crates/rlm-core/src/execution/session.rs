@@ -8,9 +8,10 @@ use uuid::Uuid;
 use crate::domain::recursive_language_model::ExecutionControl;
 use crate::domain::types::{
     approval_mode_label, ApprovalMode, ChatReadiness, ChatSnapshot, ClarificationQuestion,
-    ClarificationRecord, DeleteStrategy, ExecutionEvent, ExecutionGraph, ExecutionGraphEdge, ExecutionGraphNode,
-    ExecutionStatus, ExecutionStatusUpdateDetail, GraphViewport, GraphWorkflowMetadata,
-    NodeApprovalDecision, NodeApprovalStatus, RunModeSnapshot, RunSummary, SessionSnapshot,
+    ClarificationRecord, DeleteStrategy, ExecutionEvent, ExecutionGraph, ExecutionGraphEdge,
+    ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail, GraphViewport,
+    GraphWorkflowMetadata, NodeApprovalDecision, NodeApprovalStatus, QualityLoopManualDecision,
+    RunModeSnapshot, RunSummary, SessionSnapshot,
 };
 
 use super::cancellation::CancellationController;
@@ -19,7 +20,10 @@ type ApprovalWaiter = oneshot::Sender<NodeApprovalDecision>;
 
 #[derive(Debug, Clone)]
 pub(crate) enum PendingMutationKind {
-    Edit { node_id: String, prompt: String },
+    Edit {
+        node_id: String,
+        prompt: String,
+    },
     Delete {
         node_id: String,
         strategy: Option<DeleteStrategy>,
@@ -63,6 +67,7 @@ pub struct InteractiveExecutionSession {
     clarification_waiter: Mutex<Option<(String, oneshot::Sender<String>)>>,
     pub(crate) pending_mutation: Mutex<Option<PendingChatMutation>>,
     pub(crate) mutation_version: Mutex<u32>,
+    quality_loop_decisions: Mutex<HashMap<String, QualityLoopManualDecision>>,
     event_tx: broadcast::Sender<ExecutionEvent>,
 }
 
@@ -88,6 +93,7 @@ impl InteractiveExecutionSession {
             clarification_waiter: Mutex::new(None),
             pending_mutation: Mutex::new(None),
             mutation_version: Mutex::new(0),
+            quality_loop_decisions: Mutex::new(HashMap::new()),
             event_tx,
         })
     }
@@ -168,7 +174,10 @@ impl InteractiveExecutionSession {
                 .expect("auto_approval_paused"),
             run_summary,
             chat: ChatSnapshot {
-                readiness: ChatReadiness::LegacyEmpty("empty".into()),
+                readiness: ChatReadiness::Structured {
+                    state: "draft".into(),
+                    reason: "Draft graph: confirm graph and run to start execution.".into(),
+                },
                 pending_mutation: self
                     .pending_mutation
                     .lock()
@@ -264,6 +273,23 @@ impl InteractiveExecutionSession {
             model_override: node.and_then(|n| n.model_override),
         });
         Ok(false)
+    }
+
+    pub(crate) fn set_quality_loop_decision(&self, node_id: &str, action: &str, reason: &str) {
+        self.quality_loop_decisions
+            .lock()
+            .expect("quality_loop_decisions")
+            .insert(
+                node_id.to_string(),
+                QualityLoopManualDecision {
+                    action: action.into(),
+                    reason: reason.into(),
+                    requested_at: time::OffsetDateTime::now_utc()
+                        .format(&time::format_description::well_known::Rfc3339)
+                        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".into()),
+                    source: "user".into(),
+                },
+            );
     }
 
     pub fn stop(&self, reason: impl Into<String>) {
@@ -555,6 +581,15 @@ impl ExecutionControl for SessionExecutionControl {
     ) {
         self.session
             .update_node_status_internal(node_id, status, detail);
+    }
+
+    fn get_quality_loop_decision(&self, node_id: &str) -> Option<QualityLoopManualDecision> {
+        self.session
+            .quality_loop_decisions
+            .lock()
+            .expect("quality_loop_decisions")
+            .get(node_id)
+            .cloned()
     }
 
     async fn wait_for_node_approval(&self, node: ExecutionGraphNode) -> NodeApprovalDecision {

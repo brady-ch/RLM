@@ -12,7 +12,10 @@ pub fn idle_session_snapshot() -> Value {
         "approvalMode": "full",
         "autoApprovalPaused": false,
         "chat": {
-            "readiness": "empty",
+            "readiness": {
+                "state": "draft",
+                "reason": "Draft graph: confirm graph and run to start execution."
+            },
             "clarificationHistory": []
         }
     })

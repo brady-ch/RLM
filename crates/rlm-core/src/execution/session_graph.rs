@@ -264,6 +264,7 @@ impl InteractiveExecutionSession {
             sampling_override: None,
             composer: None,
             editable_fields: Some(vec!["prompt".into()]),
+            r#loop: None,
         };
         self.register_node_internal(node.clone());
         Ok(node)
@@ -328,6 +329,9 @@ impl InteractiveExecutionSession {
                 &[node_id],
             ));
         }
+        if strategy == Some(DeleteStrategy::RewireDependents) {
+            return self.rewire_and_delete_node(node_id);
+        }
         let deleted = self.collect_descendants(node_id);
         for id in &deleted {
             self.nodes.lock().expect("nodes").remove(id);
@@ -354,6 +358,86 @@ impl InteractiveExecutionSession {
             i += 1;
         }
         out
+    }
+
+    fn rewire_and_delete_node(&self, node_id: &str) -> Result<Vec<String>, String> {
+        let dependents: Vec<_> = self
+            .nodes
+            .lock()
+            .expect("nodes")
+            .values()
+            .filter(|n| n.parent_id.as_deref() == Some(node_id))
+            .map(|n| n.id.clone())
+            .collect();
+        let parent_id = self
+            .nodes
+            .lock()
+            .expect("nodes")
+            .get(node_id)
+            .and_then(|node| node.parent_id.clone())
+            .ok_or_else(|| {
+                Self::mutation_err(
+                    "rewire_requires_parent",
+                    "Cannot rewire dependents when deleting a root node.",
+                    &[node_id],
+                )
+            })?;
+        let parent_depth = self
+            .nodes
+            .lock()
+            .expect("nodes")
+            .get(&parent_id)
+            .map(|node| node.depth)
+            .ok_or_else(|| {
+                Self::mutation_err(
+                    "unknown_node",
+                    &format!("Parent \"{parent_id}\" is missing for rewiring."),
+                    &[node_id, &parent_id],
+                )
+            })?;
+        for dependent_id in &dependents {
+            {
+                let mut nodes = self.nodes.lock().expect("nodes");
+                if let Some(dependent) = nodes.get_mut(dependent_id) {
+                    dependent.parent_id = Some(parent_id.clone());
+                }
+            }
+            self.update_depths_from(dependent_id, parent_depth + 1);
+            let edge = ExecutionGraphEdge {
+                from: parent_id.clone(),
+                to: dependent_id.clone(),
+                source_handle: None,
+                target_handle: None,
+            };
+            let mut edges = self.edges.lock().expect("edges");
+            if !edges.iter().any(|e| e.from == edge.from && e.to == edge.to) {
+                edges.push(edge);
+            }
+        }
+        self.nodes.lock().expect("nodes").remove(node_id);
+        self.pending.lock().expect("pending").remove(node_id);
+        self.edges
+            .lock()
+            .expect("edges")
+            .retain(|edge| edge.from != node_id && edge.to != node_id);
+        Ok(vec![node_id.to_string()])
+    }
+
+    fn update_depths_from(&self, node_id: &str, depth: i32) {
+        let child_ids: Vec<_> = self
+            .nodes
+            .lock()
+            .expect("nodes")
+            .values()
+            .filter(|node| node.parent_id.as_deref() == Some(node_id))
+            .map(|node| node.id.clone())
+            .collect();
+        if let Some(node) = self.nodes.lock().expect("nodes").get_mut(node_id) {
+            node.depth = depth;
+        }
+        for child_id in child_ids {
+            self.update_depths_from(&child_id, depth + 1);
+        }
     }
 
     pub fn skip_node(&self, node_id: &str, token: Option<&str>) -> Result<bool, String> {
@@ -410,7 +494,12 @@ impl InteractiveExecutionSession {
                 reason: "Draft graph: No graph nodes are available.".into(),
             };
         }
-        if self.pending_mutation.lock().expect("pending_mutation").is_some() {
+        if self
+            .pending_mutation
+            .lock()
+            .expect("pending_mutation")
+            .is_some()
+        {
             return ChatRunReadiness {
                 state: "draft".into(),
                 reason: "Draft graph: Resolve the pending mutation preview first.".into(),
@@ -446,7 +535,10 @@ impl InteractiveExecutionSession {
             return Err(Self::mutation_err(
                 "ambiguous_node_target",
                 &format!("Ambiguous {action} target \"{target}\"."),
-                &matches.iter().map(|node| node.id.as_str()).collect::<Vec<_>>(),
+                &matches
+                    .iter()
+                    .map(|node| node.id.as_str())
+                    .collect::<Vec<_>>(),
             ));
         }
         Ok(matches[0].id.clone())
@@ -625,11 +717,7 @@ impl InteractiveExecutionSession {
     }
 
     pub fn abort_run_from_clarification(&self, question_id: &str) -> Result<(), String> {
-        let pending = self
-            .pending_clarification
-            .lock()
-            .expect("clarify")
-            .clone();
+        let pending = self.pending_clarification.lock().expect("clarify").clone();
         let Some(pending) = pending else {
             return Err(Self::mutation_err(
                 "unknown_question",
@@ -750,6 +838,7 @@ impl InteractiveExecutionSession {
                 sampling_override: None,
                 composer: None,
                 editable_fields: Some(vec!["prompt".into()]),
+                r#loop: None,
             };
             self.register_node_internal(child);
             created.push(id);
@@ -785,17 +874,27 @@ impl InteractiveExecutionSession {
         })
     }
 
-    pub fn accept_quality_loop(&self, node_id: &str, _reason: Option<&str>) -> Result<(), String> {
+    pub fn accept_quality_loop(&self, node_id: &str, reason: Option<&str>) -> Result<(), String> {
         if !self.nodes.lock().expect("nodes").contains_key(node_id) {
             return Err(format!("Unknown node \"{node_id}\"."));
         }
+        self.set_quality_loop_decision(
+            node_id,
+            "accept",
+            reason.unwrap_or("quality loop manually accepted"),
+        );
         Ok(())
     }
 
-    pub fn stop_quality_loop(&self, node_id: &str, _reason: Option<&str>) -> Result<(), String> {
+    pub fn stop_quality_loop(&self, node_id: &str, reason: Option<&str>) -> Result<(), String> {
         if !self.nodes.lock().expect("nodes").contains_key(node_id) {
             return Err(format!("Unknown node \"{node_id}\"."));
         }
+        self.set_quality_loop_decision(
+            node_id,
+            "stop",
+            reason.unwrap_or("quality loop manually stopped"),
+        );
         Ok(())
     }
 
