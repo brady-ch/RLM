@@ -94,11 +94,14 @@ Workspace contained an in-flight **tool-round** peel (`src/domain/recursion/tool
 3. **Helpers + split suite + recursive test runner** — `b285e2f`
 4. **Recursion/config unit coverage** — `5073574`
 5. **AGENTS.md refresh** — `00d1b73`
-6. **Closeout artifacts** — (this SUMMARY / STATE / ROADMAP / REQUIREMENTS commit)
+6. **Closeout artifacts** — `0e27890` (planning SUMMARY / VERIFICATION / tables)
+7. **Toolchain shield** — `1f337cb` (underscore-draft ignores alongside recursion modules)
 
 ## Deviations from Plan
 
 None relative to PLAN.md objectives. Requirement-level gate REG is satisfied via `npm run check` evidence.
+
+Locally removed orphaned untracked quality-loop draft files from parallel spikes; ESLint/tsconfig now ignore `src/domain/recursion/_*.ts` so similar scratch work does not break `npm run check`.
 
 ## Known Stubs
 
@@ -111,7 +114,7 @@ No new trust boundaries beyond test-only imports.
 ## Self-Check
 
 - PLAN/SUMMARY path present: FOUND `.planning/phases/42-test-restructure-docs/42-SUMMARY.md`
-- Commits reachable: FOUND `143e3d5`, `07523a0`, `b285e2f`, `5073574`, `00d1b73`
+- Commits reachable: FOUND `143e3d5`, `07523a0`, `b285e2f`, `5073574`, `00d1b73`, `0e27890`, `1f337cb`
 
 ## Self-Check: PASSED
 
