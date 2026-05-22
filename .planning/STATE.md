@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Rust Runtime Migration
-status: awaiting_uat
-last_updated: "2026-05-22"
-last_activity: 2026-05-22 — Phase 60 complete (Tauri in-process; deb smoke human UAT pending)
+status: Human UAT pending (`.deb` smoke, end-to-end desktop workflows)
+last_updated: "2026-05-22T19:45:09.749Z"
+last_activity: 2026-05-22 — All v1.8 phases executed
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 9
+  total_phases: 18
+  completed_phases: 7
+  total_plans: 7
   completed_plans: 9
   percent: 100
 ---

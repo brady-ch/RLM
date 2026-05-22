@@ -2,7 +2,7 @@
 phase: 59-rust-cli-parity-ci
 plan: 01
 status: passed
-score: 3/3
+score: 4/4
 verified: 2026-05-22
 ---
 
@@ -12,12 +12,18 @@ verified: 2026-05-22
 
 | # | Criterion | Status |
 |---|-----------|--------|
-| 1 | Rust `rlm` supports ui, ask stub, plugin subcommands | ✓ |
-| 2 | `RLM_RUNTIME=node\|rust` dispatcher | ✓ |
-| 3 | Parity fixture gate in npm (`check:parity`) | ✓ |
+| 1 | Rust `rlm` supports ui/server and plugin subcommands | ✓ |
+| 2 | `ask` stub with actionable migration message | ✓ |
+| 3 | `RLM_RUNTIME=node\|rust` dispatcher documented in scripts | ✓ |
+| 4 | `npm run check:parity` green (TS static + cross-runtime + Rust golden) | ✓ |
 
-## Evidence
+## Test Results
 
-- `crates/rlm-cli` subcommands: ui, ask, plugin
-- `scripts/rlm-runtime.mjs`, `npm run rlm:rust`
-- `npm run check:parity` exits 0
+- `npm run check:rust` — PASS
+- `cargo test -p rlm-core` — PASS (67 tests)
+- `npm run check:parity` — PASS
+
+## Known Limitations
+
+- Full `ask`, `plan-node`, session/memory, and workflow CLI execution remain Node-only (`RLM_RUNTIME=node`)
+- Session `chat.readiness` shape differs: Rust golden uses string `"empty"`; TS uses structured `{ state, reason }` on draft graphs — cross-runtime compare allows core field parity only

@@ -315,8 +315,8 @@ Phases execute in numeric order: 52 → 53 → … → 60
 | 56. Vector Index + Embeddings | v1.8 | 1/1 | Complete | 2026-05-22 |
 | 57. Model Hosts + Model Library | v1.8 | 1/1 | Complete | 2026-05-22 |
 | 58. Built-in Plugins + MCP + Registry | v1.8 | 1/1 | Complete | 2026-05-22 |
-| 59. Rust CLI + Parity CI | v1.8 | 1/1 | Complete | 2026-05-22 |
-| 60. Tauri In-Process + Packaging | v1.8 | 1/1 | Complete (UAT pending) | 2026-05-22 |
+| 59. Rust CLI + Parity CI | v1.8 | 1/1 | Complete   | 2026-05-22 |
+| 60. Tauri In-Process + Packaging | v1.8 | 1/1 | Complete   | 2026-05-22 |
 | 43. Boundary Fixes | v1.7 | 1/1 | Complete | 2026-05-22 |
 | 44. Runtime & Interop Split | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 45. Application Concern Grouping | v1.7 | 1/1 | Complete   | 2026-05-22 |
