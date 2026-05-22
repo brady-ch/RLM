@@ -56,7 +56,24 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   3. Submitting on a child node plans only that node's subtree, inheriting ancestor prompt context and plan-budget semantics.
   4. Resubmitting a parent replans pristine auto-planned descendants without a confirmation dialog.
   5. Planning failures, invalid planner output, and plan-budget exhaustion surface explicit UI and CLI states with no silent heuristic fallback.
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 30-01-PLAN.md — Graph planner contract, plan purpose tier, zod validation
+- [ ] 30-02-PLAN.md — Async planNode, replan semantics, MutationError codes
+- [ ] 30-03-PLAN.md — API/CLI wiring with purpose-routing planModel
+- [ ] 30-04-PLAN.md — Graph-primary UI: root-composer, Plan children CTA, failure states
+- [ ] 30-05-PLAN.md — Test coverage consolidation and mock planner fixtures
+
+**Wave 1:** 30-01
+**Wave 2 *(blocked on Wave 1 completion)*:** 30-02
+**Wave 3 *(blocked on Wave 2 completion)*:** 30-03, 30-04
+**Wave 4 *(blocked on Wave 3 completion)*:** 30-05
+
+**Cross-cutting constraints:**
+- Planner failures must surface explicit states with no silent heuristic fallback
+- Plan children is the default graph authoring path (not chat-first)
+
 **UI hint**: yes
 
 ### Phase 31: Protected Replan UX
@@ -134,7 +151,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 30. Plan-from-Node Foundation | v1.5 | 0/TBD | Not started | - |
+| 30. Plan-from-Node Foundation | v1.5 | 0/5 | Planned | - |
 | 31. Protected Replan UX | v1.5 | 0/TBD | Not started | - |
 | 32. Expert Team Binding | v1.5 | 0/TBD | Not started | - |
 | 33. Graph Execution Loop | v1.5 | 0/TBD | Not started | - |
