@@ -25,7 +25,7 @@ v1.6 is a behavior-preserving architecture cleanup: land dev-tooling guardrails,
 **Milestone Goal:** Reduce structural debt across CLI composition, config loading, core engine, tests, tooling, and UI boundaries while preserving existing behavior.
 
 - [x] **Phase 36: Dev Tooling Guardrails** — ESLint, Prettier, dependency-cruiser baselines and expanded `npm run check`.
-- [ ] **Phase 37: Config Layer Split** — Focused `application/config/` modules with barrel facade and unit tests.
+- [x] **Phase 37: Config Layer Split** — Focused `application/config/` modules with barrel facade and unit tests (2026-05-22).
 - [ ] **Phase 38: Runtime Bootstrap** — `RuntimeContext`, `buildRuntimeContext()`, slim `index.ts`, and `cli/run-modes/*`.
 - [ ] **Phase 39: Adapters & Tools Taxonomy** — Group tools, persistence, and model adapters by concern with aligned extension shims.
 - [ ] **Phase 40: Domain Engine Decomposition** — `domain/recursion/` concern modules with orchestrator retaining flow.
@@ -87,9 +87,9 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 **Plans**: 3 plans in 3 waves (`37-01-PLAN.md`, `37-02-PLAN.md`, `37-03-PLAN.md`)
 
 Plans:
-- [ ] `37-01-PLAN.md` — Extract types, Zod schema, defaults, YAML merge into `application/config/`
-- [ ] `37-02-PLAN.md` — Extract loader + validation; preserve path-prefixed parse errors
-- [ ] `37-03-PLAN.md` — Extract runtime/host/model resolution + starter seed; barrel façade + unit tests
+- [x] `37-01-PLAN.md` — Extract types, Zod schema, defaults, YAML merge into `application/config/`
+- [x] `37-02-PLAN.md` — Extract loader + validation; preserve path-prefixed parse errors
+- [x] `37-03-PLAN.md` — Extract runtime/host/model resolution + starter seed; barrel façade + unit tests
 
 ### Phase 38: Runtime Bootstrap
 **Goal**: CLI entrypoint is thin; runtime construction is centralized, ordered, and unit-testable.

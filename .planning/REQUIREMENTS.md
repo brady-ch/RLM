@@ -20,12 +20,12 @@
 
 ### Config Layer
 
-- [ ] **CONF-01**: `project-config.ts` splits into focused modules under `application/config/` (types/schema, defaults, loader, validation, runtime resolution, model override, starter seed).
-- [ ] **CONF-02**: Public config API preserved via barrel re-export facade so existing ~20 import sites continue working without a flag-day rename.
-- [ ] **CONF-03**: Validation errors retain file/path context and existing error shapes after the split.
-- [ ] **CONF-04**: Runtime host selection, tier resolution, and model override behavior unchanged from pre-split semantics.
-- [ ] **CONF-05**: Starter seeding behavior (`seedProjectRlmStarter`) unchanged for first-run UI flows.
-- [ ] **CONF-06**: Config resolution modules are unit-testable without full CLI invocation or filesystem I/O where feasible.
+- [x] **CONF-01**: `project-config.ts` splits into focused modules under `application/config/` (types/schema, defaults, loader, validation, runtime resolution, model override, starter seed).
+- [x] **CONF-02**: Public config API preserved via barrel re-export facade so existing ~20 import sites continue working without a flag-day rename.
+- [x] **CONF-03**: Validation errors retain file/path context and existing error shapes after the split.
+- [x] **CONF-04**: Runtime host selection, tier resolution, and model override behavior unchanged from pre-split semantics.
+- [x] **CONF-05**: Starter seeding behavior (`seedProjectRlmStarter`) unchanged for first-run UI flows.
+- [x] **CONF-06**: Config resolution modules are unit-testable without full CLI invocation or filesystem I/O where feasible.
 
 ### Runtime Bootstrap
 
@@ -104,18 +104,18 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | 36-42 (cross-cutting gate in every phase) | Pending (Phase 36 gate green 2026-05-22) |
-| REG-02 | 36-42 (cross-cutting gate in every phase) | Pending (Phase 36 gate green 2026-05-22) |
+| REG-01 | 36-42 (cross-cutting gate in every phase) | Pending — Phase 37 gate green 2026-05-22 |
+| REG-02 | 36-42 (cross-cutting gate in every phase) | Pending — Phase 37 gate green 2026-05-22 |
 | TOOL-01 | Phase 36 | Complete |
 | TOOL-02 | Phase 36 | Complete |
 | TOOL-03 | Phase 36 | Complete |
 | TOOL-04 | Phase 36 | Complete |
-| CONF-01 | Phase 37 | Pending |
-| CONF-02 | Phase 37 | Pending |
-| CONF-03 | Phase 37 | Pending |
-| CONF-04 | Phase 37 | Pending |
-| CONF-05 | Phase 37 | Pending |
-| CONF-06 | Phase 37 | Pending |
+| CONF-01 | Phase 37 | Complete |
+| CONF-02 | Phase 37 | Complete |
+| CONF-03 | Phase 37 | Complete |
+| CONF-04 | Phase 37 | Complete |
+| CONF-05 | Phase 37 | Complete |
+| CONF-06 | Phase 37 | Complete |
 | BOOT-01 | Phase 38 | Pending |
 | BOOT-02 | Phase 38 | Pending |
 | BOOT-03 | Phase 38 | Pending |

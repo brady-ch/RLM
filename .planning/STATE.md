@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Architecture Cleanup
 status: executing
-stopped_at: Phase 36 executed (36-01 / 36-02) — verification passed
-last_updated: "2026-05-22T14:53:13.284Z"
-last_activity: 2026-05-22 -- Phase 37 planning complete
+stopped_at: Phase 37 executed (37-01 / 37-02 / 37-03) — npm run check green
+last_updated: "2026-05-22T20:00:00.000Z"
+last_activity: 2026-05-22 -- Phase 37 execution complete
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 2
-  percent: 40
+  completed_plans: 5
+  percent: 36
 ---
 
 # Project State
@@ -21,28 +21,29 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 37 — Config Layer Split
+**Current focus:** Phase 38 — Runtime Bootstrap
 
 ## Current Position
 
-Phase: 37 of 42 (Config Layer Split)
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-22 -- Phase 37 planning complete
+Phase: 38 of 42 (Runtime Bootstrap) — next  
+Plan: Not started  
+Status: Ready to plan  
+Last activity: 2026-05-22 -- Phase 37 execution complete  
 
-Progress: Phase 36 done (2 plans); starting Phase 37 next (about 14% through v1.6 phases 36–42)
+Progress: Phase 36–37 done (`npm run check` gate green; 210 tests after Phase 37)
 
 ## Recently Completed
 
-- **Phase 36: Dev Tooling Guardrails** — ESLint 10 + typescript-eslint flat config (src/tests/ui), Prettier 3, dependency-cruiser WARN rules + baseline (`dependency-cruiser-baseline.json`), `npm run check` chains all gates; `36-VERIFICATION.md` status passed; 205 tests green (2026-05-22).
+- **Phase 37: Config Layer Split** — Split `application/project-config.ts` into `application/config/` (types, schema, defaults, yaml-merge, loader, validation, runtime resolution, host resolution, model override, starter seed) with barrel + thin façade (`export * from ./config/index.js`); `37-VERIFICATION.md` passed; CONF-01..06 + REG-01/REG-02 satisfied (2026-05-22).
 
-- v1.5 Dynamic Graph Authoring shipped on 2026-05-22 (Phases 30-35, 18 plans, 205 tests).
-- v1.6 requirements defined on 2026-05-22 (40 requirements across 9 categories).
+- **Phase 36: Dev Tooling Guardrails** — ESLint 10 + typescript-eslint flat config (src/tests/ui), Prettier 3, dependency-cruiser WARN rules + baseline (`dependency-cruiser-baseline.json`), `npm run check` chains all gates; `36-VERIFICATION.md` status passed (2026-05-22).
+
+- v1.5 Dynamic Graph Authoring shipped on 2026-05-22 (Phases 30-35).
+- v1.6 requirements defined on 2026-05-22.
 
 ## Pending Todos
 
 - 3 pending todos in `.planning/todos/pending/` (acknowledged at v1.5 close)
-- v1.5 deferred refactor todos (`extract-runtime-composition`, `split-config-loader`) now scoped in v1.6 Phases 37-38
 
 ## Blockers/Concerns
 
@@ -66,10 +67,10 @@ Items acknowledged and deferred at milestone close on 2026-05-22:
 
 ## Session Continuity
 
-Last session: 2026-05-22T18:30:00.000Z  
-Stopped at: Phase 36 executed (36-01 / 36-02) — verification passed  
+Last session: 2026-05-22T20:00:00.000Z  
+Stopped at: Phase 37 executed — verification passed (`37-VERIFICATION.md`)  
 Resume file: None
 
 ## Operator Next Steps
 
-- `/gsd-discuss-phase 37` or `/gsd-plan-phase 37` to begin Phase 37 (Config Layer Split)
+- `/gsd-plan-phase 38` or `/gsd-discuss-phase 38` for Runtime Bootstrap
