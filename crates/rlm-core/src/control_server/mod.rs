@@ -59,8 +59,9 @@ impl RouterState {
                     project_root: &project_root,
                     project_config: Some(&loaded.config),
                     on_init_stage: None,
-                });
-                Some((Some(registry), Some(runtime)))
+                })
+                .ok();
+                Some((Some(registry), runtime))
             })
             .unwrap_or((None, None));
         Self {
@@ -115,19 +116,7 @@ impl RouterState {
     }
 
     pub fn runtime_config(&self) -> crate::domain::types::RecursiveModelConfig {
-        self.project_config
-            .as_ref()
-            .and_then(|loaded| loaded.config.get("runtime"))
-            .and_then(|rt| serde_json::from_value(rt.clone()).ok())
-            .unwrap_or(crate::domain::types::RecursiveModelConfig {
-                max_depth: Some(2),
-                max_dynamic_depth: 2,
-                max_branches: 4,
-                max_prompt_characters: 4096,
-                max_model_calls: 50,
-                max_tool_rounds: 8,
-                quality_loop: None,
-            })
+        runtime_config_from_config(self.project_config.as_ref().map(|loaded| &loaded.config))
     }
 
     pub fn with_ui_dist(mut self, ui_dist_dir: Option<PathBuf>) -> Self {
@@ -136,18 +125,12 @@ impl RouterState {
     }
 
     pub fn with_memory_session_id(self, session_id: impl Into<String>) -> Self {
-        *self
-            .memory_session_id
-            .lock()
-            .expect("memory_session_id") = session_id.into();
+        *self.memory_session_id.lock().expect("memory_session_id") = session_id.into();
         self
     }
 
     pub fn set_memory_session_id(&self, session_id: impl Into<String>) {
-        *self
-            .memory_session_id
-            .lock()
-            .expect("memory_session_id") = session_id.into();
+        *self.memory_session_id.lock().expect("memory_session_id") = session_id.into();
     }
 
     pub fn current_memory_session_id(&self) -> String {
@@ -195,7 +178,24 @@ impl RouterState {
     }
 }
 
-fn resolve_language_models(
+pub fn runtime_config_from_config(
+    config: Option<&Value>,
+) -> crate::domain::types::RecursiveModelConfig {
+    config
+        .and_then(|loaded| loaded.get("runtime"))
+        .and_then(|rt| serde_json::from_value(rt.clone()).ok())
+        .unwrap_or(crate::domain::types::RecursiveModelConfig {
+            max_depth: Some(2),
+            max_dynamic_depth: 2,
+            max_branches: 4,
+            max_prompt_characters: 4096,
+            max_model_calls: 50,
+            max_tool_rounds: 8,
+            quality_loop: None,
+        })
+}
+
+pub fn resolve_language_models(
     project_config: Option<&LoadedProjectConfig>,
 ) -> (Arc<dyn LanguageModel>, Arc<dyn LanguageModel>) {
     let Some(loaded) = project_config else {
