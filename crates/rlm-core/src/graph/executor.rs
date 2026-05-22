@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::domain::recursive_language_model::ExecutionControl;
-use crate::domain::run_state_persistence::RunStatePersistence;
+use crate::domain::run_state_persistence::{LoadedResumeState, RunStatePersistence};
 use crate::domain::run_state_types::ResumeCursor;
 use crate::domain::types::{
     ExecutionGraph, ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail,
@@ -43,6 +43,8 @@ pub struct GraphExecutorInput {
     pub create_model: Arc<dyn Fn() -> Arc<dyn LanguageModel> + Send + Sync>,
     pub runtime: Option<crate::plugins::RuntimeContext>,
     pub run_state: Option<Arc<RunStatePersistence>>,
+    /// When true, load persisted resumeCursor + nodeStatuses and skip completed nodes.
+    pub resume: bool,
 }
 
 fn execution_status_label(status: ExecutionStatus) -> String {
@@ -197,8 +199,58 @@ fn has_failed_ancestor(
 fn should_skip_status(status: ExecutionStatus) -> bool {
     matches!(
         status,
-        ExecutionStatus::Skipped | ExecutionStatus::Cancelled
+        ExecutionStatus::Skipped | ExecutionStatus::Cancelled | ExecutionStatus::Completed
     )
+}
+
+fn apply_resume_to_session(session: &Arc<InteractiveExecutionSession>, resume: &LoadedResumeState) {
+    let control: Arc<dyn ExecutionControl> =
+        Arc::new(SessionExecutionControl::new(Arc::clone(session)));
+    for node_id in &resume.completed_node_ids {
+        if session
+            .snapshot()
+            .graph
+            .nodes
+            .iter()
+            .any(|n| n.id == *node_id)
+        {
+            control.update_node_status(node_id, ExecutionStatus::Completed, None);
+        }
+    }
+}
+
+fn prepare_run_state(
+    input: &GraphExecutorInput,
+    session: &Arc<InteractiveExecutionSession>,
+    graph: &ExecutionGraph,
+) -> (HashSet<String>, Vec<String>) {
+    let mut skip_completed = HashSet::new();
+    let mut completed_node_ids = Vec::new();
+
+    let Some(run_state) = input.run_state.as_ref() else {
+        return (skip_completed, completed_node_ids);
+    };
+
+    let existing = run_state.get_snapshot().ok().flatten();
+    if input.resume {
+        if let Some(resume) = run_state.load_resume_state().ok().flatten() {
+            apply_resume_to_session(session, &resume);
+            for node_id in &resume.completed_node_ids {
+                skip_completed.insert(node_id.clone());
+                completed_node_ids.push(node_id.clone());
+            }
+        }
+    } else if existing.is_none() {
+        let root_prompt = graph
+            .nodes
+            .iter()
+            .find(|node| node.parent_id.is_none())
+            .and_then(|node| node.prompt.clone())
+            .unwrap_or_else(|| "graph run".into());
+        let _ = run_state.initialize(&root_prompt, "default");
+    }
+
+    (skip_completed, completed_node_ids)
 }
 
 pub async fn execute_graph(
@@ -220,19 +272,9 @@ pub async fn execute_graph(
         .map(|n| (n.id.clone(), n.clone()))
         .collect();
     let mut failed = HashSet::new();
-    let mut completed_node_ids = Vec::new();
+    let (skip_completed, mut completed_node_ids) = prepare_run_state(&input, &session, &graph);
     let control: Arc<dyn ExecutionControl> =
         Arc::new(SessionExecutionControl::new(Arc::clone(&session)));
-
-    if let Some(run_state) = input.run_state.as_ref() {
-        let root_prompt = graph
-            .nodes
-            .iter()
-            .find(|node| node.parent_id.is_none())
-            .and_then(|node| node.prompt.clone())
-            .unwrap_or_else(|| "graph run".into());
-        let _ = run_state.initialize(&root_prompt, "default");
-    }
 
     for node_id in order {
         let Some(node) = node_by_id.get(&node_id) else {
@@ -256,6 +298,10 @@ pub async fn execute_graph(
 
         if control.is_cancelled() {
             break;
+        }
+
+        if skip_completed.contains(&node_id) {
+            continue;
         }
 
         if should_skip_status(node.status) {
@@ -355,7 +401,7 @@ pub async fn execute_graph(
         let result = match runtime {
             ExpertRuntimeMode::SinglePass => {
                 let model = (input.create_model)();
-                model
+                let response = model
                     .complete(
                         &[
                             crate::domain::types::ChatMessage {
@@ -370,7 +416,11 @@ pub async fn execute_graph(
                         LanguageModelCompleteOptions::simple(Some("answer"), false),
                     )
                     .await;
-                Ok(())
+                if response.content.starts_with("Ollama inference failed:") {
+                    Err(response.content)
+                } else {
+                    Ok(())
+                }
             }
             ExpertRuntimeMode::Rlm => {
                 let model = (input.create_model)();
@@ -508,6 +558,7 @@ mod tests {
                 create_model,
                 runtime: None,
                 run_state: None,
+                resume: false,
             },
         )
         .await

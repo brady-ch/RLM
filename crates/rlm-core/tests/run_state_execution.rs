@@ -28,7 +28,8 @@ async fn run_state_snapshot_after_execution_contains_mutation_log() {
     });
     session.begin_confirmed_execution();
 
-    let store = Arc::new(FileRunStateStore::new(run_state_dir.clone()));
+    let store: Arc<dyn rlm_core::ports::RunStateStorePort> =
+        Arc::new(FileRunStateStore::new(run_state_dir.clone()));
     let run_state = Arc::new(RunStatePersistence::new("run-ui", Arc::clone(&store)));
     let model = Arc::new(QueueModel::new(["done"]));
     let create_model = {
@@ -52,6 +53,7 @@ async fn run_state_snapshot_after_execution_contains_mutation_log() {
             create_model,
             runtime: None,
             run_state: Some(run_state),
+            resume: false,
         },
     )
     .await
