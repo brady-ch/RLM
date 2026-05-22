@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::adapters::{EmbeddingError, OllamaEmbeddingModel};
+use crate::application::execution::ProcessShutdown;
 use crate::persistence::ann_vector_index::{AnnVectorIndex, RetrievalResult, RetrievalStatus};
 use crate::persistence::file_vector_index::{VectorIndexRecord, VectorRecordSource};
 use crate::persistence::FileMemoryStore;
@@ -27,6 +28,7 @@ pub struct SemanticMemoryIndex {
     embeddings: OllamaEmbeddingModel,
     ann: Arc<AsyncMutex<AnnVectorIndex>>,
     rebuild_pending: Arc<Mutex<bool>>,
+    lifecycle: ProcessShutdown,
 }
 
 impl SemanticMemoryIndex {
@@ -34,6 +36,7 @@ impl SemanticMemoryIndex {
         session_id: impl Into<String>,
         memory_dir: PathBuf,
         embeddings: OllamaEmbeddingModel,
+        lifecycle: ProcessShutdown,
     ) -> Self {
         let session_id = session_id.into();
         let memory_dir = memory_dir.clone();
@@ -44,7 +47,17 @@ impl SemanticMemoryIndex {
             embeddings,
             ann: Arc::new(AsyncMutex::new(AnnVectorIndex::new(memory_dir))),
             rebuild_pending: Arc::new(Mutex::new(false)),
+            lifecycle,
         }
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub async fn release_memory(&self) {
+        let mut ann = self.ann.lock().await;
+        ann.release_in_memory();
     }
 
     pub fn memory_dir(&self) -> &PathBuf {
@@ -60,6 +73,9 @@ impl SemanticMemoryIndex {
     }
 
     pub fn enqueue_rebuild(&self) {
+        if self.lifecycle.is_shutdown() {
+            return;
+        }
         let mut pending = self
             .rebuild_pending
             .lock()
@@ -74,9 +90,16 @@ impl SemanticMemoryIndex {
         let embeddings = self.embeddings.clone();
         let ann = Arc::clone(&self.ann);
         let rebuild_pending = Arc::clone(&self.rebuild_pending);
+        let lifecycle = self.lifecycle.clone();
+        let lifecycle_task = lifecycle.clone();
 
-        tokio::spawn(async move {
-            let result = rebuild_index(&session_id, &store, &embeddings, &ann).await;
+        lifecycle.spawn(async move {
+            if lifecycle_task.is_shutdown() {
+                *rebuild_pending.lock().unwrap_or_else(|p| p.into_inner()) = false;
+                return;
+            }
+            let result =
+                rebuild_index(&session_id, &store, &embeddings, &ann, &lifecycle_task).await;
             if let Err(err) = result {
                 tracing::warn!(error = %err, "vector index rebuild failed");
             }
@@ -178,7 +201,11 @@ async fn rebuild_index(
     store: &FileMemoryStore,
     embeddings: &OllamaEmbeddingModel,
     ann: &Arc<AsyncMutex<AnnVectorIndex>>,
+    lifecycle: &ProcessShutdown,
 ) -> Result<Vec<VectorIndexRecord>, EmbeddingError> {
+    if lifecycle.is_shutdown() {
+        return Ok(Vec::new());
+    }
     let mut records = Vec::new();
     let now = iso_now();
 
@@ -188,6 +215,9 @@ async fn rebuild_index(
             message: err.to_string(),
         })?
     {
+        if lifecycle.is_shutdown() {
+            return Ok(Vec::new());
+        }
         let text = format!("Scope {}: {}", scope.scope_id, scope.content);
         if text.len() > 20 {
             records.push(VectorIndexRecord {
@@ -208,6 +238,9 @@ async fn rebuild_index(
             message: err.to_string(),
         })?
     {
+        if lifecycle.is_shutdown() {
+            return Ok(Vec::new());
+        }
         let Some(scope_id) = entry.scope_ids.as_ref().and_then(|ids| ids.first()) else {
             continue;
         };
@@ -242,6 +275,7 @@ fn iso_now() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::application::execution::ProcessShutdown;
     use crate::persistence::file_vector_index::{FileVectorIndex, VectorRecordSource};
     use std::fs;
 
@@ -255,7 +289,12 @@ mod tests {
     #[tokio::test]
     async fn search_on_empty_index_returns_immediately() {
         let dir = temp_dir("empty");
-        let index = SemanticMemoryIndex::new("run-async", dir, OllamaEmbeddingModel::default());
+        let index = SemanticMemoryIndex::new(
+            "run-async",
+            dir,
+            OllamaEmbeddingModel::default(),
+            ProcessShutdown::default(),
+        );
         let started = std::time::Instant::now();
         let result = index.search("hello", &["notes".into()], 4).await;
         assert!(started.elapsed().as_millis() < 500);
@@ -277,7 +316,12 @@ mod tests {
         }])
         .unwrap();
 
-        let index = SemanticMemoryIndex::new("run-1", dir, OllamaEmbeddingModel::default());
+        let index = SemanticMemoryIndex::new(
+            "run-1",
+            dir,
+            OllamaEmbeddingModel::default(),
+            ProcessShutdown::default(),
+        );
         let status = index.status().await;
         assert_eq!(status.record_count, 1);
     }

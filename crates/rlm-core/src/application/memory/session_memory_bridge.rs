@@ -181,9 +181,13 @@ pub fn restore_session_memory(
     Ok(run_id)
 }
 
-pub fn restore_graph_workflow_metadata(payload: &SavedSessionPayload) -> (Value, bool, Option<String>) {
+pub fn restore_graph_workflow_metadata(
+    payload: &SavedSessionPayload,
+) -> (Value, bool, Option<String>) {
     let raw = payload.graph_workflow_metadata.as_ref();
-    let version = raw.and_then(|value| value.get("version")).and_then(|v| v.as_u64());
+    let version = raw
+        .and_then(|value| value.get("version"))
+        .and_then(|v| v.as_u64());
     if version != Some(1) {
         let note = "Session saved before v1.5 graph workflow metadata; workflow link not restored.";
         return (

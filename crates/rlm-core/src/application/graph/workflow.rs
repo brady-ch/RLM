@@ -232,12 +232,24 @@ fn iso_now() -> String {
 }
 
 pub fn find_graph_root_node(graph: &ExecutionGraph) -> Option<&ExecutionGraphNode> {
-    let roots: Vec<_> = graph.nodes.iter().filter(|node| node.parent_id.is_none()).collect();
+    let roots: Vec<_> = graph
+        .nodes
+        .iter()
+        .filter(|node| node.parent_id.is_none())
+        .collect();
     roots
         .iter()
         .find(|node| node.id == "root-composer")
         .copied()
         .or_else(|| roots.first().copied())
+}
+
+pub fn default_save_variant(graph: &ExecutionGraph) -> &'static str {
+    if graph_has_pipeline_template(graph) {
+        "both"
+    } else {
+        "playbook"
+    }
 }
 
 pub fn graph_has_pipeline_template(graph: &ExecutionGraph) -> bool {
@@ -248,7 +260,10 @@ pub fn graph_has_pipeline_template(graph: &ExecutionGraph) -> bool {
     prompt.contains("{{input}}")
 }
 
-pub fn apply_pipeline_template(graph: ExecutionGraph, input: &str) -> Result<ExecutionGraph, String> {
+pub fn apply_pipeline_template(
+    graph: ExecutionGraph,
+    input: &str,
+) -> Result<ExecutionGraph, String> {
     let Some(root_id) = find_graph_root_node(&graph).map(|node| node.id.clone()) else {
         return Err("Graph has no root node.".into());
     };

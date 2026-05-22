@@ -9,8 +9,8 @@ use crate::domain::types::{
     ExpertRuntimeMode, RecursiveModelConfig,
 };
 use crate::domain::RecursiveLanguageModel;
-use crate::execution::agent_registry::{filter_agent_tools, resolve_agent};
-use crate::execution::{InteractiveExecutionSession, SessionExecutionControl};
+use crate::application::execution::agent_registry::{filter_agent_tools, resolve_agent};
+use crate::application::execution::{InteractiveExecutionSession, SessionExecutionControl};
 use crate::plugins::resolve_tools_for_agent;
 use crate::ports::{LanguageModel, LanguageModelCompleteOptions};
 
@@ -479,7 +479,7 @@ pub async fn execute_graph(
 mod tests {
     use super::*;
     use crate::domain::types::{ExecutionGraphEdge, ExpertRuntimeMode};
-    use crate::execution::InteractiveExecutionSession;
+    use crate::application::execution::InteractiveExecutionSession;
 
     fn make_node(id: &str, mut partial: ExecutionGraphNode) -> ExecutionGraphNode {
         partial.id = id.into();

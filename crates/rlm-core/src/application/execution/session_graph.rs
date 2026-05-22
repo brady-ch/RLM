@@ -9,8 +9,8 @@ use crate::domain::types::{
     ExecutionStatus, ExpertRuntimeMode, GraphMutationError, GraphPosition, GraphViewport,
     PlanNodeResult, ReplanChoice, SessionSnapshot,
 };
-use crate::execution::agent_registry::is_known_expert_agent;
-use crate::graph::planner::{plan_children, GraphPlannerContext};
+use crate::application::execution::agent_registry::is_known_expert_agent;
+use crate::application::graph::planner::{plan_children, GraphPlannerContext};
 use crate::ports::LanguageModel;
 
 use super::session::{PendingChatMutation, PendingMutationKind};
