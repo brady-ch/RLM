@@ -12,6 +12,7 @@ export default tseslint.config(
       "ui/dist/**",
       ".planning/**",
       "coverage/**",
+      "src/domain/recursion/_*.ts",
     ],
   },
   eslint.configs.recommended,

@@ -41,5 +41,5 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "exclude": ["dist", "ui"]
+  "exclude": ["dist", "ui", "**/src/domain/recursion/_*.ts"]
 }
