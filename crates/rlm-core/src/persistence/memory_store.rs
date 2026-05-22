@@ -258,9 +258,8 @@ impl FileMemoryStore {
         source: &str,
         lifetime: &str,
     ) -> io::Result<MemoryScopePatchResult> {
-        let safe_key = sanitize_id(key).map_err(|err| {
-            io::Error::new(io::ErrorKind::InvalidInput, err.to_string())
-        })?;
+        let safe_key = sanitize_id(key)
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err.to_string()))?;
         if safe_key.is_empty() || value.trim().is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -268,7 +267,7 @@ impl FileMemoryStore {
             ));
         }
         let existing = self.read_scope(session_id, "project-preferences")?;
-        self.patch_scope(MemoryScopePatchRequest {
+        let result = self.patch_scope(MemoryScopePatchRequest {
             session_id: session_id.to_string(),
             scope_id: "project-preferences".into(),
             actor: "user".into(),
@@ -283,13 +282,20 @@ impl FileMemoryStore {
                 }
             }),
             lifetime: Some(lifetime.to_string()),
-        })
+        })?;
+        if !result.accepted {
+            return Err(io::Error::other(result.reason));
+        }
+        Ok(result)
     }
 
-    pub fn delete_preference(&self, session_id: &str, key: &str) -> io::Result<MemoryScopePatchResult> {
-        let safe_key = sanitize_id(key).map_err(|err| {
-            io::Error::new(io::ErrorKind::InvalidInput, err.to_string())
-        })?;
+    pub fn delete_preference(
+        &self,
+        session_id: &str,
+        key: &str,
+    ) -> io::Result<MemoryScopePatchResult> {
+        let safe_key = sanitize_id(key)
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err.to_string()))?;
         if safe_key.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -297,7 +303,7 @@ impl FileMemoryStore {
             ));
         }
         let existing = self.read_scope(session_id, "project-preferences")?;
-        self.patch_scope(MemoryScopePatchRequest {
+        let result = self.patch_scope(MemoryScopePatchRequest {
             session_id: session_id.to_string(),
             scope_id: "project-preferences".into(),
             actor: "user".into(),
@@ -306,7 +312,11 @@ impl FileMemoryStore {
             writes: vec!["preferences".into()],
             patch: json!({ safe_key: null }),
             lifetime: existing.as_ref().map(|doc| doc.lifetime.clone()),
-        })
+        })?;
+        if !result.accepted {
+            return Err(io::Error::other(result.reason));
+        }
+        Ok(result)
     }
 
     fn authorize(&self, request: &MemoryScopePatchRequest) -> Option<String> {
@@ -560,7 +570,10 @@ mod tests {
                 None,
             )
             .unwrap();
-        let restored = store.read_scope("run-new", "notes").unwrap().expect("scope");
+        let restored = store
+            .read_scope("run-new", "notes")
+            .unwrap()
+            .expect("scope");
         assert_eq!(restored.session_id, "run-new");
         assert_eq!(restored.content["text"], "hello");
     }
