@@ -119,24 +119,29 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 1. CI job installs built `.deb` and smoke-starts binary without GTK/dbus on developer machine
 2. Packaging workflow documents skip behavior for unsupported hosts
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 **Wave 1**
-- [ ] 67-01-PLAN.md — Deb smoke script, skip detection, npm wiring
+- [x] 67-01-PLAN.md — Deb smoke script, skip detection, npm wiring
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 67-02-PLAN.md — Headless Linux CI workflow + DESKTOP.md skip docs
+- [x] 67-02-PLAN.md — Headless Linux CI workflow + DESKTOP.md skip docs
 
 ### Phase 68: Application Layer + Handler Split
 
 **Goal:** Rust module layout mirrors v1.6/v1.7 TypeScript concern grouping.  
 **Depends on:** Phase 67 (Wave 1 complete)  
 **Requirements:** ARCH-02, ARCH-03, REG-02  
+**Plans:** 2 plans  
 **Success Criteria:**
 1. `application/` module groups execution, graph, memory, config, bootstrap facades
 2. `control_server/routes.rs` reduced to router wiring; handlers live in `handlers/` modules
 3. No handler file exceeds ~400 lines; existing route integration tests pass
+
+Plans:
+- [ ] 68-01-PLAN.md — Application layer grouping (execution, graph, memory, config, bootstrap)
+- [ ] 68-02-PLAN.md — Control-server handler split; routes.rs transport-only wiring
 
 ### Phase 69: Large File Decomposition
 
@@ -177,7 +182,7 @@ Plans:
 | 64. Resume Consumer + Run-State Port | v1.9 | 1/1 | Complete   | 2026-05-22 |
 | 65. Skill Interop | v1.9 | 1/1 | Complete   | 2026-05-22 |
 | 66. CLI Full Parity | v1.9 | 1/1 | Complete | 2026-05-22 |
-| 67. PACK-03 CI Smoke | v1.9 | 0/2 | Ready to execute | — |
+| 67. PACK-03 CI Smoke | v1.9 | 2/2 | Complete   | 2026-05-22 |
 | 68. Application Layer + Handler Split | v1.9 | 0/? | Not started | — |
 | 69. Large File Decomposition | v1.9 | 0/? | Not started | — |
 | 70. Rust Boundary Enforcement | v1.9 | 0/? | Not started | — |
