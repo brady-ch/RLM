@@ -1,3 +1,4 @@
+use std::fs;
 use std::sync::Arc;
 
 use axum::extract::{Path, State};
@@ -656,11 +657,24 @@ fn spawn_graph_execution(state: &Arc<RouterState>) {
         .as_ref()
         .map(|loaded| loaded.config.clone());
     let exec_model = state.exec_model();
+    let run_state = if state.paths.run_state_dir.is_dir()
+        || fs::create_dir_all(&state.paths.run_state_dir).is_ok()
+    {
+        Some(Arc::new(crate::domain::RunStatePersistence::new(
+            state.current_memory_session_id(),
+            Arc::new(crate::persistence::FileRunStateStore::new(
+                state.paths.run_state_dir.clone(),
+            )),
+        )))
+    } else {
+        None
+    };
     let input = GraphExecutorInput {
         runtime_config,
         project_config,
         create_model: Arc::new(move || Arc::clone(&exec_model) as Arc<dyn LanguageModel>),
         runtime: state.runtime_context.clone(),
+        run_state,
     };
     let lifecycle = state.lifecycle.clone();
     lifecycle.clone().spawn(async move {

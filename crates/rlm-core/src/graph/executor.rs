@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use crate::domain::run_state_persistence::RunStatePersistence;
 use crate::domain::recursive_language_model::ExecutionControl;
 use crate::domain::types::{
     ExecutionGraph, ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail,
@@ -40,6 +41,20 @@ pub struct GraphExecutorInput {
     pub project_config: Option<serde_json::Value>,
     pub create_model: Arc<dyn Fn() -> Arc<dyn LanguageModel> + Send + Sync>,
     pub runtime: Option<crate::plugins::RuntimeContext>,
+    pub run_state: Option<Arc<RunStatePersistence>>,
+}
+
+fn execution_status_label(status: ExecutionStatus) -> String {
+    serde_json::to_value(status)
+        .ok()
+        .and_then(|value| value.as_str().map(str::to_string))
+        .unwrap_or_else(|| "running".into())
+}
+
+fn persist_run_state_status(input: &GraphExecutorInput, node_id: &str, status: ExecutionStatus) {
+    if let Some(run_state) = input.run_state.as_ref() {
+        let _ = run_state.persist_node_status(node_id, &execution_status_label(status));
+    }
 }
 
 pub fn topological_execution_order(
@@ -193,6 +208,16 @@ pub async fn execute_graph(
     let control: Arc<dyn ExecutionControl> =
         Arc::new(SessionExecutionControl::new(Arc::clone(&session)));
 
+    if let Some(run_state) = input.run_state.as_ref() {
+        let root_prompt = graph
+            .nodes
+            .iter()
+            .find(|node| node.parent_id.is_none())
+            .and_then(|node| node.prompt.clone())
+            .unwrap_or_else(|| "graph run".into());
+        let _ = run_state.initialize(&root_prompt, "default");
+    }
+
     for node_id in order {
         let Some(node) = node_by_id.get(&node_id) else {
             continue;
@@ -208,6 +233,7 @@ pub async fn execute_graph(
                     failure_category: None,
                 }),
             );
+            persist_run_state_status(&input, &node_id, ExecutionStatus::Failed);
             failed.insert(node_id);
             continue;
         }
@@ -300,6 +326,7 @@ pub async fn execute_graph(
                 failure_category: None,
             }),
         );
+        persist_run_state_status(&input, &node_id, ExecutionStatus::Running);
 
         let ancestors = collect_ancestors(node, &node_by_id);
         let prompt = build_execution_prompt(node, &ancestors);
@@ -352,7 +379,10 @@ pub async fn execute_graph(
         };
 
         match result {
-            Ok(()) => control.update_node_status(&node_id, ExecutionStatus::Completed, None),
+            Ok(()) => {
+                control.update_node_status(&node_id, ExecutionStatus::Completed, None);
+                persist_run_state_status(&input, &node_id, ExecutionStatus::Completed);
+            }
             Err(message) => {
                 control.update_node_status(
                     &node_id,
@@ -363,6 +393,7 @@ pub async fn execute_graph(
                         code: None,
                     }),
                 );
+                persist_run_state_status(&input, &node_id, ExecutionStatus::Failed);
                 failed.insert(node_id);
             }
         }
@@ -448,13 +479,14 @@ mod tests {
                     max_branches: 4,
                     max_prompt_characters: 4096,
                     max_model_calls: 50,
-                    max_tool_rounds: 0,
-                    quality_loop: None,
-                },
-                project_config: None,
-                create_model,
-                runtime: None,
+                max_tool_rounds: 0,
+                quality_loop: None,
             },
+            project_config: None,
+            create_model,
+            runtime: None,
+            run_state: None,
+        },
         )
         .await
         .unwrap();
