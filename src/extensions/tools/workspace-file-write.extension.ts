@@ -1,6 +1,6 @@
 import { WorkspaceFileWriteTool } from "../../adapters/tools/workspace-file-write-tool.js";
-import type { ExtensionHost } from "../../application/extension-host.js";
+import type { ExtensionHostPort } from "../../ports/extension-host-port.js";
 
-export function register(host: ExtensionHost): void {
+export function register(host: ExtensionHostPort): void {
   host.tools.register(new WorkspaceFileWriteTool({ workspaceRoot: process.cwd() }));
 }

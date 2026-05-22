@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { analyzeHtmlContent } from "../../application/content-tree.js";
+import { analyzeHtmlContent } from "./content-tree.js";
 import type { ToolExecutionResult, ToolPort } from "../../ports/tool-port.js";
 
 const webFetchSchema = z.object({

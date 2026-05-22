@@ -1,5 +1,5 @@
+import type { AgentConfig } from "./agent-config.js";
 import type { ToolPort } from "../ports/tool-port.js";
-import type { AgentConfig } from "../application/project-config.js";
 
 export interface AgentProfile {
   id: string;

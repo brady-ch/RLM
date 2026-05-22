@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 import { ExtensionHost } from "../src/application/extension-host.js";
-import type { ExtensionHost as ExtensionHostType } from "../src/application/extension-host.js";
+import type { ExtensionHostPort } from "../src/ports/extension-host-port.js";
 import type { ToolExecutionResult, ToolPort } from "../src/ports/tool-port.js";
 
 class SyntheticTool implements ToolPort {
@@ -107,7 +107,7 @@ test("loadBuiltins registers synthetic builtin without allowlist", () => {
   const host = new ExtensionHost();
   const builtin = {
     path: "synthetic-builtin",
-    register(target: ExtensionHostType): void {
+    register(target: ExtensionHostPort): void {
       target.tools.register(new SyntheticTool("builtin_echo"));
     },
   };

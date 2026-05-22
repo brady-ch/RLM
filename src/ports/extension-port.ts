@@ -1,4 +1,4 @@
-import type { ExtensionHost } from "../application/extension-host.js";
+import type { ExtensionHostPort } from "./extension-host-port.js";
 
 export interface ExtensionRegistryEntry {
   path: string;
@@ -6,5 +6,5 @@ export interface ExtensionRegistryEntry {
 }
 
 export interface ExtensionManifest {
-  register(host: ExtensionHost): void;
+  register(host: ExtensionHostPort): void;
 }

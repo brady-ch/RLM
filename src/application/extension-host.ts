@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import * as readline from "node:readline/promises";
 import { pathToFileURL } from "node:url";
+import type { ExtensionHostPort } from "../ports/extension-host-port.js";
 import type { ExtensionRegistryEntry } from "../ports/extension-port.js";
 import type { LanguageModelPort } from "../ports/language-model-port.js";
 import type { SkillLoaderPort } from "../ports/skill-loader-port.js";
@@ -12,7 +13,7 @@ type NamedModelHost = LanguageModelPort & { name: string };
 type ExtensionModule = { register?: unknown };
 type Allowlist = Record<string, string>;
 
-export class ExtensionHost {
+export class ExtensionHost implements ExtensionHostPort {
   private readonly toolRegistry = new Map<string, ToolPort>();
   private readonly skillLoaderRegistry = new Map<string, SkillLoaderPort>();
   private readonly modelHostRegistry = new Map<string, NamedModelHost>();
@@ -39,7 +40,9 @@ export class ExtensionHost {
     get: (name: string): LanguageModelPort | undefined => this.modelHostRegistry.get(name),
   };
 
-  loadBuiltins(entries: Array<{ path: string; register: (host: ExtensionHost) => void }>): void {
+  loadBuiltins(
+    entries: Array<{ path: string; register: (host: ExtensionHostPort) => void }>,
+  ): void {
     for (const entry of entries) {
       entry.register(this);
     }

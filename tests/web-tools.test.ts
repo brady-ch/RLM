@@ -10,7 +10,7 @@ import {
   analyzeHtmlContent,
   stripFluffWords,
   stripHtmlTags,
-} from "../src/application/content-tree.js";
+} from "../src/adapters/tools/content-tree.js";
 
 test("search query builder applies search operators", () => {
   const query = buildSearchQuery({
