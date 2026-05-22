@@ -4,21 +4,20 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
-import { RecursiveLanguageModel } from "../src/domain/recursive-language-model.js";
-import type { AgentProfile } from "../src/domain/agents.js";
+import { RecursiveLanguageModel } from "../../../src/domain/recursive-language-model.js";
+import type { AgentProfile } from "../../../src/domain/agents.js";
 import type {
-  LanguageModelCompleteOptions,
   LanguageModelMessage,
   LanguageModelPort,
   LanguageModelResponse,
-} from "../src/ports/language-model-port.js";
+} from "../../../src/ports/language-model-port.js";
 import type {
   ExecutionGraphNode,
   NodeApprovalDecision,
   QualityLoopMetadata,
   RuntimeMemory,
-} from "../src/domain/types.js";
-import type { ToolExecutionResult, ToolPort } from "../src/ports/tool-port.js";
+} from "../../../src/domain/types.js";
+import type { ToolPort } from "../../../src/ports/tool-port.js";
 import {
   FileMemoryStore,
   FileRunStateStore,
@@ -26,290 +25,51 @@ import {
   GuardedShellTool,
   InMemoryTrace,
   WorkspaceFileWriteTool,
-} from "../src/adapters/index.js";
-import { createAgentRegistry, selectAgent } from "../src/application/agent-registry.js";
-import { loadProjectConfig, resolveRuntimeConfig } from "../src/application/project-config.js";
-import { MemoryManager } from "../src/application/memory-manager.js";
+} from "../../../src/adapters/index.js";
+import { createAgentRegistry, selectAgent } from "../../../src/application/agent-registry.js";
+import {
+  loadProjectConfig,
+  resolveRuntimeConfig,
+} from "../../../src/application/project-config.js";
+import { MemoryManager } from "../../../src/application/memory-manager.js";
 import {
   PurposeRoutingLanguageModel,
   selectDynamicTier,
   type ModelSelectionRecord,
-} from "../src/application/model-provider.js";
-import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
+} from "../../../src/application/model-provider.js";
+import { buildBugfixQueue, runWorkflow } from "../../../src/application/workflow-runner.js";
 import {
   createInteractiveExecutionSession,
   type InteractiveExecutionSession,
-} from "../src/application/execution-controller.js";
-import { startControlServer } from "../src/application/control-server/index.js";
-import { ModelLibraryService } from "../src/application/model-library.js";
-import { createUiExecutionRunner } from "../src/application/ui-execution-runner.js";
-import { parseArgs } from "../src/cli/args.js";
-import { renderResult } from "../src/cli/render.js";
-import type { RuntimeLogEvent, RuntimeLogger } from "../src/ports/runtime-logger-port.js";
-import { MemoryResolver } from "../src/application/memory-resolver.js";
-import type { PlannedChildSpec } from "../src/application/graph-planner.js";
-
-type QueueResponse = string | LanguageModelResponse | Error;
-
-class QueueModel implements LanguageModelPort {
-  readonly calls: Array<{
-    messages: LanguageModelMessage[];
-    options: LanguageModelCompleteOptions;
-  }> = [];
-
-  constructor(private readonly responses: QueueResponse[]) {}
-
-  async complete(
-    messages: LanguageModelMessage[],
-    options: LanguageModelCompleteOptions = {},
-  ): Promise<LanguageModelResponse> {
-    this.calls.push({ messages, options });
-    const response = this.responses.shift();
-    if (response === undefined) {
-      throw new Error("No queued response");
-    }
-    if (response instanceof Error) {
-      throw response;
-    }
-
-    return typeof response === "string" ? { content: response, toolCalls: [] } : response;
-  }
-}
-
-class DelayedQueueModel implements LanguageModelPort {
-  readonly calls: Array<{
-    messages: LanguageModelMessage[];
-    options: LanguageModelCompleteOptions;
-  }> = [];
-
-  constructor(
-    private readonly responses: QueueResponse[],
-    private readonly delayMs = 200,
-  ) {}
-
-  async complete(
-    messages: LanguageModelMessage[],
-    options: LanguageModelCompleteOptions = {},
-  ): Promise<LanguageModelResponse> {
-    this.calls.push({ messages, options });
-    await new Promise((resolve) => setTimeout(resolve, this.delayMs));
-    const response = this.responses.shift();
-    if (response === undefined) {
-      throw new Error("No queued response");
-    }
-    if (response instanceof Error) {
-      throw response;
-    }
-
-    return typeof response === "string" ? { content: response, toolCalls: [] } : response;
-  }
-}
-
-class ThrowingModel implements LanguageModelPort {
-  constructor(private readonly message: string) {}
-
-  async complete(): Promise<LanguageModelResponse> {
-    throw new Error(this.message);
-  }
-}
-
-function createMockPlanModel(specs: PlannedChildSpec[] | "invalid" | "throw"): LanguageModelPort {
-  return {
-    async complete(
-      messages: LanguageModelMessage[],
-      _options: LanguageModelCompleteOptions = {},
-    ): Promise<LanguageModelResponse> {
-      if (specs === "throw") {
-        throw new Error("planner unavailable");
-      }
-      if (specs === "invalid") {
-        return { content: "{not json}", toolCalls: [] };
-      }
-      return {
-        content: JSON.stringify({ children: specs }),
-        toolCalls: [],
-        model: "mock-planner",
-      };
-    },
-  };
-}
-
-const audiobookPlanChildren: PlannedChildSpec[] = [
-  {
-    label: "Parse book into segments",
-    prompt: "Parse the source book into ordered chapter and segment artifact refs.",
-    type: "Splitter",
-    complexity: "medium",
-  },
-  {
-    label: "Interpret speakers",
-    prompt:
-      "Infer speaker attribution and update a persistent speaker bible from bounded text segments.",
-    type: "AI",
-    complexity: "high",
-  },
-  {
-    label: "Generate TTS clips",
-    prompt: "Generate consistent per-speaker audio clips from segment refs and voice profiles.",
-    type: "TTS",
-    complexity: "high",
-  },
-  {
-    label: "Validate continuity",
-    prompt: "Validate speaker and audio continuity across generated clips.",
-    type: "Validator",
-    complexity: "medium",
-  },
-  {
-    label: "Splice final audio",
-    prompt: "Splice ordered audio artifact refs into the final audiobook file.",
-    type: "Code",
-    complexity: "medium",
-  },
-];
-
-const genericPlanChildren: PlannedChildSpec[] = [
-  {
-    label: "Plan implementation slice",
-    prompt: "Create the smallest safe implementation slice.",
-    type: "AI",
-    complexity: "medium",
-  },
-  {
-    label: "Execute code changes",
-    prompt: "Apply code or configuration changes.",
-    type: "Code",
-    complexity: "medium",
-  },
-  {
-    label: "Validate results",
-    prompt: "Validate the completed work.",
-    type: "Validator",
-    complexity: "low",
-  },
-];
-
-const expertPlanChildren: PlannedChildSpec[] = [
-  {
-    label: "Implement feature",
-    prompt: "Implement the feature.",
-    type: "Code",
-    complexity: "high",
-    agentId: "coding",
-    runtime: "rlm",
-    toolAllowlist: ["shell", "write_file"],
-    purposeTiers: { answer: "medium", synthesize: "large" },
-  },
-];
-
-class CaptureLogger implements RuntimeLogger {
-  readonly events: RuntimeLogEvent[] = [];
-
-  log(event: RuntimeLogEvent): void {
-    this.events.push(event);
-  }
-}
-
-class EchoTool implements ToolPort {
-  readonly name = "echo";
-  readonly description = "Echo input text.";
-  readonly schema = {};
-
-  async execute(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-    return {
-      status: "success",
-      output: `echo: ${String(args["text"] ?? "")}`,
-    };
-  }
-}
-
-const config = {
-  maxDepth: 2,
-  maxDynamicDepth: 4,
-  maxBranches: 2,
-  maxPromptCharacters: 1_000,
-  maxModelCalls: 100,
-  maxToolRounds: 3,
-};
-
-const dynamicDepthConfig = {
-  maxDynamicDepth: 4,
-  maxBranches: 2,
-  maxPromptCharacters: 1_000,
-  maxModelCalls: 100,
-  maxToolRounds: 3,
-};
-
-const structuredCritique = JSON.stringify({
-  summary: "critique notes",
-  resolved: false,
-  issues: [],
-  suggestedImprovements: ["clarify the answer"],
-});
-
-const continuingGate = JSON.stringify({
-  decision: "continue",
-  score: 0.6,
-  passThreshold: 0.8,
-  rubricFit: true,
-  critiqueResolved: false,
-  meaningfulImprovement: true,
-  rationale: "Needs another pass.",
-  failedConditions: ["score_below_threshold"],
-  unresolvedIssues: [],
-});
-
-const passingGate = JSON.stringify({
-  decision: "pass",
-  score: 0.92,
-  passThreshold: 0.8,
-  rubricFit: true,
-  critiqueResolved: true,
-  meaningfulImprovement: true,
-  rationale: "Meets the rubric.",
-  failedConditions: [],
-  unresolvedIssues: [],
-});
-
-function bestOfProgress(answer: string, selectedCandidateId?: string): string {
-  return JSON.stringify({
-    ...(selectedCandidateId ? { selectedCandidateId } : {}),
-    answer,
-    rationale: "Best candidate by score and issue resolution.",
-    score: 0.9,
-    comparisonNotes: ["Best available answer."],
-  });
-}
-
-function assertQualityLoopTerminal(
-  loop: QualityLoopMetadata | undefined,
-  expected: {
-    status: QualityLoopMetadata["status"];
-    stopReason: NonNullable<QualityLoopMetadata["stopReason"]>;
-    issueText?: RegExp;
-  },
-) {
-  assert.equal(loop?.status, expected.status);
-  assert.equal(loop?.stopReason, expected.stopReason);
-  assert.ok(
-    loop?.message !== undefined ||
-      loop?.unresolvedIssues.length !== 0 ||
-      loop?.gate !== undefined ||
-      loop?.selection !== undefined,
-  );
-  if (expected.issueText) {
-    const diagnostic = [
-      loop?.message,
-      ...(loop?.unresolvedIssues.map((issue) => issue.text) ?? []),
-      ...(loop?.iterations.flatMap((iteration) =>
-        iteration.unresolvedIssues.map((issue) => issue.text),
-      ) ?? []),
-    ]
-      .filter(Boolean)
-      .join("\n");
-    assert.match(diagnostic, expected.issueText);
-  }
-}
+} from "../../../src/application/execution-controller.js";
+import { startControlServer } from "../../../src/application/control-server/index.js";
+import { ModelLibraryService } from "../../../src/application/model-library.js";
+import { createUiExecutionRunner } from "../../../src/application/ui-execution-runner.js";
+import { parseArgs } from "../../../src/cli/args.js";
+import { renderResult } from "../../../src/cli/render.js";
+import { MemoryResolver } from "../../../src/application/memory-resolver.js";
+import {
+  DelayedQueueModel,
+  QueueModel,
+  ThrowingModel,
+  type QueueResponse,
+} from "../../helpers/mock-language-model.js";
+import {
+  audiobookPlanChildren,
+  createMockPlanModel,
+  expertPlanChildren,
+  genericPlanChildren,
+} from "../../helpers/mock-plan-model.js";
+import {
+  bestOfProgress,
+  config,
+  continuingGate,
+  dynamicDepthConfig,
+  passingGate,
+  structuredCritique,
+} from "../../helpers/recursion-fixtures.js";
+import { assertQualityLoopTerminal } from "../../helpers/quality-loop-helpers.js";
+import { CaptureLogger, EchoTool } from "../../helpers/simple-tools.js";
 
 test("quality loop metadata contract supports graph nodes", () => {
   const loop: QualityLoopMetadata = {

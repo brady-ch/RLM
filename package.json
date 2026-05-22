@@ -36,7 +36,7 @@
     "format:check": "prettier --check src tests ui/src",
     "depcruise:ci": "dependency-cruise src --config .dependency-cruiser.js --ignore-known dependency-cruiser-baseline.json",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test dist/tests/*.test.js"
+    "test": "npm run build && node --test dist/tests"
   },
   "keywords": [],
   "author": "",
