@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Adapter & Plugin Taxonomy
-status: planning
-stopped_at: Completed 50-01-PLAN.md
-last_updated: "2026-05-22T16:51:40.660Z"
-last_activity: 2026-05-22 — Phase 50 complete (remote fetch, doctor --fix, 471 tests green)
+status: complete
+stopped_at: Completed 51-01-PLAN.md
+last_updated: "2026-05-22T17:25:00.000Z"
+last_activity: 2026-05-22 — Phase 51 complete (plugin manager UI panel, 471 tests green)
 progress:
   total_phases: 9
-  completed_phases: 8
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 9
+  total_plans: 9
+  completed_plans: 9
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone v1.7 — Phase 51 Plugin Manager UI.
+**Current focus:** Milestone v1.7 complete — Phase 51 Plugin Manager UI shipped.
 
 ## Current Position
 
 Phase: 51 of 51 (Plugin Manager UI)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-22 — Phase 50 complete (remote fetch, doctor --fix, 471 tests green)
+Plan: 1 of 1 complete
+Status: Complete
+Last activity: 2026-05-22 — Phase 51 complete (plugin manager UI panel, 471 tests green)
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed (v1.7): 8
+- Total plans completed (v1.7): 9
 - Phase 43: 1 plan, 359 tests green
 - Phase 44: 1 plan, 360 tests green
 - Phase 45: 1 plan, 360 tests green
@@ -45,6 +45,7 @@ Progress: [██████████] 100%
 - Phase 48: 1 plan, 451 tests green
 - Phase 49: 1 plan, 459 tests green
 - Phase 50: 1 plan, 471 tests green
+- Phase 51: 1 plan, 471 tests green
 
 **By Phase:**
 
@@ -58,7 +59,7 @@ Progress: [██████████] 100%
 | 48 | 1 | 1 | 1 |
 | 49 | 1 | 1 | 1 |
 | 50 | 1 | 1 | 1 |
-| 51 | 0 | TBD | — |
+| 51 | 1 | 1 | 1 |
 
 ## Accumulated Context
 
@@ -79,6 +80,11 @@ Phase 49 completed: `PluginRegistryService` with user catalog at `~/.rlm/plugins
 - `git:` URLs use spawn-only clone; no npm lifecycle during fetch
 - Doctor repair requires explicit `--fix`; quarantine under `~/.rlm/plugins/.quarantine/`
 
+Phase 51 completed: PluginPanel in UI with CLI-aligned list/doctor copy, remote install confirm modal, restart banner; consumes `/api/plugins/*`; 471 tests green.
+
+- Plugin UI consumes existing control-server routes; no new server handlers
+- Remote install confirm modal mirrors CLI `--yes` before catalog write
+
 ### Pending Todos
 
 3 pending items under `.planning/todos/pending/` (deferred from v1.6 close).
@@ -97,10 +103,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-22T16:51:40.656Z
-Stopped at: Completed 50-01-PLAN.md
+Last session: 2026-05-22T17:25:00.000Z
+Stopped at: Completed 51-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
 
-Proceed with Phase 51 Plugin Manager UI (control-server endpoints + UI panel aligned with CLI semantics).
+Milestone v1.7 complete. Consider milestone audit (`/gsd-audit-milestone`) or next milestone planning.

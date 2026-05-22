@@ -2,7 +2,7 @@
 
 ## Milestones
 
-- 🚧 **v1.7 Adapter & Plugin Taxonomy** — Phases 43-51 (in progress)
+- 🚧 **v1.7 Adapter & Plugin Taxonomy** — Phases 43-51 (complete 2026-05-22)
 - ✅ **v1.6 Architecture Cleanup** — Phases 36-42 (shipped 2026-05-22; archive: `.planning/milestones/v1.6-ROADMAP.md`)
 - ✅ **v1.5 Dynamic Graph Authoring** — Phases 30-35 (shipped 2026-05-22; archive: `.planning/milestones/v1.5-ROADMAP.md`)
 - ✅ **v1.4 Session Memory** — Phases 25-29, 29.1 (shipped 2026-05-21; archive: `.planning/milestones/v1.4-ROADMAP.md`)
@@ -31,7 +31,7 @@
 - [x] **Phase 48: Dependency-Cruiser Ratchet** — Empty baseline, warn→error severity, strict `npm run check`
 - [x] **Phase 49: Local Plugin Manager** — CLI commands, shared registry service, catalog under `~/.rlm/plugins/` (1/1 plan) — 2026-05-22
 - [x] **Phase 50: Remote Fetch** — HTTPS archive and optional git fetch-to-local with security defenses (1/1 plan) — 2026-05-22
-- [ ] **Phase 51: Plugin Manager UI** — Control-server endpoints and UI panel aligned with CLI semantics
+- [x] **Phase 51: Plugin Manager UI** — Control-server endpoints and UI panel aligned with CLI semantics (1/1 plan) — 2026-05-22
 
 <details>
 <summary>✅ v1.6 Architecture Cleanup (Phases 36-42) — SHIPPED 2026-05-22</summary>
@@ -176,7 +176,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   2. UI plugin panel shows installed plugins, enabled state, contributed capabilities, and doctor issues using the same vocabulary as CLI failure states
   3. UI surfaces trust/approval prompts for first load of external plugins consistent with existing allowlist behavior
   4. UI indicates when plugin changes require session/runtime restart before tools take effect
-**Plans**: TBD
+**Plans**: 1/1 complete
 **UI hint**: yes
 
 ## Progress
@@ -194,7 +194,7 @@ Phases execute in numeric order: 43 → 44 → … → 51
 | 48. Dependency-Cruiser Ratchet | v1.7 | 0/TBD | Not started | - |
 | 49. Local Plugin Manager | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 50. Remote Fetch | v1.7 | 1/1 | Complete   | 2026-05-22 |
-| 51. Plugin Manager UI | v1.7 | 0/TBD | Not started | - |
+| 51. Plugin Manager UI | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 36-42 Architecture Cleanup | v1.6 | 15/15 | Complete | 2026-05-22 |
 | 30-35 Dynamic Graph Authoring | v1.5 | 18/18 | Complete | 2026-05-22 |
 | 25-29, 29.1 Session Memory | v1.4 | 6/6 | Complete | 2026-05-21 |

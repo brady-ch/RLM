@@ -63,10 +63,10 @@
 
 ### Plugin Manager UI
 
-- [ ] **UI-01**: Control-server exposes plugin list/install/enable/disable/uninstall/doctor endpoints backed by the same `PluginRegistryService` as CLI.
-- [ ] **UI-02**: UI plugin panel shows installed plugins, enabled state, contributed capabilities, and doctor issues with the same vocabulary as CLI failure states.
-- [ ] **UI-03**: UI surfaces trust/approval prompts for first load of external plugins consistent with existing allowlist behavior.
-- [ ] **UI-04**: UI indicates when plugin changes require session/runtime restart before tools take effect.
+- [x] **UI-01**: Control-server exposes plugin list/install/enable/disable/uninstall/doctor endpoints backed by the same `PluginRegistryService` as CLI.
+- [x] **UI-02**: UI plugin panel shows installed plugins, enabled state, contributed capabilities, and doctor issues with the same vocabulary as CLI failure states.
+- [x] **UI-03**: UI surfaces trust/approval prompts for first load of external plugins consistent with existing allowlist behavior.
+- [x] **UI-04**: UI indicates when plugin changes require session/runtime restart before tools take effect.
 
 ## Future Requirements
 
@@ -139,10 +139,10 @@
 | RMT-02 | Phase 50 | Complete |
 | RMT-03 | Phase 50 | Complete |
 | RMT-04 | Phase 50 | Complete |
-| UI-01 | Phase 51 | Pending |
-| UI-02 | Phase 51 | Pending |
-| UI-03 | Phase 51 | Pending |
-| UI-04 | Phase 51 | Pending |
+| UI-01 | Phase 51 | Complete |
+| UI-02 | Phase 51 | Complete |
+| UI-03 | Phase 51 | Complete |
+| UI-04 | Phase 51 | Complete |
 
 **Coverage:**
 - v1.7 requirements: 38 total
