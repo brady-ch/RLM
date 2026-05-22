@@ -1,0 +1,110 @@
+# Requirements: Recursive Language Model CLI
+
+**Defined:** 2026-05-22  
+**Milestone:** v1.6 Architecture Cleanup  
+**Core Value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.
+
+## v1.6 Requirements
+
+### Regression Gate
+
+- [ ] **REG-01**: All existing tests pass after each extraction phase; no intentional behavior changes to CLI flags, config semantics, control-server API, or graph/session/memory flows.
+- [ ] **REG-02**: `npm run check` (typecheck + test, extended with lint/depcruise when tooling lands) remains the CI gate and stays green throughout the milestone.
+
+### Dev Tooling
+
+- [ ] **TOOL-01**: ESLint 10 flat config with typescript-eslint covers `src/` and `ui/src/` with a minimal baseline rule set aligned to existing style.
+- [ ] **TOOL-02**: Prettier 3 formats TypeScript sources; eslint-config-prettier prevents rule conflicts; format-only changes land in a separate commit from logic refactors.
+- [ ] **TOOL-03**: dependency-cruiser enforces AGENTS.md layer rules (`domain→ports`, no `ports→application`, etc.) with warn-severity baseline that ratchets to error as violations are fixed.
+- [ ] **TOOL-04**: `npm run check` expands to include lint and dependency-cruiser validation once baselines are triaged.
+
+### Config Layer
+
+- [ ] **CONF-01**: `project-config.ts` splits into focused modules under `application/config/` (types/schema, defaults, loader, validation, runtime resolution, model override, starter seed).
+- [ ] **CONF-02**: Public config API preserved via barrel re-export facade so existing ~20 import sites continue working without a flag-day rename.
+- [ ] **CONF-03**: Validation errors retain file/path context and existing error shapes after the split.
+- [ ] **CONF-04**: Runtime host selection, tier resolution, and model override behavior unchanged from pre-split semantics.
+- [ ] **CONF-05**: Starter seeding behavior (`seedProjectRlmStarter`) unchanged for first-run UI flows.
+- [ ] **CONF-06**: Config resolution modules are unit-testable without full CLI invocation or filesystem I/O where feasible.
+
+### Runtime Bootstrap
+
+- [ ] **BOOT-01**: Runtime construction extracts from `src/index.ts` into `application/bootstrap/` with a typed `RuntimeContext` and single `buildRuntimeContext()` entry point.
+- [ ] **BOOT-02**: `index.ts` reads primarily as CLI argument parsing, early command exits, runtime build, and dispatch (<150 LOC target).
+- [ ] **BOOT-03**: CLI run-mode dispatch moves to `cli/run-modes/*`; each mode receives a built `RuntimeContext` rather than constructing stores/adapters inline.
+- [ ] **BOOT-04**: Init order preserved in one composition pipeline: extensions → MCP cleanup tracking → tool resolver → agent registry → model factory → execution control → shutdown wiring.
+- [ ] **BOOT-05**: Extension/tool registration stays unified — built-ins, external extensions, and interop MCP/skill tools register through one path with no duplication.
+- [ ] **BOOT-06**: Runtime builders are unit-testable without spawning the full CLI or control server.
+
+### Adapters & Tools
+
+- [ ] **ADPT-01**: Tool adapters (`guarded-shell`, `web-search`, `web-fetch`, `workspace-file-write`) group under `adapters/tools/` by concern rather than a flat `adapters/` directory.
+- [ ] **ADPT-02**: Persistence adapters (`file-session-store`, `file-memory-store`, `file-run-state-store`, `file-vector-index`) group under `adapters/persistence/`.
+- [ ] **ADPT-03**: Model host adapters (`ollama-language-model`, `http-language-model`, `ollama-embedding-model`) group under `adapters/models/`.
+- [ ] **ADPT-04**: Shared adapter utilities (e.g. `search-query`) colocate with their owning concern module, not as orphaned flat files.
+- [ ] **ADPT-05**: Extension registration shims in `src/extensions/tools/` align with adapter module locations; no duplicate tool implementations.
+- [ ] **ADPT-06**: Ports remain the public contract; adapter moves preserve `ToolPort` and store interfaces with import updates routed through composition/bootstrap, not scattered application→adapter coupling growth.
+
+### Domain Engine
+
+- [ ] **RLM-01**: `recursive-language-model.ts` decomposes into `domain/recursion/` concern modules (budget guard, tool-round loop, quality loop, execution-graph sync, prompt utilities).
+- [ ] **RLM-02**: The orchestrator class retains top-level recursion flow; extracted modules are pure or narrowly-scoped helpers first, then integrated without semantics drift.
+- [ ] **RLM-03**: Domain modules do not import application-layer types; dependency direction stays domain → ports only.
+- [ ] **RLM-04**: Each extraction slice passes RLM, graph-executor, and integration test suites before the next peel.
+- [ ] **RLM-05**: Plan-phase spike resolves state threading between class fields and extracted modules before quality-loop extraction executes.
+
+### Control-Server Boundary
+
+- [ ] **CTRL-01**: HTTP route handlers group into `application/control-server/handlers/` by surface (session, graph, workflows, model-library, static UI).
+- [ ] **CTRL-02**: Control server remains transport-only; session/graph authority stays in existing application services (`InteractiveExecutionSession`, execution-controller).
+- [ ] **CTRL-03**: `startControlServer` receives composed runtime dependencies (`SessionRuntimeRef`, stores, resolvers) from bootstrap, not constructed inside route handlers.
+- [ ] **CTRL-04**: Endpoint paths, request/response JSON shapes, and error vocabulary unchanged from pre-refactor behavior.
+
+### Test Structure
+
+- [ ] **TEST-01**: Shared test helpers extract to `tests/helpers/` before large test file splits.
+- [ ] **TEST-02**: `recursive-language-model.test.ts` splits into subsystem-aligned files under `tests/domain/recursion/` (and related paths) mirroring new module boundaries.
+- [ ] **TEST-03**: Config and bootstrap modules gain focused unit tests at extraction boundaries.
+- [ ] **TEST-04**: Integration anchor tests (`integration-v15`, graph-workflow, session-memory suites) remain intact and green; test count parity verified before/after splits.
+- [ ] **TEST-05**: Test blocks move verbatim during splits; assertion changes require structural justification only.
+
+### Documentation
+
+- [ ] **DOC-01**: `AGENTS.md` updated to reflect new module homes (config/, bootstrap/, domain/recursion/, adapters/tools|persistence|models/, control-server/handlers/).
+- [ ] **DOC-02**: Contributor guidance documents where to add new tools, adapters, config fields, and runtime wiring after the refactor.
+
+## Future Requirements
+
+### Architecture (Deferred)
+
+- **ARCH-01**: Deep split of `execution-controller.ts` — cohesive but high approval/plan regression risk; defer until measured need.
+- **ARCH-02**: Full dependency-cruiser error severity on all known boundary violations (`domain/agents.ts`, `ports/extension-port.ts`, widespread `application→adapters` imports) — ratchet incrementally during v1.6, complete in follow-up if violations remain.
+- **ARCH-03**: AST codemod pipeline for repeated cross-module moves — only if manual extraction becomes routine.
+
+### Product (Deferred from Prior Milestones)
+
+- **SHELL-01**: Guided composer for first-run/new-workflow entry.
+- **SHELL-02**: Graph workspace as primary product surface with project/session launcher.
+- **PLAT-01**: Multi-runner adapters (llama.cpp, vLLM, cloud APIs) beyond bundled Ollama.
+- **PLAT-02**: Release hardening (signed artifacts, Windows/macOS packages, auto-update channel).
+
+## Out of Scope
+
+| Item | Reason |
+|------|--------|
+| New user-facing features | v1.6 is behavior-preserving refactor with small natural fixes only |
+| Nx/Turborepo/pnpm workspace adoption | Massive scope unrelated to single-package pain |
+| Vitest/Jest migration | All 15 test files use `node:test`; migration churn without refactor benefit |
+| UI framework migration | Unrelated to architecture debt; API contract unchanged |
+| Big-bang directory restructure | Strangler extraction only; one hotspot per phase |
+| Simultaneous RLM algorithm changes | Log bugs as todos; separate fix commits from extract commits |
+| Multi-user collaboration | Still not required for repo-local developer workflow |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| (filled by roadmap) | | |
+
+---
+*Last updated: 2026-05-22 — milestone v1.6 requirements defined*
