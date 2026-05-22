@@ -25,7 +25,7 @@
 
 **Milestone Goal:** Close all v1.8 partial requirements and harden `rlm-core` architecture to match the concern map enforced in TypeScript.
 
-- [ ] **Phase 62: UI Regression Fixes** — Restore pause-auto-approvals, HF download wiring, sign REG-01 UAT
+- [x] **Phase 62: UI Regression Fixes** — Restore pause-auto-approvals, HF download wiring, sign REG-01 UAT — 2026-05-22
 - [ ] **Phase 63: Quality Loop Parity** — Port full TS quality loop to Rust with golden tests
 - [ ] **Phase 64: Resume Consumer + Run-State Port** — Cross-session resume loader, ARCH-01 boundary fix
 - [ ] **Phase 65: Skill Interop** — Port skill runtime and register `skill` tool in Rust
@@ -163,7 +163,7 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 62. UI Regression Fixes | v1.9 | 0/? | Not started | — |
+| 62. UI Regression Fixes | v1.9 | 1/1 | Complete | 2026-05-22 |
 | 63. Quality Loop Parity | v1.9 | 0/? | Not started | — |
 | 64. Resume Consumer + Run-State Port | v1.9 | 0/? | Not started | — |
 | 65. Skill Interop | v1.9 | 0/? | Not started | — |
