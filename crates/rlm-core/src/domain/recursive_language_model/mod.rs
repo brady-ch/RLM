@@ -1,11 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-
-use crate::domain::recursion::{
-    limit_prompt,
-    QualityLoopHost,
-};
+use crate::domain::recursion::limit_prompt;
 use crate::domain::types::{
     ExecutionStatus, RecursiveModelConfig, RecursivePromptResult, TaskNode, TokenUsageTrace,
 };
@@ -13,7 +9,6 @@ use crate::ports::{LanguageModel, Tool, Trace};
 
 pub(crate) const DIRECT: &str = "DIRECT";
 pub(crate) const RECURSIVE: &str = "RECURSIVE";
-
 
 mod engine_hosts;
 mod engine_state;
@@ -25,7 +20,6 @@ mod solve_tree;
 use engine_state::{empty_metadata, EngineState};
 
 pub use execution_control::ExecutionControl;
-
 
 pub struct RecursiveLanguageModel {
     pub(crate) model: Arc<dyn LanguageModel>,
@@ -151,7 +145,6 @@ impl RecursiveLanguageModel {
             }
         }
     }
-
 }
 
 pub use crate::ports::trace::InMemoryTrace;

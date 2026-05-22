@@ -168,7 +168,10 @@ pub(crate) async fn chat_resume_run(
     )))
 }
 
-pub(crate) async fn stop_run(State(state): State<Arc<RouterState>>, body: Json<Value>) -> Json<Value> {
+pub(crate) async fn stop_run(
+    State(state): State<Arc<RouterState>>,
+    body: Json<Value>,
+) -> Json<Value> {
     let reason = body
         .get("reason")
         .and_then(|v| v.as_str())

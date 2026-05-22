@@ -5,17 +5,14 @@ fn write_minimal_config(_dir: &tempfile::TempDir) {
     // Intentionally no project config — force QueueModel fixtures (avoids Ollama in CI/smoke).
 }
 
-fn rlm_cmd(dir: &tempfile::TempDir) -> Command {
+fn rlm_cmd(_dir: &tempfile::TempDir) -> Command {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_rlm"));
     cmd.env("RLM_FORCE_QUEUE_MODELS", "1");
     cmd
 }
 
 fn project_root_args(dir: &tempfile::TempDir) -> [&str; 2] {
-    [
-        "--project-root",
-        dir.path().to_str().expect("path"),
-    ]
+    ["--project-root", dir.path().to_str().expect("path")]
 }
 
 #[test]
@@ -97,11 +94,7 @@ fn workflow_export_import_round_trip() {
         "vector-index.json",
         "graph-workflow-metadata.json",
     ] {
-        fs::write(
-            session_dir.join(file),
-            r#"{"version":1,"data":{}}"#,
-        )
-        .expect("section");
+        fs::write(session_dir.join(file), r#"{"version":1,"data":{}}"#).expect("section");
     }
 
     let mut export_args = vec![

@@ -17,7 +17,10 @@ pub(crate) fn read_allowlist(path: &Path) -> Result<HashMap<String, String>, Str
     serde_json::from_str(&raw).map_err(|err| err.to_string())
 }
 
-pub(crate) fn write_allowlist(path: &Path, allowlist: &HashMap<String, String>) -> Result<(), String> {
+pub(crate) fn write_allowlist(
+    path: &Path,
+    allowlist: &HashMap<String, String>,
+) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|err| err.to_string())?;
     }

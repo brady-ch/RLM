@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use crate::domain::recursion::{
-    can_spend_any_model_call, has_call_reserved_for_direct_answer, is_code_task, remaining_model_calls,
+    can_spend_any_model_call, has_call_reserved_for_direct_answer, is_code_task,
+    remaining_model_calls,
 };
 use crate::domain::types::{
-    ExecutionStatus,
-    NodeApprovalStatus, RecursiveModelConfig, SolvedTask, TaskNode,
+    ExecutionStatus, NodeApprovalStatus, RecursiveModelConfig, SolvedTask, TaskNode,
 };
 
 use super::execution_control::ExecutionControl;
@@ -143,5 +143,4 @@ impl RecursiveLanguageModel {
         self.mark_execution_node_completed(&task.id, &execution);
         Ok(answer)
     }
-
 }

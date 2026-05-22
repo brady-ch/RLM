@@ -5,18 +5,19 @@ use serde_json::json;
 
 use crate::flags::{parse_preference_assignment, CommandContext};
 
-pub async fn handle_session_flags(ctx: &CommandContext) -> Result<bool, Box<dyn std::error::Error>> {
+pub async fn handle_session_flags(
+    ctx: &CommandContext,
+) -> Result<bool, Box<dyn std::error::Error>> {
     let flags = &ctx.flags;
     let paths = ProjectPaths::from_root(ctx.project_root.clone());
 
     if flags.session_list {
         let store = FileSessionStore::new(paths.sessions_dir);
         let sessions = store.list().map_err(|err| err.to_string())?;
-        if ctx.json {
-            println!("{}", serde_json::to_string_pretty(&json!({ "sessions": sessions }))?);
-        } else {
-            println!("{}", serde_json::to_string_pretty(&json!({ "sessions": sessions }))?);
-        }
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&json!({ "sessions": sessions }))?
+        );
         return Ok(true);
     }
 
@@ -40,7 +41,9 @@ pub async fn handle_session_flags(ctx: &CommandContext) -> Result<bool, Box<dyn 
         store
             .set_preference("preferences-cli", &key, &value, "cli", "project")
             .map_err(|err| err.to_string())?;
-        let snapshot = store.inspect("preferences-cli").map_err(|err| err.to_string())?;
+        let snapshot = store
+            .inspect("preferences-cli")
+            .map_err(|err| err.to_string())?;
         println!("{}", serde_json::to_string_pretty(&snapshot)?);
         return Ok(true);
     }
@@ -50,7 +53,9 @@ pub async fn handle_session_flags(ctx: &CommandContext) -> Result<bool, Box<dyn 
         store
             .delete_preference("preferences-cli", key)
             .map_err(|err| err.to_string())?;
-        let snapshot = store.inspect("preferences-cli").map_err(|err| err.to_string())?;
+        let snapshot = store
+            .inspect("preferences-cli")
+            .map_err(|err| err.to_string())?;
         println!("{}", serde_json::to_string_pretty(&snapshot)?);
         return Ok(true);
     }

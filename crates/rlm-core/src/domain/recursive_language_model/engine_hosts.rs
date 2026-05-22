@@ -2,13 +2,12 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::domain::recursion::{
-    ModelCompletionHost, QualityLoopHost,
-};
 use crate::domain::recursion::preview;
+use crate::domain::recursion::{ModelCompletionHost, QualityLoopHost};
 use crate::domain::types::{
-    ChatMessage, ExecutionEvent, ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail, QualityLoopManualDecision, QualityLoopMetadata, QualityLoopUsageSummary,
-    RecursiveModelConfig, TaskNode, TokenUsageTrace,
+    ChatMessage, ExecutionEvent, ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail,
+    QualityLoopManualDecision, QualityLoopMetadata, QualityLoopUsageSummary, RecursiveModelConfig,
+    TaskNode, TokenUsageTrace,
 };
 use crate::ports::{LanguageModel, Tool};
 

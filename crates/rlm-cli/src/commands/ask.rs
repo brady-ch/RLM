@@ -8,15 +8,16 @@ use rlm_core::graph::{
     apply_pipeline_template, build_import_session_snapshot, execute_graph, import_sidecar_to_graph,
     load_graph_workflow, GraphExecutorInput,
 };
-use rlm_core::{
-    prepare_cli_runtime, CliConfigOverrides, InMemoryTrace, RecursiveLanguageModel,
-};
+use rlm_core::{prepare_cli_runtime, CliConfigOverrides, InMemoryTrace, RecursiveLanguageModel};
 use serde_json::json;
 
 use crate::exec_control::CliExecutionControl;
 use crate::flags::CommandContext;
 
-pub async fn run(ctx: &CommandContext, prompt_parts: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run(
+    ctx: &CommandContext,
+    prompt_parts: Vec<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let text = ctx
         .flags
         .prompt_flag
@@ -46,23 +47,15 @@ pub async fn run(ctx: &CommandContext, prompt_parts: Vec<String>) -> Result<(), 
     let require_approval = ctx.flags.require_approval && !ctx.flags.approve;
 
     if require_approval {
-        let plan_result = run_engine(
-            &text,
-            &prepared,
-            Arc::new(CliExecutionControl::plan_only()),
-        )
-        .await?;
+        let plan_result =
+            run_engine(&text, &prepared, Arc::new(CliExecutionControl::plan_only())).await?;
         print_ask_result(&plan_result, ctx)?;
         if !ctx.flags.approve {
             wait_for_approval()?;
         }
     } else if plan_only {
-        let plan_result = run_engine(
-            &text,
-            &prepared,
-            Arc::new(CliExecutionControl::plan_only()),
-        )
-        .await?;
+        let plan_result =
+            run_engine(&text, &prepared, Arc::new(CliExecutionControl::plan_only())).await?;
         print_ask_result(&plan_result, ctx)?;
         return Ok(());
     }
@@ -96,7 +89,10 @@ async fn run_engine(
         .map_err(|err| -> Box<dyn std::error::Error> { err.into() })
 }
 
-async fn run_workflow(ctx: &CommandContext, prompt: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_workflow(
+    ctx: &CommandContext,
+    prompt: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let workflow_id = ctx
         .flags
         .workflow
@@ -116,7 +112,8 @@ async fn run_workflow(ctx: &CommandContext, prompt: &str) -> Result<(), Box<dyn 
     .map_err(|err| -> Box<dyn std::error::Error> { err.into() })?
     .map_err(|err| -> Box<dyn std::error::Error> { err.into() })?;
 
-    let sidecar = load_graph_workflow(&ctx.project_root, workflow_id).map_err(|err| err.to_string())?;
+    let sidecar =
+        load_graph_workflow(&ctx.project_root, workflow_id).map_err(|err| err.to_string())?;
     let mut graph = import_sidecar_to_graph(&sidecar, variant).map_err(|err| err.to_string())?;
     if variant == "pipeline" {
         graph = apply_pipeline_template(graph, prompt).map_err(|err| err.to_string())?;
@@ -131,7 +128,9 @@ async fn run_workflow(ctx: &CommandContext, prompt: &str) -> Result<(), Box<dyn 
     let input = GraphExecutorInput {
         runtime_config: prepared.runtime_config.clone(),
         project_config: Some(prepared.project_config.config.clone()),
-        create_model: Arc::new(move || Arc::clone(&exec_model) as Arc<dyn rlm_core::ports::LanguageModel>),
+        create_model: Arc::new(move || {
+            Arc::clone(&exec_model) as Arc<dyn rlm_core::ports::LanguageModel>
+        }),
         runtime: Some(runtime),
         run_state: None,
         resume: false,
@@ -177,9 +176,7 @@ fn print_ask_result(
     } else if ctx.flags.compact {
         println!(
             "modelCalls={} executionStatus={:?}\nanswer: {}",
-            result.metadata.model_calls,
-            result.metadata.execution_status,
-            result.answer
+            result.metadata.model_calls, result.metadata.execution_status, result.answer
         );
     } else {
         println!("{}", result.answer);
@@ -195,8 +192,8 @@ fn wait_for_approval() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     err.flush()?;
     let stdin = io::stdin();
-    let mut lines = stdin.lock().lines();
-    while let Some(line) = lines.next() {
+    let lines = stdin.lock().lines();
+    for line in lines {
         let text = line?.trim().to_lowercase();
         if matches!(text.as_str(), "run" | "yes" | "y") {
             return Ok(());

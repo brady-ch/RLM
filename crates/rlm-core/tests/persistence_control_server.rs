@@ -127,7 +127,10 @@ async fn save_open_round_trip_restores_graph_after_mutation() {
         .map(|node| node.id.clone())
         .expect("child node");
     session
-        .delete_node_with_strategy(&child_id, Some(rlm_core::domain::types::DeleteStrategy::DeleteSubtree))
+        .delete_node_with_strategy(
+            &child_id,
+            Some(rlm_core::domain::types::DeleteStrategy::DeleteSubtree),
+        )
         .expect("delete child");
     assert!(!session
         .snapshot()

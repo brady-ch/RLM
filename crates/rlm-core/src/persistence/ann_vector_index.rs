@@ -46,6 +46,12 @@ pub struct AnnVectorIndex {
     loaded: bool,
 }
 
+impl Drop for AnnVectorIndex {
+    fn drop(&mut self) {
+        self.release_in_memory();
+    }
+}
+
 impl AnnVectorIndex {
     pub fn new(memory_dir: PathBuf) -> Self {
         let json_path = memory_dir.join("vector-index.json");
@@ -62,6 +68,14 @@ impl AnnVectorIndex {
 
     pub fn record_count(&self) -> usize {
         self.metadata.len()
+    }
+
+    /// Drop in-memory ANN state; on-disk JSON envelope is preserved.
+    pub fn release_in_memory(&mut self) {
+        self.index = None;
+        self.metadata.clear();
+        self.dimensions = 0;
+        self.loaded = false;
     }
 
     pub fn ensure_loaded(&mut self) -> io::Result<()> {

@@ -2,7 +2,7 @@ mod commands;
 mod exec_control;
 mod flags;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use commands::{ask, plugin, session, ui, workflow_io, Commands, PlanNodeCommand};
@@ -56,14 +56,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             ui::run(port, ui_dist, project_root).await
         }
-        Commands::Ask { prompt_parts, flags } => {
+        Commands::Ask {
+            prompt_parts,
+            flags,
+        } => {
             let ctx = command_context(&project_root, &config, json, flags);
             if session::handle_session_flags(&ctx).await? {
                 return Ok(());
             }
             ask::run(&ctx, prompt_parts).await
         }
-        Commands::PlanNode { flags, prompt_parts } => {
+        Commands::PlanNode {
+            flags,
+            prompt_parts,
+        } => {
             let ctx = command_context(&project_root, &config, json, flags);
             if session::handle_session_flags(&ctx).await? {
                 return Ok(());
@@ -89,13 +95,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn command_context(
-    project_root: &PathBuf,
+    project_root: &Path,
     config: &Option<PathBuf>,
     json: bool,
     flags: flags::ExecutionFlags,
 ) -> CommandContext {
     CommandContext {
-        project_root: project_root.clone(),
+        project_root: project_root.to_path_buf(),
         config_path: config.clone(),
         json,
         flags,

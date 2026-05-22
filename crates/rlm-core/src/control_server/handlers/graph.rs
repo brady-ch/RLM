@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use axum::http::StatusCode;
+use std::sync::Arc;
 
 use axum::extract::State;
 use axum::response::Json;
@@ -42,7 +42,10 @@ pub(crate) async fn graph_layout(
     Ok(Json(json!(state.session.snapshot())))
 }
 
-pub(crate) async fn graph_viewport(State(state): State<Arc<RouterState>>, body: Json<Value>) -> Json<Value> {
+pub(crate) async fn graph_viewport(
+    State(state): State<Arc<RouterState>>,
+    body: Json<Value>,
+) -> Json<Value> {
     state.session.set_graph_viewport(GraphViewport {
         x: body.get("x").and_then(|v| v.as_f64()).unwrap_or(0.0),
         y: body.get("y").and_then(|v| v.as_f64()).unwrap_or(0.0),

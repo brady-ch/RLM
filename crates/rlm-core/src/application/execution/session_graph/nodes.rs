@@ -2,12 +2,12 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
+use crate::application::execution::agent_registry::is_known_expert_agent;
 use crate::domain::recursion::preview;
 use crate::domain::types::{
     DeleteStrategy, ExecutionGraphEdge, ExecutionGraphNode, ExecutionStatus, ExpertRuntimeMode,
     GraphPosition,
 };
-use crate::application::execution::agent_registry::is_known_expert_agent;
 
 use super::super::InteractiveExecutionSession;
 

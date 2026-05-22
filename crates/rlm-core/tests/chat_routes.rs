@@ -72,7 +72,9 @@ async fn chat_apply_and_cancel_mutate_pending_mutation() {
         .await
         .expect("preview");
     let preview_body: serde_json::Value = preview.json().await.expect("preview json");
-    let proposal_id = preview_body["proposal"]["id"].as_str().expect("proposal id");
+    let proposal_id = preview_body["proposal"]["id"]
+        .as_str()
+        .expect("proposal id");
 
     let apply = client
         .post(format!("{}/api/chat/apply", server.url))

@@ -6,6 +6,4 @@ mod service;
 mod types;
 
 pub use service::PluginRegistryService;
-pub use types::{
-    PluginDoctorIssue, PluginDoctorResult, PluginListItem, PluginMutationResult,
-};
+pub use types::{PluginDoctorIssue, PluginDoctorResult, PluginListItem, PluginMutationResult};

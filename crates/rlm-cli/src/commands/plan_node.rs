@@ -64,7 +64,10 @@ impl PlanNodeCommand {
                 if let Some(mutation) = session.to_mutation_error(&err) {
                     eprintln!("{}", serde_json::to_string_pretty(&mutation)?);
                 } else {
-                    eprintln!("{}", serde_json::to_string_pretty(&json!({ "error": err }))?);
+                    eprintln!(
+                        "{}",
+                        serde_json::to_string_pretty(&json!({ "error": err }))?
+                    );
                 }
                 std::process::exit(1);
             }

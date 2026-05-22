@@ -5,8 +5,8 @@ use std::sync::Arc;
 use axum::Router;
 use tokio::net::TcpListener;
 
-use crate::control_server;
 use crate::application::execution::InteractiveExecutionSession;
+use crate::control_server;
 
 pub struct ServerConfig {
     pub port: u16,

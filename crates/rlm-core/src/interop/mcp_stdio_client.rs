@@ -158,7 +158,10 @@ impl StdioMcpClient {
         let payload = json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params });
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.pending.lock().await.insert(id, tx);
-        self.write_message(&payload).await?;
+        if let Err(err) = self.write_message(&payload).await {
+            self.pending.lock().await.remove(&id);
+            return Err(err);
+        }
         rx.await
             .map_err(|_| format!("MCP server {} closed before response", self.server_id))?
     }

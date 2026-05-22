@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
-use crate::domain::types::{
-    DepthMetadata, ExecutionGraphEdge, ExecutionGraphNode, RecursivePromptMetadata,
-    TokenUsageTrace,
-};
 use crate::domain::types::ChatMessage;
+use crate::domain::types::{
+    DepthMetadata, ExecutionGraphEdge, ExecutionGraphNode, RecursivePromptMetadata, TokenUsageTrace,
+};
 
 pub(crate) struct EngineState {
     pub next_id: u32,

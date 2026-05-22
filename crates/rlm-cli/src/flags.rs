@@ -154,9 +154,7 @@ impl ExecutionFlags {
     }
 
     pub fn resolved_workflow_id(&self) -> Option<&str> {
-        self.import_workflow
-            .as_deref()
-            .or(self.workflow.as_deref())
+        self.import_workflow.as_deref().or(self.workflow.as_deref())
     }
 }
 
@@ -183,7 +181,9 @@ fn parse_replan(value: &str) -> Result<ReplanChoice, String> {
 }
 
 pub fn parse_preference_assignment(value: &str) -> Result<(String, String), String> {
-    let separator = value.find('=').ok_or("--preference-set must use key=value.")?;
+    let separator = value
+        .find('=')
+        .ok_or("--preference-set must use key=value.")?;
     if separator == 0 {
         return Err("--preference-set must use key=value.".into());
     }

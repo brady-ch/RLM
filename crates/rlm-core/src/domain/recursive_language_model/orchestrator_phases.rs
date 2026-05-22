@@ -1,19 +1,17 @@
 use std::sync::Arc;
 
-use crate::domain::recursion::{
-    can_spend_any_model_call, clamp,
-    limit_prompt, parse_first_integer, run_completion_with_tool_rounds,
-    run_quality_loop, QUALITY_LOOP_PHASES,
-};
-use crate::domain::types::{
-    ChatMessage, DepthMetadata, ExecutionStatus,
-    NodeApprovalStatus, RecursiveModelConfig,
-    RecursivePromptResult, SolvedTask, TaskNode,
-};
 use super::engine_hosts::{EngineHost, QualityLoopHostAdapter};
 use super::engine_state::fallback_from_messages_slice;
 use super::execution_control::ExecutionControl;
 use super::{RecursiveLanguageModel, DIRECT, RECURSIVE};
+use crate::domain::recursion::{
+    can_spend_any_model_call, clamp, limit_prompt, parse_first_integer,
+    run_completion_with_tool_rounds, run_quality_loop, QUALITY_LOOP_PHASES,
+};
+use crate::domain::types::{
+    ChatMessage, DepthMetadata, ExecutionStatus, NodeApprovalStatus, RecursiveModelConfig,
+    RecursivePromptResult, SolvedTask, TaskNode,
+};
 
 impl RecursiveLanguageModel {
     pub(crate) async fn run_quality_loop_path(
@@ -315,7 +313,11 @@ impl RecursiveLanguageModel {
         Ok(output)
     }
 
-    pub(crate) fn synthesize_without_model(&self, task: &TaskNode, solved_children: &[SolvedTask]) -> String {
+    pub(crate) fn synthesize_without_model(
+        &self,
+        task: &TaskNode,
+        solved_children: &[SolvedTask],
+    ) -> String {
         let output = solved_children
             .iter()
             .map(|child| format!("{}: {}", child.prompt, child.summary))

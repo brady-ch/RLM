@@ -1,0 +1,184 @@
+{
+  "aclPrefixes": [
+    "metadata",
+    "nodeStatuses",
+    "artifactRefs",
+    "checkpoints",
+    "resumeCursor"
+  ],
+  "artifactRefs": {},
+  "capabilityTokens": {
+    "graph-executor": [
+      "cap-default"
+    ]
+  },
+  "checkpoints": [],
+  "metadata": {
+    "agent": "default",
+    "prompt": "hello pipeline"
+  },
+  "mutationLog": [
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 1,
+      "timestamp": "2026-05-22T20:39:51.428451026Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 2,
+      "timestamp": "2026-05-22T20:48:08.136361597Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 3,
+      "timestamp": "2026-05-22T20:48:52.634672287Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 4,
+      "timestamp": "2026-05-22T21:06:00.424065865Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 5,
+      "timestamp": "2026-05-22T21:06:49.772250951Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 6,
+      "timestamp": "2026-05-22T21:09:26.45842704Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 7,
+      "timestamp": "2026-05-22T21:52:42.16174193Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 8,
+      "timestamp": "2026-05-22T21:54:34.788609514Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 9,
+      "timestamp": "2026-05-22T21:54:44.617577914Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 10,
+      "timestamp": "2026-05-22T22:01:56.098036883Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 11,
+      "timestamp": "2026-05-22T22:05:16.764487118Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 12,
+      "timestamp": "2026-05-22T22:05:33.224779356Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 13,
+      "timestamp": "2026-05-22T22:27:58.163712812Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 14,
+      "timestamp": "2026-05-22T22:29:11.96061033Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 15,
+      "timestamp": "2026-05-22T22:29:33.333773679Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 16,
+      "timestamp": "2026-05-22T22:34:03.442589184Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 17,
+      "timestamp": "2026-05-22T22:42:13.314368995Z"
+    }
+  ],
+  "nodeStatuses": [
+    {
+      "nodeId": "root-composer",
+      "status": "failed",
+      "updatedAt": "2026-05-22T22:42:13.31417908Z"
+    }
+  ],
+  "runId": "default",
+  "version": 18
+}

@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use crate::application::execution::agent_registry::{filter_agent_tools, resolve_agent};
+use crate::application::execution::{InteractiveExecutionSession, SessionExecutionControl};
 use crate::domain::recursive_language_model::ExecutionControl;
 use crate::domain::run_state_persistence::{LoadedResumeState, RunStatePersistence};
 use crate::domain::run_state_types::ResumeCursor;
@@ -9,8 +11,6 @@ use crate::domain::types::{
     ExpertRuntimeMode, RecursiveModelConfig,
 };
 use crate::domain::RecursiveLanguageModel;
-use crate::application::execution::agent_registry::{filter_agent_tools, resolve_agent};
-use crate::application::execution::{InteractiveExecutionSession, SessionExecutionControl};
 use crate::plugins::resolve_tools_for_agent;
 use crate::ports::{LanguageModel, LanguageModelCompleteOptions};
 
@@ -478,8 +478,8 @@ pub async fn execute_graph(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::types::{ExecutionGraphEdge, ExpertRuntimeMode};
     use crate::application::execution::InteractiveExecutionSession;
+    use crate::domain::types::{ExecutionGraphEdge, ExpertRuntimeMode};
 
     fn make_node(id: &str, mut partial: ExecutionGraphNode) -> ExecutionGraphNode {
         partial.id = id.into();

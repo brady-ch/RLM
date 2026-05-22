@@ -1,13 +1,11 @@
 use std::sync::Arc;
 
-use crate::domain::recursion::{
-    build_live_execution_metadata, preview, remaining_model_calls,
-};
+use crate::domain::recursion::{build_live_execution_metadata, preview, remaining_model_calls};
 use crate::domain::types::{
-    ExecutionEvent, ExecutionGraphEdge, ExecutionGraphNode, ExecutionStatus, NodeApprovalDecision, NodeApprovalStatus, QualityLoopMetadata,
-    QualityLoopUsageSummary, RecursiveModelConfig, RecursivePromptResult, TaskNode, TraceEvent,
+    ExecutionEvent, ExecutionGraphEdge, ExecutionGraphNode, ExecutionStatus, NodeApprovalDecision,
+    NodeApprovalStatus, QualityLoopMetadata, QualityLoopUsageSummary, RecursiveModelConfig,
+    RecursivePromptResult, TaskNode, TraceEvent,
 };
-use crate::ports::Trace;
 
 use super::execution_control::ExecutionControl;
 use super::RecursiveLanguageModel;
@@ -172,7 +170,10 @@ impl RecursiveLanguageModel {
         self.emit_execution(execution, status, None, "execution status updated");
     }
 
-    pub(crate) fn sync_execution_status_with_outcome(&self, execution: &Option<Arc<dyn ExecutionControl>>) {
+    pub(crate) fn sync_execution_status_with_outcome(
+        &self,
+        execution: &Option<Arc<dyn ExecutionControl>>,
+    ) {
         let status = {
             let state = self.state.lock().expect("engine lock");
             let failed = state

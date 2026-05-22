@@ -79,7 +79,7 @@ pub(crate) struct ApiError {
 }
 
 impl ApiError {
-pub(crate) fn from_plain(err: String) -> Self {
+    pub(crate) fn from_plain(err: String) -> Self {
         if err.contains("Stale approval token") || err.contains("not awaiting approval") {
             Self {
                 status: StatusCode::CONFLICT,
@@ -98,7 +98,7 @@ pub(crate) fn from_plain(err: String) -> Self {
         }
     }
 
-pub(crate) fn from_mutation(err: String) -> Self {
+    pub(crate) fn from_mutation(err: String) -> Self {
         if let Some(session) = err.strip_prefix("MUTATION:") {
             let parts: Vec<_> = session.splitn(6, '|').collect();
             if parts.len() >= 3 {

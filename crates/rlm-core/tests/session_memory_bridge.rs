@@ -3,8 +3,12 @@ use rlm_core::memory::{
     restore_graph_workflow_metadata, restore_session_memory,
 };
 use rlm_core::persistence::ann_vector_index::AnnVectorIndex;
-use rlm_core::persistence::file_vector_index::{FileVectorIndex, VectorIndexRecord, VectorRecordSource};
-use rlm_core::persistence::memory_store::{EpisodicMemoryEntry, FileMemoryStore, MemoryScopeDocument};
+use rlm_core::persistence::file_vector_index::{
+    FileVectorIndex, VectorIndexRecord, VectorRecordSource,
+};
+use rlm_core::persistence::memory_store::{
+    EpisodicMemoryEntry, FileMemoryStore, MemoryScopeDocument,
+};
 use rlm_core::persistence::session_store::SavedSessionPayload;
 use serde_json::json;
 use std::fs;
@@ -89,7 +93,9 @@ fn build_saved_session_payload_exports_live_memory_and_vectors() {
 
     assert_eq!(payload.memory["runId"], run_id);
     assert_eq!(payload.memory["status"], "saved");
-    assert!(payload.memory["scopes"].as_array().is_some_and(|s| !s.is_empty()));
+    assert!(payload.memory["scopes"]
+        .as_array()
+        .is_some_and(|s| !s.is_empty()));
     assert!(payload.vector_index["records"]
         .as_array()
         .is_some_and(|records| !records.is_empty()));
