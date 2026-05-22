@@ -23,7 +23,7 @@
 
 **Milestone Goal:** Concern-first taxonomy across `src/` and the project; runtime/interop split; plugin manifest + builtin migration; dependency-cruiser ratchet; local and remote plugin manager (CLI + UI).
 
-- [ ] **Phase 43: Boundary Fixes** — Fix three ARCH-02 violations; introduce ExtensionHostPort; establish regression gate
+- [x] **Phase 43: Boundary Fixes** — Fix three ARCH-02 violations; introduce ExtensionHostPort; establish regression gate (1/1 plan) — 2026-05-22
 - [ ] **Phase 44: Runtime & Interop Split** — Move composition and MCP/skill interop to `src/runtime/` with init-order test
 - [ ] **Phase 45: Application Concern Grouping** — Group `application/` by execution, graph, memory, plugins, control-server
 - [ ] **Phase 46: Plugin Taxonomy & Builtin Migration** — Manifest schema, PluginLoader, builtin migration, legacy YAML compat
@@ -186,7 +186,7 @@ Phases execute in numeric order: 43 → 44 → … → 51
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 43. Boundary Fixes | v1.7 | 0/TBD | Not started | - |
+| 43. Boundary Fixes | v1.7 | 1/1 | Complete | 2026-05-22 |
 | 44. Runtime & Interop Split | v1.7 | 0/TBD | Not started | - |
 | 45. Application Concern Grouping | v1.7 | 0/TBD | Not started | - |
 | 46. Plugin Taxonomy & Builtin Migration | v1.7 | 0/TBD | Not started | - |

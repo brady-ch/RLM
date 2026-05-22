@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Adapter & Plugin Taxonomy
-status: ready_to_plan
+status: executing
 last_updated: "2026-05-22"
 last_activity: 2026-05-22
 progress:
   total_phases: 9
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 11
 ---
 
 # Project State
@@ -20,28 +20,29 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone v1.7 — Phase 43 Boundary Fixes (ready to plan).
+**Current focus:** Milestone v1.7 — Phase 44 Runtime & Interop Split.
 
 ## Current Position
 
-Phase: 43 of 51 (Boundary Fixes)
+Phase: 44 of 51 (Runtime & Interop Split)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-22 — v1.7 roadmap created (Phases 43-51)
+Last activity: 2026-05-22 — Phase 43 complete (ARCH-02 fixes, 359 tests green)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 11%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed (v1.7): 0
-- v1.6 close: 15 plans, 359 tests green
+- Total plans completed (v1.7): 1
+- Phase 43: 1 plan, 359 tests green
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 43-51 | 0 | TBD | — |
+| 43 | 1 | 1 | 1 |
+| 44-51 | 0 | TBD | — |
 
 ## Accumulated Context
 
@@ -53,13 +54,15 @@ See PROJECT.md Key Decisions. v1.7 direction:
 - Shared `PluginRegistryService` for CLI and control-server; `{ requiresRestart: true }` on runtime-affecting changes
 - dependency-cruiser ratchets to error only when baseline is empty
 
+Phase 43 completed: AgentConfig in domain, ExtensionHostPort in ports, content-tree with web-fetch adapter, empty depcruise baseline.
+
 ### Pending Todos
 
 3 pending items under `.planning/todos/pending/` (deferred from v1.6 close).
 
 ### Blockers/Concerns
 
-None — roadmap complete, ready for `/gsd-plan-phase 43`.
+None.
 
 ## Deferred Items
 
@@ -72,9 +75,9 @@ None — roadmap complete, ready for `/gsd-plan-phase 43`.
 ## Session Continuity
 
 Last session: 2026-05-22  
-Stopped at: v1.7 roadmap creation  
+Stopped at: Phase 43 complete — autonomous run in progress  
 Resume file: None
 
 ## Operator Next Steps
 
-- `/gsd-plan-phase 43` — Boundary Fixes (RUNT-01, RUNT-02, REG-01, REG-02)
+Autonomous mode continuing with Phase 44.
