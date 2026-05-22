@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Rust Runtime Migration
-status: executing
-last_updated: "2026-05-22T20:45:06.258Z"
-last_activity: 2026-05-22
+status: Awaiting next milestone
+last_updated: "2026-05-22T20:55:00.000Z"
+last_activity: 2026-05-22 — Milestone v1.8 completed and archived
 progress:
-  total_phases: 20
-  completed_phases: 9
+  total_phases: 11
+  completed_phases: 11
   total_plans: 18
-  completed_plans: 20
+  completed_plans: 18
   percent: 100
 ---
 
@@ -20,40 +20,51 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 61 — ui-shell-rewrite
+**Current focus:** Planning next milestone (`/gsd-new-milestone`)
 
 ## Current Position
 
-Phase: 61 (ui-shell-rewrite) — EXECUTING
-Plan: 2 of 6
-Status: Ready to execute
-Last activity: 2026-05-22
+Phase: Milestone v1.8 complete  
+Plan: —  
+Status: Awaiting next milestone  
+Last activity: 2026-05-22 — Milestone v1.8 archived with tech_debt audit status
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
-**Velocity (v1.8):** Phases 52–60 complete; 67+ Rust integration tests; Phase 60 human UAT passed
+**Velocity (v1.8):** 11 phases (52–61), 18 plans, 67+ Rust integration tests; automated gates green
 
 ## Accumulated Context
 
-v1.8 Rust runtime migration complete: control server strangler, persistence, engine, graph, vector index, model library, plugins, CLI parity gate, Tauri in-process, desktop packaging UAT.
+v1.8 Rust runtime migration shipped: Axum control server strangler, persistence, recursive engine, graph executor, vector index, model library, plugins, CLI parity gate, Tauri in-process packaging, gap-closure routes (60.1), canvas-first UI shell (61). Desktop ships without bundled Node.
 
 ### Roadmap Evolution
 
-- Phase 61 design locked: Sketch 002-B — card edit + context menu + slim Run panel (2026-05-22)
-- Phase 60.1 inserted after Phase 60: Close v1.8 milestone gaps — session routes, memory preferences, run-state wiring, verification backfill (URGENT)
+- Phase 60.1 inserted after Phase 60: Close v1.8 milestone gaps — session routes, memory preferences, run-state wiring (2026-05-22)
+- Phase 61 added: UI shell rewrite — Sketch 002-B canvas-first shell (2026-05-22)
 
-### Blockers/Concerns
+## Deferred Items
 
-- REG-01 / PERS-01: Rust control server missing session save/open routes (UAT/code conflict)
-- PERS-02: Memory preferences POST/DELETE routes missing
-- PERS-03: Run-state store not wired to execution engine
-- Phases 53–56 missing VERIFICATION.md artifacts
+Items acknowledged and deferred at milestone close on 2026-05-22:
+
+| Category | Item | Status |
+|----------|------|--------|
+| verification | Phase 61: 61-06-VERIFICATION.md | human_needed |
+| verification | Phase 61: 61-VERIFICATION.md | human_needed |
+| todo | create-next-milestone-roadmap | pending |
+| todo | extract-runtime-composition-from-cli-entrypoint | pending |
+| todo | split-config-loader-resolver-validation | pending |
+| tech_debt | CLI-01: full ask/workflow/session CLI execution Node-only | partial |
+| tech_debt | PLUG-03: MCP/skill interop stub | partial |
+| tech_debt | PERS-03: run-state checkpoint resume minimal wiring | partial |
+| tech_debt | Phase 61: pause-auto-approvals control dropped from TopBar | regression_risk |
+| tech_debt | Phase 61: HF download UI not wired to /api/model-library/download | partial |
+| tech_debt | PACK-03: .deb smoke deferred on CI hosts without GTK/dbus | deferred |
+| tech_debt | Phase 54: quality loop simplified vs TS orchestrator | partial |
 
 ## Operator Next Steps
 
-1. Plan gap-closure phase (session routes, memory preferences, optional run-state wiring)
-2. Re-verify REG-01 after wiring
-3. `/gsd-complete-milestone v1.8` when gaps accepted or closed
-3. `/gsd-plan-phase 61` when ready to start UI shell rewrite
+- `/gsd-new-milestone` — define next milestone requirements and roadmap
+- Optional: close REG-01 human UAT (61-06-VERIFICATION.md operator sign-off)
+- Optional: `/gsd-cleanup` — archive phase directories to milestones/v1.8-phases/

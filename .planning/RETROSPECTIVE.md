@@ -2,6 +2,57 @@
 
 *A living document updated after each milestone. Lessons feed forward into future planning.*
 
+## Milestone: v1.8 — Rust Runtime Migration
+
+**Shipped:** 2026-05-22  
+**Phases:** 11 | **Plans:** 18 | **Audit:** tech_debt (22/28 requirements; 6 partial deferrals)
+
+### What Was Built
+
+- Cargo workspace (`rlm-core`, `rlm-cli`) with Axum control server, golden HTTP/SSE fixtures, and static UI serving.
+- Rust file stores and YAML config loader with lossless Node-written `.rlm/` dual-read.
+- RecursiveLanguageModel, InteractiveExecutionSession, GraphExecutor, and full node/graph API routes in Rust.
+- usearch ANN vector index with Ollama embeddings replacing JSON linear scan.
+- Ollama adapter, model library routes, Rust plugin system with builtins and registry service.
+- Rust `rlm` binary with `RLM_RUNTIME` strangler switch and dual-runtime parity CI gate.
+- Tauri in-process Rust control server; release bundle without bundled Node.
+- Phase 60.1 gap closure: session save/reopen, memory preferences, chat refine, clarification abort.
+- Phase 61 canvas-first UI shell: AppShell, GraphCanvas, slim Run panel, Advanced hub.
+
+### What Worked
+
+- Strangler fig over frozen HTTP/SSE contract let UI stay TypeScript/React while orchestration moved to Rust incrementally.
+- Golden fixture gates (`tests/fixtures/control-server/`) caught route parity regressions early.
+- Inserted Phase 60.1 efficiently closed audit gaps without reopening completed phases.
+- Phase 61 frontend restructure preserved backend contract — build/lint gates passed without Rust changes.
+
+### What Was Inefficient
+
+- Nyquist validation artifacts missing for phases 52–61 (only 60.1 compliant) — documentation debt carried to close.
+- REQUIREMENTS checkboxes marked complete while audit scored partial on CLI-01, PLUG-03, PERS-03 — traceability lag.
+- Phase 61 shipped two UI wiring regressions (pause-auto-approvals, HF download) discovered only at milestone audit.
+- REG-01 human UAT deferred to checklist documentation rather than operator sign-off at close.
+
+### Patterns Established
+
+- Rust crate layout mirrors v1.7 concern map (`ports` traits → domain → adapters → application → control-server).
+- `RLM_RUNTIME=node|rust` enables side-by-side parity comparison until Node paths are removed.
+- UI shell extraction: shared types/API helpers in `ui/src/shared/`, domain views lazy-loaded in Advanced hub.
+
+### Key Lessons
+
+1. Milestone audit with `tech_debt` status is a valid close when deferrals are enumerated — do not conflate checkbox completion with audit partial scores.
+2. UI shell rewrites need regression wiring checklist against monolith feature inventory before phase close.
+3. Insert decimal phases (60.1) for gap closure rather than reopening shipped phases.
+
+### Cost Observations
+
+- Model mix: inherited session defaults.
+- Sessions: concentrated same-day execution across 11 phases with parallel Rust porting waves.
+- Notable: strangler approach avoided flag-day rewrite; ~15k LOC Rust added alongside preserved TS UI.
+
+---
+
 ## Milestone: v1.6 — Architecture Cleanup
 
 **Shipped:** 2026-05-22  

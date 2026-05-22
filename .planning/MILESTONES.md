@@ -1,5 +1,37 @@
 # Milestones
 
+## v1.8 Rust Runtime Migration (Shipped: 2026-05-22)
+
+**Phases completed:** 11 phases (52–61), 18 plans, 16 tasks  
+**Audit status:** tech_debt (22/28 requirements satisfied; 6 partial deferrals)  
+**Known deferred items at close:** 12 (see STATE.md Deferred Items)
+
+**Key accomplishments:**
+
+- Rust workspace (`rlm-core`, `rlm-cli`) with Axum control server preserving HTTP/SSE contract and golden fixture gates
+- Persistence ports: lossless `.rlm/` dual-read, session save/reopen, memory preferences, YAML config validation
+- Recursive engine + ExecutionController, GraphExecutor, and full node/graph API routes in Rust
+- usearch ANN vector index with Ollama embeddings; model library and Ollama adapter parity
+- Rust plugin system (builtins, registry service, remote fetch security); CLI parity CI with `RLM_RUNTIME` strangler
+- Tauri in-process Rust server; release bundle without bundled Node
+- Phase 60.1 gap closure: session routes, chat refine, clarification abort, run-state wiring
+- Phase 61 UI shell rewrite: AppShell, GraphCanvas, slim Run panel, Advanced hub (canvas-first)
+
+### Known Gaps (tech debt)
+
+- **CLI-01 partial:** Full ask/workflow/session CLI execution remains Node-only (`RLM_RUNTIME=node`)
+- **PLUG-03 partial:** MCP/skill interop stub; full client deferred (INFR-02)
+- **PERS-03 partial:** Run-state checkpoint/resume minimal wiring only
+- **REG-01:** Phase 61 human UAT checklist not operator-signed
+- **UI regressions:** pause-auto-approvals control dropped from TopBar; HF download not wired to `/api/model-library/download`
+- **PACK-03:** `.deb` smoke deferred on CI hosts without GTK/dbus
+
+**Archive:** `.planning/milestones/v1.8-ROADMAP.md`  
+**Requirements:** `.planning/milestones/v1.8-REQUIREMENTS.md`  
+**Audit:** `.planning/milestones/v1.8-MILESTONE-AUDIT.md`
+
+---
+
 ## v1.7 Adapter & Plugin Taxonomy (Shipped: 2026-05-22)
 
 **Phases completed:** 9 phases, 9 plans, 29 tasks  

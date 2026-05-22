@@ -1,40 +1,31 @@
 # Recursive Language Model CLI
 
-## Current Milestone: v1.8 Rust Runtime Migration
-
-**Goal:** Replace the Node runtime with an embedded Rust core while keeping the TypeScript/React UI in Tauri; desktop ships without bundled Node.
-
-**Target features:**
-- Rust workspace (`rlm-core`) with CI gate equivalent to `npm run check`
-- Control server + session/graph APIs preserving existing UI HTTP/SSE contract
-- Recursive engine + graph executor ported from `domain/` and `ports/` trait map
-- File-based persistence (run state, session memory, preferences)
-- Rust vector index (HNSW/USEARCH) replacing JSON linear scan — per rust-vector-index seed
-- Model host adapters (Ollama HTTP; HF catalog/download/GGUF registry; no Python)
-- Rust CLI binary replacing Node entrypoint
-- Tauri embeds Rust server directly — no managed Node child process
-
-**Explicitly out of v1.8:** fine-tuning/LoRA, React UI rewrite, Python runtime, replacing Ollama on day one
-
 ## Current State
 
-**Latest shipped milestone:** v1.7 — Adapter & Plugin Taxonomy  
-**Current milestone:** v1.8 — Rust Runtime Migration (planning)  
-**Status:** Defining requirements
+**Latest shipped milestone:** v1.8 — Rust Runtime Migration (2026-05-22)  
+**Next milestone:** Planning via `/gsd-new-milestone`  
+**Audit status:** tech_debt — 22/28 requirements satisfied; 6 partial deferrals documented in `.planning/milestones/v1.8-MILESTONE-AUDIT.md`
 
-v1.7 shipped concern-first taxonomy and full plugin manager UX: ARCH-02 boundary fixes and `ExtensionHostPort`; composition and interop wiring under `src/runtime/`; `application/` grouped by execution/graph/memory/plugins/control-server; unified plugin manifest schema with builtin migration to `src/plugins/builtin/`; canonical concern map in AGENTS.md with mirrored tests and strict dependency-cruiser enforcement; shared `PluginRegistryService` for CLI (`rlm plugin *`) and control-server (`/api/plugins/*`); remote HTTPS/git fetch-to-local install; UI plugin panel with CLI-aligned vocabulary and restart semantics. Milestone audit: 38/38 requirements; `npm run check` green with **471** tests (per `v1.7-MILESTONE-AUDIT.md`).
+v1.8 shipped a Rust-only runtime (`rlm-core`, `rlm-cli`) embedded in Tauri with no bundled Node. The Axum control server preserves the existing HTTP/SSE contract; persistence, recursive engine, graph executor, vector index, model library, plugins, and CLI parity CI all run in Rust. Phase 60.1 closed session/memory route gaps; Phase 61 rewrote the UI shell to a canvas-first AppShell (GraphCanvas, slim Run panel, Advanced hub). **471+** TypeScript tests and **67+** Rust integration tests green; ~15k LOC Rust workspace.
 
-v1.6 shipped behavior-preserving structural hardening: ESLint/Prettier/dependency-cruiser baselines with expanded `npm run check`; focused `application/config/` modules behind a stable `project-config` facade; `buildRuntimeContext()` bootstrap with slim `src/index.ts` and `cli/run-modes/*`; adapters grouped under `adapters/tools|persistence|models/`; `domain/recursion/` concern modules with orchestrator retaining flow; control-server HTTP handlers colocated by surface with bootstrap-fed dependencies; subsystem-aligned tests under `tests/domain/recursion/` with shared helpers and refreshed `AGENTS.md`. Milestone audit: 40/40 requirements; **359** tests at v1.6 close.
+<details>
+<summary>Prior milestone context (v1.0–v1.7)</summary>
 
-v1.5 shipped graph-primary authoring: model-driven plan-from-node with root-composer default and explicit failure states, protected replan (Replace/Merge/Cancel), planner-assigned expert teams with visible overrides and execution-time allowlist enforcement, a shared GraphExecutor that walks approved topology, lossless `kind: graph` workflow sidecars (playbook and pipeline variants), and UI/CLI/session integration hardening with 205 passing tests.
+v1.7 shipped concern-first taxonomy and full plugin manager UX: ARCH-02 boundary fixes and `ExtensionHostPort`; composition and interop wiring under `src/runtime/`; `application/` grouped by execution/graph/memory/plugins/control-server; unified plugin manifest schema with builtin migration to `src/plugins/builtin/`; canonical concern map in AGENTS.md with mirrored tests and strict dependency-cruiser enforcement; shared `PluginRegistryService` for CLI and control-server; remote HTTPS/git fetch-to-local install; UI plugin panel with CLI-aligned vocabulary. Milestone audit: 38/38 requirements.
 
-v1.4 shipped durable session memory: saved session bundles with restore verification, structured memory scopes and episodic continuity, preference persistence and inspection surfaces, local semantic retrieval with visible degraded states, and Phase 29.1 integration hardening that binds live memory and vector state on save/reopen.
+v1.6 shipped behavior-preserving structural hardening: ESLint/Prettier/dependency-cruiser baselines; focused `application/config/` modules; `buildRuntimeContext()` bootstrap; adapters grouped under `adapters/tools|persistence|models/`; `domain/recursion/` concern modules; control-server HTTP handlers colocated by surface; subsystem-aligned tests. Milestone audit: 40/40 requirements; **359** tests at v1.6 close.
 
-v1.3 shipped the desktop product foundation: runner adapter/sampling cascade metadata, model library, release staging with bundled Node runtime, Tauri shell configuration, native RLM child-process lifecycle management, Ollama readiness integration, Linux `.deb` build output, package smoke, and full test verification.
+v1.5 shipped graph-primary authoring: model-driven plan-from-node, protected replan, planner-assigned expert teams, shared GraphExecutor, lossless `kind: graph` workflow sidecars, UI/CLI/session integration hardening.
+
+v1.4 shipped durable session memory: saved session bundles, structured memory scopes, preference persistence, local semantic retrieval, Phase 29.1 integration hardening.
+
+v1.3 shipped desktop product foundation: Tauri shell, model library, release staging, Ollama readiness, Linux `.deb` packaging.
+
+</details>
 
 ## What This Is
 
-A local recursive language model CLI and UI workflow system for developers. It accepts a prompt, plans a typed node graph for recursive execution via model-driven plan-from-node, lets users review and modify that graph through direct node controls (with optional chat refinement), binds planner-assigned expert presets per node, and executes approved topology through a shared graph executor — with visible execution state, explicit model routing, replayable graph workflow sidecars, artifact/run-state continuity, and hard stops for approvals or clarification.
+A local recursive language model CLI and desktop app for developers. It accepts a prompt, plans a typed node graph for recursive execution via model-driven plan-from-node, lets users review and modify that graph through direct node controls (with optional chat refinement), binds planner-assigned expert presets per node, and executes approved topology through a shared graph executor — with visible execution state, explicit model routing, replayable graph workflow sidecars, artifact/run-state continuity, and hard stops for approvals or clarification. **v1.8:** the orchestration runtime is Rust (`rlm-core`); the React/Vite UI runs in Tauri against the Rust Axum control server.
 
 ## Core Value
 
@@ -63,93 +54,99 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Desktop release staging and Tauri shell packaging path exist — v1.3
 - ✓ Runner registry and sampling cascade expose effective global/model/node values — v1.3
 - ✓ Model library supports curated recommendations, Hugging Face search, download progress, and installed model selection — v1.3
-- ✓ Native desktop lifecycle starts packaged `rlm ui`, redirects the webview, checks Ollama readiness, and stops the managed RLM child on close — v1.3
+- ✓ Native desktop lifecycle starts packaged `rlm ui`, redirects the webview, checks Ollama readiness, and stops the managed RLM child on close — v1.3 (superseded by in-process Rust in v1.8)
 - ✓ Durable session save/reopen preserves workflow graph state, memory scopes, episodic history, preferences, and vector index metadata — v1.4
 - ✓ Structured memory scopes and episodic logs restore bounded node context deterministically — v1.4
 - ✓ User/project preferences can be persisted, inspected, edited, and deleted — v1.4
 - ✓ CLI and UI expose what memory is saved, restored, and injected into node context — v1.4
 - ✓ Semantic/vector retrieval surfaces relevant prior memory with visible degraded states — v1.4
-- ✓ Plan-from-node is the default graph authoring path (root-composer submit, model-driven child planning, replan with protected-state UX) — v1.5
-- ✓ Approved graphs save/import as `kind: graph` workflow sidecars (playbook + pipeline variants) — v1.5
+- ✓ Plan-from-node is the default graph authoring path — v1.5
+- ✓ Approved graphs save/import as `kind: graph` workflow sidecars — v1.5
 - ✓ Planner assigns expert presets per node with visible overrides and exportable assignment metadata — v1.5
 - ✓ UI and CLI expose the same planning, export, and expert semantics with explicit failure states — v1.5
 - ✓ Lint/format and dependency-cruise guardrails with aggregated `npm run check` — v1.6
-- ✓ Config loading, validation, and resolution split under `application/config/` with unchanged public façade — v1.6
-- ✓ Runtime composition centralized in `buildRuntimeContext()`; CLI dispatches built `RuntimeContext` from `cli/run-modes/*` — v1.6
-- ✓ Tool, persistence, and model adapters grouped by concern; extension shims aligned — v1.6
-- ✓ Recursive engine concern modules live under `domain/recursion/`; orchestrator retains top-level recursion — v1.6
+- ✓ Config loading, validation, and resolution split under `application/config/` — v1.6
+- ✓ Runtime composition centralized in `buildRuntimeContext()` — v1.6
+- ✓ Tool, persistence, and model adapters grouped by concern — v1.6
+- ✓ Recursive engine concern modules live under `domain/recursion/` — v1.6
 - ✓ Control-server routes grouped under `handlers/` with transport-only boundaries — v1.6
-- ✓ Tests mirror subsystem layout with shared helpers; contributor map updated in AGENTS.md — v1.6
-- ✓ ARCH-02 boundary violations fixed; `ExtensionHostPort` decouples plugin registration from application types — v1.7
-- ✓ Composition and interop wiring live under `src/runtime/` with init-order test — v1.7
-- ✓ `application/` grouped by execution, graph, memory, plugins, control-server concern folders — v1.7
-- ✓ Unified plugin manifest schema, PluginLoader discovery, and builtin tools migrated to `plugins/builtin/` — v1.7
-- ✓ Canonical concern map in AGENTS.md; tests mirror layout; dependency-cruiser rules at error severity — v1.7
-- ✓ Local plugin manager CLI with shared `PluginRegistryService` and user catalog at `~/.rlm/plugins/` — v1.7
-- ✓ Remote HTTPS/git fetch-to-local plugin install with zip-slip defenses and explicit doctor `--fix` — v1.7
-- ✓ UI plugin panel aligned with CLI semantics, trust prompts, and restart banner — v1.7
+- ✓ Tests mirror subsystem layout with shared helpers — v1.6
+- ✓ ARCH-02 boundary violations fixed; `ExtensionHostPort` decouples plugin registration — v1.7
+- ✓ Composition and interop wiring live under `src/runtime/` — v1.7
+- ✓ `application/` grouped by execution, graph, memory, plugins, control-server — v1.7
+- ✓ Unified plugin manifest schema, PluginLoader discovery, builtin tools in `plugins/builtin/` — v1.7
+- ✓ Canonical concern map in AGENTS.md; tests mirror layout; dependency-cruiser at error severity — v1.7
+- ✓ Local plugin manager CLI with shared `PluginRegistryService` — v1.7
+- ✓ Remote HTTPS/git fetch-to-local plugin install with zip-slip defenses — v1.7
+- ✓ UI plugin panel aligned with CLI semantics — v1.7
+- ✓ Cargo workspace (`rlm-core`, `rlm-cli`) with Axum control server preserving HTTP/SSE contract — v1.8
+- ✓ Rust file stores and config loader read Node-written `.rlm/` data losslessly — v1.8
+- ✓ Recursive engine and ExecutionController run in Rust with SSE execution events — v1.8
+- ✓ GraphExecutor and node/graph API routes power interactive authoring and execution — v1.8
+- ✓ Rust ANN vector index with Ollama embeddings replaces JSON linear scan — v1.8
+- ✓ Ollama adapter and model library routes with v1.7 parity — v1.8
+- ✓ Rust plugin system with builtin tools and registry service — v1.8
+- ✓ Rust `rlm` binary with `RLM_RUNTIME` strangler switch and parity CI gate — v1.8 (partial: full ask/workflow/session CLI remains Node-only)
+- ✓ Tauri embeds Rust control server in-process; release bundle ships without bundled Node — v1.8
+- ✓ Canvas-first UI shell (AppShell, GraphCanvas, slim Run panel, Advanced hub) — v1.8
 
 ### Active
 
-_Requirements for v1.8 are being defined via `/gsd-new-milestone` — see `.planning/REQUIREMENTS.md` once generated._
+_Requirements for the next milestone will be defined via `/gsd-new-milestone`._
 
 ### Candidate Future-Milestone Themes
 
-- Product shell convergence: guided composer for first-run/new-workflow, graph workspace as the primary surface, and project/session launcher for durable resume.
-- Managed llama.cpp runtime (supervised process, GPU backends) — deferred from v1.8 full Rust port unless scoped in.
-- Multi-runner adapters beyond Ollama (vLLM, cloud APIs) — adapter trait exists; expand after Rust core stable.
-- Release hardening beyond baseline Linux installer: signed/reproducible artifacts, Windows/macOS package builds, GUI clean-machine smoke, and auto-update channel.
+- Close v1.8 tech debt: REG-01 human UAT sign-off, HF download UI wiring, pause-auto-approvals control, full CLI execution in Rust, MCP interop bridge, run-state checkpoint resume.
+- Product shell convergence: guided composer for first-run/new-workflow, graph workspace as primary surface, project/session launcher.
+- Managed llama.cpp runtime (supervised process, GPU backends).
+- Multi-runner adapters beyond Ollama (vLLM, cloud APIs).
+- Release hardening: signed/reproducible artifacts, Windows/macOS packages, auto-update channel.
 
 ### Out of Scope
 
-- Multi-user collaboration or shared remote approval sessions — still not required for repo-local developer workflow unless selected for a future milestone.
+- Multi-user collaboration or shared remote approval sessions.
 - Silent auto-fallback behavior — conflicts with explicit error visibility requirement.
+- Fine-tuning / LoRA — deferred to separate milestone.
 
 ## Context
 
-The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI execution surface in `ui/`, and a Tauri shell under `src-tauri/`. The product path remains local-first and observable.
+The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI in `ui/`, a Tauri shell under `src-tauri/`, and a Rust workspace under `crates/` (`rlm-core` ~15k LOC). **Production desktop uses Rust-only runtime** — Tauri embeds the Axum control server in-process; Node is no longer bundled. TypeScript remains for UI, tooling, and strangler parity tests (`RLM_RUNTIME=node|rust`).
 
-v1.6 reduced hotspot file size and clarified module ownership without changing CLI/UI/session/graph semantics; primary verification remains `npm run check` (typecheck, lint, format check, strict dependency-cruise, full test run). **471** tests passing at v1.7 milestone close per audit.
-
-v1.7 added first-class plugin taxonomy with strict boundary enforcement, shared registry service across CLI and UI, and remote fetch-to-local install — all behind explicit trust gates and restart semantics.
-
-v1.5 established graph-primary authoring: plan-from-node replaces keyword heuristics and chat-first pre-run flow; expert teams bind at plan time with execution-time allowlist enforcement; approved graphs export as replayable sidecars and execute through a shared GraphExecutor.
+Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` (fmt, clippy, test). **471+** TS tests and **67+** Rust integration tests at v1.8 close.
 
 ## Constraints
 
-- **Tech stack:** Continue using TypeScript/Node + existing React/Vite UI architecture.
-- **Runtime mode:** Keep recursive agent behavior and dynamic node spawning.
-- **Observability:** No silent failures — all errors must surface in CLI/UI states.
-- **Compatibility:** Preserve existing CLI workflows (`--plan-only`, `--require-approval`, workflow execution).
-- **Local-first workflow:** Project-local config and repo-local developer use remain the default unless a future milestone explicitly broadens deployment scope.
+- **Tech stack:** TypeScript/React UI + Rust orchestration runtime (`rlm-core`); Ollama default inference host.
+- **Runtime mode:** Recursive agent behavior and dynamic node spawning preserved.
+- **Observability:** No silent failures — all errors surface in CLI/UI states.
+- **Compatibility:** Preserve CLI workflows where ported; documented partial deferrals for Node-only modes.
+- **Local-first workflow:** Project-local config and repo-local developer use remain default.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Approval checkpoints allow edit/delete/add actions before continuing | Needed for human-in-the-loop control over recursive execution plans | ✓ Good — v1.0 |
+| Approval checkpoints allow edit/delete/add actions before continuing | Human-in-the-loop control over recursive execution plans | ✓ Good — v1.0 |
 | Built-in tools load through first-party extension shims | Keeps core composition aligned with third-party extension contracts | ✓ Good — v1.1 |
-| Quality loops remain collapsed top-level graph nodes with inspectable internal history | Preserves graph readability while exposing loop internals where users need them | ✓ Good — v1.2 |
-| v1.3 manages Ollama only while preserving adapter boundaries | Keeps the first desktop product installable and testable without multiplying runner lifecycle complexity | ✓ Good — v1.3 |
-| Sampling configuration resolves by cascade: global → model → node | Gives simple defaults and precise per-node control while preserving auditability | ✓ Good — v1.3 |
-| Desktop app starts packaged `rlm ui` as a managed child rather than duplicating the control server in Rust | Preserves the existing TypeScript control-server behavior while giving Tauri ownership of native process lifecycle | ✓ Good — v1.3 |
-| Session memory prioritizes durability and explicit restore semantics over retrieval cleverness | User explicitly wants all memory surfaces and does not want anything to get lost | ✓ Good — v1.4 |
-| Graph-primary authoring replaces chat-first pre-run flow | Users describe work on the canvas; plan-from-node is the default path | ✓ Good — v1.5 |
-| Expert team v1 uses shared tools with per-node allowlists | Keeps extension stack unified; specialized tool surfaces deferred until measured failures | ✓ Good — v1.5 |
-| Graph export uses lossless `kind: graph` sidecars with playbook/pipeline variants | Bridges dynamic authoring to replayable workflows without replan-by-default | ✓ Good — v1.5 |
-| v1.6 uses strangler extractions behind stable façades (`project-config`, `RuntimeContext`) | Avoids flag-day breakage while shrinking hotspots (`index.ts`, RLM orchestrator, control server) | ✓ Good — v1.6 |
-| Dependency-cruiser starts at WARN with a ratcheting baseline | Unblocks incremental boundary cleanup (`ARCH-02`) without stalling refactor phases | ✓ Good — ratcheted to error in v1.7 with empty baseline |
-| Product shell uses guided composer → graph workspace → launcher/resume | First-run should still be "say what I want," while the graph remains the durable executable product surface | — Pending future milestone |
-| v1.7 treats plugins as registration/distribution packages distinct from core adapters | Avoids `adapters/` becoming a mixed grab bag as tools and extensions grow; enables auditable capability taxonomy | ✓ Good — v1.7 |
-| Built-in tools migrate to `plugins/builtin/` taxonomy before external plugin APIs harden | Responsibility extraction precedes directory moves per architecture-boundary-cleanup direction | ✓ Good — v1.7 |
-| Full plugin manager includes local-folder and remote fetch-to-local flows | Users install plugins without marketplace or remote execution; fetched plugins become local after download | ✓ Good — v1.7 |
-| Rust runtime replaces Node for orchestration, control server, persistence, and adapters | Remove bundled Node from desktop; UI stays TS/React; strangler port via existing HTTP/SSE contract | — Pending v1.8 |
-| Ollama remains default inference host during Rust migration | Avoid day-one llama.cpp bundling; HF path is download/registry + handoff | — Pending v1.8 |
-| Fine-tuning / LoRA explicitly out of scope | Compute and ecosystem cost; separate milestone if ever | — Deferred |
+| Quality loops remain collapsed top-level graph nodes with inspectable internal history | Preserves graph readability while exposing loop internals | ✓ Good — v1.2 |
+| v1.3 manages Ollama only while preserving adapter boundaries | First desktop product installable without multiplying runner lifecycle | ✓ Good — v1.3 |
+| Sampling configuration resolves by cascade: global → model → node | Simple defaults and precise per-node control | ✓ Good — v1.3 |
+| Desktop app starts packaged `rlm ui` as managed child | Preserved TS control-server while Tauri owned native lifecycle | ⚠️ Revisit — superseded by in-process Rust in v1.8 |
+| Session memory prioritizes durability and explicit restore semantics | User wants all memory surfaces preserved | ✓ Good — v1.4 |
+| Graph-primary authoring replaces chat-first pre-run flow | Users describe work on the canvas | ✓ Good — v1.5 |
+| Expert team v1 uses shared tools with per-node allowlists | Keeps extension stack unified | ✓ Good — v1.5 |
+| Graph export uses lossless `kind: graph` sidecars | Bridges dynamic authoring to replayable workflows | ✓ Good — v1.5 |
+| v1.6 strangler extractions behind stable façades | Avoids flag-day breakage while shrinking hotspots | ✓ Good — v1.6 |
+| Dependency-cruiser ratcheted to error with empty baseline | Strict boundary enforcement after v1.7 taxonomy | ✓ Good — v1.7 |
+| v1.7 treats plugins as registration packages distinct from adapters | Enables auditable capability taxonomy | ✓ Good — v1.7 |
+| Rust runtime replaces Node for orchestration via HTTP/SSE strangler | Remove bundled Node; UI stays TS/React | ✓ Good — v1.8 (tech_debt on partial ports) |
+| Ollama remains default inference host during Rust migration | Avoid day-one llama.cpp bundling | ✓ Good — v1.8 |
+| Canvas-first UI shell (Phase 61) preserves HTTP/SSE contract | Frontend restructure only; Rust backend unchanged | ✓ Good — v1.8 (REG-01 human UAT pending) |
+| Fine-tuning / LoRA explicitly out of scope | Compute and ecosystem cost | — Deferred |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-22 — v1.8 Rust Runtime Migration planning*
+*Last updated: 2026-05-22 after v1.8 Rust Runtime Migration milestone*
