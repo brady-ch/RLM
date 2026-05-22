@@ -59,6 +59,7 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Candidate Next-Milestone Themes
 
+- Product shell convergence: guided composer for first-run/new-workflow, graph workspace as the primary surface, and project/session launcher for durable resume.
 - Multi-runner adapters beyond bundled Ollama, including llama.cpp, vLLM, and cloud APIs.
 - Release hardening beyond baseline Linux installer: signed/reproducible artifacts, Windows/macOS package builds, GUI clean-machine smoke, and auto-update channel.
 - Developer launcher and local-folder plugin manager.
@@ -96,6 +97,7 @@ v1.4 established the session memory foundation: durability, explicit persistence
 | Graph-primary authoring replaces chat-first pre-run flow | Users describe work on the canvas; plan-from-node is the default path | Active v1.5 |
 | Expert team v1 uses shared tools with per-node allowlists | Keeps extension stack unified; specialized tool surfaces deferred until measured failures | Active v1.5 |
 | Graph export uses lossless `kind: graph` sidecars with playbook/pipeline variants | Bridges dynamic authoring to replayable workflows without replan-by-default | Active v1.5 |
+| Product shell uses guided composer -> graph workspace -> launcher/resume | First-run should still be "say what I want," while the graph remains the durable executable product surface | Candidate next milestone |
 
 ## Current Milestone: v1.5 Dynamic Graph Authoring
 

@@ -62,6 +62,13 @@
 - **PLAT-01**: Multi-runner adapters (llama.cpp, vLLM, cloud APIs) beyond bundled Ollama.
 - **PLAT-02**: Release hardening (signed artifacts, Windows/macOS packages, auto-update channel).
 
+### Product Shell
+
+- **SHELL-01**: First-run and new-workflow entry defaults to a guided composer that captures user intent and readiness context, then generates an inspectable graph rather than a chat answer.
+- **SHELL-02**: The graph workspace remains the primary working surface for editing, protecting, approving, executing, observing, saving, and exporting recursive workflows.
+- **SHELL-03**: A project/session launcher provides the home and resume surface for saved sessions, graph workflows, recent projects, model/plugin status, and memory stores.
+- **SHELL-04**: Plugin, model host, structured memory, vector retrieval, and degraded-capability states are visible and recoverable from product surfaces without requiring config-file edits on the default path.
+
 ## Out of Scope
 
 | Feature | Reason |
