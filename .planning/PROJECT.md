@@ -2,9 +2,11 @@
 
 ## Current State
 
-**Latest shipped milestone:** v1.5 — Dynamic Graph Authoring  
-**Current milestone:** v1.6 — Architecture Cleanup (planning)  
-**Status:** Defining requirements
+**Latest shipped milestone:** v1.6 — Architecture Cleanup  
+**Current milestone:** _Next version TBD — start with `/gsd-new-milestone`_  
+**Status:** Planning next milestone cycle
+
+v1.6 shipped behavior-preserving structural hardening: ESLint/Prettier/dependency-cruiser baselines with expanded `npm run check`; focused `application/config/` modules behind a stable `project-config` facade; `buildRuntimeContext()` bootstrap with slim `src/index.ts` and `cli/run-modes/*`; adapters grouped under `adapters/tools|persistence|models/`; `domain/recursion/` concern modules (budget, tool rounds, quality loop, execution-graph sync, prompts) with orchestrator retaining flow; control-server HTTP handlers colocated by surface with bootstrap-fed dependencies; subsystem-aligned tests under `tests/domain/recursion/` with shared helpers and refreshed `AGENTS.md`. Milestone audit: 40/40 requirements; `npm run check` green with **359** tests (per `v1.6-MILESTONE-AUDIT.md`).
 
 v1.5 shipped graph-primary authoring: model-driven plan-from-node with root-composer default and explicit failure states, protected replan (Replace/Merge/Cancel), planner-assigned expert teams with visible overrides and execution-time allowlist enforcement, a shared GraphExecutor that walks approved topology, lossless `kind: graph` workflow sidecars (playbook and pipeline variants), and UI/CLI/session integration hardening with 205 passing tests.
 
@@ -53,10 +55,17 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Approved graphs save/import as `kind: graph` workflow sidecars (playbook + pipeline variants) — v1.5
 - ✓ Planner assigns expert presets per node with visible overrides and exportable assignment metadata — v1.5
 - ✓ UI and CLI expose the same planning, export, and expert semantics with explicit failure states — v1.5
+- ✓ Lint/format and dependency-cruise guardrails with aggregated `npm run check` — v1.6
+- ✓ Config loading, validation, and resolution split under `application/config/` with unchanged public façade — v1.6
+- ✓ Runtime composition centralized in `buildRuntimeContext()`; CLI dispatches built `RuntimeContext` from `cli/run-modes/*` — v1.6
+- ✓ Tool, persistence, and model adapters grouped by concern; extension shims aligned — v1.6
+- ✓ Recursive engine concern modules live under `domain/recursion/`; orchestrator retains top-level recursion — v1.6
+- ✓ Control-server routes grouped under `handlers/` with transport-only boundaries — v1.6
+- ✓ Tests mirror subsystem layout with shared helpers; contributor map updated in AGENTS.md — v1.6
 
 ### Active
 
-(None — requirements being defined for v1.6)
+_Requirements for the next milestone are not captured yet — run `/gsd-new-milestone`._
 
 ### Candidate Future-Milestone Themes
 
@@ -70,27 +79,13 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - Multi-user collaboration or shared remote approval sessions — still not required for repo-local developer workflow unless selected for a future milestone.
 - Silent auto-fallback behavior — conflicts with explicit error visibility requirement.
 
-## Current Milestone: v1.6 Architecture Cleanup
-
-**Goal:** Reduce structural debt across CLI composition, config loading, core engine, tests, tooling, and UI boundaries while preserving existing behavior.
-
-**Target features:**
-- Extract runtime composition from CLI entrypoint (stores, tools, models, execution wiring)
-- Split `project-config.ts` into focused loader, validation, and resolver modules
-- Decompose `recursive-language-model.ts` by concern (budgeting, tool loops, graph events)
-- Restructure tests into subsystem-focused files with preserved integration coverage
-- Add lint/format dev tooling guardrails
-- Clarify UI/control-server composition boundaries
-
-**Milestone type:** Behavior-preserving refactor with small natural fixes only — no new user-facing features.
-
-**Success criteria:** Key files shrink with obvious module responsibilities; runtime/config builders are unit-testable without full CLI invocation; new contributors can locate change points quickly; all existing tests pass.
-
 ## Context
 
 The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI execution surface in `ui/`, and a Tauri shell under `src-tauri/`. The product path remains local-first and observable.
 
-v1.5 established graph-primary authoring: plan-from-node replaces keyword heuristics and chat-first pre-run flow; expert teams bind at plan time with execution-time allowlist enforcement; approved graphs export as replayable sidecars and execute through a shared GraphExecutor. Test suite: 205 passing.
+v1.6 reduced hotspot file size and clarified module ownership without changing CLI/UI/session/graph semantics; primary verification remains `npm run check` (typecheck, lint, format check, dependency-cruise baseline, full test run). **359** tests passing at milestone close per audit.
+
+v1.5 established graph-primary authoring: plan-from-node replaces keyword heuristics and chat-first pre-run flow; expert teams bind at plan time with execution-time allowlist enforcement; approved graphs export as replayable sidecars and execute through a shared GraphExecutor.
 
 ## Constraints
 
@@ -114,6 +109,8 @@ v1.5 established graph-primary authoring: plan-from-node replaces keyword heuris
 | Graph-primary authoring replaces chat-first pre-run flow | Users describe work on the canvas; plan-from-node is the default path | ✓ Good — v1.5 |
 | Expert team v1 uses shared tools with per-node allowlists | Keeps extension stack unified; specialized tool surfaces deferred until measured failures | ✓ Good — v1.5 |
 | Graph export uses lossless `kind: graph` sidecars with playbook/pipeline variants | Bridges dynamic authoring to replayable workflows without replan-by-default | ✓ Good — v1.5 |
+| v1.6 uses strangler extractions behind stable façades (`project-config`, `RuntimeContext`) | Avoids flag-day breakage while shrinking hotspots (`index.ts`, RLM orchestrator, control server) | ✓ Good — v1.6 |
+| Dependency-cruiser starts at WARN with a ratcheting baseline | Unblocks incremental boundary cleanup (`ARCH-02`) without stalling refactor phases | ⚠️ Revisit — ratchet toward error as violations clear |
 | Product shell uses guided composer → graph workspace → launcher/resume | First-run should still be "say what I want," while the graph remains the durable executable product surface | — Pending next milestone |
 
 ## Evolution
@@ -121,4 +118,4 @@ v1.5 established graph-primary authoring: plan-from-node replaces keyword heuris
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-22 — milestone v1.6 Architecture Cleanup started*
+*Last updated: 2026-05-22 after v1.6 Architecture Cleanup milestone ship*

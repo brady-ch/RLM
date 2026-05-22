@@ -2,6 +2,50 @@
 
 *A living document updated after each milestone. Lessons feed forward into future planning.*
 
+## Milestone: v1.6 — Architecture Cleanup
+
+**Shipped:** 2026-05-22  
+**Phases:** 7 | **Plans:** 15 | **Tests:** 359 passing (per milestone audit / `npm run check`)
+
+### What Was Built
+
+- Automated lint, format, and dependency-cruise guardrails with an aggregated `npm run check` gate.
+- Config split into `application/config/` with preserved public façade and resolver/starter unit tests.
+- Centralized runtime composition (`buildRuntimeContext`, `RuntimeContext`) and CLI run-mode dispatch receiving a built context.
+- Adapter taxonomy (tools, persistence, models) and aligned extension registration shims.
+- Recursive engine concern modules under `domain/recursion/` including tool-round and stitched quality-loop integration.
+- Control-server HTTP handlers grouped by surface with bootstrap-injected dependencies and unchanged API shapes.
+- Subsystem-aligned test layout with shared helpers and refreshed `AGENTS.md` onboarding map.
+
+### What Worked
+
+- Strangler extractions behind stable façades kept CLI/UI/session/graph behavior unchanged while shrinking hotspots.
+- Per-slice verification via `npm run check` gave a single CI-shaped signal after each phase.
+- Archiving roadmap + requirements per milestone keeps the live `.planning/` footprint bounded.
+
+### What Was Inefficient
+
+- `summary-extract` pulled placeholder “One-liner” rows for some phases — milestone accomplishments needed manual curation from SUMMARY bodies.
+- Some phase VERIFICATION docs emphasize narrative gates over per-REQ-ID tables (noted as optional hygiene in milestone audit).
+
+### Patterns Established
+
+- Layer-boundary linting starts as WARN + baseline ratchet rather than blocking the refactor train.
+- Bootstrap remains the sole composition choke point; handlers stay transport-only.
+
+### Key Lessons
+
+1. Keep SUMMARY frontmatter one-liners populated at phase close so milestone automation stays accurate.
+2. When Nyquist validation is enabled but artifacts are absent, record the gap explicitly — it is documentation debt, not a ship blocker, if audits and gates agree.
+
+### Cost Observations
+
+- Model mix: inherited session defaults.
+- Sessions: concentrated phase-close and audit cadence across seven phases same day per plan.
+- Notable: single `npm run check` umbrella reduced divergence between local and CI semantics.
+
+---
+
 ## Milestone: v1.5 — Dynamic Graph Authoring
 
 **Shipped:** 2026-05-22  
@@ -104,6 +148,7 @@
 | v1.0 | multiple | 5 | Established approval/checkpoint/control graph foundation |
 | v1.1 | multiple | 7 | Added interop, typed runtime state, chat-first UX, packaging, and milestone audit reconciliation |
 | v1.5 | 2 days | 6 | Graph-primary authoring, expert teams, GraphExecutor, workflow sidecars, UI/CLI parity |
+| v1.6 | same-day closeout | 7 | Behavior-preserving architecture cleanup: config/bootstrap split, adapter taxonomy, RLM decomposition, control-server handlers, test restructure |
 
 ### Cumulative Quality
 
@@ -112,6 +157,7 @@
 | v1.0 | baseline suite | approval and graph-control paths | n/a |
 | v1.1 | 98 passing | interop, run-state, clarification, typed composer, packaging/config scopes | Extension shims and runtime ports stayed in TypeScript/Node stack |
 | v1.5 | 205 passing | plan-from-node, protected replan, expert binding, GraphExecutor, graph workflow export/import, integration-v15 | Graph workflow sidecars and disk-resolved workflow path |
+| v1.6 | 359 passing | lint/format/depcruise gate, config/bootstrap facades, domain/recursion modules, handler split, nested test discovery | WARN-severity dependency-cruiser baseline; deferred `ARCH-01` / full error ratchet |
 
 ### Top Lessons (Verified Across Milestones)
 

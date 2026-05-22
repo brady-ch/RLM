@@ -1,5 +1,27 @@
 # Milestones
 
+## v1.6 Architecture Cleanup (Shipped: 2026-05-22)
+
+**Phases completed:** 7 phases, 15 plans, 9 tasks  
+**Known deferred items at close:** 3 (see STATE.md Deferred Items — pending `.planning/todos/pending/` items acknowledged at milestone close)
+
+**Key accomplishments:**
+
+- ESLint 10 flat config with typescript-eslint and Prettier 3 for `src/`, `tests/`, and `ui/src/`; eslint-config-prettier alignment; expanded `npm run check`.
+- dependency-cruiser AGENTS.md layer rules at WARN with checked-in baseline; incremental ratchet path for remaining violations (`ARCH-02`).
+- `application/config/` modules for schema, defaults, loader, validation, and runtime resolution; stable `project-config` public façade and focused unit tests.
+- `buildRuntimeContext()` bootstrap; slim `src/index.ts`; `cli/run-modes/*` dispatch over a built `RuntimeContext`.
+- Adapters grouped under `adapters/tools/`, `adapters/persistence/`, `adapters/models/` with aligned extension shims.
+- `domain/recursion/` concern modules (budget guard, tool rounds, quality loop, execution-graph sync, prompt utilities) with orchestrator retaining top-level flow.
+- Control-server handlers colocated by surface; `startControlServer` fed from bootstrap (`buildStartControlServerInput`); endpoint contracts preserved.
+- Tests reorganized under `tests/domain/recursion/` with `tests/helpers/`; `AGENTS.md` contributor map updated.
+
+**Archive:** `.planning/milestones/v1.6-ROADMAP.md`  
+**Requirements:** `.planning/milestones/v1.6-REQUIREMENTS.md`  
+**Audit:** `.planning/milestones/v1.6-MILESTONE-AUDIT.md`
+
+---
+
 ## v1.5 Dynamic Graph Authoring (Shipped: 2026-05-22)
 
 **Phases completed:** 6 phases, 18 plans, 12 tasks  

@@ -2,56 +2,63 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Architecture Cleanup
-status: executing
-stopped_at: Phase 42 closeout artifacts + planning tables
-last_updated: "2026-05-22T15:36:20.324Z"
+status: Awaiting next milestone
+stopped_at: Milestone v1.6 archived; roadmap reset for next cycle
+last_updated: "2026-05-22T16:05:00.000Z"
+last_activity: 2026-05-22 — Milestone v1.6 completed and archived
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_phases: 7
+  total_plans: 15
+  completed_plans: 15
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-05-22)
+See: `.planning/PROJECT.md` (updated 2026-05-22 after v1.6 ship)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** v1.6 wrap-up maintenance — Phase 40 peels complete (`RLM-01` satisfied); backlog only.
+**Current focus:** Planning the next milestone (`/gsd-new-milestone`).
 
 ## Current Position
 
-Phase: **42 of 42 (Test Restructure & Docs) — complete** (`42-SUMMARY.md`)  
-Phase 40 status: **Complete** (`40-VERIFICATION.md`) — recursion concern modules landed including **tool-round** and **quality-loop** peels with host facades.
-Phase 41 status: Complete (handlers under `application/control-server/handlers/`)
-
-Progress: [█████████░] 86%
+Phase: Milestone **v1.6** complete (Phases 36–42)  
+Plan: —  
+Status: Awaiting next milestone
 
 ## Recently Completed
 
-- **Phase 42: Test Restructure & Docs** — `tests/helpers/*`, relocated engine suite (`tests/domain/recursion/recursive-language-model.test.ts` retains **129** top-level blocks), recursion + YAML seam unit coverage, recursive `npm test` (`node --test dist/tests`), `AGENTS.md` contributor map refreshed; coordinated **tool-round** extraction commit `07523a0` preceding test moves; REQUIREMENTS Phase 42 items verified (`42-VERIFICATION.md`).
-
-- **Phase 41: Control-Server Boundary** — prior complete (`41-VERIFICATION.md`).
-
-- **Phase 40: Domain Engine Decomposition** — `domain/recursion/*` concern modules (**tool-round** + stitched **quality-loop**) with orchestrator delegation (`40-VERIFICATION.md`).
+- **Milestone v1.6 — Architecture Cleanup** — dev tooling guardrails; `application/config/` split; `buildRuntimeContext()` bootstrap; adapter taxonomy; `domain/recursion/` decomposition; control-server handlers; test restructure and `AGENTS.md` refresh. Archive: `.planning/milestones/v1.6-ROADMAP.md`, `v1.6-REQUIREMENTS.md`, `v1.6-MILESTONE-AUDIT.md`.
 
 ## Pending Todos
 
-- 3 pending todos in `.planning/todos/pending/` (unchanged backlog)
+Open artifact audit at milestone close reported **3** pending items under `.planning/todos/pending/` — acknowledged as deferred (see **Deferred Items**).
 
 ## Blockers/Concerns
 
-None for Phase 40 peel — `RLM-01` closed in `REQUIREMENTS.md`.
+None for v1.6 closure — milestone audit **passed** (`v1.6-MILESTONE-AUDIT.md`).
 
 ## Deferred Items
 
-Unchanged versus prior STATE — see table in archived sections in git history.
+Items acknowledged and deferred at milestone close on **2026-05-22** (open artifact audit: pending todos):
+
+| Category | Item | Status |
+|----------|------|--------|
+| todos | `2026-05-14-create-next-milestone-roadmap.md` | pending |
+| todos | `2026-05-22-extract-runtime-composition-from-cli-entrypoint.md` | pending |
+| todos | `2026-05-22-split-config-loader-resolver-validation.md` | pending |
+
+Prior deferred tables from earlier milestones remain in git history if needed.
 
 ## Session Continuity
 
-Last session: 2026-05-22T22:45:00.000Z  
-Stopped at: Phase 42 closeout artifacts + planning tables  
+Last session: 2026-05-22  
+Stopped at: Milestone v1.6 complete-milestone workflow  
 Resume file: None
+
+## Operator Next Steps
+
+- Start the next milestone with `/gsd-new-milestone`
