@@ -4,14 +4,14 @@ milestone: v1.5
 milestone_name: Dynamic Graph Authoring
 status: executing
 stopped_at: v1.4 milestone complete
-last_updated: "2026-05-22T00:22:06.359Z"
-last_activity: 2026-05-22 -- Phase 30 planning complete
+last_updated: "2026-05-22T07:02:56.929Z"
+last_activity: 2026-05-22 -- Phase 33 planning complete
 progress:
   total_phases: 6
-  completed_phases: 0
-  total_plans: 5
-  completed_plans: 0
-  percent: 0
+  completed_phases: 3
+  total_plans: 14
+  completed_plans: 11
+  percent: 79
 ---
 
 # Project State
@@ -21,17 +21,20 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-21)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** v1.5 Dynamic Graph Authoring — Phase 30 Plan-from-Node Foundation
+**Current focus:** v1.5 Dynamic Graph Authoring — Phase 33 Graph Execution Loop
 
 ## Current Position
 
-Phase: 30 of 35 (Plan-from-Node Foundation)
+Phase: 33 of 35 (Graph Execution Loop)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-05-22 -- Phase 30 planning complete
+Last activity: 2026-05-22 -- Phase 33 planning complete
 
 ## Recently Completed
 
+- Phase 30 Plan-from-Node Foundation completed on 2026-05-22.
+- Phase 31 Protected Replan UX completed on 2026-05-22.
+- Phase 32 Expert Team Binding completed on 2026-05-22.
 - v1.4 Session Memory shipped on 2026-05-21 after milestone audit passed.
 - Phase 29.1 Close gap: session save/reopen memory binding completed on 2026-05-21.
 - Phase 29 End-to-End Memory Hardening completed on 2026-05-21.
@@ -67,4 +70,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- `/gsd-discuss-phase 30` or `/gsd-plan-phase 30` to begin Plan-from-Node Foundation.
+- `/gsd-discuss-phase 33` to begin Graph Execution Loop.

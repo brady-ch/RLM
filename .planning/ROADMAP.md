@@ -23,9 +23,9 @@ v1.5 makes the execution graph the primary product surface: model-driven plan-fr
 
 **Milestone Goal:** Make the execution graph the primary surface for planning, expert assignment, and replayable workflow export — with full UI/CLI parity and no silent failures.
 
-- [ ] **Phase 30: Plan-from-Node Foundation** - Model-driven child planning from any node with root-composer default and explicit failure states.
-- [ ] **Phase 31: Protected Replan UX** - Replace/Merge/Cancel gate when protected descendants exist on parent replan.
-- [ ] **Phase 32: Expert Team Binding** - Planner-assigned expert presets, inspector overrides, and execution-time allowlist enforcement.
+- [x] **Phase 30: Plan-from-Node Foundation** - Model-driven child planning from any node with root-composer default and explicit failure states.
+- [x] **Phase 31: Protected Replan UX** - Replace/Merge/Cancel gate when protected descendants exist on parent replan.
+- [x] **Phase 32: Expert Team Binding** - Planner-assigned expert presets, inspector overrides, and execution-time allowlist enforcement.
 - [ ] **Phase 33: Graph Execution Loop** - Shared graph executor walks approved topology with per-node expert binding and visible runtime modes.
 - [ ] **Phase 34: Graph Workflow Export/Import** - Lossless `kind: graph` sidecars with playbook/pipeline variants and frozen replay.
 - [ ] **Phase 35: Integration Hardening** - UI/CLI parity, graph-primary UX default, and session save/reopen for new fields.
@@ -59,11 +59,11 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 **Plans**: 5 plans
 
 Plans:
-- [ ] 30-01-PLAN.md — Graph planner contract, plan purpose tier, zod validation
-- [ ] 30-02-PLAN.md — Async planNode, replan semantics, MutationError codes
-- [ ] 30-03-PLAN.md — API/CLI wiring with purpose-routing planModel
-- [ ] 30-04-PLAN.md — Graph-primary UI: root-composer, Plan children CTA, failure states
-- [ ] 30-05-PLAN.md — Test coverage consolidation and mock planner fixtures
+- [x] 30-01-PLAN.md — Graph planner contract, plan purpose tier, zod validation
+- [x] 30-02-PLAN.md — Async planNode, replan semantics, MutationError codes
+- [x] 30-03-PLAN.md — API/CLI wiring with purpose-routing planModel
+- [x] 30-04-PLAN.md — Graph-primary UI: root-composer, Plan children CTA, failure states
+- [x] 30-05-PLAN.md — Test coverage consolidation and mock planner fixtures
 
 **Wave 1:** 30-01
 **Wave 2 *(blocked on Wave 1 completion)*:** 30-02
@@ -86,6 +86,10 @@ Plans:
   3. Merge preserves protected nodes and regenerates or adjusts only non-protected planned descendants using parent plus pinned-child context.
   4. CLI replan with the protection gate matches UI Replace/Merge/Cancel semantics.
 **Plans**: TBD
+Plans:
+- [x] 31-01-PLAN.md — Protected detection and core replace/merge/cancel semantics
+- [x] 31-02-PLAN.md — API and CLI replan choice parity
+- [x] 31-03-PLAN.md — UI protected replan gate
 **UI hint**: yes
 
 ### Phase 32: Expert Team Binding
@@ -98,7 +102,11 @@ Plans:
   3. Expert presets use shared tool implementations with per-node allowlists enforced at execution bind time (no duplicate adapters per role).
   4. Expert purpose-to-tier maps from config are honored via purpose routing during node execution.
   5. Planner sets `runtime: rlm` on high-complexity nodes at plan time; user can override to single-pass or RLM explicitly; trace and UI show effective runtime mode.
-**Plans**: TBD
+**Plans**: 3/3 complete
+Plans:
+- [x] 32-01-PLAN.md — Planner expert assignment metadata
+- [x] 32-02-PLAN.md — Expert override API and UI
+- [x] 32-03-PLAN.md — Execution binding, tool allowlists, and tier routing
 **UI hint**: yes
 
 ### Phase 33: Graph Execution Loop
@@ -110,7 +118,12 @@ Plans:
   2. Each node resolves its expert profile and constrained tool allowlist at execution bind time.
   3. Single-pass and RLM runtime modes execute with visible mode metadata and no silent runtime escalation.
   4. User sees per-node execution status progress across the planned graph during an interactive run.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 33-01-PLAN.md — GraphExecutor core: topological walk, expert binding, single-pass/rlm modes
+- [ ] 33-02-PLAN.md — Wire UI runner to GraphExecutor (replace root-only selectAgent)
+- [ ] 33-03-PLAN.md — Per-node execution progress UI and human verify checkpoint
 **UI hint**: yes
 
 ### Phase 34: Graph Workflow Export/Import
@@ -151,9 +164,9 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 30. Plan-from-Node Foundation | v1.5 | 0/5 | Planned | - |
-| 31. Protected Replan UX | v1.5 | 0/TBD | Not started | - |
-| 32. Expert Team Binding | v1.5 | 0/TBD | Not started | - |
+| 30. Plan-from-Node Foundation | v1.5 | 5/5 | Complete | 2026-05-22 |
+| 31. Protected Replan UX | v1.5 | 3/3 | Complete | 2026-05-22 |
+| 32. Expert Team Binding | v1.5 | 3/3 | Complete | 2026-05-22 |
 | 33. Graph Execution Loop | v1.5 | 0/TBD | Not started | - |
 | 34. Graph Workflow Export/Import | v1.5 | 0/TBD | Not started | - |
 | 35. Integration Hardening | v1.5 | 0/TBD | Not started | - |
