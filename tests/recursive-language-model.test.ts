@@ -12,7 +12,12 @@ import type {
   LanguageModelPort,
   LanguageModelResponse,
 } from "../src/ports/language-model-port.js";
-import type { ExecutionGraphNode, NodeApprovalDecision, QualityLoopMetadata, RuntimeMemory } from "../src/domain/types.js";
+import type {
+  ExecutionGraphNode,
+  NodeApprovalDecision,
+  QualityLoopMetadata,
+  RuntimeMemory,
+} from "../src/domain/types.js";
 import type { ToolExecutionResult, ToolPort } from "../src/ports/tool-port.js";
 import { InMemoryTrace } from "../src/adapters/in-memory-trace.js";
 import { GuardedShellTool } from "../src/adapters/guarded-shell-tool.js";
@@ -20,7 +25,11 @@ import { WorkspaceFileWriteTool } from "../src/adapters/workspace-file-write-too
 import { createAgentRegistry, selectAgent } from "../src/application/agent-registry.js";
 import { loadProjectConfig, resolveRuntimeConfig } from "../src/application/project-config.js";
 import { MemoryManager } from "../src/application/memory-manager.js";
-import { PurposeRoutingLanguageModel, selectDynamicTier, type ModelSelectionRecord } from "../src/application/model-provider.js";
+import {
+  PurposeRoutingLanguageModel,
+  selectDynamicTier,
+  type ModelSelectionRecord,
+} from "../src/application/model-provider.js";
 import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
 import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
 import { startControlServer } from "../src/application/control-server.js";
@@ -38,7 +47,10 @@ import type { PlannedChildSpec } from "../src/application/graph-planner.js";
 type QueueResponse = string | LanguageModelResponse | Error;
 
 class QueueModel implements LanguageModelPort {
-  readonly calls: Array<{ messages: LanguageModelMessage[]; options: LanguageModelCompleteOptions }> = [];
+  readonly calls: Array<{
+    messages: LanguageModelMessage[];
+    options: LanguageModelCompleteOptions;
+  }> = [];
 
   constructor(private readonly responses: QueueResponse[]) {}
 
@@ -60,7 +72,10 @@ class QueueModel implements LanguageModelPort {
 }
 
 class DelayedQueueModel implements LanguageModelPort {
-  readonly calls: Array<{ messages: LanguageModelMessage[]; options: LanguageModelCompleteOptions }> = [];
+  readonly calls: Array<{
+    messages: LanguageModelMessage[];
+    options: LanguageModelCompleteOptions;
+  }> = [];
 
   constructor(
     private readonly responses: QueueResponse[],
@@ -95,7 +110,10 @@ class ThrowingModel implements LanguageModelPort {
 
 function createMockPlanModel(specs: PlannedChildSpec[] | "invalid" | "throw"): LanguageModelPort {
   return {
-    async complete(messages: LanguageModelMessage[], options: LanguageModelCompleteOptions = {}): Promise<LanguageModelResponse> {
+    async complete(
+      messages: LanguageModelMessage[],
+      _options: LanguageModelCompleteOptions = {},
+    ): Promise<LanguageModelResponse> {
       if (specs === "throw") {
         throw new Error("planner unavailable");
       }
@@ -112,17 +130,58 @@ function createMockPlanModel(specs: PlannedChildSpec[] | "invalid" | "throw"): L
 }
 
 const audiobookPlanChildren: PlannedChildSpec[] = [
-  { label: "Parse book into segments", prompt: "Parse the source book into ordered chapter and segment artifact refs.", type: "Splitter", complexity: "medium" },
-  { label: "Interpret speakers", prompt: "Infer speaker attribution and update a persistent speaker bible from bounded text segments.", type: "AI", complexity: "high" },
-  { label: "Generate TTS clips", prompt: "Generate consistent per-speaker audio clips from segment refs and voice profiles.", type: "TTS", complexity: "high" },
-  { label: "Validate continuity", prompt: "Validate speaker and audio continuity across generated clips.", type: "Validator", complexity: "medium" },
-  { label: "Splice final audio", prompt: "Splice ordered audio artifact refs into the final audiobook file.", type: "Code", complexity: "medium" },
+  {
+    label: "Parse book into segments",
+    prompt: "Parse the source book into ordered chapter and segment artifact refs.",
+    type: "Splitter",
+    complexity: "medium",
+  },
+  {
+    label: "Interpret speakers",
+    prompt:
+      "Infer speaker attribution and update a persistent speaker bible from bounded text segments.",
+    type: "AI",
+    complexity: "high",
+  },
+  {
+    label: "Generate TTS clips",
+    prompt: "Generate consistent per-speaker audio clips from segment refs and voice profiles.",
+    type: "TTS",
+    complexity: "high",
+  },
+  {
+    label: "Validate continuity",
+    prompt: "Validate speaker and audio continuity across generated clips.",
+    type: "Validator",
+    complexity: "medium",
+  },
+  {
+    label: "Splice final audio",
+    prompt: "Splice ordered audio artifact refs into the final audiobook file.",
+    type: "Code",
+    complexity: "medium",
+  },
 ];
 
 const genericPlanChildren: PlannedChildSpec[] = [
-  { label: "Plan implementation slice", prompt: "Create the smallest safe implementation slice.", type: "AI", complexity: "medium" },
-  { label: "Execute code changes", prompt: "Apply code or configuration changes.", type: "Code", complexity: "medium" },
-  { label: "Validate results", prompt: "Validate the completed work.", type: "Validator", complexity: "low" },
+  {
+    label: "Plan implementation slice",
+    prompt: "Create the smallest safe implementation slice.",
+    type: "AI",
+    complexity: "medium",
+  },
+  {
+    label: "Execute code changes",
+    prompt: "Apply code or configuration changes.",
+    type: "Code",
+    complexity: "medium",
+  },
+  {
+    label: "Validate results",
+    prompt: "Validate the completed work.",
+    type: "Validator",
+    complexity: "low",
+  },
 ];
 
 const expertPlanChildren: PlannedChildSpec[] = [
@@ -219,17 +278,30 @@ function bestOfProgress(answer: string, selectedCandidateId?: string): string {
 
 function assertQualityLoopTerminal(
   loop: QualityLoopMetadata | undefined,
-  expected: { status: QualityLoopMetadata["status"]; stopReason: NonNullable<QualityLoopMetadata["stopReason"]>; issueText?: RegExp },
+  expected: {
+    status: QualityLoopMetadata["status"];
+    stopReason: NonNullable<QualityLoopMetadata["stopReason"]>;
+    issueText?: RegExp;
+  },
 ) {
   assert.equal(loop?.status, expected.status);
   assert.equal(loop?.stopReason, expected.stopReason);
-  assert.ok(loop?.message !== undefined || loop?.unresolvedIssues.length !== 0 || loop?.gate !== undefined || loop?.selection !== undefined);
+  assert.ok(
+    loop?.message !== undefined ||
+      loop?.unresolvedIssues.length !== 0 ||
+      loop?.gate !== undefined ||
+      loop?.selection !== undefined,
+  );
   if (expected.issueText) {
     const diagnostic = [
       loop?.message,
       ...(loop?.unresolvedIssues.map((issue) => issue.text) ?? []),
-      ...(loop?.iterations.flatMap((iteration) => iteration.unresolvedIssues.map((issue) => issue.text)) ?? []),
-    ].filter(Boolean).join("\n");
+      ...(loop?.iterations.flatMap((iteration) =>
+        iteration.unresolvedIssues.map((issue) => issue.text),
+      ) ?? []),
+    ]
+      .filter(Boolean)
+      .join("\n");
     assert.match(diagnostic, expected.issueText);
   }
 }
@@ -285,7 +357,10 @@ test("parse args enables quality loop explicitly", () => {
 });
 
 test("parse args sets quality loop max iterations", () => {
-  const parsed = parseArgs(["ask", "--quality-loop-max-iterations", "5", "Improve this answer"], {});
+  const parsed = parseArgs(
+    ["ask", "--quality-loop-max-iterations", "5", "Improve this answer"],
+    {},
+  );
 
   assert.equal(parsed.prompt, "Improve this answer");
   assert.equal(parsed.config.qualityLoop?.enabled, true);
@@ -352,7 +427,13 @@ test("injects resolved memory packet and records node summary", async () => {
   assert.equal(result.answer, "memory-aware answer");
   assert.match(model.calls[0]?.messages[0]?.content ?? "", /remember project context/);
   assert.equal(result.metadata.memoryPackets?.[0]?.nodeId, "task-1");
-  assert.deepEqual(summaries, [{ nodeId: "task-1", summary: "memory-aware answer", scopeIds: ["run-manifest", "project-preferences"] }]);
+  assert.deepEqual(summaries, [
+    {
+      nodeId: "task-1",
+      summary: "memory-aware answer",
+      scopeIds: ["run-manifest", "project-preferences"],
+    },
+  ]);
 });
 
 test("quality loop graph node stays collapsed with nested phase history", async () => {
@@ -373,7 +454,11 @@ test("quality loop graph node stays collapsed with nested phase history", async 
     prompt: "Improve this answer",
     config: {
       ...dynamicDepthConfig,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
     execution: {
       isCancelled: () => false,
@@ -394,7 +479,10 @@ test("quality loop graph node stays collapsed with nested phase history", async 
     ["draft-model", "critique-model", "refine-model", "gate-model", "best-model"],
   );
   assert.equal(result.metadata.qualityLoop, node?.loop);
-  assert.equal(result.trace.some((event) => event.kind === "depth"), false);
+  assert.equal(
+    result.trace.some((event) => event.kind === "depth"),
+    false,
+  );
   assert.ok(events.some((event) => event.message?.includes("quality loop started")));
   assert.ok(events.some((event) => event.message?.includes("quality loop phase completed")));
   assert.ok(events.some((event) => event.message?.includes("quality loop stopped")));
@@ -415,7 +503,11 @@ test("quality loop routes internal phases through distinct model purposes", asyn
     prompt: "Improve this answer",
     config: {
       ...dynamicDepthConfig,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
@@ -477,7 +569,11 @@ test("quality loop phase model override resolves tier and records planned effect
           case "quality_loop_gate":
             return { content: continuingGate, toolCalls: [], model: modelName };
           case "quality_loop_best_of_progress":
-            return { content: bestOfProgress("best final answer"), toolCalls: [], model: modelName };
+            return {
+              content: bestOfProgress("best final answer"),
+              toolCalls: [],
+              model: modelName,
+            };
           default:
             return { content: `${modelName} answer`, toolCalls: [], model: modelName };
         }
@@ -506,7 +602,10 @@ test("quality loop phase model override resolves tier and records planned effect
   assert.equal(loop?.phaseModels?.gate?.plannedModel, "large-model");
   assert.equal(loop?.phaseModels?.gate?.effectiveModel, "large-model");
   assert.equal(loop?.phaseModels?.gate?.source, "phase_override");
-  assert.equal(loop?.iterations[0]?.phases.find((phase) => phase.phase === "gate")?.modelSelection, "large");
+  assert.equal(
+    loop?.iterations[0]?.phases.find((phase) => phase.phase === "gate")?.modelSelection,
+    "large",
+  );
 });
 
 test("quality loop selected unavailable phase model fails explicitly without fallback", async () => {
@@ -550,13 +649,18 @@ test("quality loop selected unavailable phase model fails explicitly without fal
     },
     createModel: (modelName) => {
       if (modelName === "missing-model") {
-        return new ThrowingModel("selected quality loop phase model unavailable: phase=critique requested=missing-model available=small,medium,large");
+        return new ThrowingModel(
+          "selected quality loop phase model unavailable: phase=critique requested=missing-model available=small,medium,large",
+        );
       }
       return {
         complete: async (_messages, options = {}) => {
           defaultCalls += 1;
           return {
-            content: options.purpose === "quality_loop_critique" ? structuredCritique : `${modelName} answer`,
+            content:
+              options.purpose === "quality_loop_critique"
+                ? structuredCritique
+                : `${modelName} answer`,
             toolCalls: [],
             model: modelName,
           };
@@ -603,13 +707,23 @@ test("quality loop manual accept stops with human accepted reason", async () => 
     prompt: "Improve this answer",
     config: {
       ...dynamicDepthConfig,
-      qualityLoop: { enabled: true, maxIterations: 2, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 2,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
     execution: {
       isCancelled: () => false,
-      getQualityLoopDecision: () => acceptLoop
-        ? { action: "accept", reason: "accepted by test", requestedAt: "2026-05-18T00:00:00.000Z", source: "user" }
-        : undefined,
+      getQualityLoopDecision: () =>
+        acceptLoop
+          ? {
+              action: "accept",
+              reason: "accepted by test",
+              requestedAt: "2026-05-18T00:00:00.000Z",
+              source: "user",
+            }
+          : undefined,
       onEvent: (event) => {
         if (event.message === "quality loop phase completed: best_of_progress") {
           acceptLoop = true;
@@ -638,13 +752,23 @@ test("quality loop manual stop uses stopped reason without approval semantics", 
     prompt: "Improve this answer",
     config: {
       ...dynamicDepthConfig,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
     execution: {
       isCancelled: () => false,
-      getQualityLoopDecision: () => stopLoop
-        ? { action: "stop", reason: "stopped by test", requestedAt: "2026-05-18T00:00:00.000Z", source: "user" }
-        : undefined,
+      getQualityLoopDecision: () =>
+        stopLoop
+          ? {
+              action: "stop",
+              reason: "stopped by test",
+              requestedAt: "2026-05-18T00:00:00.000Z",
+              source: "user",
+            }
+          : undefined,
       onEvent: (event) => {
         if (event.message === "quality loop phase completed: draft") {
           stopLoop = true;
@@ -666,11 +790,14 @@ test("quality loop manual stop applies during in-flight phase completion", async
     stopLoop = true;
   }, 50);
   const engine = new RecursiveLanguageModel(
-    new DelayedQueueModel([
-      { content: "draft answer", toolCalls: [], model: "draft-model" },
-      { content: structuredCritique, toolCalls: [], model: "critique-model" },
-      { content: "refined answer", toolCalls: [], model: "refine-model" },
-    ], 250),
+    new DelayedQueueModel(
+      [
+        { content: "draft answer", toolCalls: [], model: "draft-model" },
+        { content: structuredCritique, toolCalls: [], model: "critique-model" },
+        { content: "refined answer", toolCalls: [], model: "refine-model" },
+      ],
+      250,
+    ),
     trace,
   );
 
@@ -678,13 +805,23 @@ test("quality loop manual stop applies during in-flight phase completion", async
     prompt: "Improve this answer",
     config: {
       ...dynamicDepthConfig,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
     execution: {
       isCancelled: () => false,
-      getQualityLoopDecision: () => stopLoop
-        ? { action: "stop", reason: "stopped during phase", requestedAt: "2026-05-18T00:00:00.000Z", source: "user" }
-        : undefined,
+      getQualityLoopDecision: () =>
+        stopLoop
+          ? {
+              action: "stop",
+              reason: "stopped during phase",
+              requestedAt: "2026-05-18T00:00:00.000Z",
+              source: "user",
+            }
+          : undefined,
     },
   });
 
@@ -712,7 +849,11 @@ test("quality loop metadata syncs to interactive session nodes", async () => {
     prompt: "Improve this answer",
     config: {
       ...dynamicDepthConfig,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
     execution: session.control,
   });
@@ -733,7 +874,11 @@ test("quality loop budget stops before partial iteration", async () => {
       ...config,
       maxDepth: 0,
       maxModelCalls: 4,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
@@ -761,7 +906,11 @@ test("quality loop metadata includes terminal reason usage and selected candidat
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
@@ -769,8 +918,12 @@ test("quality loop metadata includes terminal reason usage and selected candidat
   assert.equal(result.metadata.qualityLoop?.usage.modelCallsTotal, 5);
   assert.equal(result.metadata.qualityLoop?.usage.phaseCallCounts.draft, 1);
   assert.ok(result.metadata.qualityLoop?.selectedCandidateId);
-  assert.ok(result.metadata.qualityLoop?.candidates.some((candidate) => candidate.isSelected === true));
-  assert.ok(result.metadata.qualityLoop?.iterations[0]?.phases.some((phase) => phase.model === "unknown"));
+  assert.ok(
+    result.metadata.qualityLoop?.candidates.some((candidate) => candidate.isSelected === true),
+  );
+  assert.ok(
+    result.metadata.qualityLoop?.iterations[0]?.phases.some((phase) => phase.model === "unknown"),
+  );
 });
 
 async function runQualityLoopForRubric(prompt: string, gate = continuingGate) {
@@ -791,7 +944,11 @@ async function runQualityLoopForRubric(prompt: string, gate = continuingGate) {
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 }
@@ -805,7 +962,9 @@ test("quality loop selects general answer quality rubric by default", async () =
 });
 
 test("quality loop selects code engineering rubric", async () => {
-  const result = await runQualityLoopForRubric("Fix the failing TypeScript test in src/domain/types.ts.");
+  const result = await runQualityLoopForRubric(
+    "Fix the failing TypeScript test in src/domain/types.ts.",
+  );
 
   assert.equal(result.metadata.qualityLoop?.rubric?.id, "code_engineering");
   assert.ok((result.metadata.qualityLoop?.rubric?.matchedSignals.length ?? 0) > 0);
@@ -813,7 +972,9 @@ test("quality loop selects code engineering rubric", async () => {
 });
 
 test("quality loop selects planning architecture rubric", async () => {
-  const result = await runQualityLoopForRubric("Create an architecture plan with system tradeoffs for the next phase.");
+  const result = await runQualityLoopForRubric(
+    "Create an architecture plan with system tradeoffs for the next phase.",
+  );
 
   assert.equal(result.metadata.qualityLoop?.rubric?.id, "planning_architecture");
   assert.ok((result.metadata.qualityLoop?.rubric?.matchedSignals.length ?? 0) > 0);
@@ -821,7 +982,9 @@ test("quality loop selects planning architecture rubric", async () => {
 });
 
 test("quality loop selects user facing writing rubric", async () => {
-  const result = await runQualityLoopForRubric("Rewrite this announcement email with a warmer tone.");
+  const result = await runQualityLoopForRubric(
+    "Rewrite this announcement email with a warmer tone.",
+  );
 
   assert.equal(result.metadata.qualityLoop?.rubric?.id, "user_facing_writing");
   assert.ok((result.metadata.qualityLoop?.rubric?.matchedSignals.length ?? 0) > 0);
@@ -837,7 +1000,9 @@ test("quality loop selects structured artifact rubric", async () => {
 });
 
 test("quality loop mirrors selected rubric onto graph node metadata", async () => {
-  const result = await runQualityLoopForRubric("Fix the bug in src/domain/recursive-language-model.ts.");
+  const result = await runQualityLoopForRubric(
+    "Fix the bug in src/domain/recursive-language-model.ts.",
+  );
   const node = result.metadata.executionGraph?.nodes[0];
 
   assert.deepEqual(node?.loop?.rubric, result.metadata.qualityLoop?.rubric);
@@ -862,7 +1027,11 @@ test("quality loop degraded returns best available candidate with unresolved iss
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
@@ -896,17 +1065,30 @@ test("quality loop parses structured evaluator outputs", async () => {
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
   const iteration = result.metadata.qualityLoop?.iterations[0];
   assert.equal(iteration?.critiqueEvaluation?.summary, "critique notes");
   assert.equal(iteration?.gateEvaluation?.decision, "pass");
-  assert.equal(iteration?.bestOfProgressEvaluation?.rationale, "Best candidate by score and issue resolution.");
-  assert.equal(iteration?.phases.find((phase) => phase.phase === "critique")?.parseStatus, "parsed");
+  assert.equal(
+    iteration?.bestOfProgressEvaluation?.rationale,
+    "Best candidate by score and issue resolution.",
+  );
+  assert.equal(
+    iteration?.phases.find((phase) => phase.phase === "critique")?.parseStatus,
+    "parsed",
+  );
   assert.equal(iteration?.phases.find((phase) => phase.phase === "gate")?.parseStatus, "parsed");
-  assert.equal(iteration?.phases.find((phase) => phase.phase === "best_of_progress")?.parseStatus, "parsed");
+  assert.equal(
+    iteration?.phases.find((phase) => phase.phase === "best_of_progress")?.parseStatus,
+    "parsed",
+  );
   assert.equal(result.metadata.qualityLoop?.gate?.decision, "pass");
   assert.equal(result.answer, "best final answer");
 });
@@ -929,11 +1111,17 @@ test("quality loop degraded on malformed evaluator output with candidate", async
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
-  const failedPhase = result.metadata.qualityLoop?.iterations[0]?.phases.find((phase) => phase.phase === "best_of_progress");
+  const failedPhase = result.metadata.qualityLoop?.iterations[0]?.phases.find(
+    (phase) => phase.phase === "best_of_progress",
+  );
   assert.equal(result.metadata.qualityLoop?.status, "degraded");
   assert.equal(result.metadata.qualityLoop?.stopReason, "degraded");
   assert.equal(failedPhase?.parseStatus, "degraded");
@@ -956,11 +1144,17 @@ test("quality loop fails on malformed evaluator output before candidate", async 
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
-  const failedPhase = result.metadata.qualityLoop?.iterations[0]?.phases.find((phase) => phase.phase === "critique");
+  const failedPhase = result.metadata.qualityLoop?.iterations[0]?.phases.find(
+    (phase) => phase.phase === "critique",
+  );
   assert.equal(result.metadata.executionStatus, "failed");
   assert.equal(result.metadata.qualityLoop?.status, "failed");
   assert.equal(result.metadata.qualityLoop?.stopReason, "failed");
@@ -1005,7 +1199,11 @@ test("quality loop gate stops with critique resolved", async () => {
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
@@ -1047,7 +1245,11 @@ test("quality loop gate stops with no meaningful improvement", async () => {
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 2, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 2,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
@@ -1063,7 +1265,11 @@ test("quality loop preserves refined candidates for comparison", async () => {
       { content: structuredCritique, toolCalls: [], model: "critique-model" },
       { content: "refined answer", toolCalls: [], model: "refine-model" },
       { content: passingGate, toolCalls: [], model: "gate-model" },
-      { content: bestOfProgress("best final answer", "loop-task-1-i0-refine"), toolCalls: [], model: "best-model" },
+      {
+        content: bestOfProgress("best final answer", "loop-task-1-i0-refine"),
+        toolCalls: [],
+        model: "best-model",
+      },
     ]),
     trace,
   );
@@ -1073,7 +1279,11 @@ test("quality loop preserves refined candidates for comparison", async () => {
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
@@ -1093,12 +1303,20 @@ test("quality loop can select earlier candidate as final answer", async () => {
       { content: structuredCritique, toolCalls: [], model: "critique-model" },
       { content: "excellent first refinement", toolCalls: [], model: "refine-model" },
       { content: continuingGate, toolCalls: [], model: "gate-model" },
-      { content: bestOfProgress("best final answer", "loop-task-1-i0-refine"), toolCalls: [], model: "best-model" },
+      {
+        content: bestOfProgress("best final answer", "loop-task-1-i0-refine"),
+        toolCalls: [],
+        model: "best-model",
+      },
       { content: "weaker draft", toolCalls: [], model: "draft-model" },
       { content: structuredCritique, toolCalls: [], model: "critique-model" },
       { content: "weaker refinement", toolCalls: [], model: "refine-model" },
       { content: passingGate, toolCalls: [], model: "gate-model" },
-      { content: bestOfProgress("later final answer", "loop-task-1-i0-refine"), toolCalls: [], model: "best-model" },
+      {
+        content: bestOfProgress("later final answer", "loop-task-1-i0-refine"),
+        toolCalls: [],
+        model: "best-model",
+      },
     ]),
     trace,
   );
@@ -1108,7 +1326,11 @@ test("quality loop can select earlier candidate as final answer", async () => {
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 2, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 2,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
@@ -1124,7 +1346,11 @@ test("quality loop degrades and falls back on invalid best of progress candidate
       { content: structuredCritique, toolCalls: [], model: "critique-model" },
       { content: "refined answer", toolCalls: [], model: "refine-model" },
       { content: continuingGate, toolCalls: [], model: "gate-model" },
-      { content: bestOfProgress("best final answer", "missing-candidate"), toolCalls: [], model: "best-model" },
+      {
+        content: bestOfProgress("best final answer", "missing-candidate"),
+        toolCalls: [],
+        model: "best-model",
+      },
     ]),
     trace,
   );
@@ -1134,7 +1360,11 @@ test("quality loop degrades and falls back on invalid best of progress candidate
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
@@ -1162,7 +1392,11 @@ test("quality loop failure records terminal failed metadata", async () => {
     config: {
       ...config,
       maxDepth: 0,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
 
@@ -1171,7 +1405,9 @@ test("quality loop failure records terminal failed metadata", async () => {
   assert.equal(result.metadata.qualityLoop?.status, "failed");
   assert.equal(result.metadata.qualityLoop?.stopReason, "failed");
   assert.equal(result.metadata.qualityLoop?.usage.modelCallsTotal, 3);
-  const failedPhase = result.metadata.qualityLoop?.iterations[0]?.phases.find((phase) => phase.phase === "refine");
+  const failedPhase = result.metadata.qualityLoop?.iterations[0]?.phases.find(
+    (phase) => phase.phase === "refine",
+  );
   assert.equal(failedPhase?.status, "failed");
   assert.equal(failedPhase?.model, "unknown");
   assert.ok((failedPhase?.unresolvedIssues?.length ?? 0) > 0);
@@ -1188,7 +1424,11 @@ test("quality loop strict failure regression matrix exposes diagnostics", async 
     prompt: "Improve this answer",
     config: {
       ...dynamicDepthConfig,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
   assertQualityLoopTerminal(malformed.metadata.qualityLoop, {
@@ -1203,7 +1443,11 @@ test("quality loop strict failure regression matrix exposes diagnostics", async 
       ...config,
       maxDepth: 0,
       maxModelCalls: 4,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
   });
   assertQualityLoopTerminal(budget.metadata.qualityLoop, {
@@ -1220,7 +1464,11 @@ test("quality loop strict failure regression matrix exposes diagnostics", async 
     prompt: "Improve this answer",
     config: {
       ...dynamicDepthConfig,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
     execution: {
       isCancelled: () => cancelAfterDraft,
@@ -1257,7 +1505,11 @@ test("quality loop observability regression spans events graph and render surfac
     prompt: "Improve this answer",
     config: {
       ...dynamicDepthConfig,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
     execution: {
       isCancelled: () => false,
@@ -1274,11 +1526,18 @@ test("quality loop observability regression spans events graph and render surfac
   assert.ok(events.some((message) => message === "quality loop phase completed: gate"));
   assert.ok(events.some((message) => message === "quality loop stopped: passed"));
 
-  const compact = renderResult(result, { compact: true, json: false, includeTrace: false, model: "m" });
+  const compact = renderResult(result, {
+    compact: true,
+    json: false,
+    includeTrace: false,
+    model: "m",
+  });
   assert.match(compact, /qualityLoop: status=completed stopReason=passed/);
   assert.match(compact, /qualityLoopQuality: score=0\.92 issues=0 status=completed/);
   assert.match(compact, /qualityLoopRubric: id=/);
-  const parsed = JSON.parse(renderResult(result, { compact: false, json: true, includeTrace: false, model: "m" })) as { qualityLoop: QualityLoopMetadata };
+  const parsed = JSON.parse(
+    renderResult(result, { compact: false, json: true, includeTrace: false, model: "m" }),
+  ) as { qualityLoop: QualityLoopMetadata };
   assert.equal(parsed.qualityLoop.stopReason, "passed");
   assert.equal(parsed.qualityLoop.iterations[0]?.phases.length, 5);
 });
@@ -1296,14 +1555,24 @@ test("quality loop waits for node approval before model calls", async () => {
   let pendingNode: ExecutionGraphNode | undefined;
   let approve!: (prompt: string) => void;
   const approval = new Promise<NodeApprovalDecision>((resolve) => {
-    approve = (prompt: string) => resolve({ status: "approved", prompt, approvalSource: "manual", approvalReason: "test approval" });
+    approve = (prompt: string) =>
+      resolve({
+        status: "approved",
+        prompt,
+        approvalSource: "manual",
+        approvalReason: "test approval",
+      });
   });
 
   const run = engine.run({
     prompt: "Improve this answer",
     config: {
       ...dynamicDepthConfig,
-      qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+      qualityLoop: {
+        enabled: true,
+        maxIterations: 1,
+        budgetBehavior: "stop_before_partial_iteration",
+      },
     },
     execution: {
       approvalMode: "full",
@@ -1368,22 +1637,26 @@ test("renders compact quality loop metadata", () => {
       totalTokens: 30,
       unknownCompletions: 0,
     },
-    iterations: [{
-      index: 0,
-      status: "completed",
-      startedAt: "2026-05-17T00:00:00.000Z",
-      completedAt: "2026-05-17T00:00:01.000Z",
-      phases: [],
-      candidates: [],
-      unresolvedIssues: [],
-    }],
-    candidates: [{
-      id: "candidate-1",
-      iteration: 0,
-      phase: "best_of_progress",
-      summary: "answer",
-      isSelected: true,
-    }],
+    iterations: [
+      {
+        index: 0,
+        status: "completed",
+        startedAt: "2026-05-17T00:00:00.000Z",
+        completedAt: "2026-05-17T00:00:01.000Z",
+        phases: [],
+        candidates: [],
+        unresolvedIssues: [],
+      },
+    ],
+    candidates: [
+      {
+        id: "candidate-1",
+        iteration: 0,
+        phase: "best_of_progress",
+        summary: "answer",
+        isSelected: true,
+      },
+    ],
     phaseModels: {
       gate: {
         phase: "gate",
@@ -1399,23 +1672,29 @@ test("renders compact quality loop metadata", () => {
     unresolvedIssues: [],
   };
 
-  const rendered = renderResult({
-    answer: "ok",
-    trace: [],
-    metadata: {
-      agent: { id: "default", source: "auto" },
-      depth: { selected: 0, source: "override" },
-      modelSelections: [],
-      memoryReservations: [],
-      modelCalls: 5,
-      tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
-      toolCalls: [],
-      qualityLoop: loop,
-      errors: [],
+  const rendered = renderResult(
+    {
+      answer: "ok",
+      trace: [],
+      metadata: {
+        agent: { id: "default", source: "auto" },
+        depth: { selected: 0, source: "override" },
+        modelSelections: [],
+        memoryReservations: [],
+        modelCalls: 5,
+        tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
+        toolCalls: [],
+        qualityLoop: loop,
+        errors: [],
+      },
     },
-  }, { compact: true, json: false, includeTrace: false, model: "m" });
+    { compact: true, json: false, includeTrace: false, model: "m" },
+  );
 
-  assert.match(rendered, /qualityLoop: status=completed stopReason=max_iterations iterations=1 selectedCandidate=candidate-1/);
+  assert.match(
+    rendered,
+    /qualityLoop: status=completed stopReason=max_iterations iterations=1 selectedCandidate=candidate-1/,
+  );
   assert.match(rendered, /qualityLoopUsage: modelCalls=5 input=10 output=20 total=30 unknown=0/);
   assert.match(rendered, /qualityLoopQuality: score=none issues=0 status=completed/);
   assert.match(rendered, /qualityLoopModels: gate:large->large-model/);
@@ -1442,41 +1721,48 @@ test("renders json quality loop metadata", () => {
       totalTokens: 30,
       unknownCompletions: 0,
     },
-    iterations: [{
-      index: 0,
-      status: "completed",
-      startedAt: "2026-05-17T00:00:00.000Z",
-      completedAt: "2026-05-17T00:00:01.000Z",
-      phases: [],
-      candidates: [],
-      unresolvedIssues: [],
-    }],
-    candidates: [{
-      id: "candidate-1",
-      iteration: 0,
-      phase: "best_of_progress",
-      summary: "answer",
-      isSelected: true,
-    }],
+    iterations: [
+      {
+        index: 0,
+        status: "completed",
+        startedAt: "2026-05-17T00:00:00.000Z",
+        completedAt: "2026-05-17T00:00:01.000Z",
+        phases: [],
+        candidates: [],
+        unresolvedIssues: [],
+      },
+    ],
+    candidates: [
+      {
+        id: "candidate-1",
+        iteration: 0,
+        phase: "best_of_progress",
+        summary: "answer",
+        isSelected: true,
+      },
+    ],
     selectedCandidateId: "candidate-1",
     unresolvedIssues: [],
   };
 
-  const rendered = renderResult({
-    answer: "ok",
-    trace: [],
-    metadata: {
-      agent: { id: "default", source: "auto" },
-      depth: { selected: 0, source: "override" },
-      modelSelections: [],
-      memoryReservations: [],
-      modelCalls: 5,
-      tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
-      toolCalls: [],
-      qualityLoop: loop,
-      errors: [],
+  const rendered = renderResult(
+    {
+      answer: "ok",
+      trace: [],
+      metadata: {
+        agent: { id: "default", source: "auto" },
+        depth: { selected: 0, source: "override" },
+        modelSelections: [],
+        memoryReservations: [],
+        modelCalls: 5,
+        tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
+        toolCalls: [],
+        qualityLoop: loop,
+        errors: [],
+      },
     },
-  }, { compact: false, json: true, includeTrace: false, model: "m" });
+    { compact: false, json: true, includeTrace: false, model: "m" },
+  );
   const parsed = JSON.parse(rendered) as { qualityLoop: QualityLoopMetadata };
 
   assert.equal(parsed.qualityLoop.stopReason, "max_iterations");
@@ -1526,87 +1812,100 @@ function renderableStructuredLoop(): QualityLoopMetadata {
       totalTokens: 30,
       unknownCompletions: 0,
     },
-    iterations: [{
-      index: 0,
-      status: "completed",
-      startedAt: "2026-05-18T00:00:00.000Z",
-      completedAt: "2026-05-18T00:00:01.000Z",
-      phases: [],
-      candidates: [],
-      unresolvedIssues: [],
-      critiqueEvaluation: {
-        summary: "critique",
-        issues: [],
-        resolved: true,
-        suggestedImprovements: [],
-      },
-      gateEvaluation: {
-        decision: "pass",
-        score: 0.91,
-        passThreshold: 0.8,
-        rubricFit: true,
-        critiqueResolved: true,
-        meaningfulImprovement: true,
-        rationale: "Meets rubric.",
-        failedConditions: [],
+    iterations: [
+      {
+        index: 0,
+        status: "completed",
+        startedAt: "2026-05-18T00:00:00.000Z",
+        completedAt: "2026-05-18T00:00:01.000Z",
+        phases: [],
+        candidates: [],
         unresolvedIssues: [],
+        critiqueEvaluation: {
+          summary: "critique",
+          issues: [],
+          resolved: true,
+          suggestedImprovements: [],
+        },
+        gateEvaluation: {
+          decision: "pass",
+          score: 0.91,
+          passThreshold: 0.8,
+          rubricFit: true,
+          critiqueResolved: true,
+          meaningfulImprovement: true,
+          rationale: "Meets rubric.",
+          failedConditions: [],
+          unresolvedIssues: [],
+        },
+        bestOfProgressEvaluation: {
+          selectedCandidateId: "candidate-1",
+          rationale: "Best candidate.",
+          score: 0.91,
+          comparisonNotes: ["Strongest candidate."],
+        },
       },
-      bestOfProgressEvaluation: {
-        selectedCandidateId: "candidate-1",
-        rationale: "Best candidate.",
-        score: 0.91,
-        comparisonNotes: ["Strongest candidate."],
+    ],
+    candidates: [
+      {
+        id: "candidate-1",
+        iteration: 0,
+        phase: "best_of_progress",
+        summary: "answer",
+        isSelected: true,
       },
-    }],
-    candidates: [{
-      id: "candidate-1",
-      iteration: 0,
-      phase: "best_of_progress",
-      summary: "answer",
-      isSelected: true,
-    }],
+    ],
     selectedCandidateId: "candidate-1",
     unresolvedIssues: [],
   };
 }
 
 test("renders compact quality loop rubric and gate metadata", () => {
-  const rendered = renderResult({
-    answer: "ok",
-    trace: [],
-    metadata: {
-      agent: { id: "default", source: "auto" },
-      depth: { selected: 0, source: "override" },
-      modelSelections: [],
-      memoryReservations: [],
-      modelCalls: 5,
-      tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
-      toolCalls: [],
-      qualityLoop: renderableStructuredLoop(),
-      errors: [],
+  const rendered = renderResult(
+    {
+      answer: "ok",
+      trace: [],
+      metadata: {
+        agent: { id: "default", source: "auto" },
+        depth: { selected: 0, source: "override" },
+        modelSelections: [],
+        memoryReservations: [],
+        modelCalls: 5,
+        tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
+        toolCalls: [],
+        qualityLoop: renderableStructuredLoop(),
+        errors: [],
+      },
     },
-  }, { compact: true, json: false, includeTrace: false, model: "m" });
+    { compact: true, json: false, includeTrace: false, model: "m" },
+  );
 
   assert.match(rendered, /qualityLoopRubric: id=code_engineering confidence=0\.65 signals=2/);
-  assert.match(rendered, /qualityLoopGate: decision=pass score=0\.91 threshold=0\.8 failedConditions=0/);
+  assert.match(
+    rendered,
+    /qualityLoopGate: decision=pass score=0\.91 threshold=0\.8 failedConditions=0/,
+  );
 });
 
 test("renders json quality loop rubric and evaluator metadata", () => {
-  const rendered = renderResult({
-    answer: "ok",
-    trace: [],
-    metadata: {
-      agent: { id: "default", source: "auto" },
-      depth: { selected: 0, source: "override" },
-      modelSelections: [],
-      memoryReservations: [],
-      modelCalls: 5,
-      tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
-      toolCalls: [],
-      qualityLoop: renderableStructuredLoop(),
-      errors: [],
+  const rendered = renderResult(
+    {
+      answer: "ok",
+      trace: [],
+      metadata: {
+        agent: { id: "default", source: "auto" },
+        depth: { selected: 0, source: "override" },
+        modelSelections: [],
+        memoryReservations: [],
+        modelCalls: 5,
+        tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
+        toolCalls: [],
+        qualityLoop: renderableStructuredLoop(),
+        errors: [],
+      },
     },
-  }, { compact: false, json: true, includeTrace: false, model: "m" });
+    { compact: false, json: true, includeTrace: false, model: "m" },
+  );
   const parsed = JSON.parse(rendered) as { qualityLoop: QualityLoopMetadata };
 
   assert.equal(parsed.qualityLoop.rubric?.id, "code_engineering");
@@ -1633,7 +1932,9 @@ test("emits code_execution trace/event for code-only tasks", async () => {
 
   assert.equal(result.answer, "done");
   assert.ok(result.trace.some((event) => event.kind === "code_execution"));
-  assert.ok(events.some((event) => event.subtype === "code_execution" && event.status === "running"));
+  assert.ok(
+    events.some((event) => event.subtype === "code_execution" && event.status === "running"),
+  );
 });
 
 test("decomposes, solves children, summarizes, and synthesizes", async () => {
@@ -1661,7 +1962,17 @@ test("decomposes, solves children, summarizes, and synthesizes", async () => {
   assert.equal(result.answer, "Final synthesized answer");
   assert.deepEqual(
     result.trace.map((event) => event.kind),
-    ["classify", "decompose", "classify", "answer", "summarize", "classify", "answer", "summarize", "synthesize"],
+    [
+      "classify",
+      "decompose",
+      "classify",
+      "answer",
+      "summarize",
+      "classify",
+      "answer",
+      "summarize",
+      "synthesize",
+    ],
   );
 });
 
@@ -1731,7 +2042,10 @@ test("supports nested recursive passes until max depth", async () => {
       "synthesize",
     ],
   );
-  assert.equal(result.trace.filter((event) => event.depth === 2 && event.kind === "answer").length, 2);
+  assert.equal(
+    result.trace.filter((event) => event.depth === 2 && event.kind === "answer").length,
+    2,
+  );
 });
 
 test("limits branches from decomposition output", async () => {
@@ -1780,11 +2094,27 @@ test("parses cli options with granite default", () => {
 test("parses verbose cli option and env default", () => {
   assert.equal(parseArgs(["ask", "hello", "--verbose"], {}).verbose, true);
   assert.equal(parseArgs(["ask", "hello"], { RLM_VERBOSE: "1" }).verbose, true);
-  assert.equal(parseArgs(["ask", "hello"], { RLM_MODEL: "yaml-override-model" }).modelOverride, "yaml-override-model");
+  assert.equal(
+    parseArgs(["ask", "hello"], { RLM_MODEL: "yaml-override-model" }).modelOverride,
+    "yaml-override-model",
+  );
 });
 
 test("parses direct prompt command shape and json output flag", () => {
-  const options = parseArgs(["hello", "world", "--json", "--agent", "research", "--workflow", "default", "--config", "custom.yaml"], {});
+  const options = parseArgs(
+    [
+      "hello",
+      "world",
+      "--json",
+      "--agent",
+      "research",
+      "--workflow",
+      "default",
+      "--config",
+      "custom.yaml",
+    ],
+    {},
+  );
 
   assert.equal(options.prompt, "hello world");
   assert.equal(options.command, "ask");
@@ -1805,7 +2135,10 @@ test("parses ui command and ui port", () => {
 });
 
 test("parses plan-node command and node id", () => {
-  const options = parseArgs(["plan-node", "--node-id", "root-composer", "--replan", "merge", "--prompt", "build a graph"], {});
+  const options = parseArgs(
+    ["plan-node", "--node-id", "root-composer", "--replan", "merge", "--prompt", "build a graph"],
+    {},
+  );
 
   assert.equal(options.command, "plan-node");
   assert.equal(options.nodeId, "root-composer");
@@ -1828,7 +2161,8 @@ test("interactive session seeds a typed root composer for first-run UI", () => {
 
 test("node-local plan creates pending typed child graph without execution", async () => {
   const session = createInteractiveExecutionSession({
-    seedRootPrompt: "Create a full book audiobook workflow with speaker interpretation and TTS audio artifacts",
+    seedRootPrompt:
+      "Create a full book audiobook workflow with speaker interpretation and TTS audio artifacts",
     planModel: createMockPlanModel(audiobookPlanChildren),
   });
 
@@ -1847,7 +2181,10 @@ test("node-local plan creates pending typed child graph without execution", asyn
 });
 
 test("plan budget exhaustion pauses expansion until explicit extension", async () => {
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "simple task", planModel: createMockPlanModel(genericPlanChildren) });
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "simple task",
+    planModel: createMockPlanModel(genericPlanChildren),
+  });
   const root = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
   assert.ok(root?.composer);
   root.composer.planBudget = {
@@ -1872,13 +2209,17 @@ test("plan budget exhaustion pauses expansion until explicit extension", async (
 
 test("recursive planning shares root budget across high-complexity branches", async () => {
   const session = createInteractiveExecutionSession({
-    seedRootPrompt: "Create a full book audiobook workflow with speaker interpretation and TTS audio artifacts",
+    seedRootPrompt:
+      "Create a full book audiobook workflow with speaker interpretation and TTS audio artifacts",
     planModel: createMockPlanModel(audiobookPlanChildren),
   });
 
   await session.planNode("root-composer");
-  const highComplexityChildren = session.snapshot().graph.nodes
-    .filter((node) => node.parentId === "root-composer" && node.composer?.complexity === "high")
+  const highComplexityChildren = session
+    .snapshot()
+    .graph.nodes.filter(
+      (node) => node.parentId === "root-composer" && node.composer?.complexity === "high",
+    )
     .map((node) => node.id);
   assert.ok(highComplexityChildren.length >= 2);
 
@@ -1904,14 +2245,27 @@ test("parent replan removes pristine model-planned children", async () => {
     async complete(): Promise<LanguageModelResponse> {
       calls += 1;
       return {
-        content: JSON.stringify({ children: calls === 1 ? genericPlanChildren : [
-          { label: "Replacement", prompt: "Replacement prompt", type: "AI", complexity: "low" },
-        ] }),
+        content: JSON.stringify({
+          children:
+            calls === 1
+              ? genericPlanChildren
+              : [
+                  {
+                    label: "Replacement",
+                    prompt: "Replacement prompt",
+                    type: "AI",
+                    complexity: "low",
+                  },
+                ],
+        }),
         toolCalls: [],
       };
     },
   };
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: model });
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Plan this",
+    planModel: model,
+  });
 
   const first = await session.planNode("root-composer");
   const firstIds = new Set(first.plannedNodeIds);
@@ -1919,13 +2273,18 @@ test("parent replan removes pristine model-planned children", async () => {
   const snapshot = session.snapshot();
 
   assert.equal(second.plannedNodeIds.length, 1);
-  assert.ok(first.plannedNodeIds.every((id) => !snapshot.graph.nodes.some((node) => node.id === id)));
+  assert.ok(
+    first.plannedNodeIds.every((id) => !snapshot.graph.nodes.some((node) => node.id === id)),
+  );
   assert.ok(snapshot.graph.nodes.some((node) => node.id === second.plannedNodeIds[0]));
   assert.ok([...firstIds].every((id) => id !== second.plannedNodeIds[0]));
 });
 
 test("manual child survives parent replan", async () => {
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(genericPlanChildren) });
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Plan this",
+    planModel: createMockPlanModel(genericPlanChildren),
+  });
   const manual = session.addNode({ parentId: "root-composer", prompt: "Manual child" });
 
   await session.planNode("root-composer", { replan: "merge" });
@@ -1940,12 +2299,17 @@ test("child node plan includes ancestor context", async () => {
     async complete(messages: LanguageModelMessage[]): Promise<LanguageModelResponse> {
       captured.push(messages.map((message) => message.content).join("\n"));
       return {
-        content: JSON.stringify({ children: [{ label: "Child", prompt: "Child prompt", type: "AI", complexity: "low" }] }),
+        content: JSON.stringify({
+          children: [{ label: "Child", prompt: "Child prompt", type: "AI", complexity: "low" }],
+        }),
         toolCalls: [],
       };
     },
   };
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "Root ancestor prompt", planModel: model });
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Root ancestor prompt",
+    planModel: model,
+  });
 
   const rootPlan = await session.planNode("root-composer");
   await session.planNode(rootPlan.plannedNodeIds[0]!);
@@ -1954,7 +2318,10 @@ test("child node plan includes ancestor context", async () => {
 });
 
 test("invalid planner output surfaces MutationError", async () => {
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel("invalid") });
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Plan this",
+    planModel: createMockPlanModel("invalid"),
+  });
 
   await assert.rejects(
     () => session.planNode("root-composer"),
@@ -1963,7 +2330,10 @@ test("invalid planner output surfaces MutationError", async () => {
 });
 
 test("planner assigns expert preset and runtime metadata", async () => {
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(expertPlanChildren) });
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Plan this",
+    planModel: createMockPlanModel(expertPlanChildren),
+  });
 
   const result = await session.planNode("root-composer");
   const child = session.snapshot().graph.nodes.find((node) => node.id === result.plannedNodeIds[0]);
@@ -1976,7 +2346,10 @@ test("planner assigns expert preset and runtime metadata", async () => {
 });
 
 test("expert override marks node custom and protected for replan", async () => {
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(genericPlanChildren) });
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Plan this",
+    planModel: createMockPlanModel(genericPlanChildren),
+  });
   const result = await session.planNode("root-composer");
   const childId = result.plannedNodeIds[0]!;
 
@@ -1999,7 +2372,12 @@ test("expert override marks node custom and protected for replan", async () => {
 test("expert binding filters tools and routes purpose tier during execution", async () => {
   const trace = new InMemoryTrace();
   const session = createInteractiveExecutionSession({ seedRootPrompt: "Use expert binding" });
-  const calls: Array<{ model: string; purpose: string | undefined; tools: string[]; overrideModelSelection: string | undefined }> = [];
+  const calls: Array<{
+    model: string;
+    purpose: string | undefined;
+    tools: string[];
+    overrideModelSelection: string | undefined;
+  }> = [];
   const routedModel = new PurposeRoutingLanguageModel({
     config: {
       models: {
@@ -2071,7 +2449,10 @@ test("expert binding filters tools and routes purpose tier during execution", as
 });
 
 test("protected descendant requires explicit replan choice", async () => {
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(genericPlanChildren) });
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Plan this",
+    planModel: createMockPlanModel(genericPlanChildren),
+  });
   session.addNode({ parentId: "root-composer", prompt: "Manual protected child" });
 
   await assert.rejects(
@@ -2081,7 +2462,10 @@ test("protected descendant requires explicit replan choice", async () => {
 });
 
 test("replace replan removes protected descendants", async () => {
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(genericPlanChildren) });
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Plan this",
+    planModel: createMockPlanModel(genericPlanChildren),
+  });
   const manual = session.addNode({ parentId: "root-composer", prompt: "Manual protected child" });
 
   const result = await session.planNode("root-composer", { replan: "replace" });
@@ -2092,7 +2476,10 @@ test("replace replan removes protected descendants", async () => {
 });
 
 test("merge replan preserves protected descendants", async () => {
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(genericPlanChildren) });
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Plan this",
+    planModel: createMockPlanModel(genericPlanChildren),
+  });
   const manual = session.addNode({ parentId: "root-composer", prompt: "Manual protected child" });
 
   const result = await session.planNode("root-composer", { replan: "merge" });
@@ -2110,27 +2497,75 @@ test("cancel replan leaves graph unchanged and skips planner call", async () => 
       return { content: JSON.stringify({ children: genericPlanChildren }), toolCalls: [] };
     },
   };
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: model });
+  const session = createInteractiveExecutionSession({
+    seedRootPrompt: "Plan this",
+    planModel: model,
+  });
   const manual = session.addNode({ parentId: "root-composer", prompt: "Manual protected child" });
-  const before = session.snapshot().graph.nodes.map((node) => node.id).join(",");
+  const before = session
+    .snapshot()
+    .graph.nodes.map((node) => node.id)
+    .join(",");
 
   const result = await session.planNode("root-composer", { replan: "cancel" });
 
   assert.deepEqual(result.plannedNodeIds, []);
-  assert.equal(session.snapshot().graph.nodes.map((node) => node.id).join(","), before);
+  assert.equal(
+    session
+      .snapshot()
+      .graph.nodes.map((node) => node.id)
+      .join(","),
+    before,
+  );
   assert.ok(session.snapshot().graph.nodes.some((node) => node.id === manual.id));
   assert.equal(calls, 0);
 });
 
 test("interactive connect rejects cycles and replaces old incoming edge on reparent", () => {
   const session = createInteractiveExecutionSession();
-  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
-  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
-  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
-  session.control.registerNode?.({ id: "task-4", kind: "task", label: "new root", prompt: "new root", depth: 0, status: "ready" });
+  session.control.registerNode?.({
+    id: "task-1",
+    kind: "task",
+    label: "root",
+    prompt: "root",
+    depth: 0,
+    status: "ready",
+  });
+  session.control.registerNode?.({
+    id: "task-2",
+    parentId: "task-1",
+    kind: "task",
+    label: "child",
+    prompt: "child",
+    depth: 1,
+    status: "ready",
+  });
+  session.control.registerNode?.({
+    id: "task-3",
+    parentId: "task-2",
+    kind: "task",
+    label: "grandchild",
+    prompt: "grandchild",
+    depth: 2,
+    status: "ready",
+  });
+  session.control.registerNode?.({
+    id: "task-4",
+    kind: "task",
+    label: "new root",
+    prompt: "new root",
+    depth: 0,
+    status: "ready",
+  });
 
-  assert.throws(() => session.connectNode({ nodeId: "task-1", parentId: "task-1" }), /itself or one of its descendants/);
-  assert.throws(() => session.connectNode({ nodeId: "task-1", parentId: "task-3" }), /itself or one of its descendants/);
+  assert.throws(
+    () => session.connectNode({ nodeId: "task-1", parentId: "task-1" }),
+    /itself or one of its descendants/,
+  );
+  assert.throws(
+    () => session.connectNode({ nodeId: "task-1", parentId: "task-3" }),
+    /itself or one of its descendants/,
+  );
 
   session.connectNode({ nodeId: "task-2", parentId: "task-4" });
   const snapshot = session.snapshot();
@@ -2147,7 +2582,10 @@ test("session graph persists layout, viewport, and typed edge handles", () => {
   assert.ok(root?.position);
 
   session.updateGraphLayout({ "root-composer": { x: 10, y: 20 } });
-  assert.deepEqual(session.snapshot().graph.nodes.find((node) => node.id === "root-composer")?.position, { x: 10, y: 20 });
+  assert.deepEqual(
+    session.snapshot().graph.nodes.find((node) => node.id === "root-composer")?.position,
+    { x: 10, y: 20 },
+  );
 
   session.setGraphViewport({ x: 1, y: 2, zoom: 0.75 });
   assert.deepEqual(session.snapshot().graph.viewport, { x: 1, y: 2, zoom: 0.75 });
@@ -2159,7 +2597,9 @@ test("session graph persists layout, viewport, and typed edge handles", () => {
     sourceHandle: "src-port",
     targetHandle: "tgt-port",
   });
-  const edge = session.snapshot().graph.edges.find((e) => e.from === "root-composer" && e.to === child.id);
+  const edge = session
+    .snapshot()
+    .graph.edges.find((e) => e.from === "root-composer" && e.to === child.id);
   assert.equal(edge?.sourceHandle, "src-port");
   assert.equal(edge?.targetHandle, "tgt-port");
 });
@@ -2171,13 +2611,19 @@ test("control server exposes plan and budget endpoints with explicit exhaustion 
   });
   const server = await startControlServer({ session });
   try {
-    const planResponse = await fetch(`${server.url}/api/nodes/root-composer/plan`, { method: "POST" });
+    const planResponse = await fetch(`${server.url}/api/nodes/root-composer/plan`, {
+      method: "POST",
+    });
     assert.equal(planResponse.status, 200);
-    const planned = await planResponse.json() as { plan: { plannedNodeIds: string[]; exhausted: boolean } };
+    const planned = (await planResponse.json()) as {
+      plan: { plannedNodeIds: string[]; exhausted: boolean };
+    };
     assert.equal(planned.plan.exhausted, false);
     assert.ok(planned.plan.plannedNodeIds.length > 0);
 
-    const earlyExtend = await fetch(`${server.url}/api/nodes/root-composer/extend-budget`, { method: "POST" });
+    const earlyExtend = await fetch(`${server.url}/api/nodes/root-composer/extend-budget`, {
+      method: "POST",
+    });
     assert.equal(earlyExtend.status, 409);
   } finally {
     await server.close();
@@ -2208,7 +2654,10 @@ test("interactive execution waits for node approval and uses edited prompt", asy
   const result = await run;
   assert.equal(result.answer, "edited answer");
   assert.equal(model.calls[0]?.messages.at(-1)?.content, "edited prompt");
-  assert.equal(session.snapshot().graph.nodes.find((node) => node.id === "task-1")?.status, "completed");
+  assert.equal(
+    session.snapshot().graph.nodes.find((node) => node.id === "task-1")?.status,
+    "completed",
+  );
 });
 
 test("interactive execution rejects stale approval tokens", async () => {
@@ -2297,24 +2746,51 @@ test("interactive execution session supports add/connect/delete mutations at che
 test("interactive delete with dependents requires explicit strategy choice", () => {
   const session = createInteractiveExecutionSession();
   // Seed nodes directly via control registration to model a dependency chain.
-  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
-  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
-  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
+  session.control.registerNode?.({
+    id: "task-1",
+    kind: "task",
+    label: "root",
+    prompt: "root",
+    depth: 0,
+    status: "ready",
+  });
+  session.control.registerNode?.({
+    id: "task-2",
+    parentId: "task-1",
+    kind: "task",
+    label: "child",
+    prompt: "child",
+    depth: 1,
+    status: "ready",
+  });
+  session.control.registerNode?.({
+    id: "task-3",
+    parentId: "task-2",
+    kind: "task",
+    label: "grandchild",
+    prompt: "grandchild",
+    depth: 2,
+    status: "ready",
+  });
   assert.throws(() => session.deleteNode("task-2"), /explicit choice/);
 });
 
 test("clarification checkpoints are hard-blocking and skip is rejected", () => {
   const session = createInteractiveExecutionSession();
-  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  session.control.registerNode?.({
+    id: "task-1",
+    kind: "task",
+    label: "root",
+    prompt: "root",
+    depth: 0,
+    status: "ready",
+  });
   const question = session.raiseClarificationCheckpoint({
     nodeId: "task-1",
     promptText: "Need environment details?",
   });
   assert.equal(session.snapshot().chat.pendingClarification?.questionId, question.questionId);
-  assert.throws(
-    () => session.skipNode("task-1"),
-    /answer and continue or abort/,
-  );
+  assert.throws(() => session.skipNode("task-1"), /answer and continue or abort/);
 });
 
 test("clarification answer emits canonical record fields and clears pending state", () => {
@@ -2325,7 +2801,14 @@ test("clarification answer emits canonical record fields and clears pending stat
       events.push({ record: event.clarificationRecord as unknown as Record<string, string> });
     }
   });
-  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  session.control.registerNode?.({
+    id: "task-1",
+    kind: "task",
+    label: "root",
+    prompt: "root",
+    depth: 0,
+    status: "ready",
+  });
   const question = session.raiseClarificationCheckpoint({
     nodeId: "task-1",
     promptText: "Need environment details?",
@@ -2348,7 +2831,14 @@ test("clarification answer emits canonical record fields and clears pending stat
 
 test("clarification abort persists pending question snapshot", () => {
   const session = createInteractiveExecutionSession();
-  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
+  session.control.registerNode?.({
+    id: "task-1",
+    kind: "task",
+    label: "root",
+    prompt: "root",
+    depth: 0,
+    status: "ready",
+  });
   const question = session.raiseClarificationCheckpoint({
     nodeId: "task-1",
     promptText: "Need environment details?",
@@ -2357,7 +2847,10 @@ test("clarification abort persists pending question snapshot", () => {
   const snapshot = session.snapshot();
   assert.equal(snapshot.status, "cancelled");
   assert.equal(snapshot.chat.abortSnapshot?.pendingQuestion.questionId, question.questionId);
-  assert.equal(snapshot.chat.abortSnapshot?.pendingQuestion.promptText, "Need environment details?");
+  assert.equal(
+    snapshot.chat.abortSnapshot?.pendingQuestion.promptText,
+    "Need environment details?",
+  );
 });
 
 test("runtime model clarification request blocks until answered and records history", async () => {
@@ -2411,8 +2904,14 @@ test("recursive execution persists node status updates into run-state store", as
     assert.equal(result.answer, "direct answer");
     const snapshot = await store.getSnapshot("run-1");
     assert.equal(snapshot?.metadata["prompt"], "Answer directly");
-    assert.ok(snapshot?.nodeStatuses.some((item) => item.nodeId === "task-1" && item.status === "completed"));
-    assert.ok(snapshot?.mutationLog.some((item) => item.path === "nodeStatuses.task-1" && item.accepted));
+    assert.ok(
+      snapshot?.nodeStatuses.some(
+        (item) => item.nodeId === "task-1" && item.status === "completed",
+      ),
+    );
+    assert.ok(
+      snapshot?.mutationLog.some((item) => item.path === "nodeStatuses.task-1" && item.accepted),
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -2437,7 +2936,11 @@ test("run-state replay exposes quality loop terminal status regression", async (
       prompt: "Improve this answer",
       config: {
         ...dynamicDepthConfig,
-        qualityLoop: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
+        qualityLoop: {
+          enabled: true,
+          maxIterations: 1,
+          budgetBehavior: "stop_before_partial_iteration",
+        },
       },
       runState: {
         runId: "loop-run-1",
@@ -2451,9 +2954,17 @@ test("run-state replay exposes quality loop terminal status regression", async (
     const replay = await store.buildOperationalReplay("loop-run-1");
     assert.ok(replay.some((entry) => entry.path === "nodeStatuses.task-1" && entry.accepted));
     const mutations = await store.listMutations("loop-run-1");
-    assert.ok(mutations.some((entry) => entry.path === "nodeStatuses.task-1" && entry.action === "set" && entry.accepted));
+    assert.ok(
+      mutations.some(
+        (entry) => entry.path === "nodeStatuses.task-1" && entry.action === "set" && entry.accepted,
+      ),
+    );
     const snapshot = await store.getSnapshot("loop-run-1");
-    assert.ok(snapshot?.nodeStatuses.some((item) => item.nodeId === "task-1" && item.status === "completed"));
+    assert.ok(
+      snapshot?.nodeStatuses.some(
+        (item) => item.nodeId === "task-1" && item.status === "completed",
+      ),
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -2461,18 +2972,64 @@ test("run-state replay exposes quality loop terminal status regression", async (
 
 test("interactive delete_subtree removes target and descendants", () => {
   const session = createInteractiveExecutionSession();
-  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
-  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
-  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
+  session.control.registerNode?.({
+    id: "task-1",
+    kind: "task",
+    label: "root",
+    prompt: "root",
+    depth: 0,
+    status: "ready",
+  });
+  session.control.registerNode?.({
+    id: "task-2",
+    parentId: "task-1",
+    kind: "task",
+    label: "child",
+    prompt: "child",
+    depth: 1,
+    status: "ready",
+  });
+  session.control.registerNode?.({
+    id: "task-3",
+    parentId: "task-2",
+    kind: "task",
+    label: "grandchild",
+    prompt: "grandchild",
+    depth: 2,
+    status: "ready",
+  });
   const result = session.deleteNodeWithStrategy("task-2", "delete_subtree");
   assert.deepEqual(result.deleted.sort(), ["task-2", "task-3"]);
 });
 
 test("interactive rewire_dependents preserves downstream nodes and only deletes target", () => {
   const session = createInteractiveExecutionSession();
-  session.control.registerNode?.({ id: "task-1", kind: "task", label: "root", prompt: "root", depth: 0, status: "ready" });
-  session.control.registerNode?.({ id: "task-2", parentId: "task-1", kind: "task", label: "child", prompt: "child", depth: 1, status: "ready" });
-  session.control.registerNode?.({ id: "task-3", parentId: "task-2", kind: "task", label: "grandchild", prompt: "grandchild", depth: 2, status: "ready" });
+  session.control.registerNode?.({
+    id: "task-1",
+    kind: "task",
+    label: "root",
+    prompt: "root",
+    depth: 0,
+    status: "ready",
+  });
+  session.control.registerNode?.({
+    id: "task-2",
+    parentId: "task-1",
+    kind: "task",
+    label: "child",
+    prompt: "child",
+    depth: 1,
+    status: "ready",
+  });
+  session.control.registerNode?.({
+    id: "task-3",
+    parentId: "task-2",
+    kind: "task",
+    label: "grandchild",
+    prompt: "grandchild",
+    depth: 2,
+    status: "ready",
+  });
   const result = session.deleteNodeWithStrategy("task-2", "rewire_dependents");
   assert.deepEqual(result.deleted, ["task-2"]);
   const graph = session.snapshot().graph;
@@ -2532,25 +3089,39 @@ test("interactive execution applies model override to current node only", async 
 
   const result = await run;
   assert.equal(result.answer, "combined");
-  const overrideCalls = model.calls.filter((call) => call.options.overrideModel === "override-model");
+  const overrideCalls = model.calls.filter(
+    (call) => call.options.overrideModel === "override-model",
+  );
   const sampledCalls = model.calls.filter((call) => call.options.sampling?.temperature === 0.15);
   const nonOverrideCalls = model.calls.filter((call) => call.options.overrideModel === undefined);
   assert.ok(overrideCalls.length >= 1);
   assert.ok(sampledCalls.length >= 1);
   assert.ok(nonOverrideCalls.length >= 1);
 
-  const childWithOverride = result.metadata.executionGraph?.nodes.find((node) => node.id === "task-2");
+  const childWithOverride = result.metadata.executionGraph?.nodes.find(
+    (node) => node.id === "task-2",
+  );
   const siblingNode = result.metadata.executionGraph?.nodes.find((node) => node.id === "task-3");
   assert.equal(childWithOverride?.plannedModel, "override-model");
   assert.equal(childWithOverride?.effectiveModel, "override-model");
   assert.equal(childWithOverride?.modelOverrideSource, "user");
-  assert.deepEqual(childWithOverride?.samplingOverride, { temperature: 0.15, topP: 0.7, maxTokens: 128 });
+  assert.deepEqual(childWithOverride?.samplingOverride, {
+    temperature: 0.15,
+    topP: 0.7,
+    maxTokens: 128,
+  });
   assert.equal(siblingNode?.modelOverride, undefined);
 });
 
 test("initial-plan mode pauses on newly spawned recursive branches", async () => {
   const trace = new InMemoryTrace();
-  const model = new QueueModel(["RECURSIVE", "child task", "child answer", "child summary", "final answer"]);
+  const model = new QueueModel([
+    "RECURSIVE",
+    "child task",
+    "child answer",
+    "child summary",
+    "final answer",
+  ]);
   const engine = new RecursiveLanguageModel(model, trace);
   const session = createInteractiveExecutionSession({ approvalMode: "initial-plan" });
   const run = engine.run({
@@ -2569,7 +3140,13 @@ test("initial-plan mode pauses on newly spawned recursive branches", async () =>
 
 test("initial-plan-recursive mode auto-approves newly spawned recursive branches", async () => {
   const trace = new InMemoryTrace();
-  const model = new QueueModel(["RECURSIVE", "child task", "child answer", "child summary", "final answer"]);
+  const model = new QueueModel([
+    "RECURSIVE",
+    "child task",
+    "child answer",
+    "child summary",
+    "final answer",
+  ]);
   const engine = new RecursiveLanguageModel(model, trace);
   const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
   const run = engine.run({
@@ -2586,7 +3163,15 @@ test("initial-plan-recursive mode auto-approves newly spawned recursive branches
 
 test("pause future auto approvals affects future nodes only", async () => {
   const trace = new InMemoryTrace();
-  const model = new QueueModel(["RECURSIVE", "child one\nchild two", "first", "first summary", "second", "second summary", "final"]);
+  const model = new QueueModel([
+    "RECURSIVE",
+    "child one\nchild two",
+    "first",
+    "first summary",
+    "second",
+    "second summary",
+    "final",
+  ]);
   const engine = new RecursiveLanguageModel(model, trace);
   const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
   const run = engine.run({
@@ -2607,11 +3192,20 @@ test("pause future auto approvals affects future nodes only", async () => {
 
 test("auto-approved nodes are emitted before running", async () => {
   const trace = new InMemoryTrace();
-  const model = new QueueModel(["RECURSIVE", "child task", "child answer", "child summary", "final answer"]);
+  const model = new QueueModel([
+    "RECURSIVE",
+    "child task",
+    "child answer",
+    "child summary",
+    "final answer",
+  ]);
   const engine = new RecursiveLanguageModel(model, trace);
   const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
-  const events: Array<{ nodeId: string | undefined; status: string; message: string | undefined }> = [];
-  session.subscribe((event) => events.push({ nodeId: event.nodeId, status: event.status, message: event.message }));
+  const events: Array<{ nodeId: string | undefined; status: string; message: string | undefined }> =
+    [];
+  session.subscribe((event) =>
+    events.push({ nodeId: event.nodeId, status: event.status, message: event.message }),
+  );
   const run = engine.run({
     prompt: "root task",
     config: { ...config, maxDepth: 1 },
@@ -2620,8 +3214,12 @@ test("auto-approved nodes are emitted before running", async () => {
   await session.waitForNodeStatus("task-1", "awaiting_approval");
   session.approveNode("task-1");
   await run;
-  const autoEventIndex = events.findIndex((event) => event.nodeId === "task-2" && event.message === "node auto-approved");
-  const runningEventIndex = events.findIndex((event) => event.nodeId === "task-2" && event.status === "running");
+  const autoEventIndex = events.findIndex(
+    (event) => event.nodeId === "task-2" && event.message === "node auto-approved",
+  );
+  const runningEventIndex = events.findIndex(
+    (event) => event.nodeId === "task-2" && event.status === "running",
+  );
   assert.ok(autoEventIndex >= 0);
   assert.ok(runningEventIndex > autoEventIndex);
 });
@@ -2641,21 +3239,43 @@ test("recursive spawning remains observable under initial-plan-recursive", async
   ]);
   const engine = new RecursiveLanguageModel(model, trace);
   const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
-  const run = engine.run({ prompt: "root", config: { ...config, maxDepth: 1 }, execution: session.control });
+  const run = engine.run({
+    prompt: "root",
+    config: { ...config, maxDepth: 1 },
+    execution: session.control,
+  });
   await session.waitForNodeStatus("task-1", "awaiting_approval");
   session.approveNode("task-1");
   const result = await run;
   const nodes = session.snapshot().graph.nodes;
-  assert.ok(nodes.some((node) => node.id === "task-2" && node.parentId === "task-1" && node.approvalSource === "auto"));
-  assert.ok(nodes.some((node) => node.id === "task-3" && node.parentId === "task-1" && node.approvalSource === "auto"));
-  assert.ok(result.metadata.executionGraph?.edges.some((edge) => edge.from === "task-1" && edge.to === "task-2"));
+  assert.ok(
+    nodes.some(
+      (node) =>
+        node.id === "task-2" && node.parentId === "task-1" && node.approvalSource === "auto",
+    ),
+  );
+  assert.ok(
+    nodes.some(
+      (node) =>
+        node.id === "task-3" && node.parentId === "task-1" && node.approvalSource === "auto",
+    ),
+  );
+  assert.ok(
+    result.metadata.executionGraph?.edges.some(
+      (edge) => edge.from === "task-1" && edge.to === "task-2",
+    ),
+  );
 });
 
 test("model errors remain visible in initial-plan-recursive mode", async () => {
   const trace = new InMemoryTrace();
   const engine = new RecursiveLanguageModel(new ThrowingModel("model exploded"), trace);
   const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
-  const run = engine.run({ prompt: "root", config: { ...config, maxDepth: 0 }, execution: session.control });
+  const run = engine.run({
+    prompt: "root",
+    config: { ...config, maxDepth: 0 },
+    execution: session.control,
+  });
   await session.waitForNodeStatus("task-1", "awaiting_approval");
   session.approveNode("task-1");
   await assert.rejects(run, /model exploded/);
@@ -2663,10 +3283,13 @@ test("model errors remain visible in initial-plan-recursive mode", async () => {
 
 test("tool errors remain visible in initial-plan-recursive mode", async () => {
   const trace = new InMemoryTrace();
-  const model = new QueueModel([{
-    content: "",
-    toolCalls: [{ id: "t1", name: "missing_tool", args: {} }],
-  }, "fallback"]);
+  const model = new QueueModel([
+    {
+      content: "",
+      toolCalls: [{ id: "t1", name: "missing_tool", args: {} }],
+    },
+    "fallback",
+  ]);
   const engine = new RecursiveLanguageModel(model, trace);
   const session = createInteractiveExecutionSession({ approvalMode: "initial-plan-recursive" });
   const run = engine.run({
@@ -2716,7 +3339,7 @@ test("approval mode contract is consistent across cli api and ui labels", async 
   const server = await startControlServer({ session });
   try {
     const response = await fetch(`${server.url}/api/run-mode`);
-    const payload = await response.json() as { approvalMode: string };
+    const payload = (await response.json()) as { approvalMode: string };
     assert.equal(payload.approvalMode, "initial-plan");
   } finally {
     await server.close();
@@ -2728,21 +3351,37 @@ test("approval mode contract is consistent across cli api and ui labels", async 
   assert.match(uiSource, /QualityLoopInspector/);
   assert.match(uiSource, /quality-loop\/accept/);
   assert.match(uiSource, /quality-loop\/stop/);
-  const rendered = renderResult({
-    answer: "ok",
-    trace: [],
-    metadata: {
-      agent: { id: "default", source: "auto" },
-      depth: { selected: 0, source: "override" },
-      modelSelections: [],
-      memoryReservations: [],
-      modelCalls: 0,
-      tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, unknownCompletions: 0 },
-      toolCalls: [],
-      errors: [],
-      executionGraph: { nodes: [{ id: "task-1", kind: "task", label: "x", depth: 0, status: "ready", approvalMode: "initial-plan-recursive", approvalSource: "none" }], edges: [] },
+  const rendered = renderResult(
+    {
+      answer: "ok",
+      trace: [],
+      metadata: {
+        agent: { id: "default", source: "auto" },
+        depth: { selected: 0, source: "override" },
+        modelSelections: [],
+        memoryReservations: [],
+        modelCalls: 0,
+        tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, unknownCompletions: 0 },
+        toolCalls: [],
+        errors: [],
+        executionGraph: {
+          nodes: [
+            {
+              id: "task-1",
+              kind: "task",
+              label: "x",
+              depth: 0,
+              status: "ready",
+              approvalMode: "initial-plan-recursive",
+              approvalSource: "none",
+            },
+          ],
+          edges: [],
+        },
+      },
     },
-  }, { compact: true, json: false, includeTrace: false, model: "m" });
+    { compact: true, json: false, includeTrace: false, model: "m" },
+  );
   assert.match(rendered, /approvalMode=initial-plan-recursive/);
 });
 
@@ -2916,7 +3555,10 @@ test("control server exposes model library catalog install search and tier selec
       return new Response(JSON.stringify({ status: "success" }), { status: 200 });
     }
     if (url.hostname === "huggingface.co") {
-      return new Response(JSON.stringify([{ modelId: "org/model-gguf", tags: ["gguf", "text-generation"] }]), { status: 200 });
+      return new Response(
+        JSON.stringify([{ modelId: "org/model-gguf", tags: ["gguf", "text-generation"] }]),
+        { status: 200 },
+      );
     }
     return new Response("not found", { status: 404 });
   };
@@ -2946,11 +3588,19 @@ test("control server exposes model library catalog install search and tier selec
   });
   const server = await startControlServer({ session, modelLibrary });
   try {
-    const catalog = await (await fetch(`${server.url}/api/model-library`)).json() as { curated: Array<{ id: string; status: string }>; installed: Array<{ id: string }> };
-    assert.equal(catalog.curated.find((entry) => entry.id === "granite4.1:3b")?.status, "installed");
+    const catalog = (await (await fetch(`${server.url}/api/model-library`)).json()) as {
+      curated: Array<{ id: string; status: string }>;
+      installed: Array<{ id: string }>;
+    };
+    assert.equal(
+      catalog.curated.find((entry) => entry.id === "granite4.1:3b")?.status,
+      "installed",
+    );
     assert.equal(catalog.installed[0]?.id, "granite4.1:3b");
 
-    const search = await (await fetch(`${server.url}/api/model-library/search?q=gguf`)).json() as { results: Array<{ id: string; status: string }> };
+    const search = (await (
+      await fetch(`${server.url}/api/model-library/search?q=gguf`)
+    ).json()) as { results: Array<{ id: string; status: string }> };
     assert.equal(search.results[0]?.id, "org/model-gguf");
     assert.equal(search.results[0]?.status, "unsupported");
 
@@ -2970,8 +3620,7 @@ test("control server exposes model library catalog install search and tier selec
     });
     assert.equal(select.ok, true);
     assert.equal(projectConfig.models.tiers.medium.name, "granite4.1:3b");
-  }
-  finally {
+  } finally {
     await server.close();
   }
 });
@@ -2981,7 +3630,10 @@ test("control server saves and opens interactive session snapshots", async () =>
   const session = createInteractiveExecutionSession({ seedRootPrompt: "persist this workflow" });
   const child = session.addNode({ parentId: "root-composer", prompt: "child prompt" });
   session.connectNode({ nodeId: child.id, parentId: "root-composer" });
-  const sessionStore = new FileSessionStore({ baseDir: dir, now: () => "2026-05-21T00:00:00.000Z" });
+  const sessionStore = new FileSessionStore({
+    baseDir: dir,
+    now: () => "2026-05-21T00:00:00.000Z",
+  });
   const server = await startControlServer({ session, sessionStore });
   try {
     const save = await fetch(`${server.url}/api/saved-sessions/save`, {
@@ -2990,19 +3642,30 @@ test("control server saves and opens interactive session snapshots", async () =>
       body: JSON.stringify({ id: "demo", name: "Demo" }),
     });
     assert.equal(save.status, 200);
-    const saved = await save.json() as { id: string; verification: { status: string; sections: Array<{ name: string }> } };
+    const saved = (await save.json()) as {
+      id: string;
+      verification: { status: string; sections: Array<{ name: string }> };
+    };
     assert.equal(saved.id, "demo");
     assert.equal(saved.verification.status, "complete");
     assert.ok(saved.verification.sections.some((section) => section.name === "vectorIndex"));
 
     session.deleteNodeWithStrategy(child.id, "delete_subtree");
-    assert.equal(session.snapshot().graph.nodes.some((node) => node.id === child.id), false);
+    assert.equal(
+      session.snapshot().graph.nodes.some((node) => node.id === child.id),
+      false,
+    );
 
     const open = await fetch(`${server.url}/api/saved-sessions/demo/open`, { method: "POST" });
     assert.equal(open.status, 200);
-    assert.equal(session.snapshot().graph.nodes.some((node) => node.id === child.id), true);
+    assert.equal(
+      session.snapshot().graph.nodes.some((node) => node.id === child.id),
+      true,
+    );
 
-    const list = await (await fetch(`${server.url}/api/saved-sessions`)).json() as { sessions: Array<{ id: string; status: string }> };
+    const list = (await (await fetch(`${server.url}/api/saved-sessions`)).json()) as {
+      sessions: Array<{ id: string; status: string }>;
+    };
     assert.equal(list.sessions[0]?.id, "demo");
     assert.equal(list.sessions[0]?.status, "complete");
   } finally {
@@ -3015,7 +3678,10 @@ test("control server exposes memory inspection and preference mutation", async (
   const dir = await mkdtemp(join(tmpdir(), "rlm-control-memory-"));
   const session = createInteractiveExecutionSession({ seedRootPrompt: "remember preferences" });
   const store = new FileMemoryStore({ baseDir: dir, now: () => "2026-05-21T00:00:00.000Z" });
-  const memory = new MemoryResolver(store, { sessionId: "run-ui", now: () => "2026-05-21T00:00:00.000Z" });
+  const memory = new MemoryResolver(store, {
+    sessionId: "run-ui",
+    now: () => "2026-05-21T00:00:00.000Z",
+  });
   const server = await startControlServer({ session, memory });
   try {
     const create = await fetch(`${server.url}/api/memory/preferences`, {
@@ -3024,19 +3690,39 @@ test("control server exposes memory inspection and preference mutation", async (
       body: JSON.stringify({ key: "tone", value: "be direct" }),
     });
     assert.equal(create.status, 200);
-    const created = await create.json() as { scopes: Array<{ scopeId: string; content: Record<string, { value?: string }> }>; audit: Array<{ accepted: boolean }> };
-    assert.equal(created.scopes.find((scope) => scope.scopeId === "project-preferences")?.content["tone"]?.value, "be direct");
-    assert.deepEqual(created.audit.map((record) => record.accepted), [true]);
+    const created = (await create.json()) as {
+      scopes: Array<{ scopeId: string; content: Record<string, { value?: string }> }>;
+      audit: Array<{ accepted: boolean }>;
+    };
+    assert.equal(
+      created.scopes.find((scope) => scope.scopeId === "project-preferences")?.content["tone"]
+        ?.value,
+      "be direct",
+    );
+    assert.deepEqual(
+      created.audit.map((record) => record.accepted),
+      [true],
+    );
 
     const inspect = await fetch(`${server.url}/api/memory`);
     assert.equal(inspect.status, 200);
-    const inspected = await inspect.json() as { scopes: Array<{ scopeId: string; lifetime: string }> };
-    assert.equal(inspected.scopes.find((scope) => scope.scopeId === "project-preferences")?.lifetime, "project");
+    const inspected = (await inspect.json()) as {
+      scopes: Array<{ scopeId: string; lifetime: string }>;
+    };
+    assert.equal(
+      inspected.scopes.find((scope) => scope.scopeId === "project-preferences")?.lifetime,
+      "project",
+    );
 
     const remove = await fetch(`${server.url}/api/memory/preferences/tone`, { method: "DELETE" });
     assert.equal(remove.status, 200);
-    const removed = await remove.json() as { scopes: Array<{ scopeId: string; content: Record<string, unknown> }> };
-    assert.equal(removed.scopes.find((scope) => scope.scopeId === "project-preferences")?.content["tone"], undefined);
+    const removed = (await remove.json()) as {
+      scopes: Array<{ scopeId: string; content: Record<string, unknown> }>;
+    };
+    assert.equal(
+      removed.scopes.find((scope) => scope.scopeId === "project-preferences")?.content["tone"],
+      undefined,
+    );
   } finally {
     await server.close();
     await rm(dir, { recursive: true, force: true });
@@ -3046,7 +3732,10 @@ test("control server exposes memory inspection and preference mutation", async (
 test("control server refuses unsafe saved-session open with verification details", async () => {
   const dir = await mkdtemp(join(tmpdir(), "rlm-control-sessions-unsafe-"));
   const session = createInteractiveExecutionSession({ seedRootPrompt: "persist this workflow" });
-  const sessionStore = new FileSessionStore({ baseDir: dir, now: () => "2026-05-21T00:00:00.000Z" });
+  const sessionStore = new FileSessionStore({
+    baseDir: dir,
+    now: () => "2026-05-21T00:00:00.000Z",
+  });
   await sessionStore.save({
     id: "bad",
     payload: {
@@ -3062,7 +3751,9 @@ test("control server refuses unsafe saved-session open with verification details
   try {
     const open = await fetch(`${server.url}/api/saved-sessions/bad/open`, { method: "POST" });
     assert.equal(open.status, 409);
-    const payload = await open.json() as { savedSession: { verification: { status: string; corrupt: Array<{ section: string }> } } };
+    const payload = (await open.json()) as {
+      savedSession: { verification: { status: string; corrupt: Array<{ section: string }> } };
+    };
     assert.equal(payload.savedSession.verification.status, "failed");
     assert.equal(payload.savedSession.verification.corrupt[0]?.section, "memory");
   } finally {
@@ -3114,13 +3805,22 @@ test("stale quality loop metadata invalidates after prompt and model edits", () 
     loop,
   });
   session.setNodeModelOverride("task-2", "large-model");
-  assert.equal(session.snapshot().graph.nodes.find((node) => node.id === "task-2")?.loop, undefined);
+  assert.equal(
+    session.snapshot().graph.nodes.find((node) => node.id === "task-2")?.loop,
+    undefined,
+  );
 });
 
 test("initial-plan modes differ only on spawned branch auto approval", async () => {
   const traceA = new InMemoryTrace();
   const traceB = new InMemoryTrace();
-  const responses: QueueResponse[] = ["RECURSIVE", "child task", "child answer", "child summary", "final answer"];
+  const responses: QueueResponse[] = [
+    "RECURSIVE",
+    "child task",
+    "child answer",
+    "child summary",
+    "final answer",
+  ];
   const modelA = new QueueModel([...responses]);
   const modelB = new QueueModel([...responses]);
   const sessionA = createInteractiveExecutionSession({ approvalMode: "initial-plan" });
@@ -3133,7 +3833,9 @@ test("initial-plan modes differ only on spawned branch auto approval", async () 
   await sessionA.waitForNodeStatus("task-1", "awaiting_approval");
   sessionA.approveNode("task-1");
   await sessionA.waitForNodeStatus("task-2", "awaiting_approval");
-  const conservativeChildStatus = sessionA.snapshot().graph.nodes.find((node) => node.id === "task-2")?.status;
+  const conservativeChildStatus = sessionA
+    .snapshot()
+    .graph.nodes.find((node) => node.id === "task-2")?.status;
   sessionA.approveNode("task-2");
   await runA;
 
@@ -3263,7 +3965,10 @@ test("counts depth selection against the total model call budget", async () => {
 
 test("selects recursion depth with the model when no override is provided", async () => {
   const trace = new InMemoryTrace();
-  const engine = new RecursiveLanguageModel(new QueueModel(["3", "DIRECT", "direct answer"]), trace);
+  const engine = new RecursiveLanguageModel(
+    new QueueModel(["3", "DIRECT", "direct answer"]),
+    trace,
+  );
 
   const result = await engine.run({
     prompt: "Analyze a complex project",
@@ -3283,7 +3988,10 @@ test("selects recursion depth with the model when no override is provided", asyn
 
 test("falls back when dynamic depth classifier does not return an integer", async () => {
   const trace = new InMemoryTrace();
-  const engine = new RecursiveLanguageModel(new QueueModel(["not sure", "DIRECT", "direct answer"]), trace);
+  const engine = new RecursiveLanguageModel(
+    new QueueModel(["not sure", "DIRECT", "direct answer"]),
+    trace,
+  );
 
   const result = await engine.run({
     prompt: "Analyze this",
@@ -3334,8 +4042,14 @@ test("executes bounded tool calls during answer steps", async () => {
   );
   assert.equal(model.calls[0]?.options.tools?.length, 1);
   assert.equal(model.calls[1]?.messages.at(-1)?.role, "tool");
-  assert.ok(logger.events.some((event) => event.stage === "tool" && event.message === "starting tool call"));
-  assert.ok(logger.events.some((event) => event.stage === "tool" && event.message === "completed tool call"));
+  assert.ok(
+    logger.events.some((event) => event.stage === "tool" && event.message === "starting tool call"),
+  );
+  assert.ok(
+    logger.events.some(
+      (event) => event.stage === "tool" && event.message === "completed tool call",
+    ),
+  );
 });
 
 test("logs recursive task plan after decomposition", async () => {
@@ -3364,12 +4078,16 @@ test("logs recursive task plan after decomposition", async () => {
   });
 
   assert.equal(result.answer, "Final answer");
-  const planEvent = logger.events.find((event) => event.stage === "plan" && event.message === "created recursive task plan");
+  const planEvent = logger.events.find(
+    (event) => event.stage === "plan" && event.message === "created recursive task plan",
+  );
   assert.ok(planEvent);
-  assert.deepEqual((planEvent.data?.["children"] as Array<{ id: string; prompt: string }>).map((child) => child.prompt), [
-    "First child",
-    "Second child",
-  ]);
+  assert.deepEqual(
+    (planEvent.data?.["children"] as Array<{ id: string; prompt: string }>).map(
+      (child) => child.prompt,
+    ),
+    ["First child", "Second child"],
+  );
 });
 
 test("logs failed unknown tool calls and continues with tool result context", async () => {
@@ -3403,7 +4121,9 @@ test("logs failed unknown tool calls and continues with tool result context", as
 
   assert.equal(result.answer, "final answer");
   assert.match(result.metadata.errors[0] ?? "", /Unknown tool/);
-  assert.ok(logger.events.some((event) => event.stage === "tool" && event.message === "failed tool call"));
+  assert.ok(
+    logger.events.some((event) => event.stage === "tool" && event.message === "failed tool call"),
+  );
   assert.equal(model.calls[1]?.messages.at(-1)?.role, "tool");
 });
 
@@ -3512,7 +4232,10 @@ test("agent router selects research for source-backed prompts", () => {
   assert.equal(selectAgent(registry, "Explain recursion", "research").id, "research");
   assert.equal(selectAgent(registry, "Explain recursion", "coding").id, "coding");
   assert.equal(selectAgent(registry, "Explain recursion", "qa").id, "qa");
-  assert.equal(selectAgent(registry, "Explain recursion", "product_designer").id, "product_designer");
+  assert.equal(
+    selectAgent(registry, "Explain recursion", "product_designer").id,
+    "product_designer",
+  );
 });
 
 test("agent profiles expose scoped tool sets", () => {
@@ -3531,47 +4254,52 @@ test("agent profiles expose scoped tool sets", () => {
     productDesignerTools: [searchTool, webFetchTool, writeTool],
   });
 
-  assert.deepEqual(selectAgent(registry, "Fix the CLI", "coding").tools.map((tool) => tool.name), [
-    "shell",
-    "write_file",
-    "web_search",
-    "web_fetch",
-  ]);
-  assert.deepEqual(selectAgent(registry, "Design a settings page", "product_designer").tools.map((tool) => tool.name), [
-    "web_search",
-    "web_fetch",
-    "write_file",
-  ]);
-  assert.deepEqual(selectAgent(registry, "Research docs", "research").tools.map((tool) => tool.name), [
-    "web_search",
-    "web_fetch",
-  ]);
+  assert.deepEqual(
+    selectAgent(registry, "Fix the CLI", "coding").tools.map((tool) => tool.name),
+    ["shell", "write_file", "web_search", "web_fetch"],
+  );
+  assert.deepEqual(
+    selectAgent(registry, "Design a settings page", "product_designer").tools.map(
+      (tool) => tool.name,
+    ),
+    ["web_search", "web_fetch", "write_file"],
+  );
+  assert.deepEqual(
+    selectAgent(registry, "Research docs", "research").tools.map((tool) => tool.name),
+    ["web_search", "web_fetch"],
+  );
 });
 
 test("bugfix queue skips duplicate highest-priority keywords", () => {
-  const queue = buildBugfixQueue({
-    id: "bugfix",
-    priority: 100,
-    highestPriorityKeywords: ["fail", "error", "regression"],
-  }, [
-    "BUGFIX[fail, build]: Fix failing build command.",
-    "BUGFIX[fail, test]: Fix duplicate failing test report.",
-    "BUGFIX[regression]: Restore changed CLI output.",
-    "BUGFIX: Investigate broken renderer error handling.",
-  ].join("\n"), "qa");
+  const queue = buildBugfixQueue(
+    {
+      id: "bugfix",
+      priority: 100,
+      highestPriorityKeywords: ["fail", "error", "regression"],
+    },
+    [
+      "BUGFIX[fail, build]: Fix failing build command.",
+      "BUGFIX[fail, test]: Fix duplicate failing test report.",
+      "BUGFIX[regression]: Restore changed CLI output.",
+      "BUGFIX: Investigate broken renderer error handling.",
+    ].join("\n"),
+    "qa",
+  );
 
   assert.equal(queue.id, "bugfix");
   assert.equal(queue.priority, 100);
-  assert.deepEqual(queue.items.map((item) => item.task), [
-    "Fix failing build command.",
-    "Restore changed CLI output.",
-    "Investigate broken renderer error handling.",
-  ]);
-  assert.deepEqual(queue.items.map((item) => item.keywords), [
-    ["fail", "build"],
-    ["regression"],
-    ["error"],
-  ]);
+  assert.deepEqual(
+    queue.items.map((item) => item.task),
+    [
+      "Fix failing build command.",
+      "Restore changed CLI output.",
+      "Investigate broken renderer error handling.",
+    ],
+  );
+  assert.deepEqual(
+    queue.items.map((item) => item.keywords),
+    [["fail", "build"], ["regression"], ["error"]],
+  );
 });
 
 test("workflow runs QA validation and exposes bugfix tasks in a higher-priority queue", async () => {
@@ -3676,16 +4404,36 @@ test("workflow runs QA validation and exposes bugfix tasks in a higher-priority 
   });
 
   assert.deepEqual(result.metadata.workflow?.agents, ["coding", "qa"]);
-  assert.deepEqual(result.metadata.workflow?.qa?.validationCommands.map((item) => item.command), ["npm test", "npm run build"]);
+  assert.deepEqual(
+    result.metadata.workflow?.qa?.validationCommands.map((item) => item.command),
+    ["npm test", "npm run build"],
+  );
   assert.equal(result.metadata.workflowQueues?.[0]?.id, "bugfix");
   assert.equal(result.metadata.workflowQueues?.[0]?.priority, 100);
-  assert.deepEqual(result.metadata.workflowQueues?.[0]?.items.map((item) => item.task), [
-    "Fix build error reported by validation.",
-  ]);
-  assert.ok(logger.events.some((event) => event.stage === "workflow" && event.message === "starting workflow"));
-  assert.ok(logger.events.some((event) => event.stage === "workflow" && event.message === "workflow agent completed"));
-  assert.ok(logger.events.some((event) => event.stage === "validation" && event.message === "starting validation command"));
-  assert.ok(logger.events.some((event) => event.stage === "validation" && event.message === "completed validation command"));
+  assert.deepEqual(
+    result.metadata.workflowQueues?.[0]?.items.map((item) => item.task),
+    ["Fix build error reported by validation."],
+  );
+  assert.ok(
+    logger.events.some(
+      (event) => event.stage === "workflow" && event.message === "starting workflow",
+    ),
+  );
+  assert.ok(
+    logger.events.some(
+      (event) => event.stage === "workflow" && event.message === "workflow agent completed",
+    ),
+  );
+  assert.ok(
+    logger.events.some(
+      (event) => event.stage === "validation" && event.message === "starting validation command",
+    ),
+  );
+  assert.ok(
+    logger.events.some(
+      (event) => event.stage === "validation" && event.message === "completed validation command",
+    ),
+  );
 });
 
 test("workflow dispatch tiers run minimal agents for simple prompts", async () => {
@@ -3905,7 +4653,12 @@ test("workflow dispatch tiers run complex agent sets and QA for complex prompts"
     createModel: () => new QueueModel(["ok"]),
   });
 
-  assert.deepEqual(result.metadata.workflow?.agents, ["research", "product_designer", "coding", "qa"]);
+  assert.deepEqual(result.metadata.workflow?.agents, [
+    "research",
+    "product_designer",
+    "coding",
+    "qa",
+  ]);
   assert.equal(result.metadata.workflow?.qa?.agent, "qa");
   assert.equal(result.metadata.modelCalls, 4);
 });
@@ -3914,7 +4667,9 @@ test("loads yaml project config from an explicit path", async () => {
   const workspace = await mkdtemp(join(tmpdir(), "rlm-config-"));
   try {
     const configPath = join(workspace, "rlm.config.yaml");
-    await writeFile(configPath, `
+    await writeFile(
+      configPath,
+      `
 models:
   default: small-model
   tiers:
@@ -3974,7 +4729,9 @@ workflows:
     mode: ram_queue
     agents: [research, coding]
     continueOnError: true
-`, "utf8");
+`,
+      "utf8",
+    );
 
     const loaded = await loadProjectConfig(configPath);
 
@@ -4051,8 +4808,14 @@ test("purpose routing model selects per-purpose and dynamic tiers", async () => 
   assert.equal(selectDynamicTier(1), "small");
   assert.equal(selectDynamicTier(2), "medium");
   assert.equal(selectDynamicTier(3), "large");
-  assert.equal((await model.complete([], { purpose: "answer", complexityDepth: 3 })).content, "large-model response");
-  assert.equal((await model.complete([], { purpose: "decompose", complexityDepth: 1 })).content, "medium-model response");
+  assert.equal(
+    (await model.complete([], { purpose: "answer", complexityDepth: 3 })).content,
+    "large-model response",
+  );
+  assert.equal(
+    (await model.complete([], { purpose: "decompose", complexityDepth: 1 })).content,
+    "medium-model response",
+  );
   assert.deepEqual(calls, ["answer:large-model", "decompose:medium-model"]);
 });
 
@@ -4143,7 +4906,9 @@ test("purpose routing resolves sampling cascade with source metadata", async () 
 test("project config parses quality loop phase model routes and defaults old agent configs", async () => {
   const workspace = await mkdtemp(join(tmpdir(), "rlm-config-quality-loop-"));
   const configPath = join(workspace, "rlm.config.yaml");
-  await writeFile(configPath, `
+  await writeFile(
+    configPath,
+    `
 models:
   default: small-model
   tiers:
@@ -4181,7 +4946,9 @@ agents:
       summarize: small
       synthesize: small
 workflows: {}
-`, "utf8");
+`,
+    "utf8",
+  );
 
   try {
     const loaded = await loadProjectConfig(configPath);

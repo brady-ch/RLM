@@ -1,0 +1,7 @@
+dist/
+node_modules/
+ui/dist/
+package-lock.json
+.planning/
+coverage/
+*.min.js

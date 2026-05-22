@@ -1,0 +1,46 @@
+[
+  {
+    "type": "dependency",
+    "from": "src/adapters/web-fetch-tool.ts",
+    "to": "src/application/content-tree.ts",
+    "unresolvedTo": "../application/content-tree.js",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-adapters-to-application"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/domain/agents.ts",
+    "to": "src/application/project-config.ts",
+    "unresolvedTo": "../application/project-config.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-domain-to-application"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/ports/extension-port.ts",
+    "to": "src/application/extension-host.ts",
+    "unresolvedTo": "../application/extension-host.js",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-ports-to-application"
+    }
+  }
+]
