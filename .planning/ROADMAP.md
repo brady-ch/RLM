@@ -350,11 +350,39 @@ Phases execute in numeric order: 52 → 53 → … → 60
 
 ### Phase 61: UI Shell Rewrite
 
-**Goal:** Replace the monolithic scrollable sidebar with a node-centric workflow shell (canvas + top bar + optional node dock) and a full-screen Advanced hub (Models, Plugins, Sessions, Memory, Settings) — frontend restructure only, same HTTP/SSE contract.
+**Goal:** Replace the monolithic scrollable sidebar with Sketch 002-B shell: inline prompt editing on node cards, right-click context menus for plan/graph actions, slim Run panel (approve/clarify) on node select only, and full-screen Advanced hub — frontend restructure only, same HTTP/SSE contract.
 
-**Requirements**: TBD (derive from `.planning/notes/ui-shell-architecture.md`)
+**Requirements**: `.planning/phases/61-ui-shell-rewrite/61-UI-SPEC.md`
 **Depends on:** Phase 60
-**Plans:** 0 plans
+**Plans:** 6 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 61 to break down)
+- [ ] 61-01-PLAN.md — Extract shared types, API helpers, and design tokens
+- [ ] 61-02-PLAN.md — AppShell + TopBar with session/SSE state and view routing
+- [ ] 61-03-PLAN.md — GraphCanvas, ExecutionNodeCard (002-B), NodeContextMenu
+- [ ] 61-04-PLAN.md — Slim Run panel on node select with responsive layout
+- [ ] 61-05-PLAN.md — Full-screen Advanced hub with lazy domain views
+- [ ] 61-06-PLAN.md — Monolith teardown, build verification, REG-01 UAT
+
+**Wave 1** *(no dependencies)*
+- 61-01
+
+**Wave 2** *(blocked on Wave 1)*
+- 61-02
+
+**Wave 3** *(blocked on Wave 2)*
+- 61-03
+
+**Wave 4** *(blocked on Wave 2–3; 61-04 and 61-05 parallel)*
+- 61-04 *(also requires 61-03)*
+- 61-05
+
+**Wave 5** *(blocked on Waves 3–4)*
+- 61-06
+
+Cross-cutting constraints:
+- Workflow view shows no models/plugins/sessions/memory panels (UI-SC-01)
+- Prompt editable on node card; Plan via context menu (UI-SC-02)
+- Run panel visible on node select only (UI-SC-03)
+- Advanced hub reachable with Back to workflow (UI-SC-04)
+- Same HTTP/SSE contract — frontend restructure only

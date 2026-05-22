@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Rust Runtime Migration
 status: executing
-last_updated: "2026-05-22T20:37:48.166Z"
-last_activity: 2026-05-22 -- Phase 60.1 planning complete
+last_updated: "2026-05-22T20:41:36.204Z"
+last_activity: 2026-05-22 -- Phase 61 planning complete
 progress:
   total_phases: 20
   completed_phases: 8
-  total_plans: 12
+  total_plans: 18
   completed_plans: 14
-  percent: 100
+  percent: 78
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-22)
 Phase: 60 of 60 (Tauri In-Process + Packaging)
 Plan: 1/1 complete
 Status: Ready to execute
-Last activity: 2026-05-22 -- Phase 60.1 planning complete
+Last activity: 2026-05-22 -- Phase 61 planning complete
 
 Progress: [██████████] 100%
 
@@ -41,7 +41,7 @@ v1.8 Rust runtime migration complete: control server strangler, persistence, eng
 
 ### Roadmap Evolution
 
-- Phase 61 added: UI Shell Rewrite — node-centric workflow + Advanced hub (from `/gsd-explore` 2026-05-22)
+- Phase 61 design locked: Sketch 002-B — card edit + context menu + slim Run panel (2026-05-22)
 - Phase 60.1 inserted after Phase 60: Close v1.8 milestone gaps — session routes, memory preferences, run-state wiring, verification backfill (URGENT)
 
 ### Blockers/Concerns
