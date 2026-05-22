@@ -181,16 +181,16 @@ Plans:
 **Goal:** Improve compile iteration if single-crate layout remains painful after structural cleanup.  
 **Depends on:** Phase 70  
 **Requirements:** ARCH-06, REG-02  
-**Plans:** 3 plans  
+**Plans:** 3/3 plans complete
 **Success Criteria:**
 1. Compile/test baseline measured before and after split decision
 2. If split proceeds: `rlm-ports` + `rlm-domain` crates compile independently; `rlm-cli`/Tauri API unchanged
 3. If split deferred: documented rationale in phase summary with trigger conditions from seed
 
 Plans:
-- [ ] 71-01-PLAN.md — Compile baseline measurement + SPLIT/DEFER gate
-- [ ] 71-02-PLAN.md — Extract rlm-ports + rlm-domain (execute if SPLIT)
-- [ ] 71-03-PLAN.md — Defer closure + ARCH-06 traceability (execute if DEFER)
+- [x] 71-01-PLAN.md — Compile baseline measurement + SPLIT/DEFER gate
+- [x] 71-02-PLAN.md — Extract rlm-ports + rlm-domain (execute if SPLIT)
+- [x] 71-03-PLAN.md — Defer closure + ARCH-06 traceability (execute if DEFER)
 
 ## Progress
 
@@ -205,4 +205,4 @@ Plans:
 | 68. Application Layer + Handler Split | v1.9 | 2/2 | Complete    | 2026-05-22 |
 | 69. Large File Decomposition | v1.9 | 5/5 | Complete   | 2026-05-22 |
 | 70. Rust Boundary Enforcement | v1.9 | 0/? | Not started | — |
-| 71. Optional Crate Split | v1.9 | 0/3 | Planned | — |
+| 71. Optional Crate Split | v1.9 | 3/3 | Complete   | 2026-05-22 |

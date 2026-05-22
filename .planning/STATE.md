@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Rust Runtime Hardening
 status: completed
-last_updated: "2026-05-22T22:38:07.098Z"
+last_updated: "2026-05-22T22:39:20.639Z"
 last_activity: 2026-05-22
 progress:
   total_phases: 10
-  completed_phases: 8
+  completed_phases: 10
   total_plans: 19
-  completed_plans: 15
-  percent: 79
+  completed_plans: 19
+  percent: 100
 ---
 
 # Project State
@@ -20,12 +20,12 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 70 — boundary enforcement
+**Current focus:** Phase 71 complete — optional crate split evaluated (DEFER)
 
 ## Current Position
 
-Phase: 69 (complete)
-Plan: 5/5
+Phase: 71 (complete)
+Plan: 3/3
 Status: Complete
 Last activity: 2026-05-22
 
@@ -37,6 +37,7 @@ Last activity: 2026-05-22
 |-------|------|----------|-------|-------|
 | 65 | 01 | 45min | 8 | 9 |
 | 69 | 01-05 | 110min | 10 | 25 |
+| 71 | 01-03 | 25min | 4 | 6 |
 
 ## Accumulated Context
 
@@ -46,6 +47,7 @@ v1.8 Rust runtime migration shipped: Axum control server strangler, persistence,
 
 - Empty `searchPaths: []` honored without default fallback (Phase 65)
 - SKILL_PARSE_ERROR lifecycle events deferred in Rust; string warnings only (Phase 65)
+- ARCH-06 closed via evaluated defer — compile iteration 7s clean, 8s lib tests (Phase 71)
 
 ### Roadmap Evolution
 
