@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ui_dist: None,
     }) {
         Commands::Ui { port, ui_dist } => ui::run(port, ui_dist, cli.project_root).await,
-        Commands::Ask { prompt } => ask::run(prompt, cli.json),
+        Commands::Ask { prompt } => ask::run(prompt, cli.json, cli.project_root, cli.config).await,
         Commands::Plugin { sub } => plugin::run(sub, cli.project_root, cli.config, cli.json).await,
         Commands::PlanNode { .. } => commands::not_implemented("plan-node"),
         Commands::WorkflowExport => commands::not_implemented("workflow-export"),
