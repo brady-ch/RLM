@@ -39,10 +39,10 @@
 
 ### Dependency-Cruiser Enforcement
 
-- [ ] **DEPS-01**: All three baseline violations from v1.6 are fixed (not suppressed); `dependency-cruiser-baseline.json` shrinks toward empty.
+- [x] **DEPS-01**: All three baseline violations from v1.6 are fixed (not suppressed); `dependency-cruiser-baseline.json` shrinks toward empty.
 - [x] **DEPS-02**: Rules for new paths (`plugins/`, `runtime/`) land before directory moves complete; forbidden import arcs match the concern map.
-- [ ] **DEPS-03**: dependency-cruiser severity ratchets from `warn` to `error` only when baseline is empty; `npm run check` uses strict depcruise without `--ignore-known`.
-- [ ] **DEPS-04**: Optional follow-on rule: `application→adapters` imports centralized through runtime composition/bootstrap only (documented exceptions if any remain).
+- [x] **DEPS-03**: dependency-cruiser severity ratchets from `warn` to `error` only when baseline is empty; `npm run check` uses strict depcruise without `--ignore-known`.
+- [x] **DEPS-04**: Optional follow-on rule: `application→adapters` imports centralized through runtime composition/bootstrap only (documented exceptions if any remain).
 
 ### Local Plugin Manager
 
@@ -124,10 +124,10 @@
 | PLUG-04 | Phase 46 | Complete |
 | PLUG-05 | Phase 46 | Complete |
 | PLUG-06 | Phase 46 | Complete |
-| DEPS-01 | Phase 48 | Pending |
+| DEPS-01 | Phase 48 | Complete |
 | DEPS-02 | Phase 47 | Complete |
-| DEPS-03 | Phase 48 | Pending |
-| DEPS-04 | Phase 48 | Pending |
+| DEPS-03 | Phase 48 | Complete |
+| DEPS-04 | Phase 48 | Complete |
 | MGR-01 | Phase 49 | Pending |
 | MGR-02 | Phase 49 | Pending |
 | MGR-03 | Phase 49 | Pending |

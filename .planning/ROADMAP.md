@@ -28,7 +28,7 @@
 - [x] **Phase 45: Application Concern Grouping** — Group `application/` by execution, graph, memory, plugins, control-server (1/1 plan) — 2026-05-22
 - [x] **Phase 46: Plugin Taxonomy & Builtin Migration** — Manifest schema, PluginLoader, builtin migration, legacy YAML compat (1/1 plan) — 2026-05-22
 - [x] **Phase 47: Concern Map, Tests Mirror & Depcruise Rules** — AGENTS.md taxonomy, mirrored tests, new path rules (1/1 plan) — 2026-05-22
-- [ ] **Phase 48: Dependency-Cruiser Ratchet** — Empty baseline, warn→error severity, strict `npm run check`
+- [x] **Phase 48: Dependency-Cruiser Ratchet** — Empty baseline, warn→error severity, strict `npm run check`
 - [ ] **Phase 49: Local Plugin Manager** — CLI commands, shared registry service, catalog under `~/.rlm/plugins/`
 - [ ] **Phase 50: Remote Fetch** — HTTPS archive and optional git fetch-to-local with security defenses
 - [ ] **Phase 51: Plugin Manager UI** — Control-server endpoints and UI panel aligned with CLI semantics
@@ -130,6 +130,8 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   3. dependency-cruiser rules for new paths (`plugins/`, `runtime/`) forbid arcs matching the concern map (e.g. `plugins→application`, `runtime→cli`, `domain→application`)
   4. Contributor adding a cross-layer import sees a dependency-cruiser violation with a message referencing the concern map
 **Plans**: 1/1 complete
+
+### Phase 48: Dependency-Cruiser Ratchet
 **Goal**: Boundary enforcement is strict — baseline empty, severity error, CI uses strict depcruise without `--ignore-known`.
 **Depends on**: Phase 47
 **Requirements**: DEPS-01, DEPS-03, DEPS-04
@@ -138,7 +140,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   2. `npm run check` runs dependency-cruiser at error severity without `--ignore-known`
   3. Introducing a forbidden import (e.g. `plugins/` importing `application/`) fails CI with a clear rule name
   4. Optional `application→adapters` rule is documented with any remaining bootstrap exceptions listed in AGENTS.md
-**Plans**: TBD
+**Plans**: 1/1 complete
 
 ### Phase 49: Local Plugin Manager
 **Goal**: Users manage plugins locally via CLI with a shared registry service backing both CLI and control-server.
