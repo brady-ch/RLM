@@ -2,6 +2,7 @@ pub mod builtin;
 pub mod extension_host;
 pub mod manifest;
 pub mod paths;
+pub mod registry;
 pub mod registry_service;
 pub mod remote_fetch;
 pub mod runtime;
