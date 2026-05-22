@@ -47,7 +47,7 @@
 
 ### Domain Engine
 
-- [ ] **RLM-01**: `recursive-language-model.ts` decomposes into `domain/recursion/` concern modules (budget guard, tool-round loop, quality loop, execution-graph sync, prompt utilities). _**Progress (2026-05-22):** budget guard, execution-graph sync, prompt utilities, and tool-round completion (`tool-round-loop.ts`) are extracted; quality-loop orchestration remains in the class._
+- [x] **RLM-01**: `recursive-language-model.ts` decomposes into `domain/recursion/` concern modules (budget guard, tool-round loop, quality loop, execution-graph sync, prompt utilities). — **Complete (2026-05-22):** `budget-guard.ts`, `execution-graph-sync.ts`, `prompt-utilities.ts`, `tool-round-loop.ts` (`ModelCompletionHost`), and stitched `quality-loop.ts` (`QualityLoopHost` + frozen helper/main peel sources via `scripts/stitch-quality-loop.mjs`); orchestrator delegates retention flow per `40-RESEARCH.md`.
 - [x] **RLM-02**: The orchestrator class retains top-level recursion flow; extracted modules are pure or narrowly-scoped helpers first, then integrated without semantics drift.
 - [x] **RLM-03**: Domain modules do not import application-layer types; dependency direction stays domain → ports only.
 - [x] **RLM-04**: Each extraction slice passes RLM, graph-executor, and integration test suites before the next peel.
@@ -128,7 +128,7 @@
 | ADPT-04 | Phase 39 | Complete |
 | ADPT-05 | Phase 39 | Complete |
 | ADPT-06 | Phase 39 | Complete |
-| RLM-01 | Phase 40 | Partial — see `40-SUMMARY.md` |
+| RLM-01 | Phase 40 | Complete (`40-SUMMARY.md`; `npm run check` 359 tests) |
 | RLM-02 | Phase 40 | Met |
 | RLM-03 | Phase 40 | Met |
 | RLM-04 | Phase 40 | Met |

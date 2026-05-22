@@ -20,12 +20,12 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone polish — Phase 40 optional **quality-loop** peel (`40-05`) only; regression + docs gates closed via Phase 42
+**Current focus:** v1.6 wrap-up maintenance — Phase 40 peels complete (`RLM-01` satisfied); backlog only.
 
 ## Current Position
 
 Phase: **42 of 42 (Test Restructure & Docs) — complete** (`42-SUMMARY.md`)  
-Phase 40 status: Core extractions (**including tool-round-loop**) landed; optional quality-loop decomposition remains incremental  
+Phase 40 status: **Complete** (`40-VERIFICATION.md`) — recursion concern modules landed including **tool-round** and **quality-loop** peels with host facades.
 Phase 41 status: Complete (handlers under `application/control-server/handlers/`)
 
 Progress: [█████████░] 86%
@@ -36,7 +36,7 @@ Progress: [█████████░] 86%
 
 - **Phase 41: Control-Server Boundary** — prior complete (`41-VERIFICATION.md`).
 
-- **Phase 40 (partial milestone scope): Domain Engine Decomposition** — recursion helpers plus **tool-round** module; orchestrator trims ongoing for quality-loop only.
+- **Phase 40: Domain Engine Decomposition** — `domain/recursion/*` concern modules (**tool-round** + stitched **quality-loop**) with orchestrator delegation (`40-VERIFICATION.md`).
 
 ## Pending Todos
 
@@ -44,7 +44,7 @@ Progress: [█████████░] 86%
 
 ## Blockers/Concerns
 
-- Phase 40 RLM-01 checkbox remains open until **quality-loop** file extraction completes (optional incremental track).
+None for Phase 40 peel — `RLM-01` closed in `REQUIREMENTS.md`.
 
 ## Deferred Items
 

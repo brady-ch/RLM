@@ -12,71 +12,77 @@ tech_stack:
     - src/domain/recursion/prompt-utilities.ts
     - src/domain/recursion/budget-guard.ts
     - src/domain/recursion/execution-graph-sync.ts
+    - src/domain/recursion/tool-round-loop.ts
+    - src/domain/recursion/quality-loop.ts
+    - src/domain/recursion/quality-loop-helpers.snippet
+    - src/domain/recursion/quality-loop-header.snippet
+    - scripts/stitch-quality-loop.mjs
+    - scripts/phase40-peel-source.ts (frozen extractor input; excluded from compile)
     - scripts/patch-rlm-phase40-core.mjs
   patterns:
-    - Pure domain helpers + orchestrator retained for remaining engine surface
+    - Pure helpers + host facades (`ModelCompletionHost`, `QualityLoopHost`) orchestrator retains maps and run state (`40-RESEARCH.md`).
 key_files:
   created:
     - src/domain/recursion/prompt-utilities.ts
     - src/domain/recursion/budget-guard.ts
     - src/domain/recursion/execution-graph-sync.ts
-    - scripts/patch-rlm-phase40-core.mjs
+    - src/domain/recursion/tool-round-loop.ts
+    - src/domain/recursion/quality-loop.ts
+    - scripts/stitch-quality-loop.mjs
   modified:
     - src/domain/recursive-language-model.ts
+    - tsconfig.json
 decisions:
-  - Shipped an incremental slice under full `npm run check` / 211-test gate; deferred tool-round and quality-loop files to avoid workspace path sync issues and reduce single-diff risk.
+  - Completed 40-04 (`runCompletionWithToolRounds` / `runCompletionWithoutTools`) and 40-05 stitched module with frozen rubric/parser bundle plus peel-source regenerate path to avoid brittle line slicing on future orchestrator trims.
 metrics:
-  duration_minutes: "~1 session"
+  duration_minutes: "~2 sessions"
   completed_date: "2026-05-22"
 ---
 
 # Phase 40 Plan: Domain Engine Decomposition — Summary
 
-**One-liner:** Moved shared prompt helpers, model/tool budget math, and live execution-graph budgeting into `domain/recursion/` while keeping `RecursiveLanguageModel` as orchestrator; tool-round and quality-loop extraction documented for follow-up.
+**One-liner:** Recursive engine concern modules (`prompt-utilities`, `budget-guard`, `execution-graph-sync`, `tool-round-loop`, stitched `quality-loop`) live under `domain/recursion/` with narrow host facades; orchestrator keeps graph maps and budgeting fields.
 
 ## Outcomes
 
 | Wave (plan) | Delivered |
 |-------------|-----------|
-| 40-RESEARCH + RLM-05 | `40-RESEARCH.md` — host-facade vs pure helpers for future peels |
-| 40-01 | `prompt-utilities.ts` — `preview`, `limitPrompt`, parse helpers, `toModelPurpose`, `fallbackFromMessages`, etc. |
-| 40-02 | `budget-guard.ts` — `remainingModelCalls`, `canSpendAnyModelCall`, `maxToolRoundsFromLimit`, `hasCallReservedForDirectAnswer`, `estimateModelCalls`, `estimateToolRounds` |
-| 40-03 | `execution-graph-sync.ts` — `buildLiveExecutionMetadata` for `executionGraph` + live `budget` |
-| 40-04 / 40-05 | **Deferred** — `complete()` tool-round loop and quality-loop stack remain in `recursive-language-model.ts`; next pass should use `ModelCompletionHost` / `QualityLoopHost` per `40-RESEARCH.md`. |
+| 40-RESEARCH + RLM-05 | `40-RESEARCH.md` — host facade + pure-helper split |
+| 40-01 | `prompt-utilities.ts` |
+| 40-02 | `budget-guard.ts` |
+| 40-03 | `execution-graph-sync.ts` (`buildLiveExecutionMetadata`) |
+| 40-04 | `tool-round-loop.ts` — `ModelCompletionHost`, `runCompletionWithToolRounds` / `runCompletionWithoutTools` |
+| 40-05 | `quality-loop.ts` (+ `QualityLoopHost`), rubrics/parsers via `quality-loop-helpers.snippet`; main exports regenerated from `phase40-peel-source.ts` by `scripts/stitch-quality-loop.mjs` |
 
 ## Requirements
 
 | ID | Status |
 |----|--------|
-| RLM-01 | **Partial** — three of five concern modules landed; tool-round + quality-loop modules pending |
-| RLM-02 | **Met** — orchestrator retains flow |
-| RLM-03 | **Met** — recursion modules use `domain/types` + `ports` only |
-| RLM-04 | **Met** — gate green after slice |
-| RLM-05 | **Met** — spike in `40-RESEARCH.md` before any quality-loop file move |
-| REG-01 / REG-02 | **Met** — `npm run check`, 211 tests |
+| RLM-01 | **Met** — five concern slices under `domain/recursion/` plus orchestrator delegation |
+| RLM-02 | **Met** — orchestrator retains `run()` / graph ownership |
+| RLM-03 | **Met** — recursion modules bind to `domain/types` + `ports` only |
+| RLM-04 | **Met** — `npm run check` green |
+| RLM-05 | **Met** — `40-RESEARCH.md` before quality-loop wiring |
+| REG-01 / REG-02 | **Met** — `npm run check`, **359** tests |
 
 ## Reproducibility
 
-Apply the same peel to a clean `recursive-language-model.ts` with:
-
-`node scripts/patch-rlm-phase40-core.mjs` (after restoring the pre-refactor file from git).
+- Core peel patch (historical entry point): `node scripts/patch-rlm-phase40-core.mjs`
+- Quality module rebuild: adjust `phase40-peel-source.ts` + `quality-loop-helpers.snippet` as needed → `node scripts/stitch-quality-loop.mjs`.
 
 ## Deviations from Plan
 
-### Scope reduction
-
-- **40-04 (tool-round-loop) / 40-05 (quality-loop)** not landed as separate modules in this commit to keep a single green gate and avoid editor/shell path desync on large new files. Extraction approach is specified in `40-RESEARCH.md` (host facade).
+None material — stitched quality loop bundles a frozen helper fragment and archived peel source (`scripts/phase40-peel-source.ts`) so regenerating `quality-loop.ts` does not rely on drifting line numbers inside the live orchestrator after helper deletion.
 
 ## Threat Flags
 
-None identified for this slice (no new network or auth surface).
+None — no new network or auth paths.
 
 ## Known Stubs / Follow-ups
 
-- `src/domain/recursion/tool-round-loop.ts` — **missing**; implement with `ModelCompletionHost` and delegate `complete` / `completeWithoutTools`.
-- Quality-loop rubrics/parsers — remain in `recursive-language-model.ts`; move to `quality-loop.ts` using a narrow host.
+None — `tool-round-loop.ts` and `quality-loop.ts` are production modules; rerun stitch only when intentionally changing peeled logic.
 
 ## Self-Check: PASSED
 
-- Verified `npm run check` exit 0, **211** tests passing (full run dated 2026-05-22).
-- Presence: `src/domain/recursion/{prompt-utilities,budget-guard,execution-graph-sync}.ts`; `scripts/patch-rlm-phase40-core.mjs`.
+- `npm run check` exit 0; **359** tests passing (2026-05-22).
+- Presence: recursion modules listed in frontmatter; orchestrator delegates to hosts.

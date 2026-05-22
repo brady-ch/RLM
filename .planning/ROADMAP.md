@@ -28,7 +28,7 @@ v1.6 is a behavior-preserving architecture cleanup: land dev-tooling guardrails,
 - [x] **Phase 37: Config Layer Split** — Focused `application/config/` modules with barrel facade and unit tests (2026-05-22).
 - [x] **Phase 38: Runtime Bootstrap** — `RuntimeContext`, `buildRuntimeContext()`, slim `index.ts`, and `cli/run-modes/*` (2026-05-22).
 - [x] **Phase 39: Adapters & Tools Taxonomy** — Group tools, persistence, and model adapters by concern with aligned extension shims.
-- [ ] **Phase 40: Domain Engine Decomposition** — `domain/recursion/` concern modules with orchestrator retaining flow (follow-up peels optional).
+- [x] **Phase 40: Domain Engine Decomposition** — `domain/recursion/` concern modules with orchestrator retaining flow (`40-SUMMARY.md`, `40-VERIFICATION.md`).
 - [x] **Phase 41: Control-Server Boundary** — Handler modules with bootstrap-injected dependencies and transport-only routes (2026-05-22).
 - [x] **Phase 42: Test Restructure & Docs** — Subsystem-aligned tests, shared helpers, and updated AGENTS.md contributor map (2026-05-22).
 
@@ -134,15 +134,15 @@ Plans:
   5. Each extraction slice passes RLM, graph-executor, and integration test suites; full suite and `npm run check` stay green.
 **Plans**: `40-01-PLAN.md` … `40-05-PLAN.md`
 
-**Research flag:** Addressed — `40-RESEARCH.md` (state-threading spike). Quality-loop/tool-round peels documented for follow-up.
+**Research flag:** Implemented — quality-loop peeled via stitched module + archived peel sources (`40-VERIFICATION.md`).
 
 Plans:
 - [x] `40-RESEARCH.md` + spike (RLM-05)
 - [x] `40-01-PLAN.md` — prompt utilities → `domain/recursion/prompt-utilities.ts`
 - [x] `40-02-PLAN.md` — budget guard → `domain/recursion/budget-guard.ts`
 - [x] `40-03-PLAN.md` — execution graph sync → `domain/recursion/execution-graph-sync.ts`
-- [ ] `40-04-PLAN.md` — tool-round loop module (still in orchestrator — see `40-SUMMARY.md`)
-- [ ] `40-05-PLAN.md` — quality-loop module (still in orchestrator — see `40-SUMMARY.md`)
+- [x] `40-04-PLAN.md` — tool-round loop → `domain/recursion/tool-round-loop.ts`
+- [x] `40-05-PLAN.md` — quality loop → `domain/recursion/quality-loop.ts` (stitched)
 
 ### Phase 41: Control-Server Boundary
 **Goal**: HTTP transport is grouped by surface with session/graph authority staying in application services.
@@ -182,7 +182,7 @@ Phases execute in numeric order: 36 → 37 → 38 → 39 → 40 → 41 → 42
 | 37. Config Layer Split | v1.6 | 3/3 | Complete | 2026-05-22 |
 | 38. Runtime Bootstrap | v1.6 | 2/2 | Complete | 2026-05-22 |
 | 39. Adapters & Tools Taxonomy | v1.6 | 1/1 | Complete | 2026-05-22 |
-| 40. Domain Engine Decomposition | v1.6 | 0/TBD | Not started | - |
+| 40. Domain Engine Decomposition | v1.6 | 5/5 | Complete | 2026-05-22 |
 | 41. Control-Server Boundary | v1.6 | 1/1 | Complete | 2026-05-22 |
 | 42. Test Restructure & Docs | v1.6 | 1/1 | Complete   | 2026-05-22 |
 | 30-35 Dynamic Graph Authoring | v1.5 | 18/18 | Complete | 2026-05-22 |

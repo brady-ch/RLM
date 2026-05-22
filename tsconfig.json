@@ -41,5 +41,5 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "exclude": ["dist", "ui", "**/src/domain/recursion/_*.ts"]
+  "exclude": ["dist", "ui", "**/src/domain/recursion/_*.ts", "scripts/phase40-peel-source.ts"]
 }

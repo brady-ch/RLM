@@ -1,0 +1,98 @@
+import type {
+  EffectiveSamplingMetadata,
+  LanguageModelCompleteOptions,
+  LanguageModelPort,
+  LanguageModelPurpose,
+  LanguageModelUsage,
+} from "../../ports/language-model-port.js";
+import type {
+  ExecutionEvent,
+  ExecutionStatus,
+  ExecutionStatusUpdateDetail,
+  QualityLoopBestOfProgressEvaluation,
+  QualityLoopCandidateSummary,
+  QualityLoopConfig,
+  QualityLoopCritiqueEvaluation,
+  QualityLoopGateEvaluation,
+  QualityLoopIssue,
+  QualityLoopIterationRecord,
+  QualityLoopMetadata,
+  QualityLoopManualDecision,
+  QualityLoopPhaseModelAssignment,
+  QualityLoopPhaseName,
+  QualityLoopPhaseRecord,
+  QualityLoopRubricCriterion,
+  QualityLoopRubricId,
+  QualityLoopRubricSelection,
+  QualityLoopSelectionMetadata,
+  QualityLoopStatus,
+  RecursiveModelConfig,
+  TaskNode,
+  TokenUsageTrace,
+} from "../types.js";
+import { EXECUTION_FAILURE_CODES } from "../execution-failure.js";
+import { canSpendAnyModelCall, remainingModelCalls } from "./budget-guard.js";
+import { preview } from "./prompt-utilities.js";
+
+/** Phase order for one quality-loop iteration. */
+export const QUALITY_LOOP_PHASES: QualityLoopPhaseName[] = [
+  "draft",
+  "critique",
+  "refine",
+  "gate",
+  "best_of_progress",
+];
+
+export class QualityLoopManualExit extends Error {
+  constructor(public readonly answer: string) {
+    super("quality loop manual exit");
+    this.name = "QualityLoopManualExit";
+  }
+}
+
+/**
+ * Orchestrator-owned state for {@link runQualityLoop} / {@link completeQualityLoopPhase}
+ * (see `.planning/phases/40-domain-engine-decomposition/40-RESEARCH.md`).
+ */
+export interface QualityLoopHost {
+  readonly model: LanguageModelPort;
+  getModelCalls(): number;
+  getMaxModelCalls(): number;
+  consumeModelCall(): void;
+  getToolCallsUsedCount(): number;
+  getTokenUsage(): TokenUsageTrace;
+  getDepthSelected(): number;
+  throwIfCancelled(task: TaskNode): void;
+  isExecutionCancelled(): boolean;
+  pushMetadataError(message: string): void;
+  emitExecution(event: ExecutionEvent): void;
+  writeLoopMetadata(nodeId: string, metadata: QualityLoopMetadata): void;
+  markExecutionNodeRunning(nodeId: string): void;
+  markExecutionNodeCompleted(nodeId: string): void;
+  markExecutionNodeFailed(
+    nodeId: string,
+    status: "failed" | "cancelled",
+    detail?: ExecutionStatusUpdateDetail,
+  ): void;
+  setMetadataExecutionStatus(status: ExecutionStatus): void;
+  summarizeQualityLoopUsage(
+    metadata: QualityLoopMetadata,
+    modelCallsTotal?: number,
+  ): QualityLoopMetadata["usage"];
+  log(stage: string, message: string, data?: Record<string, unknown>): void;
+  withAgentSystemPrompt(
+    messages: Parameters<LanguageModelPort["complete"]>[0],
+  ): Parameters<LanguageModelPort["complete"]>[0];
+  recordUsage(usage: LanguageModelUsage | undefined): void;
+  updateExecutionNodeModel(
+    nodeId: string,
+    effectiveModel: string | undefined,
+    overrideModel: string | undefined,
+    effectiveSampling?: EffectiveSamplingMetadata | undefined,
+  ): void;
+  expertTierFor(
+    task: TaskNode,
+    purpose: LanguageModelPurpose | undefined,
+  ): string | undefined;
+  getQualityLoopDecision(nodeId: string): QualityLoopManualDecision | undefined;
+}
