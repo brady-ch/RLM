@@ -1,13 +1,26 @@
 # Recursive Language Model CLI
 
-## Current Milestone
+## Current Milestone: v1.8 Rust Runtime Migration
 
-**Status:** v1.7 shipped — planning next milestone via `/gsd-new-milestone`
+**Goal:** Replace the Node runtime with an embedded Rust core while keeping the TypeScript/React UI in Tauri; desktop ships without bundled Node.
+
+**Target features:**
+- Rust workspace (`rlm-core`) with CI gate equivalent to `npm run check`
+- Control server + session/graph APIs preserving existing UI HTTP/SSE contract
+- Recursive engine + graph executor ported from `domain/` and `ports/` trait map
+- File-based persistence (run state, session memory, preferences)
+- Rust vector index (HNSW/USEARCH) replacing JSON linear scan — per rust-vector-index seed
+- Model host adapters (Ollama HTTP; HF catalog/download/GGUF registry; no Python)
+- Rust CLI binary replacing Node entrypoint
+- Tauri embeds Rust server directly — no managed Node child process
+
+**Explicitly out of v1.8:** fine-tuning/LoRA, React UI rewrite, Python runtime, replacing Ollama on day one
 
 ## Current State
 
 **Latest shipped milestone:** v1.7 — Adapter & Plugin Taxonomy  
-**Status:** Shipped 2026-05-22
+**Current milestone:** v1.8 — Rust Runtime Migration (planning)  
+**Status:** Defining requirements
 
 v1.7 shipped concern-first taxonomy and full plugin manager UX: ARCH-02 boundary fixes and `ExtensionHostPort`; composition and interop wiring under `src/runtime/`; `application/` grouped by execution/graph/memory/plugins/control-server; unified plugin manifest schema with builtin migration to `src/plugins/builtin/`; canonical concern map in AGENTS.md with mirrored tests and strict dependency-cruiser enforcement; shared `PluginRegistryService` for CLI (`rlm plugin *`) and control-server (`/api/plugins/*`); remote HTTPS/git fetch-to-local install; UI plugin panel with CLI-aligned vocabulary and restart semantics. Milestone audit: 38/38 requirements; `npm run check` green with **471** tests (per `v1.7-MILESTONE-AUDIT.md`).
 
@@ -78,14 +91,14 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-_Requirements for the next milestone will be defined via `/gsd-new-milestone`._
+_Requirements for v1.8 are being defined via `/gsd-new-milestone` — see `.planning/REQUIREMENTS.md` once generated._
 
 ### Candidate Future-Milestone Themes
 
 - Product shell convergence: guided composer for first-run/new-workflow, graph workspace as the primary surface, and project/session launcher for durable resume.
-- Multi-runner adapters beyond bundled Ollama, including llama.cpp, vLLM, and cloud APIs.
+- Managed llama.cpp runtime (supervised process, GPU backends) — deferred from v1.8 full Rust port unless scoped in.
+- Multi-runner adapters beyond Ollama (vLLM, cloud APIs) — adapter trait exists; expand after Rust core stable.
 - Release hardening beyond baseline Linux installer: signed/reproducible artifacts, Windows/macOS package builds, GUI clean-machine smoke, and auto-update channel.
-- Developer launcher and local-folder plugin manager.
 
 ### Out of Scope
 
@@ -130,10 +143,13 @@ v1.5 established graph-primary authoring: plan-from-node replaces keyword heuris
 | v1.7 treats plugins as registration/distribution packages distinct from core adapters | Avoids `adapters/` becoming a mixed grab bag as tools and extensions grow; enables auditable capability taxonomy | ✓ Good — v1.7 |
 | Built-in tools migrate to `plugins/builtin/` taxonomy before external plugin APIs harden | Responsibility extraction precedes directory moves per architecture-boundary-cleanup direction | ✓ Good — v1.7 |
 | Full plugin manager includes local-folder and remote fetch-to-local flows | Users install plugins without marketplace or remote execution; fetched plugins become local after download | ✓ Good — v1.7 |
+| Rust runtime replaces Node for orchestration, control server, persistence, and adapters | Remove bundled Node from desktop; UI stays TS/React; strangler port via existing HTTP/SSE contract | — Pending v1.8 |
+| Ollama remains default inference host during Rust migration | Avoid day-one llama.cpp bundling; HF path is download/registry + handoff | — Pending v1.8 |
+| Fine-tuning / LoRA explicitly out of scope | Compute and ecosystem cost; separate milestone if ever | — Deferred |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-22 after v1.7 milestone*
+*Last updated: 2026-05-22 — v1.8 Rust Runtime Migration planning*
