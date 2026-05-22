@@ -4,58 +4,106 @@ export default {
     {
       name: "no-domain-to-application",
       severity: "warn",
-      comment: "Domain layer must not depend on application orchestration.",
+      comment:
+        "Domain layer must not depend on application orchestration (AGENTS.md concern map).",
       from: { path: "^src/domain" },
       to: { path: "^src/application" },
     },
     {
       name: "no-domain-to-adapters",
       severity: "warn",
-      comment: "Domain layer must not depend on concrete adapters.",
+      comment:
+        "Domain layer must not depend on concrete adapters (AGENTS.md concern map).",
       from: { path: "^src/domain" },
       to: { path: "^src/adapters" },
     },
     {
       name: "no-domain-to-cli",
       severity: "warn",
-      comment: "Domain layer must not depend on CLI / I-O surface.",
+      comment:
+        "Domain layer must not depend on CLI / I-O surface (AGENTS.md concern map).",
       from: { path: "^src/domain" },
       to: { path: "^src/cli" },
     },
     {
       name: "no-ports-to-application",
       severity: "warn",
-      comment: "Ports (interfaces) must not reference application implementations.",
+      comment:
+        "Ports (interfaces) must not reference application implementations (AGENTS.md concern map).",
       from: { path: "^src/ports" },
       to: { path: "^src/application" },
     },
     {
       name: "no-ports-to-adapters",
       severity: "warn",
-      comment: "Ports must not reference adapter implementations.",
+      comment:
+        "Ports must not reference adapter implementations (AGENTS.md concern map).",
       from: { path: "^src/ports" },
       to: { path: "^src/adapters" },
     },
     {
       name: "no-ports-to-cli",
       severity: "warn",
-      comment: "Ports must not reference CLI modules.",
+      comment:
+        "Ports must not reference CLI modules (AGENTS.md concern map).",
       from: { path: "^src/ports" },
       to: { path: "^src/cli" },
     },
     {
       name: "no-adapters-to-application",
       severity: "warn",
-      comment: "Adapters must implement ports/domain without importing application orchestration.",
+      comment:
+        "Adapters must implement ports/domain without importing application orchestration (AGENTS.md concern map).",
       from: { path: "^src/adapters" },
       to: { path: "^src/application" },
     },
     {
       name: "no-adapters-to-cli",
       severity: "warn",
-      comment: "Adapters must not depend on CLI.",
+      comment:
+        "Adapters must not depend on CLI (AGENTS.md concern map).",
       from: { path: "^src/adapters" },
       to: { path: "^src/cli" },
+    },
+    {
+      name: "no-plugins-to-application",
+      severity: "warn",
+      comment:
+        "Plugins register through ExtensionHostPort, not application orchestration (AGENTS.md concern map).",
+      from: { path: "^src/plugins" },
+      to: { path: "^src/application" },
+    },
+    {
+      name: "no-plugins-to-cli",
+      severity: "warn",
+      comment:
+        "Plugins must not import CLI modules (AGENTS.md concern map).",
+      from: { path: "^src/plugins" },
+      to: { path: "^src/cli" },
+    },
+    {
+      name: "no-plugins-to-domain",
+      severity: "warn",
+      comment:
+        "Plugins register tools; domain recursion policy stays separate (AGENTS.md concern map).",
+      from: { path: "^src/plugins" },
+      to: { path: "^src/domain" },
+    },
+    {
+      name: "no-runtime-to-cli",
+      severity: "warn",
+      comment:
+        "Runtime composition/interop stays below CLI; inject CLI helpers at bootstrap (AGENTS.md concern map).",
+      from: { path: "^src/runtime" },
+      to: { path: "^src/cli" },
+    },
+    {
+      name: "no-builtin-plugin-to-external-loader",
+      severity: "warn",
+      comment:
+        "Built-in plugins must not depend on external install machinery (AGENTS.md concern map).",
+      from: { path: "^src/plugins/builtin" },
+      to: { path: "^src/plugins/external" },
     },
   ],
   options: {
