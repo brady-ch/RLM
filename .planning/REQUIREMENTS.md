@@ -15,7 +15,7 @@
 
 - [ ] **TAXN-01**: Publish a canonical concern map in `AGENTS.md` covering `src/` top-level areas (`cli`, `application`, `domain`, `ports`, `runtime`, `plugins`, `adapters`) and how `tests/`, `ui/`, and `scripts/` relate to each concern.
 - [ ] **TAXN-02**: `src/application/` groups modules by concern — at minimum `execution/`, `graph/`, `memory/`, `plugins/` (manager), and `control-server/` — with flat root files reduced to facades or moved behind concern folders.
-- [ ] **TAXN-03**: `src/runtime/` owns composition and interop wiring (`composition/`, `interop/`); `application/` no longer hosts `extension-host`, `runtime-composition`, `interop-runtime`, or `mcp-skill-runtime` after extraction.
+- [x] **TAXN-03**: `src/runtime/` owns composition and interop wiring (`composition/`, `interop/`); `application/` no longer hosts `extension-host`, `runtime-composition`, `interop-runtime`, or `mcp-skill-runtime` after extraction.
 - [ ] **TAXN-04**: `src/plugins/` owns registration/distribution packages; `src/adapters/` retains infrastructure port implementations only (persistence, model hosts, tracing) — no new tool implementations land in `adapters/tools/` after migration.
 - [ ] **TAXN-05**: `tests/` layout mirrors the stabilized `src/` concern map (e.g. `tests/runtime/`, `tests/plugins/`, `tests/application/graph/`) with shared helpers remaining in `tests/helpers/`.
 - [ ] **TAXN-06**: dependency-cruiser rules encode the concern taxonomy (forbidden arcs for `plugins→application`, `runtime→cli`, `domain→application`, etc.) and are documented alongside `AGENTS.md`.
@@ -24,9 +24,9 @@
 
 - [ ] **RUNT-01**: Fix three ARCH-02 baseline violations — `domain/agents.ts` import direction, `ports/extension-port.ts` coupling to application, and `content-tree` policy colocated with its owning concern (not orphaned in application root).
 - [ ] **RUNT-02**: Introduce `ExtensionHostPort` (or equivalent) in `ports/` so plugin registration contracts do not import application types.
-- [ ] **RUNT-03**: Move `buildRuntimeContext`, `ExtensionHost`, and tool/model factory wiring to `src/runtime/composition/`; bootstrap becomes a thin re-export facade.
-- [ ] **RUNT-04**: Move MCP/skill interop wiring to `src/runtime/interop/` with preserved init order: plugins → interop → tools resolver → agent registry → models.
-- [ ] **RUNT-05**: Composition init-order test verifies bootstrap sequence without full CLI or control-server spawn.
+- [x] **RUNT-03**: Move `buildRuntimeContext`, `ExtensionHost`, and tool/model factory wiring to `src/runtime/composition/`; bootstrap becomes a thin re-export facade.
+- [x] **RUNT-04**: Move MCP/skill interop wiring to `src/runtime/interop/` with preserved init order: plugins → interop → tools resolver → agent registry → models.
+- [x] **RUNT-05**: Composition init-order test verifies bootstrap sequence without full CLI or control-server spawn.
 
 ### Plugin Taxonomy
 
@@ -109,15 +109,15 @@
 | REG-02 | Phase 43 | Pending |
 | TAXN-01 | Phase 47 | Pending |
 | TAXN-02 | Phase 45 | Pending |
-| TAXN-03 | Phase 44 | Pending |
+| TAXN-03 | Phase 44 | Complete |
 | TAXN-04 | Phase 46 | Pending |
 | TAXN-05 | Phase 47 | Pending |
 | TAXN-06 | Phase 47 | Pending |
 | RUNT-01 | Phase 43 | Pending |
 | RUNT-02 | Phase 43 | Pending |
-| RUNT-03 | Phase 44 | Pending |
-| RUNT-04 | Phase 44 | Pending |
-| RUNT-05 | Phase 44 | Pending |
+| RUNT-03 | Phase 44 | Complete |
+| RUNT-04 | Phase 44 | Complete |
+| RUNT-05 | Phase 44 | Complete |
 | PLUG-01 | Phase 46 | Pending |
 | PLUG-02 | Phase 46 | Pending |
 | PLUG-03 | Phase 46 | Pending |

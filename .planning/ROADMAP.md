@@ -24,7 +24,7 @@
 **Milestone Goal:** Concern-first taxonomy across `src/` and the project; runtime/interop split; plugin manifest + builtin migration; dependency-cruiser ratchet; local and remote plugin manager (CLI + UI).
 
 - [x] **Phase 43: Boundary Fixes** — Fix three ARCH-02 violations; introduce ExtensionHostPort; establish regression gate (1/1 plan) — 2026-05-22
-- [ ] **Phase 44: Runtime & Interop Split** — Move composition and MCP/skill interop to `src/runtime/` with init-order test
+- [x] **Phase 44: Runtime & Interop Split** — Move composition and MCP/skill interop to `src/runtime/` with init-order test (1/1 plan) — 2026-05-22
 - [ ] **Phase 45: Application Concern Grouping** — Group `application/` by execution, graph, memory, plugins, control-server
 - [ ] **Phase 46: Plugin Taxonomy & Builtin Migration** — Manifest schema, PluginLoader, builtin migration, legacy YAML compat
 - [ ] **Phase 47: Concern Map, Tests Mirror & Depcruise Rules** — AGENTS.md taxonomy, mirrored tests, new path rules
@@ -81,7 +81,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   3. `ExtensionHostPort` interface exists in `ports/`; `ExtensionHost` implements it without `ports/` importing application modules
   4. `content-tree` policy/helpers sit with their owning concern (adapter-local or domain-pure), not orphaned in application root
   5. All existing tests pass; CLI flags, config semantics, and graph/session/memory flows behave as before
-**Plans**: TBD
+**Plans**: 1/1 complete
 
 ### Phase 44: Runtime & Interop Split
 **Goal**: Composition and interop wiring live in `src/runtime/`; application no longer hosts extension-host or interop modules.
@@ -93,7 +93,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   3. Runtime init order preserved: plugins → interop → tools resolver → agent registry → models
   4. Composition init-order unit test verifies bootstrap sequence without spawning full CLI or control-server
   5. Contributor can locate all composition and interop wiring from `src/runtime/` per concern map intent
-**Plans**: TBD
+**Plans**: 1/1 complete
 
 ### Phase 45: Application Concern Grouping
 **Goal**: `application/` modules are grouped by domain concern with flat root reduced to facades.
@@ -187,7 +187,7 @@ Phases execute in numeric order: 43 → 44 → … → 51
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 43. Boundary Fixes | v1.7 | 1/1 | Complete | 2026-05-22 |
-| 44. Runtime & Interop Split | v1.7 | 0/TBD | Not started | - |
+| 44. Runtime & Interop Split | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 45. Application Concern Grouping | v1.7 | 0/TBD | Not started | - |
 | 46. Plugin Taxonomy & Builtin Migration | v1.7 | 0/TBD | Not started | - |
 | 47. Concern Map, Tests Mirror & Depcruise Rules | v1.7 | 0/TBD | Not started | - |
