@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
-import { FileSessionStore } from "../src/adapters/file-session-store.js";
+import { FileSessionStore } from "../src/adapters/index.js";
 
 test("file session store saves complete bundle with memory and vector contract sections", async () => {
   const dir = await mkdtemp(join(tmpdir(), "rlm-sessions-"));

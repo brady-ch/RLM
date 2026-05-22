@@ -3,9 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { FileMemoryStore } from "../src/adapters/file-memory-store.js";
-import { FileSessionStore } from "../src/adapters/file-session-store.js";
-import { FileVectorIndex } from "../src/adapters/file-vector-index.js";
+import { FileMemoryStore, FileSessionStore, FileVectorIndex } from "../src/adapters/index.js";
 import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
 import {
   exportAndSaveGraphWorkflow,

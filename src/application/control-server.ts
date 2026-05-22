@@ -8,8 +8,7 @@ import type { ModelLibraryService } from "./model-library.js";
 import type { MemoryResolver } from "./memory-resolver.js";
 import type { ApprovalMode, DeleteStrategy } from "../domain/types.js";
 import type { SavedSessionPayload, SessionStorePort } from "../ports/session-store-port.js";
-import type { FileMemoryStore } from "../adapters/file-memory-store.js";
-import type { FileVectorIndex } from "../adapters/file-vector-index.js";
+import type { FileMemoryStore, FileVectorIndex } from "../adapters/index.js";
 import {
   buildSavedSessionPayload,
   restoreGraphWorkflowMetadata,

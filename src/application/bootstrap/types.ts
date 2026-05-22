@@ -1,8 +1,10 @@
-import type { FileMemoryStore } from "../../adapters/file-memory-store.js";
-import type { FileRunStateStore } from "../../adapters/file-run-state-store.js";
-import type { FileSessionStore } from "../../adapters/file-session-store.js";
-import type { FileVectorIndex } from "../../adapters/file-vector-index.js";
-import type { OllamaEmbeddingModel } from "../../adapters/ollama-embedding-model.js";
+import type {
+  FileMemoryStore,
+  FileRunStateStore,
+  FileSessionStore,
+  FileVectorIndex,
+  OllamaEmbeddingModel,
+} from "./adapters.js";
 import type { CliOptions } from "../../cli/args.js";
 import type { ShutdownController } from "../../cli/shutdown.js";
 import type { RecursiveModelConfig, ExecutionControl } from "../../domain/types.js";

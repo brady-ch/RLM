@@ -1,4 +1,4 @@
-import type { FileSessionStore } from "../../adapters/file-session-store.js";
+import type { FileSessionStore } from "../../adapters/index.js";
 import {
   exportAndSaveGraphWorkflow,
   loadGraphWorkflow,

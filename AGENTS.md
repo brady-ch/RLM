@@ -1,6 +1,6 @@
 # Agents and architecture
 
-This repository is a **recursive language model CLI**: orchestration in `src/application/`, recursion policy in `src/domain/`, I/O and CLI in `src/cli/`, and boundaries in `src/ports/` with adapters under `src/adapters/`.
+This repository is a **recursive language model CLI**: orchestration in `src/application/`, recursion policy in `src/domain/`, I/O and CLI in `src/cli/`, and boundaries in `src/ports/` with adapters under `src/adapters/` (`tools/`, `persistence/`, `models/`).
 
 ## Layout
 
@@ -17,7 +17,7 @@ This repository is a **recursive language model CLI**: orchestration in `src/app
 | [`src/domain/recursive-language-model.ts`](src/domain/recursive-language-model.ts) | Core recursion: depth, classify, decompose, solve, summarize, synthesize; enforces `maxModelCalls` and tool rounds. |
 | [`src/domain/types.ts`](src/domain/types.ts) | Shared config and result types. |
 | [`src/ports/`](src/ports/) | Interfaces: language model, tools, trace, runtime logger. |
-| [`src/adapters/`](src/adapters/) | Ollama model adapter, shell/file/web/search tools. |
+| [`src/adapters/`](src/adapters/) | Model hosts, tools, persistence: `tools/`, `persistence/`, `models/`; barrel `src/adapters/index.ts`. |
 | [`tests/`](tests/) | Integration-style tests for CLI parsing, engine, workflows. |
 
 ## Extending

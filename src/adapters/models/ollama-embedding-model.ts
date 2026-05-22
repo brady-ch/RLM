@@ -1,4 +1,4 @@
-import type { EmbeddingPort } from "../ports/embedding-port.js";
+import type { EmbeddingPort } from "../../ports/embedding-port.js";
 
 export class OllamaEmbeddingModel implements EmbeddingPort {
   private readonly baseUrl: string;

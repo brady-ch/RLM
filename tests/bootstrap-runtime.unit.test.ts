@@ -3,8 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { FileMemoryStore } from "../src/adapters/file-memory-store.js";
-import { FileSessionStore } from "../src/adapters/file-session-store.js";
+import { FileMemoryStore, FileSessionStore } from "../src/adapters/index.js";
 import { buildRuntimeContext } from "../src/application/bootstrap/index.js";
 import {
   DEFAULT_PROJECT_CONFIG,

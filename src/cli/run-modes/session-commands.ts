@@ -1,5 +1,4 @@
-import type { FileMemoryStore } from "../../adapters/file-memory-store.js";
-import type { FileSessionStore } from "../../adapters/file-session-store.js";
+import type { FileMemoryStore, FileSessionStore } from "../../adapters/index.js";
 import { MemoryResolver } from "../../application/memory-resolver.js";
 import type { CliOptions } from "../args.js";
 

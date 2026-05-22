@@ -19,9 +19,14 @@ import type {
   RuntimeMemory,
 } from "../src/domain/types.js";
 import type { ToolExecutionResult, ToolPort } from "../src/ports/tool-port.js";
-import { InMemoryTrace } from "../src/adapters/in-memory-trace.js";
-import { GuardedShellTool } from "../src/adapters/guarded-shell-tool.js";
-import { WorkspaceFileWriteTool } from "../src/adapters/workspace-file-write-tool.js";
+import {
+  FileMemoryStore,
+  FileRunStateStore,
+  FileSessionStore,
+  GuardedShellTool,
+  InMemoryTrace,
+  WorkspaceFileWriteTool,
+} from "../src/adapters/index.js";
 import { createAgentRegistry, selectAgent } from "../src/application/agent-registry.js";
 import { loadProjectConfig, resolveRuntimeConfig } from "../src/application/project-config.js";
 import { MemoryManager } from "../src/application/memory-manager.js";
@@ -38,9 +43,6 @@ import { createUiExecutionRunner } from "../src/application/ui-execution-runner.
 import { parseArgs } from "../src/cli/args.js";
 import { renderResult } from "../src/cli/render.js";
 import type { RuntimeLogEvent, RuntimeLogger } from "../src/ports/runtime-logger-port.js";
-import { FileRunStateStore } from "../src/adapters/file-run-state-store.js";
-import { FileSessionStore } from "../src/adapters/file-session-store.js";
-import { FileMemoryStore } from "../src/adapters/file-memory-store.js";
 import { MemoryResolver } from "../src/application/memory-resolver.js";
 import type { PlannedChildSpec } from "../src/application/graph-planner.js";
 

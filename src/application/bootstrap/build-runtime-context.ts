@@ -1,6 +1,4 @@
-import { FileRunStateStore } from "../../adapters/file-run-state-store.js";
-import { FileVectorIndex } from "../../adapters/file-vector-index.js";
-import { OllamaEmbeddingModel } from "../../adapters/ollama-embedding-model.js";
+import { FileRunStateStore, FileVectorIndex, OllamaEmbeddingModel } from "./adapters.js";
 import { ExtensionHost } from "../extension-host.js";
 import {
   CentralAtomicSequenceAllocator,

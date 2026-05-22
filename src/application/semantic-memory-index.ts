@@ -1,6 +1,6 @@
 import type { EmbeddingPort } from "../ports/embedding-port.js";
 import type { MemoryStorePort } from "../ports/memory-store-port.js";
-import { FileVectorIndex, type VectorIndexRecord } from "../adapters/file-vector-index.js";
+import { FileVectorIndex, type VectorIndexRecord } from "../adapters/index.js";
 
 export interface RetrievalHit {
   id: string;

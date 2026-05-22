@@ -1,7 +1,7 @@
 [
   {
     "type": "dependency",
-    "from": "src/adapters/web-fetch-tool.ts",
+    "from": "src/adapters/tools/web-fetch-tool.ts",
     "to": "src/application/content-tree.ts",
     "unresolvedTo": "../application/content-tree.js",
     "dependencyTypes": [

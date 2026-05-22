@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSearchQuery } from "../src/adapters/search-query.js";
-import { WebFetchTool } from "../src/adapters/web-fetch-tool.js";
-import { WebSearchTool, parseUddgLines } from "../src/adapters/web-search-tool.js";
+import {
+  WebFetchTool,
+  WebSearchTool,
+  buildSearchQuery,
+  parseUddgLines,
+} from "../src/adapters/index.js";
 import {
   analyzeHtmlContent,
   stripFluffWords,

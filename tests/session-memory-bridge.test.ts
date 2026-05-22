@@ -3,9 +3,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
-import { FileMemoryStore } from "../src/adapters/file-memory-store.js";
-import { FileVectorIndex, type VectorIndexRecord } from "../src/adapters/file-vector-index.js";
-import { FileSessionStore } from "../src/adapters/file-session-store.js";
+import {
+  FileMemoryStore,
+  FileSessionStore,
+  FileVectorIndex,
+  type VectorIndexRecord,
+} from "../src/adapters/index.js";
 import {
   buildSavedSessionPayload,
   readRunIdFromPayload,

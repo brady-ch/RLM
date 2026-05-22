@@ -9,7 +9,7 @@ import type {
   SavedSessionVerification,
   SaveSessionRequest,
   SessionStorePort,
-} from "../ports/session-store-port.js";
+} from "../../ports/session-store-port.js";
 
 const MANIFEST_VERSION = 1;
 const SECTION_VERSION = 1;

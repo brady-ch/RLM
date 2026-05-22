@@ -1,5 +1,5 @@
-import type { TracePort } from "../ports/trace-port.js";
-import type { TraceEvent } from "../domain/types.js";
+import type { TracePort } from "../../ports/trace-port.js";
+import type { TraceEvent } from "../../domain/types.js";
 
 export class InMemoryTrace implements TracePort {
   private readonly entries: TraceEvent[] = [];

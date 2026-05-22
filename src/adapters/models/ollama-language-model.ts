@@ -8,7 +8,7 @@ import type {
   LanguageModelResponse,
   LanguageModelSamplingOptions,
   LanguageModelUsage,
-} from "../ports/language-model-port.js";
+} from "../../ports/language-model-port.js";
 
 export interface OllamaLanguageModelOptions {
   model: string;

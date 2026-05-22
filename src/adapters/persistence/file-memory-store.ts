@@ -8,7 +8,7 @@ import type {
   MemoryScopePatchRequest,
   MemoryScopePatchResult,
   MemoryStorePort,
-} from "../ports/memory-store-port.js";
+} from "../../ports/memory-store-port.js";
 
 export class FileMemoryStore implements MemoryStorePort {
   private readonly baseDir: string;

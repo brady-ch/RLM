@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { InMemoryTrace } from "../src/adapters/in-memory-trace.js";
+import { InMemoryTrace } from "../src/adapters/index.js";
 import { RecursiveLanguageModel } from "../src/domain/recursive-language-model.js";
 import type {
   LanguageModelCompleteOptions,

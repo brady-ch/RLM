@@ -1,6 +1,4 @@
-import type { VectorIndexRecord } from "../adapters/file-vector-index.js";
-import type { FileMemoryStore } from "../adapters/file-memory-store.js";
-import type { FileVectorIndex } from "../adapters/file-vector-index.js";
+import type { FileMemoryStore, FileVectorIndex, VectorIndexRecord } from "../adapters/index.js";
 import type { MemoryStorePort } from "../ports/memory-store-port.js";
 import type { SavedSessionPayload } from "../ports/session-store-port.js";
 import type { InteractiveExecutionSession } from "./execution-controller.js";

@@ -6,7 +6,7 @@ import type {
 } from "../domain/types.js";
 import type { LanguageModelPort } from "../ports/language-model-port.js";
 import type { ToolPort } from "../ports/tool-port.js";
-import { InMemoryTrace } from "../adapters/in-memory-trace.js";
+import { InMemoryTrace } from "../adapters/index.js";
 import { runRecursivePrompt } from "./run-recursive-prompt.js";
 import type { ProjectConfig } from "./project-config.js";
 import { MemoryManager } from "./memory-manager.js";

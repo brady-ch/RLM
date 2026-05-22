@@ -3,7 +3,7 @@ import type {
   LanguageModelMessage,
   LanguageModelPort,
   LanguageModelResponse,
-} from "../ports/language-model-port.js";
+} from "../../ports/language-model-port.js";
 
 export interface HttpLanguageModelOptions {
   model: string;

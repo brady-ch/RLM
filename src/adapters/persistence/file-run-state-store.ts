@@ -6,7 +6,7 @@ import type {
   RunStateMutationResult,
   RunStateSnapshot,
   RunStateStorePort,
-} from "../ports/run-state-store-port.js";
+} from "../../ports/run-state-store-port.js";
 
 interface FileRunStateStoreOptions {
   baseDir: string;
