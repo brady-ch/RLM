@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Rust Runtime Migration
-status: Human UAT pending (`.deb` smoke, end-to-end desktop workflows)
-last_updated: "2026-05-22T19:45:09.749Z"
-last_activity: 2026-05-22 — All v1.8 phases executed
+status: executing
+last_updated: "2026-05-22T20:29:11.307Z"
+last_activity: 2026-05-22 -- Phase 60.1 planning complete
 progress:
-  total_phases: 18
+  total_phases: 20
   completed_phases: 7
-  total_plans: 7
+  total_plans: 12
   completed_plans: 9
-  percent: 100
+  percent: 75
 ---
 
 # Project State
@@ -20,31 +20,40 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone v1.8 — human UAT for desktop packaging (Phase 60)
+**Current focus:** v1.8 gap closure — session save/reopen and memory preferences routes
 
 ## Current Position
 
 Phase: 60 of 60 (Tauri In-Process + Packaging)
 Plan: 1/1 complete
-Status: Human UAT pending (`.deb` smoke, end-to-end desktop workflows)
-Last activity: 2026-05-22 — All v1.8 phases executed
+Status: Ready to execute
+Last activity: 2026-05-22 -- Phase 60.1 planning complete
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
-**Velocity (v1.8):** Phases 52–60 complete; 67+ Rust integration tests
+**Velocity (v1.8):** Phases 52–60 complete; 67+ Rust integration tests; Phase 60 human UAT passed
 
 ## Accumulated Context
 
-v1.8 Rust runtime migration complete in code: control server strangler, persistence, engine, graph, vector index, model library, plugins, CLI parity gate, Tauri in-process.
+v1.8 Rust runtime migration complete: control server strangler, persistence, engine, graph, vector index, model library, plugins, CLI parity gate, Tauri in-process, desktop packaging UAT.
+
+### Roadmap Evolution
+
+- Phase 61 added: UI Shell Rewrite — node-centric workflow + Advanced hub (from `/gsd-explore` 2026-05-22)
+- Phase 60.1 inserted after Phase 60: Close v1.8 milestone gaps — session routes, memory preferences, run-state wiring, verification backfill (URGENT)
 
 ### Blockers/Concerns
 
-- Phase 60 `.deb` smoke and REG-01 desktop UAT require Linux host with Tauri build deps (glib, webkit, dbus)
+- REG-01 / PERS-01: Rust control server missing session save/open routes (UAT/code conflict)
+- PERS-02: Memory preferences POST/DELETE routes missing
+- PERS-03: Run-state store not wired to execution engine
+- Phases 53–56 missing VERIFICATION.md artifacts
 
 ## Operator Next Steps
 
-1. Run desktop UAT on Linux with Tauri deps installed
-2. `/gsd-verify-work` for Phase 60
-3. `/gsd-audit-milestone` then `/gsd-complete-milestone` when UAT passes
+1. Plan gap-closure phase (session routes, memory preferences, optional run-state wiring)
+2. Re-verify REG-01 after wiring
+3. `/gsd-complete-milestone v1.8` when gaps accepted or closed
+3. `/gsd-plan-phase 61` when ready to start UI shell rewrite
