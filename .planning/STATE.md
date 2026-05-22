@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Rust Runtime Hardening
 status: executing
-last_updated: "2026-05-22T22:23:34.008Z"
-last_activity: 2026-05-22 -- Phase 67 planning complete
+last_updated: "2026-05-22T22:25:17.435Z"
+last_activity: 2026-05-22 -- Phase 68 planning complete
 progress:
   total_phases: 10
-  completed_phases: 5
-  total_plans: 7
-  completed_plans: 5
-  percent: 71
+  completed_phases: 6
+  total_plans: 9
+  completed_plans: 7
+  percent: 78
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone v1.9 — Phase 66 CLI Full Parity next
+**Current focus:** Phase 67 — pack-03-ci-smoke
 
 ## Current Position
 
-Phase: 67 — PACK-03 CI Smoke (planned)
-Plan: 0/2 complete
+Phase: 67 (pack-03-ci-smoke) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-05-22 -- Phase 67 planning complete
+Last activity: 2026-05-22 -- Phase 68 planning complete
 
 ## Performance Metrics
 
