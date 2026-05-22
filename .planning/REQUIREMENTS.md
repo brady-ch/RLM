@@ -9,12 +9,12 @@
 ### Regression & UI Parity
 
 - [ ] **REG-01**: Phase 61 UI regressions are closed — pause-auto-approvals control, Hugging Face model download wiring, and REG-01 human UAT checklist signed.
-- [ ] **REG-02**: Combined CI gate stays green: `npm run check`, `npm run check:rust`, and parity fixtures throughout milestone execution.
+- [x] **REG-02**: Combined CI gate stays green: `npm run check`, `npm run check:rust`, and parity fixtures throughout milestone execution.
 
 ### Recursive Engine
 
-- [ ] **ENGN-01**: Rust quality loop matches TypeScript orchestrator — full draft/critique/refine/gate/best-of phases, iteration metadata, per-phase model routing, budget behavior, and golden parity tests.
-- [ ] **ENGN-02**: Session readiness JSON shape matches TypeScript structured object (no string `"empty"` drift on draft graphs).
+- [x] **ENGN-01**: Rust quality loop matches TypeScript orchestrator — full draft/critique/refine/gate/best-of phases, iteration metadata, per-phase model routing, budget behavior, and golden parity tests.
+- [x] **ENGN-02**: Session readiness JSON shape matches TypeScript structured object (no string `"empty"` drift on draft graphs).
 
 ### Persistence & Resume
 
@@ -71,9 +71,9 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | REG-01 | Phase 62 | Pending |
-| REG-02 | All phases | Pending |
-| ENGN-01 | Phase 63 | Pending |
-| ENGN-02 | Phase 63 | Pending |
+| REG-02 | All phases | Complete |
+| ENGN-01 | Phase 63 | Complete |
+| ENGN-02 | Phase 63 | Complete |
 | PERS-01 | Phase 64 | Pending |
 | PERS-02 | Phase 64 | Pending |
 | PERS-03 | Phase 64 | Pending |
