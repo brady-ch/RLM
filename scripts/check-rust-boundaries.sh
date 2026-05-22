@@ -110,17 +110,23 @@ layer_from_path() {
   fi
   if [[ "${file}" == *"/rlm-core/src/"* ]]; then
     rel="${file#*rlm-core/src/}"
+    if [[ "${rel}" != */* ]]; then
+      case "${rel}" in
+        server.rs) echo "server"; return ;;
+        lib.rs) echo "lib"; return ;;
+      esac
+    fi
     echo "${rel%%/*}"
     return
   fi
   echo "unknown"
 }
 
-# Strip #[cfg(test)] mod tests { ... } including nested braces (production scan only).
+# Strip #[cfg(test)] mod <name> { ... } including nested braces (production scan only).
 strip_test_modules() {
   awk '
     BEGIN { depth=0; skip=0 }
-    /#\[cfg\(test\)\]/ { if (getline nextline) { if (nextline ~ /^[[:space:]]*mod[[:space:]]+tests/) { skip=1; depth=0; next } else { print "#[cfg(test)]"; print nextline } } else { print } next }
+    /#\[cfg\(test\)\]/ { if (getline nextline) { if (nextline ~ /^[[:space:]]*mod[[:space:]]+[a-zA-Z_][a-zA-Z0-9_]*/) { skip=1; depth=0; next } else { print "#[cfg(test)]"; print nextline } } else { print } next }
     skip {
       for (i=1;i<=length($0);i++) {
         c=substr($0,i,1)
@@ -135,19 +141,19 @@ strip_test_modules() {
 
 import_layers_from_file() {
   local file="$1"
-  strip_test_modules < "${file}" | grep -E '^[[:space:]]*use[[:space:]]+(crate|rlm_core)::' || true
+  strip_test_modules < "${file}" | grep -E '^[[:space:]]*(pub[[:space:]]+)?use[[:space:]]+(crate|rlm_core)::' || true
 }
 
 target_layer_from_use() {
   local use_line="$1"
   local rest=""
-  if [[ "${use_line}" =~ use[[:space:]]+crate::([^:;]+) ]]; then
-    rest="${BASH_REMATCH[1]}"
+  if [[ "${use_line}" =~ ^[[:space:]]*(pub[[:space:]]+)?use[[:space:]]+crate::([^:;]+) ]]; then
+    rest="${BASH_REMATCH[2]}"
     echo "${rest%%::*}"
     return
   fi
-  if [[ "${use_line}" =~ use[[:space:]]+rlm_core::([^:;]+) ]]; then
-    rest="${BASH_REMATCH[1]}"
+  if [[ "${use_line}" =~ ^[[:space:]]*(pub[[:space:]]+)?use[[:space:]]+rlm_core::([^:;]+) ]]; then
+    rest="${BASH_REMATCH[2]}"
     echo "${rest%%::*}"
     return
   fi

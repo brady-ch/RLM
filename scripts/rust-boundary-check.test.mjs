@@ -36,6 +36,24 @@ test("fails with no-domain-to-persistence on domain fixture import", () => {
   assert.match(combined, /no-domain-to-persistence/);
 });
 
+test("fails with no-persistence-to-application on pub use fixture", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "rlm-boundary-"));
+  const rules = path.join(REPO_ROOT, "scripts", "rust-boundary-rules.toml");
+  const baseline = path.join(REPO_ROOT, "scripts", "rust-boundary-baseline.json");
+  fs.mkdirSync(path.join(tmp, "scripts"), { recursive: true });
+  fs.mkdirSync(path.join(tmp, "crates/rlm-core/src/persistence"), { recursive: true });
+  fs.copyFileSync(rules, path.join(tmp, "scripts/rust-boundary-rules.toml"));
+  fs.writeFileSync(path.join(tmp, "scripts/rust-boundary-baseline.json"), "[]\n");
+  fs.writeFileSync(
+    path.join(tmp, "crates/rlm-core/src/persistence/config.rs"),
+    "pub use crate::application::config::LoadedProjectConfig;\n",
+  );
+  const result = runScript(tmp, ["--strict"]);
+  assert.notEqual(result.status, 0);
+  const combined = `${result.stdout}\n${result.stderr}`;
+  assert.match(combined, /no-persistence-to-application/);
+});
+
 test("passes on production repo scan with baseline", () => {
   const result = runScript(REPO_ROOT);
   assert.equal(
