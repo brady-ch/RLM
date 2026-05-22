@@ -1,20 +1,17 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 
 use crate::domain::recursion::{
-    run_completion_with_tool_rounds, run_quality_loop, ModelCompletionHost, QualityLoopHost,
+    ModelCompletionHost, QualityLoopHost,
 };
 use crate::domain::recursion::preview;
 use crate::domain::types::{
-    ChatMessage, ExecutionEvent, ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail,
-    NodeApprovalDecision, QualityLoopManualDecision, QualityLoopMetadata, QualityLoopUsageSummary,
+    ChatMessage, ExecutionEvent, ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail, QualityLoopManualDecision, QualityLoopMetadata, QualityLoopUsageSummary,
     RecursiveModelConfig, TaskNode, TokenUsageTrace,
 };
-use crate::ports::{LanguageModel, Tool, Trace};
+use crate::ports::{LanguageModel, Tool};
 
-use super::engine_state::EngineState;
 use super::execution_control::ExecutionControl;
 use super::RecursiveLanguageModel;
 

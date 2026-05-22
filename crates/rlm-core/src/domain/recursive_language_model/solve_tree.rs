@@ -1,22 +1,15 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::domain::recursion::{
-    can_spend_any_model_call, clamp, has_call_reserved_for_direct_answer, is_code_task,
-    limit_prompt, parse_first_integer, preview, remaining_model_calls, run_completion_with_tool_rounds,
-    run_quality_loop, QUALITY_LOOP_PHASES,
+    can_spend_any_model_call, has_call_reserved_for_direct_answer, is_code_task, remaining_model_calls,
 };
 use crate::domain::types::{
-    ChatMessage, DepthMetadata, ExecutionEvent, ExecutionStatus, NodeApprovalDecision,
-    NodeApprovalStatus, QualityLoopMetadata, RecursiveModelConfig, RecursivePromptMetadata,
-    RecursivePromptResult, SolvedTask, TaskNode,
+    ExecutionStatus,
+    NodeApprovalStatus, RecursiveModelConfig, SolvedTask, TaskNode,
 };
-use crate::ports::{LanguageModel, Tool, Trace};
 
-use super::engine_hosts::{EngineHost, QualityLoopHostAdapter};
-use super::engine_state::{empty_metadata, fallback_from_messages_slice, EngineState};
 use super::execution_control::ExecutionControl;
-use super::{RecursiveLanguageModel, DIRECT, RECURSIVE};
+use super::{RecursiveLanguageModel, RECURSIVE};
 
 impl RecursiveLanguageModel {
     pub(crate) async fn solve_inner(

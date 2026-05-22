@@ -1,20 +1,13 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use async_trait::async_trait;
 
 use crate::domain::recursion::{
-    build_live_execution_metadata, can_spend_any_model_call, clamp,
-    has_call_reserved_for_direct_answer, is_code_task, limit_prompt, parse_first_integer, preview,
-    remaining_model_calls, run_completion_with_tool_rounds, run_quality_loop, ModelCompletionHost,
-    QualityLoopHost, QUALITY_LOOP_PHASES,
+    limit_prompt,
+    QualityLoopHost,
 };
 use crate::domain::types::{
-    ChatMessage, DepthMetadata, ExecutionEvent, ExecutionGraphEdge, ExecutionGraphNode,
-    ExecutionStatus, ExecutionStatusUpdateDetail, NodeApprovalDecision, NodeApprovalStatus,
-    QualityLoopManualDecision, QualityLoopMetadata, QualityLoopUsageSummary, RecursiveModelConfig,
-    RecursivePromptMetadata, RecursivePromptResult, SolvedTask, TaskNode, TokenUsageTrace,
-    TraceEvent,
+    ExecutionStatus, RecursiveModelConfig, RecursivePromptResult, TaskNode, TokenUsageTrace,
 };
 use crate::ports::{LanguageModel, Tool, Trace};
 
@@ -29,7 +22,6 @@ mod execution_control;
 mod orchestrator_phases;
 mod solve_tree;
 
-use engine_hosts::{EngineHost, QualityLoopHostAdapter};
 use engine_state::{empty_metadata, EngineState};
 
 pub use execution_control::ExecutionControl;

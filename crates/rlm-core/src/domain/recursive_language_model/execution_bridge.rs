@@ -1,17 +1,14 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::domain::recursion::{
     build_live_execution_metadata, preview, remaining_model_calls,
 };
 use crate::domain::types::{
-    ExecutionEvent, ExecutionGraphEdge, ExecutionGraphNode, ExecutionStatus,
-    ExecutionStatusUpdateDetail, NodeApprovalDecision, NodeApprovalStatus, QualityLoopMetadata,
+    ExecutionEvent, ExecutionGraphEdge, ExecutionGraphNode, ExecutionStatus, NodeApprovalDecision, NodeApprovalStatus, QualityLoopMetadata,
     QualityLoopUsageSummary, RecursiveModelConfig, RecursivePromptResult, TaskNode, TraceEvent,
 };
-use crate::ports::{LanguageModel, Trace};
+use crate::ports::Trace;
 
-use super::engine_state::EngineState;
 use super::execution_control::ExecutionControl;
 use super::RecursiveLanguageModel;
 
