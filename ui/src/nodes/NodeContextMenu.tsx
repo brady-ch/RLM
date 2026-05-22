@@ -32,10 +32,7 @@ export function NodeContextMenu({
 }: NodeContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [graphModal, setGraphModal] = useState<
-    | null
-    | { kind: "add-child" }
-    | { kind: "connect-parent" }
-    | { kind: "delete-subtree" }
+    null | { kind: "add-child" } | { kind: "connect-parent" } | { kind: "delete-subtree" }
   >(null);
   const editable =
     node.status === "planned" || node.status === "ready" || node.status === "awaiting_approval";
@@ -64,7 +61,14 @@ export function NodeContextMenu({
     };
   }, [open, onClose]);
 
-  if (!open || !setErrorMessage || !refresh) {
+  if (!setErrorMessage || !refresh) {
+    return null;
+  }
+
+  const showMenu = open;
+  const showGraphModal = graphModal !== null;
+
+  if (!showMenu && !showGraphModal) {
     return null;
   }
 
@@ -98,150 +102,154 @@ export function NodeContextMenu({
 
   return (
     <>
-    <div
-      ref={menuRef}
-      className="node-context-menu"
-      role="menu"
-      style={{ position: "fixed", top: y, left: x, zIndex: 1000 }}
-    >
-      <div className="node-context-menu-section" role="presentation">
-        <span className="node-context-menu-label">Plan</span>
-        <button type="button" role="menuitem" disabled={!editable} onClick={planChildren}>
-          Plan children
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          disabled={!editable}
-          onClick={() => run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/breakdown`, {}))}
+      {showMenu ? (
+        <div
+          ref={menuRef}
+          className="node-context-menu"
+          role="menu"
+          style={{ position: "fixed", top: y, left: x, zIndex: 1000 }}
         >
-          Break down
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          disabled={!editable || !exhausted}
-          onClick={() =>
-            run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/extend-budget`, {}))
-          }
-        >
-          Extend budget
-        </button>
-      </div>
-      <div className="node-context-menu-section" role="presentation">
-        <span className="node-context-menu-label">Run</span>
-        <button
-          type="button"
-          role="menuitem"
-          disabled={!waiting}
-          onClick={() =>
-            run(() =>
-              post(`/api/nodes/${encodeURIComponent(node.id)}/approve`, {
-                token: node.approvalToken,
-              }),
-            )
-          }
-        >
-          Approve
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          disabled={!waiting}
-          onClick={() =>
-            run(() =>
-              post(`/api/nodes/${encodeURIComponent(node.id)}/skip`, { token: node.approvalToken }),
-            )
-          }
-        >
-          Skip
-        </button>
-      </div>
-      <div className="node-context-menu-section" role="presentation">
-        <span className="node-context-menu-label">Graph</span>
-        <button
-          type="button"
-          role="menuitem"
-          disabled={!editable}
-          onClick={() => setGraphModal({ kind: "add-child" })}
-        >
-          Add child…
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          disabled={!editable}
-          onClick={() => setGraphModal({ kind: "connect-parent" })}
-        >
-          Connect parent…
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          disabled={!editable}
-          onClick={() => setGraphModal({ kind: "delete-subtree" })}
-        >
-          Delete subtree
-        </button>
-      </div>
-      <div className="node-context-menu-section" role="presentation">
-        <span className="node-context-menu-label">Advanced</span>
-        <button
-          type="button"
-          role="menuitem"
-          onClick={() => {
-            onNavigateAdvancedSettings?.();
-            onClose();
-          }}
-        >
-          Expert overrides…
-        </button>
-      </div>
-    </div>
-    <GraphActionModal
-      open={graphModal?.kind === "add-child"}
-      mode="prompt"
-      title="Add child node"
-      inputLabel="New child prompt"
-      inputPlaceholder="Describe the child task"
-      confirmLabel="Add child"
-      onCancel={closeGraphModal}
-      onSubmit={(newChildPrompt) => {
-        closeGraphModal();
-        run(() =>
-          post("/api/nodes/add", { parentId: node.id, prompt: newChildPrompt }),
-        );
-      }}
-    />
-    <GraphActionModal
-      open={graphModal?.kind === "connect-parent"}
-      mode="prompt"
-      title="Connect parent"
-      inputLabel="Parent node ID"
-      inputPlaceholder="node-id"
-      confirmLabel="Connect"
-      onCancel={closeGraphModal}
-      onSubmit={(parentId) => {
-        closeGraphModal();
-        run(() =>
-          post(`/api/nodes/${encodeURIComponent(node.id)}/connect`, {
-            parentId,
-          }),
-        );
-      }}
-    />
-    <GraphActionModal
-      open={graphModal?.kind === "delete-subtree"}
-      mode="confirm"
-      title="Delete subtree"
-      description={`Delete subtree for ${node.label || node.id}? This cannot be undone.`}
-      confirmLabel="Delete"
-      onCancel={closeGraphModal}
-      onSubmit={() => {
-        closeGraphModal();
-        run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/delete`, {}));
-      }}
-    />
+          <div className="node-context-menu-section" role="presentation">
+            <span className="node-context-menu-label">Plan</span>
+            <button type="button" role="menuitem" disabled={!editable} onClick={planChildren}>
+              Plan children
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!editable}
+              onClick={() =>
+                run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/breakdown`, {}))
+              }
+            >
+              Break down
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!editable || !exhausted}
+              onClick={() =>
+                run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/extend-budget`, {}))
+              }
+            >
+              Extend budget
+            </button>
+          </div>
+          <div className="node-context-menu-section" role="presentation">
+            <span className="node-context-menu-label">Run</span>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!waiting}
+              onClick={() =>
+                run(() =>
+                  post(`/api/nodes/${encodeURIComponent(node.id)}/approve`, {
+                    token: node.approvalToken,
+                  }),
+                )
+              }
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!waiting}
+              onClick={() =>
+                run(() =>
+                  post(`/api/nodes/${encodeURIComponent(node.id)}/skip`, {
+                    token: node.approvalToken,
+                  }),
+                )
+              }
+            >
+              Skip
+            </button>
+          </div>
+          <div className="node-context-menu-section" role="presentation">
+            <span className="node-context-menu-label">Graph</span>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!editable}
+              onClick={() => setGraphModal({ kind: "add-child" })}
+            >
+              Add child…
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!editable}
+              onClick={() => setGraphModal({ kind: "connect-parent" })}
+            >
+              Connect parent…
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!editable}
+              onClick={() => setGraphModal({ kind: "delete-subtree" })}
+            >
+              Delete subtree
+            </button>
+          </div>
+          <div className="node-context-menu-section" role="presentation">
+            <span className="node-context-menu-label">Advanced</span>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onNavigateAdvancedSettings?.();
+                onClose();
+              }}
+            >
+              Expert overrides…
+            </button>
+          </div>
+        </div>
+      ) : null}
+      <GraphActionModal
+        open={graphModal?.kind === "add-child"}
+        mode="prompt"
+        title="Add child node"
+        inputLabel="New child prompt"
+        inputPlaceholder="Describe the child task"
+        confirmLabel="Add child"
+        onCancel={closeGraphModal}
+        onSubmit={(newChildPrompt) => {
+          closeGraphModal();
+          run(() => post("/api/nodes/add", { parentId: node.id, prompt: newChildPrompt }));
+        }}
+      />
+      <GraphActionModal
+        open={graphModal?.kind === "connect-parent"}
+        mode="prompt"
+        title="Connect parent"
+        inputLabel="Parent node ID"
+        inputPlaceholder="node-id"
+        confirmLabel="Connect"
+        onCancel={closeGraphModal}
+        onSubmit={(parentId) => {
+          closeGraphModal();
+          run(() =>
+            post(`/api/nodes/${encodeURIComponent(node.id)}/connect`, {
+              parentId,
+            }),
+          );
+        }}
+      />
+      <GraphActionModal
+        open={graphModal?.kind === "delete-subtree"}
+        mode="confirm"
+        title="Delete subtree"
+        description={`Delete subtree for ${node.label || node.id}? This cannot be undone.`}
+        confirmLabel="Delete"
+        onCancel={closeGraphModal}
+        onSubmit={() => {
+          closeGraphModal();
+          run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/delete`, {}));
+        }}
+      />
     </>
   );
 }

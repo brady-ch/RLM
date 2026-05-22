@@ -31,7 +31,6 @@ import { ExecutionNodeCard } from "../nodes/ExecutionNodeCard";
 const nodeTypes = { execution: ExecutionNodeCard };
 
 export function AppShell() {
-
   const [snapshot, setSnapshot] = useState<SessionSnapshot>({
     graph: { nodes: [], edges: [] },
     status: "planned",
@@ -145,7 +144,11 @@ export function AppShell() {
     void refresh();
     const events = new EventSource("/api/events");
     events.addEventListener("snapshot", (event) => {
-      setSnapshot(JSON.parse((event as MessageEvent).data) as SessionSnapshot);
+      try {
+        setSnapshot(JSON.parse((event as MessageEvent).data) as SessionSnapshot);
+      } catch {
+        void refresh();
+      }
     });
     events.addEventListener("execution", () => {
       void refresh();
@@ -277,7 +280,9 @@ export function AppShell() {
   );
 
   return (
-    <main className={`workflow-shell ${viewMode === "workflow" ? "workflow-mode" : "advanced-mode"}`}>
+    <main
+      className={`workflow-shell ${viewMode === "workflow" ? "workflow-mode" : "advanced-mode"}`}
+    >
       {viewMode === "workflow" ? (
         <>
           <TopBar

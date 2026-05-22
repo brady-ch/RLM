@@ -35,7 +35,9 @@ export function TopBar({
           {uiRunStatusLabels[snapshot.status] ?? snapshot.status}
         </span>
         {snapshot.status === "running" ? (
-          <span className="meta-pill run-variant-pill">Running {activeRunVariant ?? runVariant}</span>
+          <span className="meta-pill run-variant-pill">
+            Running {activeRunVariant ?? runVariant}
+          </span>
         ) : null}
         {activeNode ? (
           <span className="run-active-node">
@@ -48,19 +50,14 @@ export function TopBar({
         ) : null}
       </div>
       <span className="meta-pill">{approvalModeLabel(snapshot.approvalMode)}</span>
-      {snapshot.status === "running" &&
-      snapshot.approvalMode === "initial-plan-recursive" ? (
+      {snapshot.status === "running" && snapshot.approvalMode === "initial-plan-recursive" ? (
         <button
           type="button"
           className="secondary"
           disabled={snapshot.autoApprovalPaused}
           aria-label="Pause future auto-approvals"
           onClick={() =>
-            runAction(
-              setErrorMessage,
-              () => post("/api/pause-future-auto-approvals"),
-              refresh,
-            )
+            runAction(setErrorMessage, () => post("/api/pause-future-auto-approvals"), refresh)
           }
         >
           Pause future auto-approvals
@@ -91,7 +88,11 @@ export function TopBar({
         title="Stop run"
         aria-label="Stop run"
         onClick={() =>
-          runAction(setErrorMessage, () => post("/api/stop", { reason: "stopped from UI" }), refresh)
+          runAction(
+            setErrorMessage,
+            () => post("/api/stop", { reason: "stopped from UI" }),
+            refresh,
+          )
         }
       >
         <Square size={16} aria-hidden />

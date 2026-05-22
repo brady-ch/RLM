@@ -230,4 +230,3 @@ export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
     </div>
   );
 }
-

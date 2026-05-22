@@ -42,24 +42,21 @@ export async function post(path: string, body: Record<string, unknown>) {
   });
   if (!response.ok) {
     const text = await response.text();
-    try {
-      const parsed = JSON.parse(text) as {
-        code?: string;
-        error?: string;
-        message?: string;
-        details?: string;
-        suggestedFix?: string;
-      };
-      const parts = [
-        parsed.code,
-        parsed.error ?? parsed.message,
-        parsed.details,
-        parsed.suggestedFix,
-      ].filter(Boolean);
-      throw new Error(parts.join(" | "));
-    } catch {
-      throw new Error(text);
+    let payload: Record<string, unknown> = {};
+    if (text) {
+      try {
+        payload = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        throw new Error(text || response.statusText);
+      }
     }
+    const parts = [
+      payload["code"],
+      payload["error"] ?? payload["message"],
+      payload["details"],
+      payload["suggestedFix"],
+    ].filter(Boolean);
+    throw new Error(parts.length > 0 ? parts.join(" | ") : text || response.statusText);
   }
 }
 
@@ -90,7 +87,9 @@ export async function del(path: string) {
   }
 }
 
-export function approvalModeLabel(mode: "full" | "initial-plan" | "initial-plan-recursive"): string {
+export function approvalModeLabel(
+  mode: "full" | "initial-plan" | "initial-plan-recursive",
+): string {
   if (mode === "initial-plan") {
     return "Initial plan";
   }
