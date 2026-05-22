@@ -46,13 +46,13 @@
 
 ### Local Plugin Manager
 
-- [ ] **MGR-01**: User can run `rlm plugin list` to see installed plugins, enabled state, source (builtin/local), and contributed tool names (`--json` supported).
-- [ ] **MGR-02**: User can run `rlm plugin install <local-path>` to copy a plugin into the managed catalog (`~/.rlm/plugins/<id>` default), validate manifest, and apply trust gate before code load.
-- [ ] **MGR-03**: User can run `rlm plugin enable`, `disable`, and `uninstall` without reinstalling; config references stay consistent (no orphan entries after uninstall).
-- [ ] **MGR-04**: User can run `rlm plugin doctor` with non-zero exit when manifests, paths, duplicate ids, or stale config references are broken.
-- [ ] **MGR-05**: User can run `rlm plugin inspect <id>` and `rlm plugin validate <path>` for manifest-only review without booting the full runtime.
-- [ ] **MGR-06**: `PluginRegistryService` (or equivalent) is shared by CLI and control-server so install/enable state cannot diverge between surfaces.
-- [ ] **MGR-07**: Install/enable/disable changes return explicit `{ requiresRestart: true }` (or equivalent) when runtime reload is required — no silent partial application.
+- [x] **MGR-01**: User can run `rlm plugin list` to see installed plugins, enabled state, source (builtin/local), and contributed tool names (`--json` supported).
+- [x] **MGR-02**: User can run `rlm plugin install <local-path>` to copy a plugin into the managed catalog (`~/.rlm/plugins/<id>` default), validate manifest, and apply trust gate before code load.
+- [x] **MGR-03**: User can run `rlm plugin enable`, `disable`, and `uninstall` without reinstalling; config references stay consistent (no orphan entries after uninstall).
+- [x] **MGR-04**: User can run `rlm plugin doctor` with non-zero exit when manifests, paths, duplicate ids, or stale config references are broken.
+- [x] **MGR-05**: User can run `rlm plugin inspect <id>` and `rlm plugin validate <path>` for manifest-only review without booting the full runtime.
+- [x] **MGR-06**: `PluginRegistryService` (or equivalent) is shared by CLI and control-server so install/enable state cannot diverge between surfaces.
+- [x] **MGR-07**: Install/enable/disable changes return explicit `{ requiresRestart: true }` (or equivalent) when runtime reload is required — no silent partial application.
 
 ### Remote Fetch
 
@@ -128,13 +128,13 @@
 | DEPS-02 | Phase 47 | Complete |
 | DEPS-03 | Phase 48 | Complete |
 | DEPS-04 | Phase 48 | Complete |
-| MGR-01 | Phase 49 | Pending |
-| MGR-02 | Phase 49 | Pending |
-| MGR-03 | Phase 49 | Pending |
-| MGR-04 | Phase 49 | Pending |
-| MGR-05 | Phase 49 | Pending |
-| MGR-06 | Phase 49 | Pending |
-| MGR-07 | Phase 49 | Pending |
+| MGR-01 | Phase 49 | Complete |
+| MGR-02 | Phase 49 | Complete |
+| MGR-03 | Phase 49 | Complete |
+| MGR-04 | Phase 49 | Complete |
+| MGR-05 | Phase 49 | Complete |
+| MGR-06 | Phase 49 | Complete |
+| MGR-07 | Phase 49 | Complete |
 | RMT-01 | Phase 50 | Pending |
 | RMT-02 | Phase 50 | Pending |
 | RMT-03 | Phase 50 | Pending |

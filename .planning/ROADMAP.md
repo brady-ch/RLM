@@ -29,7 +29,7 @@
 - [x] **Phase 46: Plugin Taxonomy & Builtin Migration** — Manifest schema, PluginLoader, builtin migration, legacy YAML compat (1/1 plan) — 2026-05-22
 - [x] **Phase 47: Concern Map, Tests Mirror & Depcruise Rules** — AGENTS.md taxonomy, mirrored tests, new path rules (1/1 plan) — 2026-05-22
 - [x] **Phase 48: Dependency-Cruiser Ratchet** — Empty baseline, warn→error severity, strict `npm run check`
-- [ ] **Phase 49: Local Plugin Manager** — CLI commands, shared registry service, catalog under `~/.rlm/plugins/`
+- [x] **Phase 49: Local Plugin Manager** — CLI commands, shared registry service, catalog under `~/.rlm/plugins/` (1/1 plan) — 2026-05-22
 - [ ] **Phase 50: Remote Fetch** — HTTPS archive and optional git fetch-to-local with security defenses
 - [ ] **Phase 51: Plugin Manager UI** — Control-server endpoints and UI panel aligned with CLI semantics
 
@@ -154,7 +154,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   5. User can run `rlm plugin inspect <id>` and `rlm plugin validate <path>` for manifest-only review without booting full runtime
   6. CLI and control-server share the same `PluginRegistryService`; install/enable state cannot diverge between surfaces
   7. Install/enable/disable responses include explicit `requiresRestart: true` when runtime reload is needed — no silent partial application
-**Plans**: TBD
+**Plans**: 1/1 complete
 
 ### Phase 50: Remote Fetch
 **Goal**: Users can install plugins from remote archives or git URLs with fetch-to-local semantics and security defenses.
@@ -192,7 +192,7 @@ Phases execute in numeric order: 43 → 44 → … → 51
 | 46. Plugin Taxonomy & Builtin Migration | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 47. Concern Map, Tests Mirror & Depcruise Rules | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 48. Dependency-Cruiser Ratchet | v1.7 | 0/TBD | Not started | - |
-| 49. Local Plugin Manager | v1.7 | 0/TBD | Not started | - |
+| 49. Local Plugin Manager | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 50. Remote Fetch | v1.7 | 0/TBD | Not started | - |
 | 51. Plugin Manager UI | v1.7 | 0/TBD | Not started | - |
 | 36-42 Architecture Cleanup | v1.6 | 15/15 | Complete | 2026-05-22 |
