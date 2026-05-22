@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::domain::run_state_persistence::RunStatePersistence;
 use crate::domain::recursive_language_model::ExecutionControl;
+use crate::domain::run_state_persistence::RunStatePersistence;
+use crate::domain::run_state_types::ResumeCursor;
 use crate::domain::types::{
     ExecutionGraph, ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail,
     ExpertRuntimeMode, RecursiveModelConfig,
@@ -54,6 +55,20 @@ fn execution_status_label(status: ExecutionStatus) -> String {
 fn persist_run_state_status(input: &GraphExecutorInput, node_id: &str, status: ExecutionStatus) {
     if let Some(run_state) = input.run_state.as_ref() {
         let _ = run_state.persist_node_status(node_id, &execution_status_label(status));
+    }
+}
+
+fn persist_resume_cursor(
+    input: &GraphExecutorInput,
+    active_node_id: &str,
+    completed_node_ids: &[String],
+) {
+    if let Some(run_state) = input.run_state.as_ref() {
+        let _ = run_state.persist_resume_cursor(&ResumeCursor {
+            active_node_id: active_node_id.to_string(),
+            completed_node_ids: completed_node_ids.to_vec(),
+            variant: "playbook".into(),
+        });
     }
 }
 
@@ -205,6 +220,7 @@ pub async fn execute_graph(
         .map(|n| (n.id.clone(), n.clone()))
         .collect();
     let mut failed = HashSet::new();
+    let mut completed_node_ids = Vec::new();
     let control: Arc<dyn ExecutionControl> =
         Arc::new(SessionExecutionControl::new(Arc::clone(&session)));
 
@@ -259,6 +275,7 @@ pub async fn execute_graph(
                         failure_category: None,
                     }),
                 );
+                persist_run_state_status(&input, &node_id, ExecutionStatus::Failed);
                 failed.insert(node_id);
                 continue;
             }
@@ -276,6 +293,7 @@ pub async fn execute_graph(
                         failure_category: None,
                     }),
                 );
+                persist_run_state_status(&input, &node_id, ExecutionStatus::Failed);
                 failed.insert(node_id);
                 continue;
             }
@@ -305,6 +323,7 @@ pub async fn execute_graph(
                         _ => ExecutionStatus::Skipped,
                     };
                     control.update_node_status(&node_id, status, None);
+                    persist_run_state_status(&input, &node_id, status);
                     continue;
                 }
                 NodeApprovalStatus::Approved => {}
@@ -327,6 +346,7 @@ pub async fn execute_graph(
             }),
         );
         persist_run_state_status(&input, &node_id, ExecutionStatus::Running);
+        persist_resume_cursor(&input, &node_id, &completed_node_ids);
 
         let ancestors = collect_ancestors(node, &node_by_id);
         let prompt = build_execution_prompt(node, &ancestors);
@@ -382,6 +402,8 @@ pub async fn execute_graph(
             Ok(()) => {
                 control.update_node_status(&node_id, ExecutionStatus::Completed, None);
                 persist_run_state_status(&input, &node_id, ExecutionStatus::Completed);
+                completed_node_ids.push(node_id.clone());
+                persist_resume_cursor(&input, &node_id, &completed_node_ids);
             }
             Err(message) => {
                 control.update_node_status(
@@ -479,14 +501,14 @@ mod tests {
                     max_branches: 4,
                     max_prompt_characters: 4096,
                     max_model_calls: 50,
-                max_tool_rounds: 0,
-                quality_loop: None,
+                    max_tool_rounds: 0,
+                    quality_loop: None,
+                },
+                project_config: None,
+                create_model,
+                runtime: None,
+                run_state: None,
             },
-            project_config: None,
-            create_model,
-            runtime: None,
-            run_state: None,
-        },
         )
         .await
         .unwrap();
