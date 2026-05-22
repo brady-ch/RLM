@@ -166,10 +166,15 @@ Plans:
 **Goal:** Document and enforce Rust layer boundaries like TypeScript depcruise.  
 **Depends on:** Phase 69  
 **Requirements:** ARCH-05, REG-02  
+**Plans:** 2 plans  
 **Success Criteria:**
 1. `AGENTS.md` includes Rust concern map with may-import columns
 2. `scripts/check-rust-boundaries.sh` (or equivalent) fails CI on domain→persistence violations
 3. `npm run check:rust` invokes boundary check
+
+Plans:
+- [ ] 70-01-PLAN.md — Rust concern map in AGENTS.md + boundary rules TOML manifest
+- [ ] 70-02-PLAN.md — check-rust-boundaries.sh, domain test relocation, npm check:rust wiring
 
 ### Phase 71: Optional Crate Split
 
