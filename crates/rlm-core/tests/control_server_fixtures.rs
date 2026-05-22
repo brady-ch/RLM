@@ -100,8 +100,9 @@ async fn events_stream_uses_event_stream_content_type() {
 
 #[test]
 fn idle_snapshot_serializes_for_sse_snapshot_event() {
-    let snapshot = rlm_core::control_server::state::idle_session_snapshot();
-    let payload = snapshot.to_string();
+    let session = rlm_core::InteractiveExecutionSession::new(Default::default());
+    let snapshot = session.snapshot();
+    let payload = serde_json::to_string(&snapshot).expect("serialize");
     assert!(payload.contains("\"status\":\"planned\""));
     assert!(payload.contains("\"approvalMode\":\"full\""));
 }
