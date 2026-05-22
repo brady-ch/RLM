@@ -72,7 +72,7 @@ completed: 2026-05-22
 3. **Task 3: Control-server plugin routes** - `fb8949c` (feat)
 4. **Task 4: Tests** - `f7a1a21` (test)
 
-**Plan metadata:** pending (docs commit)
+**Plan metadata:** `4876ecd` (docs: complete plan)
 
 ## Files Created/Modified
 
