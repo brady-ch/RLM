@@ -60,13 +60,14 @@ completed: 2026-05-22
 ## Task commits
 
 1. **`51eff97`** — `refactor(41-01): split control-server into handler modules`
-2. **(prior)** **`e233369`** — `docs(41-01): add executable control-server boundary plan` (`41-01-PLAN.md`)
+2. **`e233369`** — `docs(41-01): add executable control-server boundary plan` (`41-01-PLAN.md`)
+3. **`beb0734`** — `docs(41-01): Phase 41 closeout summary and planning state`
 
 ## Deviations from plan
 
 None for control-server mechanics.
 
-**Concurrent workspace hygiene:** Repeated removal of stray untracked `src/domain/recursion/*` stubs (incomplete Phase 40 work) required so `npm run check` and Prettier gates did not pick up unfinished engine extraction files.
+**Concurrent workspace hygiene:** Repeated removal of stray untracked `src/domain/recursion/*` stubs (incomplete Phase 40 work) required so `npm run check` and Prettier gates did not pick up unfinished engine extraction files. Deleted an untracked `scripts/patch-rlm-phase40.mjs` helper that rewrote `recursive-language-model.ts` and re-materialized incomplete `domain/recursion/*` stubs.
 
 ## Threat flags
 
