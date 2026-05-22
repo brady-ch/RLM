@@ -1,197 +1,188 @@
 # Project Research Summary
 
-**Project:** Recursive Language Model CLI — v1.5 Dynamic Graph Authoring  
-**Domain:** Local-first recursive AI workflow CLI + interactive graph UI  
-**Researched:** 2026-05-21  
-**Confidence:** HIGH overall (grounded in live codebase + v1.5 planning notes)
+**Project:** Recursive Language Model CLI (RLM) — v1.6 Architecture Cleanup  
+**Domain:** Behavior-preserving structural refactor — TypeScript CLI + control-server UI monorepo  
+**Researched:** 2026-05-22  
+**Confidence:** HIGH
 
 ## Executive Summary
 
-v1.5 transforms the execution graph from a planning artifact into the **primary product surface**: users submit tasks on canvas nodes, a model-driven planner expands subtrees, expert presets bind per node, and approved graphs export as replayable `kind: graph` workflow sidecars. The repo already has the right foundations — `InteractiveExecutionSession`, `PurposeRoutingLanguageModel`, agent registry, approval checkpoints, and session memory — but planning still uses keyword heuristics (`plannedChildrenFor`), UI execution runs only the root prompt through `selectAgent`, and `runWorkflow` understands flat agent-list workflows only.
+RLM v1.6 is not a feature milestone — it is a **behavior-preserving architecture cleanup** of an already sound layered codebase. The repo correctly separates CLI, application orchestration, domain policy, ports, and adapters; v1.5 graph modules fit this model. The debt is **file size and composition density**, not wrong boundaries. Four hotspots concentrate responsibility: `index.ts` (~607 LOC) as an implicit composition root, `project-config.ts` (~959 LOC) mixing types/schema/loader/resolver, `recursive-language-model.ts` (~2,322 LOC) as engine+quality-loop+tool-loop+graph-sync, and `recursive-language-model.test.ts` (~4,451 LOC). Partial extraction already exists in `runtime-composition.ts`.
 
-The recommended approach is **extend, don't replace**: no major new runtime dependencies, no LangGraph/deepagents adoption. Add application-layer modules (`GraphPlanner`, `GraphExecutor`, graph workflow store/serializer/runner) behind existing ports (`LanguageModelPort`, Zod validation, `yaml` I/O). Keep `InteractiveExecutionSession` as the single graph authority; inject a pure `PlannerPort` service; walk approved topology at execution time via `NodeAgentResolver`. Export uses lossless sidecars with playbook (literal) and pipeline (`{{input}}`) variants — a deliberate bridge from exploratory planning to frozen replay without lossy conversion to legacy agent-list workflows.
+Experts build this kind of cleanup with a **strangler pattern**: one extraction slice per PR, full test suite green after each slice, stable public seams preserved via barrel re-exports, and automation guardrails landed early so debt does not re-concentrate. The recommended approach is a five-wave build order: optional tooling baseline → config split → runtime bootstrap + thin entrypoint → domain engine decomposition (parallel with control-server factoring) → test restructure. Stack additions are minimal: ESLint 10 flat config, Prettier 3, dependency-cruiser for layer rules — no test framework migration, no Nx/Biome adoption.
 
-The dominant risks are **silent data loss** (protected subtree wiped on replan, lossy export, replan-on-run breaking replay) and **semantic drift** (UI/CLI divergence, cosmetic expert binding, heuristic planner fallback). Mitigation is explicit: Replace/Merge/Cancel replan gate, Zod-validated planner output with hard fail (no heuristic fallback), `kind: graph` sidecars only, frozen executor with no planner calls, and tool allowlists enforced at execution bind time. Build order follows dependency spine: plan-from-node → expert binding → graph execution → export/import → hardening.
+The primary risks are **composition init order drift** when extracting runtime builders, **config export breakage** when splitting the monolith loader, and **accidental behavior changes** disguised as refactors. Mitigation is strict: single `buildRuntimeContext()` owns init order, facade re-exports preserve public API, one hotspot per phase, and test assertion changes require structural justification only. RLM engine decomposition carries the highest regression risk and needs a plan-phase spike on state threading between class and extracted modules.
 
 ## Key Findings
 
-### Stack Additions
+### Recommended Stack
 
-**No new `npm install` required.** v1.5 net-new stack is application modules and port contracts, not a second orchestration framework.
+Stack research confirms **no runtime stack changes** for v1.6. Existing TypeScript 6, Node ESM, React/Vite UI, Tauri shell, Ollama adapter, LangChain orchestration, and 205 `node:test` tests remain. Additions are dev-tooling only: ESLint + typescript-eslint for static analysis, Prettier for deterministic formatting, dependency-cruiser for module boundary enforcement aligned with AGENTS.md layer rules.
 
-| Addition | Purpose | Why |
-|----------|---------|-----|
-| `PlannerPort` + `graph-planner.ts` | Model-driven child planning + replan merge input | Matches `src/ports/*`; testable with fake planner |
-| Zod schemas (`PlannerChildSpecSchema`, sidecar) | Planner I/O + workflow config union | Already used everywhere; single validation story |
-| `LanguageModelPort` + `extractJsonObject` | Planner JSON-in-text parsing | Same path as RLM quality loops; avoid adapter divergence |
-| `PurposeRoutingLanguageModel` + `plan` purpose | Route planner to planning tier | Reuse tier map; optional map `plan` → `decompose` in v1.5.0 |
-| `graph-workflow-serializer/store/runner` | Export/import + frozen topo execution | Built on existing `yaml`, `fs/promises`, ~30-line topo-sort |
-| Extended `WorkflowConfig` (`kind: graph`) | Sidecar pointer in `rlm.config.yaml` | Discriminated union alongside `mode: ram_queue` |
-| Extended `ExecutionGraphNode` types | Expert fields, `runtimeMode`, plan lineage | No new packages; export snapshot fidelity |
-| CLI/control-server extensions | `--variant`, export/import, replan body | Hand-rolled `args.ts`; no commander/yargs |
+**Core technologies:**
+- **ESLint 10 + typescript-eslint 8** — TypeScript-aware lint with flat config (`eslint.config.js`); `projectService: true` avoids brittle tsconfig wiring during file moves
+- **Prettier 3 + eslint-config-prettier** — Separates style from semantics; reduces noisy diffs during large splits
+- **dependency-cruiser 17** — Purpose-built for layered `forbidden`/`allowed` rules; validates `src/` and `ui/src/` separately; phased warn→error for known violations
+- **node:test (keep)** — 15 test files / 205 tests; no Vitest/Jest migration benefit for a refactor-only milestone
+- **c8 (optional)** — V8 coverage during refactor waves; not required for CI gate
 
-**Explicitly avoid:** LangGraph, deepagents, Handlebars/Mustache, graphlib/dagre, AJV, second YAML lib, n8n SDK, per-role tool adapter copies, lossy agent-list export.
+Expand `npm run check` from `typecheck && test` to `typecheck && lint && depcruise && test` once baselines are triaged. Land format-only commit separately from logic refactors.
 
-### Feature Table Stakes
+### Expected Features
 
-Features users expect for v1.5 to feel complete relative to prior milestones and comparable tools (CrewAI, LangGraph, n8n patterns):
+**Must have (table stakes):**
+- Zero behavior regression — all ~205 tests pass; CLI/UI/session/memory/graph flows unchanged
+- Runtime composition extraction — `index.ts` becomes parse args → build runtime → dispatch; stores/extensions/tools/models wired in testable builders
+- Config module split — loader, validation, resolution, defaults separated; public exports preserved via facade
+- Obvious module responsibilities — no new 1k+ line files; contributors locate change points quickly
+- Preserved layer boundaries — domain does not import application; adapters stay behind ports
+- Contributor-visible module map — AGENTS.md reflects new layout
 
-| Feature | Why expected |
-|---------|--------------|
-| Graph-primary authoring (root-composer on load) | v1.5 explicitly replaces chat-first default |
-| Model-driven child planning | Keyword heuristics are a demo stub, not product |
-| Per-node subtree planning + plan budget exhaustion | Standard hierarchical decomposition; PLAN-07 |
-| Approval before run | Reuse v1.0 `--plan-only`, `--require-approval` |
-| Parent replan with pristine silent refresh | Users revise intent at parent nodes |
-| Export graph to replayable workflow | Stated v1.5 bridge goal |
-| Import → edit → re-export round-trip | Industry baseline (n8n JSON, etc.) |
-| Replay without replan | Core "save as workflow" value |
-| Explicit run failures (missing agent/model/template) | Product invariant since v1.0 |
-| Role/agent per node + tool allowlists | Standard multi-agent safety pattern |
-| Expert visible on node card | Inspect who runs what before approve |
-| UI + CLI parity | Established project constraint |
+**Should have (differentiators):**
+- Unit-testable runtime builders and config resolution — plugin/tool changes testable without subprocess CLI
+- RLM engine concern modules — budget, tool loop, quality loop, graph sync extracted from monolith class
+- Test file subsystem split with shared helpers — failures map to subsystems; integration anchor retained
+- Lint/format scripts beyond typecheck alias — ESLint + Prettier baseline pass
+- Control-server handler grouping — transport-only routes; session authority stays in execution-controller
+- Import-boundary enforcement — dependency-cruiser rules prevent god-module re-creation
 
-**Differentiators to preserve:** Protected replan (Replace/Merge/Cancel), playbook + pipeline dual variants, lossless `kind: graph` sidecars, plan-time RLM vs single-pass runtime (no silent escalation), purpose→tier maps per expert, session memory integration.
+**Defer (post–v1.6):**
+- Nx/Turborepo/pnpm workspace adoption — massive scope unrelated to single-package pain
+- Full `@nx/enforce-module-boundaries`-style tags — only if repo splits into packages
+- Vitest migration — no benefit for backend refactor; large churn cost
+- `execution-controller.ts` deep split — cohesive but complex; highest approval/plan regression risk
+- AST codemod pipeline — manual incremental extraction appropriate for ~66 TS source files
+- 100% line coverage mandate — preserve integration coverage; add targeted unit tests at seams only
 
-**Defer within v1.5:** Per-node literal/template beyond root, CI workflow discovery, specialized tool surfaces per role, visual expert preset authoring.
+### Architecture Approach
 
-### Architecture Build Order
-
-Keep **one graph authority** (`InteractiveExecutionSession`); planner is pure application service; executor walks session topology; expert binding via `NodeAgentResolver` (not `selectAgent` for graph nodes).
+Extend existing seams rather than introduce parallel architecture. Config splits stay in application; engine splits stay in domain; HTTP transport splits adjacent to control-server. Data flows unchanged: CLI/UI → application runners → domain RLM → ports → adapters. Primary deliverable is **locatable change points and unit-testable builders**.
 
 **Major components:**
+1. **`application/config/*`** — Split from `project-config.ts`: types, Zod schema, loader, resolver, validation; barrel re-export for ~20 import sites
+2. **`application/bootstrap/`** — `RuntimeContext` + `buildRuntimeContext()` centralizing what `index.ts` does today; single init-order contract
+3. **`cli/run-modes/*`** — Per-command dispatch extracted from entrypoint; receives built `RuntimeContext`
+4. **`domain/recursion/*`** — Budget guard, tool loop, quality loop, execution-graph sync, prompt utils; class retains orchestration
+5. **`application/control-server/handlers/*`** — Route modules for session, graph, workflows, model-library, static UI; transport only
 
-1. **`GraphPlanner`** — model calls, Zod validation, expert/runtime assignment in plan output
-2. **`InteractiveExecutionSession`** (extended) — applies plan diffs, protected-state detection, replan orchestration
-3. **`NodeAgentResolver`** — node → `AgentProfile` + constrained tools at execution
-4. **`GraphExecutor`** — topological walk over approved/frozen graph; shared by UI runner and workflow replay
-5. **`graph-workflow-store/serializer`** — sidecar I/O, playbook/pipeline variants, template substitution
-6. **`runGraphWorkflow`** — `workflow-runner` branch for `kind: graph`
+### Critical Pitfalls
 
-**Recommended implementation waves:**
-
-| Wave | Focus | Key deliverables |
-|------|-------|------------------|
-| 1 — Foundation | Plan-from-node spine | Types, `PlannerPort`, wire `planNode`, root-composer seed, replan API + protection helpers |
-| 2 — Expert binding | Plan-time + run-time | `NodeAgentResolver`, planner emits `agentId`/`runtimeMode`, inspector overrides |
-| 3 — Graph execution | Close the loop | `GraphExecutor`, replace root-only UI runner, single-pass path, RLM depth alignment |
-| 4 — Export/import | Frozen replay | Sidecar serialize/deserialize, `runWorkflow` graph branch, CLI parity, round-trip |
-| 5 — Hardening | Integration | Plan→approve→run tests, session save/reopen for new fields |
-
-### Watch Out For (Top Pitfalls)
-
-1. **Silent subtree loss on parent replan** — Incomplete protected-state detection wipes user edits, pins, model overrides. Always gate when protected descendants exist; merge never deletes protected node ids.
-
-2. **Planner output without schema validation** — Raw LLM output or enum drift causes partial graphs or hidden heuristic fallback. Zod validate before `registerNode`; hard fail with PLAN-07; remove `plannedChildrenFor` path entirely.
-
-3. **Lossy graph export (agent-list conversion)** — Collapsing to `workflows.*.agents[]` drops topology, per-node prompts, expert metadata. `kind: graph` sidecars only; no auto-linearization.
-
-4. **Silent playbook/pipeline variant switch** — Smart-default drift between UI/CLI mutates prompts on replay. Resolve variant once at run start; persist in metadata; validate `{{input}}` before execution.
-
-5. **Expert allowlist not enforced at execution** — Plan metadata cosmetic only; runtime uses full tool registry. Filter tools at bind time; `constrainedToolCalling: true`; trace shows effective tools.
-
-6. **Replan-on-run for frozen workflows** — Saved workflows invoke planner during replay; non-deterministic CI. Graph executor frozen mode only; no `purpose: plan` in replay trace.
+1. **Big-bang multi-hotspot refactor** — One extraction slice per PR; after each slice run full `npm run check`; never touch config + composition + RLM + tests simultaneously
+2. **Composition init order drift** — Single `buildRuntimeContext()` owns full pipeline (extensions → MCP → tools → registry → model factory → execution → shutdown); add composition unit test asserting tool sets and cleanup registration
+3. **Config export / validation regression** — Keep facade re-export surface; preserve error shapes with file/path context; run config tests before touching runtime composition
+4. **Accidental behavior change disguised as refactor** — Log surprises as todos; no test assertion changes without structural justification; separate "fix" commits from "extract" commits
+5. **RLM engine split changing recursion semantics** — Extract pure helpers first; keep class as orchestrator until parity tests pass; run RLM + graph-executor + integration-v15 after each peel
+6. **Test split losing integration signal** — Create `tests/helpers/` first; move blocks verbatim; retain integration anchor; verify test count parity before/after
 
 ## Implications for Roadmap
 
-Suggested **five-phase v1.5 sequencing** aligned with dependency spine (plan → expert → execute → export → harden):
+Based on research, suggested phase structure for v1.6:
 
-### Phase 1: Plan-from-Node Foundation
-**Rationale:** Unlocks real graph authoring; export and expert assignment need planned nodes. Replaces the demo heuristic path.  
-**Delivers:** `PlannerPort` + `GraphPlanner`, extended node types, `planNode` wired to planner, default `root-composer` seed, budget exhaustion errors, pristine replan.  
-**Addresses:** Graph-primary authoring, model-driven planning, per-node subtree scope, approval gate feed-through.  
-**Avoids:** Planner unstructured output (Pitfall 2), empty canvas confusion (Pitfall 14), controller authority bypass (Pitfall 17).
+### Phase 0: Dev Tooling Guardrails (Optional Early Wave)
+**Rationale:** Independent of extractions; freezes style before large diffs; enables consistent CI gate expansion  
+**Delivers:** ESLint 10 flat config (CLI + UI blocks), Prettier baseline, dependency-cruiser with warn-severity layer rules, expanded `npm run check`  
+**Addresses:** Lint/format guardrails (P2), import-boundary enforcement foundation (P3)  
+**Avoids:** Lint churn hiding regressions — format-only commit separated from logic  
+**Uses:** ESLint, Prettier, dependency-cruiser from STACK.md
 
-### Phase 2: Protected Replan UX
-**Rationale:** Plan-from-node breaks immediately on any user edit without Replace/Merge/Cancel; highest trust risk.  
-**Delivers:** `replanNode` API, pristine/protected detection (`planGenerationId`, pins, overrides, custom assignment), control-server replan body, UI conflict dialog, CLI parity.  
-**Addresses:** Parent replan, protected overrides surviving merge.  
-**Avoids:** Silent subtree loss (Pitfall 1), layout mistaken as protected (Pitfall 15).
+### Phase 1: Config Split (Foundation — Critical Path Start)
+**Rationale:** Runtime builders depend on resolved config types; ~20 import sites need stable facade before bootstrap extraction  
+**Delivers:** `application/config/*` modules (types, schema, loader, resolver, validation), barrel re-export, focused unit tests  
+**Addresses:** Config loader/validation/resolution split (P1), unit-testable config resolution (P2)  
+**Avoids:** Config export breakage, validation semantics drift, ESM import mismatches  
+**Uses:** Barrel-preserving module split pattern; no new dependencies
 
-### Phase 3: Expert Team Binding
-**Rationale:** Enriches planned nodes before execution/export need metadata; can ship incrementally but export depends on fields existing.  
-**Delivers:** `NodeAgentResolver`, planner emits `agentId` + `runtimeMode`, inspector overrides (`assignmentMode: custom`), allowlist enforcement at bind, per-node trace metadata.  
-**Addresses:** Role per node, tool allowlists, expert on node card, plan-time RLM visibility.  
-**Avoids:** Allowlist cosmetic only (Pitfall 5), silent runtime escalation (Pitfall 11), missing preset fallback (Pitfall 10), shallow merge (Pitfall 7).
+### Phase 2: Runtime Bootstrap + Slim Entrypoint (Critical Path)
+**Rationale:** Depends on Phase 1 stable config imports; unblocks control-server injection tests; highest maintainer value  
+**Delivers:** `RuntimeContext`, `buildRuntimeContext()`, `cli/run-modes/*`, `index.ts` <150 LOC, bootstrap unit tests  
+**Addresses:** Runtime composition extraction (P1), thin CLI entrypoint (P1), unit-testable runtime builders (P2), no duplicated registration logic (P1)  
+**Avoids:** Init order drift, extension/tool registration duplication, env/mode branching regression, desktop smoke break  
+**Implements:** Composition root extraction pattern; single registration pipeline for ExtensionHost + interop tools
 
-### Phase 4: Graph Execution Loop
-**Rationale:** Closes gap where UI runs root-only through RLM while canvas shows planned children; required before export replay is meaningful.  
-**Delivers:** `GraphExecutor` topological walk, graph-aware UI runner, single-pass runtime path, RLM depth so planned nodes don't re-decompose, session.control integration.  
-**Addresses:** Execute planned topology as bound agents, not overlapping RLM spawn.  
-**Avoids:** Dual graph truth without driver mode, replan-on-run conflation (Pitfall 6).
+### Phase 3: Domain Engine Decomposition (Parallel-Safe After Phase 1)
+**Rationale:** Highest regression risk but independent of bootstrap if different authors; can proceed parallel with Phase 4  
+**Delivers:** `domain/recursion/*` modules (budget-guard, tool-loop, quality-loop, execution-graph-sync, prompt-utils), slimmed orchestrator class  
+**Addresses:** RLM concern modules (P2), reduced regression risk on graph/recursion changes  
+**Avoids:** RLM semantics drift, domain importing application types, application importing domain internals  
+**Research flag:** Plan-phase spike needed on state threading between class and extracted modules
 
-### Phase 5: Graph Workflow Export/Import
-**Rationale:** Depends on stable graph snapshot + expert fields + working executor for replay validation.  
-**Delivers:** `graph-workflow-store/serializer`, playbook/pipeline/both variants, `runWorkflow` `kind: graph` branch, import→session round-trip, CLI `--variant`/export/import, explicit EXPORT-07 failures.  
-**Addresses:** Save/load workflow, replay without replan, dual variants, round-trip edit.  
-**Avoids:** Lossy export (Pitfall 3), variant drift (Pitfall 4), import drops expert fields.
+### Phase 4: Control-Server Boundary Clarification (Parallel-Safe After Phase 2)
+**Rationale:** Handlers need injected `SessionRuntimeRef` from bootstrap; transport-only factoring without session authority split  
+**Delivers:** `control-server/handlers/*`, route dispatcher, `types.ts`, documented HTTP boundary  
+**Addresses:** Control-server handler grouping (P3), documented UI/control-server boundary (table stakes)  
+**Avoids:** UI/control-server boundary blur, API drift, logic migrating into route handlers  
+**Uses:** Handler module pattern; preserve endpoint paths and JSON shapes
 
-### Phase 6: Integration Hardening (optional capstone)
-**Rationale:** Session memory (v1.4) and UI/CLI parity need verification after new fields land.  
-**Delivers:** Session snapshot schema extension, restore verification for plan/expert fields, integration tests (plan→approve→run, export→CLI run, protected replan), shared error vocabulary parity tests.  
-**Avoids:** Session save omits authoring fields (Pitfall 12), UI/CLI divergence (Pitfall 8).
+### Phase 5: Test Restructure + Docs (Last — After Module Paths Stabilize)
+**Rationale:** Avoid moving tests twice; module names must stabilize first; depends on Waves 1–4  
+**Delivers:** `tests/application/config/`, `tests/domain/recursion/`, `tests/integration/`, `tests/helpers/`, split RLM test file, updated AGENTS.md  
+**Addresses:** Subsystem-aligned test files (P2), shared test fixtures (P2), contributor module map (P1)  
+**Avoids:** Test split coverage loss, integration signal gaps  
+**Uses:** node:test (keep); recursive `dist/tests/**/*.test.js` glob
 
 ### Phase Ordering Rationale
 
-- **Plan-first (Phases 1–2):** Export and expert metadata attach to nodes that only exist after model planning; protected replan is inseparable from plan-from-node trust model.
-- **Expert before execute (Phase 3):** Executor needs `NodeAgentResolver`; planner should emit assignments early so UI cards and export schema stabilize together.
-- **Execute before export (Phase 4→5):** Replay validation requires working frozen executor; export without execute loop risks shipping sidecars that fail at run start.
-- **Hardening last:** New node fields must flow through session memory and both surfaces; catches shallow-merge and parity gaps accumulated across phases.
+- **Config before bootstrap:** Runtime builders call `loadProjectConfig` and resolvers; splitting config first provides narrow imports without breaking callers via facade
+- **Bootstrap before control-server:** `startControlServer` must receive composed `SessionRuntimeRef` from builder, not construct stores inline
+- **RLM split parallel with control-server:** Both depend on Phase 1 only; different risk profiles allow concurrent work if authors coordinate on full-suite gates
+- **Tests last:** Module path churn during Phases 1–4 would force double moves; helpers extracted first when splitting
+- **Tooling early or late:** Phase 0 recommended to reduce format noise in extraction PRs; can defer if capacity constrained
 
 ### Research Flags
 
-**Needs deeper research during planning:**
-- **Phase 1:** Planner prompt/schema design, JSON retry strategy, planning tier model selection
-- **Phase 2:** Merge replan diff algorithm vs full replan of non-protected nodes
-- **Phase 4:** Single-pass runtime implementation (`maxDepth: 0` vs thin runner)
-- **Phase 5:** Per-node `literal | template` beyond root (defer but document)
+Phases likely needing deeper research during planning:
+- **Phase 3 (RLM decomposition):** State threading between `RecursiveLanguageModel` class and extracted modules; quality-loop extraction boundaries need plan-phase spike
+- **Phase 2 (Bootstrap lifecycle):** Verify cleanup order matches current `index.ts` when extracted — shutdown, MCP child processes, memory release
+- **Phase 0 (ESLint rules):** Choose minimal rule set aligned with existing style; type-checked rules added selectively after baseline
 
-**Standard patterns (skip research-phase):**
-- **Phase 3:** Agent registry + tool allowlist — established in codebase
-- **Phase 5:** YAML sidecar I/O — same `yaml` + Zod patterns as `project-config.ts`
-- **Phase 6:** Approval/checkpoint model — shipped v1.0
+Phases with standard patterns (skip research-phase):
+- **Phase 1 (Config split):** Existing loader behavior documented; mechanical split with barrel re-export
+- **Phase 4 (Control-server):** Standard HTTP handler factoring; session authority unchanged
+- **Phase 5 (Test restructure):** node:test patterns established; folder taxonomy mirrors module boundaries
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Verified against `package.json`, ports, existing Zod/yaml usage; no new deps needed |
-| Features | HIGH for intent (internal docs); MEDIUM for competitive positioning | CrewAI/LangGraph/n8n docs verified; RLM differentiators from project notes |
-| Architecture | HIGH | Grounded in live `src/` layout, execution-controller, workflow-runner gaps |
-| Pitfalls | HIGH for repo-specific; MEDIUM for ecosystem patterns | Tied to v1.3 requirements + v1.2 shallow-merge audit |
+| Stack | HIGH | Verified against npm registry, typescript-eslint/ESLint 10 peer ranges, repo `package.json` and `docs/TESTING.md`; phased boundary strictness MEDIUM due to existing violations |
+| Features | HIGH | Grounded in PROJECT.md, CONCERNS.md, live file metrics, v1.6 todos; ecosystem patterns MEDIUM |
+| Architecture | HIGH | Live `src/` layout, `docs/ARCHITECTURE.md`, partial `runtime-composition.ts` extraction; build order validated against import fan-in |
+| Pitfalls | HIGH | Repo-specific pitfalls from live wiring; composition-root and ESM patterns from official docs MEDIUM |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Single-pass runtime path:** Architecture states intent but implementation choice (RLM flag vs thin runner) needs spike during Phase 4 planning.
-- **Merge replan algorithm:** Protected-node diff semantics need concrete UX + API contract before Phase 2 execution.
-- **Planner non-determinism:** Accept for authoring; tests should use fixture planner; do not assert exact labels in replay tests.
-- **Parallel graph execution:** v1 likely sequential for approval clarity; defer branch parallelism to later milestone.
-- **Optional `plan` purpose in config:** May map to `decompose` tier initially to avoid config churn — decide in Phase 1 planning.
+- **Existing boundary violations:** `domain/agents.ts` → application, `ports/extension-port.ts` → application — dependency-cruiser rules start at warn severity; ratchet to error per extraction phase
+- **RLM quality-loop state threading:** Needs plan-phase spike before Phase 3 execution; identify which state passes explicitly vs stays on class
+- **UI import audit:** Verify `ui/src/**` does not import `src/**` directly; add dependency-cruiser rule if violations found
+- **Bootstrap cleanup order:** Document and test shutdown sequence during Phase 2 planning; compare against current `index.ts` implicit contract
+- **Vitest reference in milestone prompt:** Confirmed out of scope — all 15 test files use `node:test` only
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Repo: `package.json`, `src/application/execution-controller.ts`, `project-config.ts`, `workflow-runner.ts`, `agent-registry.ts`, `control-server.ts`, `language-model-port.ts`, `recursive-language-model.ts`
-- `.planning/PROJECT.md`, `.planning/milestones/v1.3-REQUIREMENTS.md` (PLAN/EXPORT/TEAM)
-- `.planning/notes/node-centric-dynamic-planning.md`, `graph-workflow-export.md`, `expert-team-architecture.md`
-- `.planning/seeds/save-graph-as-workflow.md`
-- `.planning/milestones/v1.2-MILESTONE-AUDIT.md` (MODL-05 shallow merge)
+- RLM `.planning/PROJECT.md` — v1.6 milestone scope, success criteria, constraints
+- RLM `.planning/codebase/CONCERNS.md` — hotspot files and priorities
+- RLM `src/index.ts`, `project-config.ts`, `runtime-composition.ts`, `recursive-language-model.ts`, `control-server.ts` — live metrics and partial extraction state
+- RLM `package.json`, `tsconfig.json`, `docs/TESTING.md`, `AGENTS.md` — current baseline
+- `/typescript-eslint/typescript-eslint` (Context7) — flat config, `projectService`, ESLint 10 compatibility
+- `/eslint/eslint` (Context7) — flat config ESM pattern
+- `/sverweij/dependency-cruiser` (Context7) — layered forbidden rules, CLI validation
+- [dependency-cruiser rules tutorial](https://github.com/sverweij/dependency-cruiser/blob/main/doc/rules-tutorial.md) — path-based layer enforcement
+- TypeScript Handbook, [ECMAScript Modules in Node.js](https://www.typescriptlang.org/docs/handbook/esm-node.html) — `.js` import specifiers
+- npm registry (`npm view`, 2026-05-22) — version numbers
 
 ### Secondary (MEDIUM confidence)
-- [CrewAI Agents docs](https://docs.crewai.com/en/concepts/agents) — role/goal/tools expert pattern
-- [LangGraph persistence](https://docs.langchain.com/oss/python/langgraph/persistence) — checkpoint vs structural export
-- [n8n export/import](https://docs.n8n.io/courses/level-one/chapter-6) — workflow round-trip baseline
-- [Conductor dynamic workflows](https://conductor-oss.github.io/conductor/devguide/ai/dynamic-workflows.html) — LLM-generated plans at runtime
-- Context7 `/colinhacks/zod` — safeParse patterns
+- [Nx enforce module boundaries](https://nx.dev/docs/features/enforce-module-boundaries) — boundary enforcement pattern adapted for single package
+- [Marmicode boundaries cookbook](https://cookbook.marmicode.io/nx/boundaries) — layer dependency constraints
+- Mark Ploeh, [Composition Root](https://blog.ploeh.dk/2011/07/28/CompositionRoot/) — single composition location
+- `.planning/notes/architecture-boundary-cleanup-direction.md` — two-pass extraction strategy
+- Incremental extraction / strangler refactor practice — behavior preservation patterns
 
-### Detailed research files
-- [STACK.md](./STACK.md) — technology additions and integration points
-- [FEATURES.md](./FEATURES.md) — table stakes, differentiators, anti-features
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — component boundaries, build waves, integration contracts
-- [PITFALLS.md](./PITFALLS.md) — critical/moderate/minor pitfalls with detection criteria
+### Tertiary (LOW confidence)
+- mherod/resect structural-refactor docs — barrel/import update caution; not needed unless repeated cross-module moves become routine
 
 ---
-*Research completed: 2026-05-21*  
+*Research completed: 2026-05-22*  
 *Ready for roadmap: yes*

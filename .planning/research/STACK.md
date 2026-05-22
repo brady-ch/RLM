@@ -1,224 +1,226 @@
-# Technology Stack — v1.5 Dynamic Graph Authoring
+# Stack Research — v1.6 Architecture Cleanup
 
-**Project:** Recursive Language Model CLI (v1.5 milestone)  
-**Researched:** 2026-05-21  
-**Scope:** Stack additions/changes only for plan-from-node, graph workflow export, expert team assignment, and matching CLI/UI surfaces. Existing TypeScript/Node layered architecture, Ollama adapter, `PurposeRoutingLanguageModel`, `InteractiveExecutionSession`, and React/Vite/Tauri stack are **not** re-researched.
+**Domain:** Behavior-preserving refactor guardrails for a TypeScript/Node layered CLI + React UI monorepo  
+**Researched:** 2026-05-22  
+**Confidence:** HIGH for lint/format/boundary tooling choices; MEDIUM for phased boundary rule strictness (existing violations must be burned down incrementally)
 
-**Overall confidence:** HIGH for “stay on existing deps + ports”; MEDIUM for optional refinements (dedicated `plan` purpose, LangGraph removal).
-
----
-
-## Executive recommendation
-
-**Do not add major new runtime dependencies.** v1.5 should extend the repo’s established patterns: `LanguageModelPort` + Zod validation + `yaml` I/O + hand-rolled CLI parsing + `@xyflow/react` for the canvas. The milestone’s net-new stack is **application-layer modules and port contracts**, not a second orchestration framework.
-
-| Capability | Stack decision |
-|------------|----------------|
-| Model-driven plan-from-node | New `PlannerPort` + Zod planner output schema; call via existing `LanguageModelPort` (small/fast tier) |
-| Graph workflow sidecars | Existing `yaml` + Zod discriminated workflow config; new serializer/runner in `src/application/` |
-| Expert presets | Extend `ExecutionGraphNode` / config binding; reuse `agent-registry`, `PurposeRoutingLanguageModel`, `constrainedToolCalling` |
-| CLI plan/export | Extend `src/cli/args.ts` and `src/index.ts` routing; no CLI framework |
+**Scope:** Stack additions/changes **only** for v1.6 architecture cleanup — lint/format guardrails, test restructuring support, module boundary enforcement. Existing TypeScript 6, Node ESM CLI, React/Vite UI, Tauri shell, Ollama adapter, LangChain orchestration, and 205 passing `node:test` tests are **not** re-researched.
 
 ---
 
-## Recommended stack (additions only)
+## Recommended Stack
 
-### Core — planner port (replaces `plannedChildrenFor`)
+### Core Technologies
 
-| Piece | Version | Purpose | Why |
-|-------|---------|---------|-----|
-| **(no new package)** `PlannerPort` | — | Abstract model-driven child planning + replan merge input | Matches `src/ports/*` boundary; keeps `execution-controller.ts` testable with a fake planner |
-| **Zod** | `^4.4.3` (existing) | `PlannerChildSpecSchema`, replan request/response shapes | Already used in `project-config.ts`, tools, adapters; single validation story |
-| **`LanguageModelPort`** | existing | Planner completion (JSON-in-text) | Same adapter path as RLM quality-loop evaluators (`extractJsonObject` in `recursive-language-model.ts`) |
-| **`PurposeRoutingLanguageModel`** | existing | Route planner calls to a **planning tier** | Add a dedicated purpose (recommended: `plan` or reuse `decompose`) in `AgentConfig.models` and `LanguageModelPurpose` |
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| **ESLint** | `^10.4.0` | Static analysis and refactor guardrails | De facto standard for TS repos; flat config (`eslint.config.js`) is current ESLint default and works with ESM `"type": "module"` projects |
+| **typescript-eslint** | `^8.59.4` | TypeScript-aware ESLint rules | Official TS lint stack; supports ESLint 9/10 and TypeScript `<6.1.0` (matches repo `typescript@^6.0.3`); `projectService: true` avoids brittle per-file `tsconfig` wiring during file moves |
+| **@eslint/js** | `^10.0.1` | ESLint recommended baseline | Flat-config entry point paired with ESLint 10 |
+| **Prettier** | `^3.8.3` | Deterministic formatting | Separates style from semantics; reduces noisy diffs during large file splits; pairs cleanly with `eslint-config-prettier` |
+| **eslint-config-prettier** | `^10.1.8` | Disable ESLint rules that fight Prettier | Prevents double-fix loops between ESLint stylistic rules and Prettier |
+| **dependency-cruiser** | `^17.4.0` | Module boundary + cycle enforcement | Purpose-built for layered architecture rules (`forbidden`/`allowed` by path); validates `src/` and `ui/src/` separately; outputs CI-friendly violations; can visualize dependency graphs during taxonomy pass |
+| **globals** | `^17.6.0` | Flat-config environment globals | Supplies `node` and `browser` globals for split ESLint blocks (CLI vs UI) |
 
-**Integration points**
+### Supporting Libraries
 
-- `src/ports/planner-port.ts` (new): `planChildren(input) → PlannerResult`, `replanSubtree(input) → PlannerResult` with explicit error types (no thrown strings swallowed).
-- `src/application/graph-planner.ts` (new): builds prompts from node + ancestor chain + budget + agent catalog; calls model; `safeParse` with Zod; surfaces `PlannerFailure` to UI/CLI.
-- `src/application/execution-controller.ts`: replace `plannedChildrenFor()` call in `planNode()` with injected planner; add protected-state metadata (`planGenerationId`, `plannedByParentId`, `protected: boolean`).
-- `src/application/control-server.ts`: extend `POST /api/nodes/:id/plan` body for replan mode (`replace` | `merge` | `cancel`) when protected descendants exist.
-- `src/application/model-provider.ts` / `project-config.ts`: optional `agents.<id>.models.plan` (or map `plan` → `decompose` tier in v1.5.0 to avoid config churn).
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| **c8** | `^11.0.0` | V8 coverage for `node:test` | Optional during refactor waves to confirm extracted modules remain exercised; not required for CI gate in v1.6 |
+| **tsx** | `^4.21.0` (existing) | Run TypeScript tests without pre-build | Dev-only `test:watch` / targeted subsystem runs while splitting files; keep CI on compiled `dist/tests/**/*.test.js` |
+| **Node built-in `node:test`** | Node `>=20` (repo on v20.18.2) | Test runner | **Keep** — 15 test files / 205 tests already on `node:test`; no migration benefit for a refactor-only milestone |
 
-**Parsing strategy (opinionated)**
+### Development Tools
 
-- Prefer **JSON object in model text** + shared `extractJsonObject()` helper moved to `src/domain/structured-output.ts` (extract from RLM) over new structured-output APIs.
-- Do **not** add LangChain `withStructuredOutput` only for the planner unless Ollama structured output is verified for all supported models (increases adapter divergence).
-- Planner prompts should request **no tools** (`constrainedToolCalling: false`, empty tools array) to reduce failure modes and cost.
-
-### Graph workflow YAML sidecars
-
-| Piece | Version | Purpose | Why |
-|-------|---------|---------|-----|
-| **`yaml`** | `^2.8.4` (existing) | Parse/stringify `.rlm/workflows/*.yaml` | Already in `project-config.ts`; same error surfacing pattern (`parseYamlTagged`) |
-| **Zod** | existing | `GraphWorkflowSidecarSchema`, workflow registry entry `kind: graph` | Discriminated union alongside `mode: ram_queue` |
-| **Node `fs/promises`** | built-in | Read/write sidecars under `.rlm/workflows/` | Matches session/run-state file adapters |
-
-**Integration points**
-
-- `src/application/graph-workflow-serializer.ts` (new): `exportGraph(session, variant)` / `importGraph(doc)` — lossless round-trip of `ExecutionGraph` + expert fields + viewport (best-effort).
-- `src/application/graph-workflow-store.ts` (new): resolve `rlm.config.yaml` pointer (`workflows.<id>.kind: graph`, `path:`) vs default `.rlm/workflows/<id>.yaml`.
-- `src/application/graph-workflow-runner.ts` (new): topological execution over frozen graph; **no replan** unless session flag; delegates node execution to existing agent/RLM paths by `runtime` + `agentId`.
-- `src/application/project-config.ts`: extend `WorkflowConfig` union:
-  - `mode: "ram_queue"` (unchanged)
-  - `kind: "graph"` + `path` + optional `defaultVariant: "playbook" | "pipeline"`
-- `src/application/workflow-runner.ts`: if `kind === "graph"`, delegate to `runGraphWorkflow`; keep agent-list workflows untouched.
-- Template rendering: **built-in** `applyPipelineTemplate(graph, { input: string })` replacing root `{{input}}` only — regex or simple split, no templating engine.
-
-**Sidecar shape (stack-relevant fields)**
-
-- `schemaVersion`, `graphId`, `updatedAt`
-- `variants.playbook.graph` / `variants.pipeline.graph` (or two files — planner choice in implementation, not a new library)
-- Per-node: `id`, `parentId`, `prompt`, `composer.type`, `agentId`, `assignmentMode`, `tools[]`, `models` tier snapshot, `runtime: single | rlm`, overrides, `position`
-
-### Expert team binding
-
-| Piece | Version | Purpose | Why |
-|-------|---------|---------|-----|
-| **`createAgentRegistry`** | existing | Expert preset catalog | Presets already bundle prompt, tools, tier map |
-| **`PurposeRoutingLanguageModel`** | existing | Per-node purpose→tier at run | Export can snapshot tier names; run resolves against live config |
-| **`constrainedToolCalling`** | existing (`language-model-port.ts`) | Enforce per-node tool allowlist | v1 allowlist-only; no per-role adapters |
-| **`runRecursivePrompt` / `runConfiguredAgent`** | existing | `runtime: rlm` nodes | Reuse RLM engine with expert’s `AgentConfig` |
-
-**Type extensions (not new packages)**
-
-- `ExecutionGraphNode`: `agentId`, `assignmentMode: "preset" | "custom"`, optional `toolsAllowlist`, `runtimeMode: "single" | "rlm"`, `expertPresetId?`
-- `NodeComposer.runtime`: extend union to include execution binding distinct from composer type (`model` | `code` | `tts` vs run mode) — avoid overloading `composer.runtime` for RLM; prefer explicit `runtimeMode` on the node (per expert-team note).
-- Export sidecar includes assignment snapshots for EXPORT-07 explicit failures when preset/tools missing at run start.
-
-**Integration points**
-
-- Planner output schema includes `agentId`, `complexity`, `runtimeMode` per child.
-- `src/application/runtime-composition.ts`: resolve tools by **node** allowlist, not only agent defaults.
-- UI (`ui/`): Expert dropdown reads `AgentRegistry` profiles; no new UI framework.
-
-### CLI and control-server commands
-
-| Piece | Version | Purpose | Why |
-|-------|---------|---------|-----|
-| **`src/cli/args.ts`** (extend) | existing | `--variant playbook\|pipeline`, workflow export/import flags | Consistent with current hand-rolled parser; no `commander`/`yargs` |
-| **`src/index.ts`** (extend) | existing | Route `workflow export`, `workflow import`, graph workflow run | Single entrypoint |
-
-**Recommended CLI surface (stack-level)**
-
-```bash
-# Plan-only / graph authoring (extends existing --plan-only)
-rlm ask "..." --plan-only                    # unchanged semantics
-rlm ui                                       # plan-from-node via API
-
-# Graph workflow run (extends --workflow)
-rlm --workflow feature-delivery "new task"   # pipeline when arg present
-rlm --workflow feature-delivery --variant playbook
-rlm --workflow feature-delivery --export .rlm/workflows/feature-delivery.yaml  # optional explicit path
-
-# Explicit subcommands (optional but clearer for parity)
-rlm workflow export <id> --variant both
-rlm workflow import <path>
-```
-
-**Control-server additions (mirror CLI)**
-
-- `POST /api/workflows/export`, `POST /api/workflows/import`
-- `POST /api/nodes/:id/plan` body: `{ replan?: "replace"|"merge"|"cancel" }`
-- Run metadata in snapshot/events: `workflowVariant`, `plannerModel`, `exportPath`
-
----
-
-## Supporting libraries — use vs skip
-
-| Library | Verdict | Notes |
-|---------|---------|-------|
-| **Zod** | **Use** | Planner I/O, sidecar validation, workflow config union |
-| **yaml** | **Use** | Sidecars + config pointers |
-| **@langchain/ollama** | **Keep** | Only existing model adapter; planner uses same stack |
-| **@langchain/langgraph** | **Do not adopt for v1.5** | Declared in `package.json` but **unused in `src/`**; frozen graph runner is a small topo-sort + existing node executor |
-| **deepagents** | **Do not adopt** | Misaligned with port/adapter architecture |
-| **Handlebars / Mustache / nunjucks** | **Avoid** | Only `{{input}}` at root for pipeline variant in v1 |
-| **graphlib / dagre** | **Avoid for v1** | Topo-sort is ~30 lines; layout already manual/React Flow |
-| **AJV / json-schema** | **Avoid** | Duplicates Zod |
-| **second YAML lib** | **Avoid** | `yaml` already standard here |
-| **commander / yargs** | **Avoid** | Breaks established `parseArgs` patterns |
-| **n8n SDK / workflow engines** | **Avoid** | Out of scope; sidecar is custom `kind: graph` |
-
----
-
-## Alternatives considered
-
-| Category | Recommended | Alternative | Why not |
-|----------|-------------|-------------|---------|
-| Planner orchestration | `PlannerPort` + JSON+Zod | LangGraph planner subgraph | No LangGraph usage in codebase; heavy dependency for one call |
-| Structured planner output | Zod + `extractJsonObject` | Native Ollama JSON schema / LC structured output | Model/host matrix; keep one parsing path like quality loops |
-| Graph execution | Custom topo runner in application | LangGraph `StateGraph` | Export is static DAG; no checkpoint streaming needed |
-| Pipeline templates | String replace `{{input}}` | Handlebars | One slot in v1; fewer failure modes |
-| Workflow storage | `.rlm/workflows/*.yaml` | SQLite/JSON only | Matches existing `.rlm/` scoped config pattern |
-| Expert tools | Shared tools + allowlist | Per-role adapter copies | Explicit v1.5 decision in PROJECT.md |
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| **`eslint.config.js`** (root) | Unified lint entry | Two `files` blocks: `src/**`, `tests/**` with `globals.node`; `ui/src/**` with `globals.browser` and `ui/tsconfig.json` via `projectService` |
+| **`.prettierrc` + `.prettierignore`** | Format policy | Ignore `dist/`, `node_modules/`, Tauri `target/`, release staging dirs; single width (match existing 2-space TS style) |
+| **`.dependency-cruiser.cjs`** | Boundary rules | Use `.cjs` extension so config loads reliably in an ESM package; encode AGENTS.md layer rules with phased severities |
+| **`npm run check` expansion** | Quality gate | Evolve from `typecheck && test` to `typecheck && lint && depcruise && test` once baseline violations are triaged |
 
 ---
 
 ## Installation
 
-**No new `npm install` required for v1.5 MVP** if recommendations are followed.
-
-Optional later (not v1.5):
-
 ```bash
-# Only if Ollama structured JSON is standardized across all target models
-# npm install zod-to-json-schema  # bridge to host native schema — defer
+# Lint + format core
+npm install -D eslint@^10.4.0 @eslint/js@^10.0.1 typescript-eslint@^8.59.4 \
+  eslint-config-prettier@^10.1.8 prettier@^3.8.3 globals@^17.6.0
+
+# Module boundary enforcement
+npm install -D dependency-cruiser@^17.4.0
+
+# Optional — coverage while splitting modules
+npm install -D c8@^11.0.0
 ```
 
-**Dependency hygiene (non-blocking):** Consider removing unused `@langchain/langgraph` and `deepagents` in a separate cleanup PR to shrink install surface — not required for feature delivery.
+Suggested `package.json` script additions (integration, not new packages):
+
+```json
+{
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "depcruise": "depcruise src ui/src --config .dependency-cruiser.cjs",
+    "test": "npm run build && node --test --test-concurrency=4 dist/tests/**/*.test.js",
+    "test:coverage": "npm run build && c8 node --test --test-concurrency=4 dist/tests/**/*.test.js",
+    "check": "npm run typecheck && npm run lint && npm run depcruise && npm test"
+  }
+}
+```
+
+Replace the current `"lint": "npm run typecheck"` alias — typecheck stays explicit via `typecheck` script.
 
 ---
 
-## Layer map (new modules)
+## Integration Points
 
-```
-src/ports/planner-port.ts          ← contract
-src/application/graph-planner.ts   ← model calls + Zod
-src/application/graph-workflow-serializer.ts
-src/application/graph-workflow-store.ts
-src/application/graph-workflow-runner.ts
-src/application/execution-controller.ts  ← inject planner, protected metadata
-src/application/project-config.ts      ← WorkflowConfig union
-src/application/workflow-runner.ts     ← dispatch kind: graph
-src/cli/args.ts                        ← variant, export/import
-src/domain/types.ts                    ← node expert + runtime fields
-src/domain/structured-output.ts        ← shared extractJsonObject (optional extract)
+### ESLint + TypeScript 6 (root `tsconfig.json`)
+
+- Root `tsconfig.json` already enables `strict`, `verbatimModuleSyntax`, `isolatedModules`, `noUncheckedIndexedAccess`.
+- Use `typescript-eslint` **`recommended`** preset initially; add **`recommendedTypeChecked`** rules selectively (`consistent-type-imports`, `no-floating-promises`, `await-thenable`) after baseline lint passes.
+- **`projectService: true`** with `tsconfigRootDir: import.meta.dirname` — simpler than maintaining `tsconfig.eslint.json` while files move between `src/application/config/`, `src/runtime/composition/`, etc.
+- **`tests/**`**: allow dev-only patterns (`test.only` ban via rule override if desired); tests may import across layers for integration coverage — do **not** apply production boundary ESLint rules to tests (boundary enforcement belongs in dependency-cruiser with a `pathNot: ^tests` exception).
+
+### ESLint + UI (`ui/tsconfig.json`)
+
+- Separate flat-config block for `ui/src/**/*.{ts,tsx}` with `globals.browser`.
+- `ui/` is excluded from root `tsconfig.json` but included in Prettier; ESLint block should reference UI TS context (either extend `ui/tsconfig.json` via parser options or a dedicated `files` + `languageOptions.parserOptions.projectService` scoped to UI paths).
+- Do **not** lint generated Vite/Tauri output (`ui/dist`, `src-tauri/target`).
+
+### Prettier
+
+- Run on `src/`, `tests/`, `ui/src/`, `scripts/`, root config files.
+- Keep ESLint non-stylistic; Prettier owns quotes, trailing commas, line width.
+- First landing: `format:write` once, commit separately from logic refactors to keep reviews readable.
+
+### dependency-cruiser — layer rules aligned with AGENTS.md
+
+Target rules (encode in `.dependency-cruiser.cjs`):
+
+| Rule | From | To (forbidden) | Rationale |
+|------|------|----------------|-----------|
+| `domain-no-upper-layers` | `^src/domain/` | `^src/application/`, `^src/adapters/`, `^src/cli/` | Domain policy stays pure; today violated by `src/domain/agents.ts` → `application/project-config` |
+| `ports-no-application` | `^src/ports/` | `^src/application/`, `^src/adapters/`, `^src/cli/` | Ports define contracts only; today violated by `ports/extension-port.ts` → `application/extension-host` |
+| `ports-no-domain-types` | `^src/ports/` | `^src/domain/` | Prefer moving shared DTOs to `ports/` or a thin `src/types/` module during refactor |
+| `adapters-no-application` | `^src/adapters/` | `^src/application/`, `^src/cli/` | Adapters implement ports; orchestration stays upstream |
+| `cli-no-adapters` | `^src/cli/` | `^src/adapters/` | CLI composes through application/runtime composition root, not concrete adapters |
+| `no-circular` | (any) | circular deps | Critical during file splits |
+| `tests-free-import` | `^tests/` | (none extra) | Tests intentionally cross layers for integration |
+
+**Phased enforcement:** start new rules at `severity: "warn"` (or `--ignore-known`) for known violations; ratchet to `error` as extraction phases land (matches two-pass strategy in `.planning/notes/architecture-boundary-cleanup-direction.md`).
+
+**UI boundary:** add `forbidden` rule preventing `ui/src/**` from importing `src/**` directly — UI should talk to control-server HTTP/API only (verify current imports during phase planning).
+
+Run: `npx depcruise-fmt --init` once for baseline config, then replace presets with project-specific layer rules above.
+
+### Test restructuring (no new test framework)
+
+**Do not migrate to Vitest/Jest.** The repo uses Node's built-in runner (`import test from "node:test"`), documented in `docs/TESTING.md`, with compile-then-run via `tsc`.
+
+Recommended folder taxonomy (mirrors refactor targets):
+
+```text
+tests/
+  domain/           # recursive-language-model, agents, types
+  application/      # project-config, execution-controller, graph-*, workflows
+  adapters/         # file stores, tools, model hosts
+  cli/              # args, render
+  integration/      # cross-subsystem (today's integration-v15.test.ts)
+  helpers/          # QueueModel, shared fakes (extract from mega-files)
 ```
 
-UI/Tauri: **no new npm deps** — consume extended control-server API only.
+Mechanical support:
+
+1. Update glob: `dist/tests/**/*.test.js` (recursive — verified on Node 20).
+2. Keep `--test-name-pattern` for targeted runs (already used extensively in milestone verification docs).
+3. Extract shared fakes (`QueueModel`, temp config builders) into `tests/helpers/` — no library required.
+4. Optional `test:file` script: `node --test dist/tests/$npm_config_file` for subsystem focus.
+
+**Vitest note:** milestone prompt referenced Vitest, but `package.json` and all 15 test files use `node:test` only. Treat Vitest as out of scope unless a future milestone explicitly opts into migration.
 
 ---
 
-## What to avoid (product + stack)
+## Alternatives Considered
 
-1. **Lossy export** to `workflows.<id>.agents: [...]` agent-list shape — breaks per-node prompts and expert metadata.
-2. **Silent template fallback** when `{{input}}` missing in pipeline mode — fail at run start (EXPORT-07).
-3. **Silent runtime escalation** to RLM at execute time — planner must set `runtimeMode` visibly (TEAM-06).
-4. **Keyword heuristics** left in parallel with planner — remove `plannedChildrenFor` path after planner ships.
-5. **LangGraph/deepagents** for graph run/plan — conflicts with AGENTS.md port boundaries.
-6. **New model hosts or HF catalog** in v1.5 — orthogonal milestone themes.
-7. **Per-role tool implementations** — allowlists only until seed trigger fires.
-8. **Chat-first as default authoring** — UI stack unchanged but entry flow seeds `root-composer` only.
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| **dependency-cruiser** | **eslint-plugin-boundaries** (`^6.0.2`) | If team wants boundary violations inline in ESLint IDE diagnostics only — weaker at repo-wide graphs and CI reporting |
+| **dependency-cruiser** | **eslint-plugin-import-x** (`^4.16.2`) | Supplement for `import/no-cycle` in editor; redundant if dependency-cruiser `no-circular` is enabled |
+| **Prettier + ESLint** | **Biome** (single tool) | Greenfield repos; here it would replace two established ecosystems and fight existing TS/Vite/Tauri conventions mid-refactor |
+| **node:test** (keep) | **Vitest** | If you need Vite-native UI component unit tests with jsdom/happy-dom — not required for backend refactor; large migration cost |
+| **c8** (optional) | **`node --experimental-test-coverage`** | Built-in but still experimental and less documented; c8 is the pragmatic choice if coverage is needed |
+| **Manual `npm run check`** | **lint-staged + Husky** | Post-v1.6 polish once lint/depcruise baselines are clean; adds git-hook friction during active refactor |
 
 ---
 
-## Verification checklist (stack)
+## What NOT to Use
 
-| Claim | Confidence | Source |
-|-------|------------|--------|
-| `yaml` + `zod` already used for config | HIGH | `package.json`, `project-config.ts` |
-| `LanguageModelPort` has no native structured output | HIGH | `language-model-port.ts` |
-| JSON extraction pattern exists | HIGH | `recursive-language-model.ts` `extractJsonObject` |
-| LangGraph not used in source | HIGH | ripgrep `src/` |
-| Expert presets = `agents.*` + registry | HIGH | `agent-registry.ts`, expert-team note |
-| Plan API exists | HIGH | `control-server.ts` `POST .../plan` |
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| **Vitest / Jest** | 205 tests on `node:test`; migration churn steals refactor budget | Keep `node:test`; reorganize files/directories |
+| **Biome as ESLint+Prettier replacement** | Different config model; doubles tooling during transition | ESLint 10 flat config + Prettier 3 |
+| **Both dependency-cruiser and eslint-plugin-boundaries** | Duplicate boundary logic, divergent rules | dependency-cruiser only for architecture layers |
+| **Nx / Turborepo** | Massive workflow change for a single-package repo | npm scripts + dependency-cruiser |
+| **TypeScript project references (now)** | Root cause is file responsibility size, not build graph partitioning | Split modules first; revisit if compile times become painful |
+| **@stylistic/eslint-plugin** | Overlaps Prettier; creates fix conflicts | Prettier for format; ESLint for correctness |
+| **Strict boundary `error` on day one** | Known violations (`domain→application`, `ports→application`, `application→adapters`) exist today | Phased warn → error per refactor phase |
+| **LangGraph / new orchestration libs** | v1.6 is cleanup, not new runtime behavior | Existing domain/application modules |
+
+---
+
+## Stack Patterns by Variant
+
+**If landing lint/format first (recommended Wave 0):**
+
+- Add ESLint + Prettier with permissive rules (`recommended` only, no type-checked rules yet).
+- Run one formatting commit; fix auto-fixable ESLint issues.
+- Keep `check` = typecheck + test until lint baseline is green.
+
+**If enforcing boundaries before file moves:**
+
+- Add dependency-cruiser with `warn` severity + `--ignore-known` output committed as baseline.
+- Ratchet individual rules to `error` as each extraction phase merges.
+
+**If splitting `recursive-language-model.test.ts` (~4k lines):**
+
+- Create `tests/domain/recursive-language-model/` with multiple `*.test.ts` files grouped by concern (quality loop, interactive session, CLI render, graph mutations).
+- Extract shared fakes to `tests/helpers/` first — reduces copy/paste without new dependencies.
+- Run targeted `node --test --test-name-pattern='quality loop'` commands already documented in v1.2 milestone artifacts.
+
+**If touching UI composition (`ui/` + `control-server`):**
+
+- Add ESLint browser block + dependency-cruiser rule blocking `ui/src → src/` imports.
+- Keep UI tests integration-style through control-server (matches current pattern in mega test file).
+
+---
+
+## Version Compatibility
+
+| Package A | Compatible With | Notes |
+|-----------|-----------------|-------|
+| `typescript-eslint@^8.59.4` | `eslint@^8.57 \|\| ^9 \|\| ^10` | Peer dependency verified 2026-05-22 |
+| `typescript-eslint@^8.59.4` | `typescript@>=4.8.4 <6.1.0` | Matches repo `typescript@^6.0.3` |
+| `eslint-config-prettier@^10.1.8` | `eslint@>=7`, `prettier@>=3` | Flat config: import and spread last in `eslint.config.js` |
+| `dependency-cruiser@^17.4.0` | Node `>=18` | Auto-detects `.dependency-cruiser.cjs`; pass `--config` explicitly in npm script for clarity |
+| `c8@^11.0.0` | `node:test` via `c8 node --test ...` | Works with compiled JS in `dist/tests/` |
+| `@vitejs/plugin-react@^5.1.2` | `vite@^7.2.7` | Unchanged; ESLint UI block is independent of Vite version |
 
 ---
 
 ## Sources
 
-- Repo: `package.json`, `src/application/project-config.ts`, `src/application/execution-controller.ts`, `src/ports/language-model-port.ts`, `src/domain/recursive-language-model.ts`, `src/application/agent-registry.ts`, `src/application/control-server.ts`
-- Milestone notes: `.planning/notes/node-centric-dynamic-planning.md`, `.planning/notes/graph-workflow-export.md`, `.planning/notes/expert-team-architecture.md`
-- Requirements: `.planning/milestones/v1.3-REQUIREMENTS.md` (PLAN/EXPORT/TEAM)
-- Zod validation patterns: Context7 `/colinhacks/zod` (safeParse) — HIGH confidence
+- `/typescript-eslint/typescript-eslint` (Context7) — flat config, `projectService`, ESLint 10 peer range — **HIGH**
+- `/eslint/eslint` (Context7) — flat config `eslint.config.js` ESM pattern — **HIGH**
+- `/sverweij/dependency-cruiser` (Context7) — layered `forbidden` rules, CLI validation — **HIGH**
+- [dependency-cruiser rules tutorial](https://github.com/sverweij/dependency-cruiser/blob/main/doc/rules-tutorial.md) — path-based layer enforcement — **HIGH**
+- Repo `package.json`, `tsconfig.json`, `ui/tsconfig.json`, `docs/TESTING.md`, `AGENTS.md` — current baseline — **HIGH**
+- npm registry (`npm view`, 2026-05-22) — version numbers — **HIGH**
+- `.planning/notes/architecture-boundary-cleanup-direction.md` — two-pass extraction before taxonomy — **HIGH**
+
+---
+*Stack research for: v1.6 Architecture Cleanup (lint/format guardrails, test restructuring, module boundaries)*  
+*Researched: 2026-05-22*
