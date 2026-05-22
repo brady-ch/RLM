@@ -1,11 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.5
-milestone_name: Dynamic Graph Authoring
-status: Awaiting next milestone
-stopped_at: Milestone v1.5 complete
-last_updated: "2026-05-22T14:20:00.000Z"
-last_activity: 2026-05-22 — Milestone v1.5 completed and archived
+milestone: v1.6
+milestone_name: Architecture Cleanup
+status: planning
+last_updated: "2026-05-22T14:32:49.034Z"
+last_activity: 2026-05-22
 progress:
   total_phases: 0
   completed_phases: 0
@@ -25,10 +24,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 ## Current Position
 
-Phase: Milestone v1.5 complete  
-Plan: —  
-Status: Awaiting next milestone  
-Last activity: 2026-05-22 — Milestone v1.5 completed and archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-22 — Milestone v1.6 started
 
 ## Recently Completed
 

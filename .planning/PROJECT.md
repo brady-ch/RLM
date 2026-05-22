@@ -3,8 +3,8 @@
 ## Current State
 
 **Latest shipped milestone:** v1.5 — Dynamic Graph Authoring  
-**Current milestone:** Not started — run `/gsd-new-milestone` to define v1.6+  
-**Status:** Ready for next milestone planning
+**Current milestone:** v1.6 — Architecture Cleanup (planning)  
+**Status:** Defining requirements
 
 v1.5 shipped graph-primary authoring: model-driven plan-from-node with root-composer default and explicit failure states, protected replan (Replace/Merge/Cancel), planner-assigned expert teams with visible overrides and execution-time allowlist enforcement, a shared GraphExecutor that walks approved topology, lossless `kind: graph` workflow sidecars (playbook and pipeline variants), and UI/CLI/session integration hardening with 205 passing tests.
 
@@ -56,9 +56,9 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-(None — define next milestone requirements with `/gsd-new-milestone`)
+(None — requirements being defined for v1.6)
 
-### Candidate Next-Milestone Themes
+### Candidate Future-Milestone Themes
 
 - Product shell convergence: guided composer for first-run/new-workflow, graph workspace as the primary surface, and project/session launcher for durable resume.
 - Multi-runner adapters beyond bundled Ollama, including llama.cpp, vLLM, and cloud APIs.
@@ -69,6 +69,22 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 - Multi-user collaboration or shared remote approval sessions — still not required for repo-local developer workflow unless selected for a future milestone.
 - Silent auto-fallback behavior — conflicts with explicit error visibility requirement.
+
+## Current Milestone: v1.6 Architecture Cleanup
+
+**Goal:** Reduce structural debt across CLI composition, config loading, core engine, tests, tooling, and UI boundaries while preserving existing behavior.
+
+**Target features:**
+- Extract runtime composition from CLI entrypoint (stores, tools, models, execution wiring)
+- Split `project-config.ts` into focused loader, validation, and resolver modules
+- Decompose `recursive-language-model.ts` by concern (budgeting, tool loops, graph events)
+- Restructure tests into subsystem-focused files with preserved integration coverage
+- Add lint/format dev tooling guardrails
+- Clarify UI/control-server composition boundaries
+
+**Milestone type:** Behavior-preserving refactor with small natural fixes only — no new user-facing features.
+
+**Success criteria:** Key files shrink with obvious module responsibilities; runtime/config builders are unit-testable without full CLI invocation; new contributors can locate change points quickly; all existing tests pass.
 
 ## Context
 
@@ -105,4 +121,4 @@ v1.5 established graph-primary authoring: plan-from-node replaces keyword heuris
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-22 after v1.5 milestone*
+*Last updated: 2026-05-22 — milestone v1.6 Architecture Cleanup started*
