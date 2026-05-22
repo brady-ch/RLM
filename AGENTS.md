@@ -53,7 +53,7 @@ cli ──► application ──► domain
 
 ### Dependency-cruiser rules
 
-Boundary rules live in `.dependency-cruiser.js` (warn severity until Phase 48 ratchet). Rule names reference this concern map:
+Boundary rules live in `.dependency-cruiser.js` at **error** severity. Rule names reference this concern map:
 
 | Rule | Forbidden arc | Concern map rationale |
 |------|---------------|----------------------|
@@ -68,10 +68,12 @@ Boundary rules live in `.dependency-cruiser.js` (warn severity until Phase 48 ra
 | `no-plugins-to-application` | plugins → application | Plugins register via `ExtensionHostPort`, not orchestration |
 | `no-plugins-to-cli` | plugins → cli | Plugins never import CLI |
 | `no-plugins-to-domain` | plugins → domain | Plugins register tools; domain policy stays separate |
-| `no-runtime-to-cli` | runtime → cli | Runtime composition stays below CLI (known exception tracked for Phase 48) |
+| `no-runtime-to-cli` | runtime → cli | Runtime composition stays below CLI; CLI logger/shutdown injected at bootstrap |
 | `no-builtin-plugin-to-external-loader` | plugins/builtin → plugins/external | Built-ins must not depend on external install machinery |
 
-Run `npm run depcruise:ci` (or `dependency-cruise src --config .dependency-cruiser.js`) to verify. Phase 48 ratchets severity to `error` and removes `--ignore-known` when baseline is empty.
+**Optional follow-on (not enforced):** `no-application-to-adapters` — application modules should reach concrete stores and model hosts through `application/bootstrap/adapters.ts` (composition root) rather than importing `src/adapters/` directly. Documented exceptions until a later phase centralizes remaining call sites: `application/execution/agent-runner.ts` (`InMemoryTrace`), `application/memory/*` (vector index types), and `application/control-server/types.ts` (store type references for handler wiring).
+
+Run `npm run depcruise:strict` (or `dependency-cruise src --config .dependency-cruiser.js`) to verify. `npm run check` uses strict depcruise without `--ignore-known`; `dependency-cruiser-baseline.json` remains empty.
 
 ## Layout
 
@@ -134,4 +136,4 @@ For install, usage, and configuration fields, start with [`README.md`](README.md
 
 - Project initialized for recursive workflow planning/execution UX hardening.
 - Active roadmap: `.planning/ROADMAP.md` (milestone v1.7 adapter & plugin taxonomy).
-- Current focus: Phase 47 — concern map, tests mirror, and depcruise rules for plugins/runtime; Phase 48 ratchets severity to error.
+- Current focus: Phase 49 — local plugin manager (CLI + shared registry service).
