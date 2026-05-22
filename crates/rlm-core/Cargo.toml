@@ -23,8 +23,10 @@ futures = "0.3"
 tokio-stream = { version = "0.1", features = ["sync"] }
 async-trait = "0.1"
 uuid = { version = "1", features = ["v4"] }
+usearch.workspace = true
+reqwest.workspace = true
 
 [dev-dependencies]
 futures = "0.3"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+reqwest = { workspace = true, features = ["stream"] }
 tokio = { workspace = true, features = ["full", "test-util"] }

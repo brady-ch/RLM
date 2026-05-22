@@ -4,13 +4,13 @@ milestone: v1.8
 milestone_name: Rust Runtime Migration
 status: executing
 last_updated: "2026-05-22"
-last_activity: 2026-05-22 — Phase 55 complete (GraphExecutor + node/graph routes)
+last_activity: 2026-05-22 — Phase 56 complete (usearch ANN + Ollama embeddings)
 progress:
   total_phases: 9
-  completed_phases: 4
-  total_plans: 4
-  completed_plans: 4
-  percent: 44
+  completed_phases: 5
+  total_plans: 5
+  completed_plans: 5
+  percent: 56
 ---
 
 # Project State
@@ -20,29 +20,30 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 56 — Vector Index + Embeddings
+**Current focus:** Phase 57 — Model Hosts + Model Library
 
 ## Current Position
 
-Phase: 56 of 60 (Vector Index + Embeddings)
+Phase: 57 of 60 (Model Hosts + Model Library)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-22 — Phase 55 complete (GraphExecutor + node/graph routes)
+Last activity: 2026-05-22 — Phase 56 complete (usearch ANN + Ollama embeddings)
 
-Progress: [████░░░░░░] 44%
+Progress: [█████░░░░░] 56%
 
 ## Performance Metrics
 
 **Velocity (v1.8):**
 
-- Phase 52: 1 plan, 471 TS + 4 Rust tests green
-- Phase 53: 1 plan, 471 TS + 18 Rust tests green
-- Phase 54: 1 plan, 471 TS + 37 Rust tests green
-- Phase 55: 1 plan, 471 TS + 43 Rust tests green
+- Phase 52: 471 TS + 4 Rust
+- Phase 53: 471 TS + 18 Rust
+- Phase 54: 471 TS + 37 Rust
+- Phase 55: 471 TS + 43 Rust
+- Phase 56: 471 TS + 49 Rust
 
 ## Accumulated Context
 
-Phase 55 delivered `GraphExecutor`, `session_graph` mutations, full `/api/nodes/*` and `/api/graph/*` routes, workflow sidecar export/import, and descendant-blocking integration tests.
+Phase 56 delivered `AnnVectorIndex` (usearch), `OllamaEmbeddingModel`, `SemanticMemoryIndex`, and `/api/memory` vectorIndex/retrieval wiring with degraded-state reporting.
 
 ### Blockers/Concerns
 
@@ -50,10 +51,4 @@ None.
 
 ## Operator Next Steps
 
-Continue with Phase 56 — Vector Index + Embeddings.
-
-## Decisions
-
-- Preferences persist via FileMemoryStore project-preferences scope (same as TS MemoryResolver)
-- Control server uses .rlm/ directory presence as configured signal for read paths
-- Graph mutations in `session_graph.rs`; ApiError maps MUTATION codes to 409 responses
+Continue with Phase 57 — Model Hosts + Model Library.

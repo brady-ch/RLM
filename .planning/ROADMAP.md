@@ -30,7 +30,7 @@
 - [x] **Phase 53: Persistence Ports** — File stores, config YAML, dual-read `.rlm/` formats (1/1 plan) — 2026-05-22
 - [x] **Phase 54: Recursive Engine + ExecutionController** — RLM orchestrator and session authority in Rust (1/1 plan) — 2026-05-22
 - [x] **Phase 55: Graph Executor + Node Routes** — DAG walker, node/graph mutations, workflow sidecars (1/1 plan) — 2026-05-22
-- [ ] **Phase 56: Vector Index + Embeddings** — usearch ANN, Ollama embed, JSON import
+- [x] **Phase 56: Vector Index + Embeddings** — usearch ANN, Ollama embed, JSON import (1/1 plan) — 2026-05-22
 - [ ] **Phase 57: Model Hosts + Model Library** — Ollama adapter, catalog/search/install, HF metadata
 - [ ] **Phase 58: Built-in Plugins + MCP + Registry** — Rust builtins, PluginRegistryService, interop wiring
 - [ ] **Phase 59: Rust CLI + Parity CI** — `rlm` binary, `RLM_RUNTIME` switch, TS vs Rust fixture gate
@@ -312,7 +312,7 @@ Phases execute in numeric order: 52 → 53 → … → 60
 | 53. Persistence Ports | v1.8 | 1/1 | Complete   | 2026-05-22 |
 | 54. Recursive Engine + ExecutionController | v1.8 | 1/1 | Complete | 2026-05-22 |
 | 55. Graph Executor + Node Routes | v1.8 | 1/1 | Complete | 2026-05-22 |
-| 56. Vector Index + Embeddings | v1.8 | 0/TBD | Not started | - |
+| 56. Vector Index + Embeddings | v1.8 | 1/1 | Complete | 2026-05-22 |
 | 57. Model Hosts + Model Library | v1.8 | 0/TBD | Not started | - |
 | 58. Built-in Plugins + MCP + Registry | v1.8 | 0/TBD | Not started | - |
 | 59. Rust CLI + Parity CI | v1.8 | 0/TBD | Not started | - |

@@ -8,6 +8,7 @@ use axum::Router;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
+use crate::adapters::OllamaEmbeddingModel;
 use crate::domain::types::{
     DeleteStrategy, ExpertRuntimeMode, GraphPosition, GraphViewport, ReplanChoice,
 };
@@ -16,6 +17,7 @@ use crate::graph::{
     build_import_session_snapshot, execute_graph, export_and_save_graph_workflow,
     import_sidecar_to_graph, list_graph_workflows, load_graph_workflow, GraphExecutorInput,
 };
+use crate::memory::SemanticMemoryIndex;
 use crate::persistence::FileMemoryStore;
 use crate::ports::LanguageModel;
 
@@ -37,6 +39,10 @@ fn snapshot_with_extra(session: &InteractiveExecutionSession, extra: Value) -> V
 struct MemoryQuery {
     #[serde(rename = "sessionId")]
     session_id: Option<String>,
+    q: Option<String>,
+    #[serde(rename = "scopeIds")]
+    scope_ids: Option<String>,
+    limit: Option<usize>,
 }
 
 pub fn build_router(state: RouterState) -> Router {
@@ -650,15 +656,65 @@ async fn memory(
         .session_id
         .unwrap_or_else(|| state.memory_session_id.clone());
     let store = FileMemoryStore::new(state.paths.memory_dir.clone());
+    let semantic = SemanticMemoryIndex::new(
+        session_id.clone(),
+        state.paths.memory_dir.clone(),
+        OllamaEmbeddingModel::default(),
+    );
+
     match store.inspect(&session_id) {
-        Ok(snapshot) => match serde_json::to_value(snapshot) {
-            Ok(value) => (StatusCode::OK, Json(value)).into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": err.to_string() })),
-            )
-                .into_response(),
-        },
+        Ok(snapshot) => {
+            let vector_index = semantic.status().await;
+            let mut value = match serde_json::to_value(snapshot) {
+                Ok(value) => value,
+                Err(err) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!({ "error": err.to_string() })),
+                    )
+                        .into_response();
+                }
+            };
+
+            if let Some(obj) = value.as_object_mut() {
+                obj.insert(
+                    "vectorIndex".into(),
+                    serde_json::to_value(vector_index).unwrap_or(json!({})),
+                );
+
+                if let Some(q) = query.q.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+                    let scope_ids: Vec<String> = query
+                        .scope_ids
+                        .as_deref()
+                        .map(|raw| {
+                            raw.split(',')
+                                .map(str::trim)
+                                .filter(|part| !part.is_empty())
+                                .map(str::to_string)
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    let retrieval = semantic
+                        .search(q, &scope_ids, query.limit.unwrap_or(4))
+                        .await;
+                    obj.insert(
+                        "retrieval".into(),
+                        json!({
+                            "query": q,
+                            "status": match retrieval.status {
+                                crate::persistence::RetrievalStatus::Ready => "ready",
+                                crate::persistence::RetrievalStatus::Empty => "empty",
+                                crate::persistence::RetrievalStatus::Degraded => "degraded",
+                            },
+                            "reason": retrieval.reason,
+                            "hits": retrieval.hits,
+                        }),
+                    );
+                }
+            }
+
+            (StatusCode::OK, Json(value)).into_response()
+        }
         Err(err) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "error": err.to_string() })),

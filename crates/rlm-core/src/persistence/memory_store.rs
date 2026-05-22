@@ -97,6 +97,10 @@ impl FileMemoryStore {
         Self { base_dir }
     }
 
+    pub fn base_dir(&self) -> &Path {
+        &self.base_dir
+    }
+
     pub fn read_scope(
         &self,
         session_id: &str,
