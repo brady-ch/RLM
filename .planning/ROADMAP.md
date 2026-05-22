@@ -148,10 +148,18 @@ Plans:
 **Goal:** Break oversized Rust modules for maintainability without behavior change.  
 **Depends on:** Phase 68  
 **Requirements:** ARCH-04, REG-02  
+**Plans:** 5 plans  
 **Success Criteria:**
 1. `recursive_language_model.rs`, `session_graph.rs`, `registry_service.rs`, `persistence/config.rs` split into focused modules
 2. Config split mirrors TS loader/validation/resolver separation
 3. All existing Rust integration tests pass after each extraction
+
+Plans:
+- [ ] 69-01-PLAN.md — Config split: defaults, yaml_merge, validation, loader; persistence facade
+- [ ] 69-02-PLAN.md — Plugin registry decomposition: types, catalog, install, doctor
+- [ ] 69-03-PLAN.md — Session graph split: nodes, mutations, layout, planning
+- [ ] 69-04-PLAN.md — RLM infrastructure peel: execution_control, engine_state, hosts, bridge
+- [ ] 69-05-PLAN.md — RLM orchestrator phases + solve_tree; phase verification
 
 ### Phase 70: Rust Boundary Enforcement
 
@@ -182,7 +190,7 @@ Plans:
 | 64. Resume Consumer + Run-State Port | v1.9 | 1/1 | Complete   | 2026-05-22 |
 | 65. Skill Interop | v1.9 | 1/1 | Complete   | 2026-05-22 |
 | 66. CLI Full Parity | v1.9 | 1/1 | Complete | 2026-05-22 |
-| 67. PACK-03 CI Smoke | v1.9 | 2/2 | Complete   | 2026-05-22 |
+| 67. PACK-03 CI Smoke | v1.9 | 2/2 | Complete    | 2026-05-22 |
 | 68. Application Layer + Handler Split | v1.9 | 0/? | Not started | — |
 | 69. Large File Decomposition | v1.9 | 0/? | Not started | — |
 | 70. Rust Boundary Enforcement | v1.9 | 0/? | Not started | — |
