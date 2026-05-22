@@ -132,9 +132,17 @@ Plans:
   3. Domain modules do not import application-layer types; dependency direction stays domain → ports only.
   4. Plan-phase spike resolves state threading between class fields and extracted modules before quality-loop extraction executes.
   5. Each extraction slice passes RLM, graph-executor, and integration test suites; full suite and `npm run check` stay green.
-**Plans**: TBD
+**Plans**: `40-01-PLAN.md` … `40-05-PLAN.md`
 
-**Research flag:** Plan-phase spike required on state threading between `RecursiveLanguageModel` class and extracted modules before quality-loop extraction.
+**Research flag:** Addressed — `40-RESEARCH.md` (state-threading spike). Quality-loop/tool-round peels documented for follow-up.
+
+Plans:
+- [x] `40-RESEARCH.md` + spike (RLM-05)
+- [x] `40-01-PLAN.md` — prompt utilities → `domain/recursion/prompt-utilities.ts`
+- [x] `40-02-PLAN.md` — budget guard → `domain/recursion/budget-guard.ts`
+- [x] `40-03-PLAN.md` — execution graph sync → `domain/recursion/execution-graph-sync.ts`
+- [ ] `40-04-PLAN.md` — tool-round loop module (still in orchestrator — see `40-SUMMARY.md`)
+- [ ] `40-05-PLAN.md` — quality-loop module (still in orchestrator — see `40-SUMMARY.md`)
 
 ### Phase 41: Control-Server Boundary
 **Goal**: HTTP transport is grouped by surface with session/graph authority staying in application services.

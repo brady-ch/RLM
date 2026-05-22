@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Architecture Cleanup
 status: executing
-stopped_at: Phase 41 complete — CTRL-01..04 verified (`41-VERIFICATION.md`), `npm run check` green (211 tests)
-last_updated: "2026-05-22T16:45:00.000Z"
-last_activity: 2026-05-22 -- Phase 41 execution complete
+stopped_at: Phase 40 core decomposition + closeout docs (`40-SUMMARY.md`); Phase 41 complete (`41-VERIFICATION.md`); `npm run check` green (211 tests)
+last_updated: "2026-05-22T18:30:00.000Z"
+last_activity: 2026-05-22 -- Phase 40 core peel shipped; roadmap/requirements aligned
 progress:
   total_phases: 7
   completed_phases: 5
@@ -21,18 +21,20 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 42 — Test Restructure & Docs _(or Phase 40 engine decomposition parallel track)_
+**Current focus:** Phase 42 — Test Restructure & Docs _(Phase 40 core peel shipped; tool/quality extracts optional follow-up)_
 
 ## Current Position
 
 Phase: 41 of 42 (Control-Server Boundary) — **complete** (`41-01-SUMMARY.md`)  
-Phase: Next — Phase 42 (recommended) **or** Phase 40 spike + execution  
-Status: Ready for Phase 42 / Phase 40 plan kickoff  
-Last activity: 2026-05-22 -- Phase 41 control-server boundary shipped  
+Phase: Next — Phase 42 (recommended) **or** Phase 40 follow-up peels (tool-round + quality-loop)  
+Status: Phase 40 **core decomposition** landed (`40-SUMMARY.md`); RLM-01 partially satisfied  
+Last activity: 2026-05-22 -- Phase 40 slice: recursion modules peeled; Phase 41 control-server shipped earlier  
 
-Progress: Phase 36–39, **41** done (`npm run check` gate green; **211 tests** after Phase 41)
+Progress: Phase 36–39, **40 (partial)**, **41** (`npm run check` green; **211 tests**)
 
 ## Recently Completed
+
+- **Phase 40 (partial): Domain Engine Decomposition — core slice** — `src/domain/recursion/{prompt-utilities,budget-guard,execution-graph-sync}.ts`, orchestrator trimmed in `recursive-language-model.ts`; `40-RESEARCH.md` spike; `40-SUMMARY.md` / `40-VERIFICATION.md`; tool-round + quality-loop peels deferred (`npm run check` green, 211 tests; 2026-05-22).
 
 - **Phase 41: Control-Server Boundary** — `application/control-server/` handlers by surface (`session`, `graph`, `workflows`, `model-library`, `static-ui`), `buildStartControlServerInput` merges `RuntimeContext` into UI wiring; CTRL-01..04 verified (`41-VERIFICATION.md`); regression slice green for `npm run check` / 211 tests (2026-05-22).
 
@@ -53,7 +55,7 @@ Progress: Phase 36–39, **41** done (`npm run check` gate green; **211 tests** 
 
 ## Blockers/Concerns
 
-- RLM quality-loop state threading needs plan-phase spike before Phase 40 execution (flagged in roadmap).
+- Phase 40: complete **tool-round-loop** + **quality-loop** file extraction per `40-04`/`40-05` plans (`40-SUMMARY.md` tracks deferral).
 
 ## Deferred Items
 
@@ -73,10 +75,10 @@ Items acknowledged and deferred at milestone close on 2026-05-22:
 ## Session Continuity
 
 Last session: 2026-05-22T16:45:00.000Z  
-Stopped at: Phase 41 complete (`41-01-SUMMARY.md`, `41-VERIFICATION.md`)  
+Stopped at: Phase 40 core peel + Phase 41 complete (`40-SUMMARY.md`, `41-VERIFICATION.md`)  
 Resume file: None
 
 ## Operator Next Steps
 
-- `/gsd-plan-phase 42` (tests + docs) **or** continue Phase 40 engine decomposition spike per roadmap flag.
+- `/gsd-plan-phase 42` (tests + docs) **or** peel Phase 40 `40-04`/`40-05` (tool-round + quality-loop hosts).
 
