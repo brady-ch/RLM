@@ -1,0 +1,14 @@
+{
+  "graph": {
+    "nodes": [],
+    "edges": [],
+    "viewport": { "x": 0.0, "y": 0.0, "zoom": 1.0 }
+  },
+  "status": "planned",
+  "approvalMode": "full",
+  "autoApprovalPaused": false,
+  "chat": {
+    "readiness": "empty",
+    "clarificationHistory": []
+  }
+}
