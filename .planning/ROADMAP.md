@@ -2,6 +2,7 @@
 
 ## Milestones
 
+- 🚧 **v1.8 Rust Runtime Migration** — Phases 52-60 (in progress)
 - ✅ **v1.7 Adapter & Plugin Taxonomy** — Phases 43-51 (shipped 2026-05-22; archive: `.planning/milestones/v1.7-ROADMAP.md`)
 - ✅ **v1.6 Architecture Cleanup** — Phases 36-42 (shipped 2026-05-22; archive: `.planning/milestones/v1.6-ROADMAP.md`)
 - ✅ **v1.5 Dynamic Graph Authoring** — Phases 30-35 (shipped 2026-05-22; archive: `.planning/milestones/v1.5-ROADMAP.md`)
@@ -13,11 +14,27 @@
 
 ## Overview
 
+**v1.8 (in progress)** replaces the Node orchestration runtime with an embedded Rust workspace (`rlm-core`, `rlm-cli`) while keeping the TypeScript/React UI unchanged in Tauri. Migration follows a strangler fig over the frozen HTTP/SSE contract: Axum control server first, persistence and engine ports next, then graph execution, vector index, model hosts, plugins, CLI parity CI, and finally Tauri in-process packaging without bundled Node.
+
 **v1.7 (shipped 2026-05-22)** established a concern-first project taxonomy, first-class plugin registration, strict dependency-cruiser boundaries, and full plugin manager UX (CLI + UI). Full phase narratives live under `.planning/milestones/v1.7-ROADMAP.md`.
 
 **v1.6 (shipped 2026-05-22)** was a behavior-preserving architecture cleanup. Full phase narratives live under `.planning/milestones/v1.6-ROADMAP.md`.
 
 ## Phases
+
+### 🚧 v1.8 Rust Runtime Migration (In Progress)
+
+**Milestone Goal:** Desktop and CLI ship a Rust-only runtime that preserves all v1.7 workflows over the existing HTTP/SSE contract — no bundled Node.
+
+- [ ] **Phase 52: Rust Workspace + Control Server Strangler** — Cargo workspace, Axum router, static UI, golden HTTP/SSE fixtures
+- [ ] **Phase 53: Persistence Ports** — File stores, config YAML, dual-read `.rlm/` formats
+- [ ] **Phase 54: Recursive Engine + ExecutionController** — RLM orchestrator and session authority in Rust
+- [ ] **Phase 55: Graph Executor + Node Routes** — DAG walker, node/graph mutations, workflow sidecars
+- [ ] **Phase 56: Vector Index + Embeddings** — usearch ANN, Ollama embed, JSON import
+- [ ] **Phase 57: Model Hosts + Model Library** — Ollama adapter, catalog/search/install, HF metadata
+- [ ] **Phase 58: Built-in Plugins + MCP + Registry** — Rust builtins, PluginRegistryService, interop wiring
+- [ ] **Phase 59: Rust CLI + Parity CI** — `rlm` binary, `RLM_RUNTIME` switch, TS vs Rust fixture gate
+- [ ] **Phase 60: Tauri In-Process + Packaging** — No Node child, Rust-only release bundle, `.deb` smoke
 
 <details>
 <summary>✅ v1.7 Adapter & Plugin Taxonomy (Phases 43-51) — SHIPPED 2026-05-22</summary>
@@ -73,6 +90,108 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 </details>
 
 ## Phase Details
+
+### Phase 52: Rust Workspace + Control Server Strangler
+**Goal**: The UI HTTP/SSE contract is frozen behind a Rust Axum control server with golden fixture gates before orchestration ports begin.
+**Depends on**: Phase 51 (v1.7 complete)
+**Requirements**: RWRK-01, RWRK-02, RWRK-03
+**Success Criteria** (what must be TRUE):
+  1. Developer can build and run the Cargo workspace (`rlm-core` library + `rlm-cli` binary) with crate layout mirroring the v1.7 concern map
+  2. User opening the app sees the React UI load from Rust-served static assets with the same base URL contract as today
+  3. Scaffolded REST handlers and `/api/events` SSE responses match golden JSON/SSE fixtures in `tests/fixtures/control-server/`
+  4. Route probe order and error vocabulary match the TypeScript control server for ported read paths
+**Plans**: TBD
+
+### Phase 53: Persistence Ports
+**Goal**: All `.rlm/` on-disk formats load and save through Rust file stores with lossless migration from Node-written data.
+**Depends on**: Phase 52
+**Requirements**: PERS-01, PERS-02, PERS-03, PERS-04, REG-03
+**Success Criteria** (what must be TRUE):
+  1. User can save and reopen session bundles with the same envelope and verification semantics as v1.4/v1.7
+  2. Memory scopes, episodic logs, preferences, and ACL filtering restore with explicit degraded states when stores are corrupt or missing
+  3. Run-state checkpoint/resume and workflow sidecar persistence remain compatible with existing graph workflow formats
+  4. Project YAML config validation errors show equivalent messages and path context as the TypeScript loader
+  5. Session bundles, memory stores, preferences, run-state, and vector-index JSON written by Node open in Rust without data loss
+**Plans**: TBD
+
+### Phase 54: Recursive Engine + ExecutionController
+**Goal**: Recursive agent execution and session authority run in Rust with behavioral parity to the TypeScript orchestrator.
+**Depends on**: Phase 53
+**Requirements**: ENGN-01, ENGN-02
+**Success Criteria** (what must be TRUE):
+  1. User can run recursive agent execution with depth limits, budget guards, quality loop phases, and tool rounds matching TypeScript behavior
+  2. User at approval or clarification checkpoints sees the same stale/duplicate mutation handling and authoritative session control as today
+  3. User can stop or cancel running execution and receives immediate feedback in SSE and CLI without silent hang
+  4. Execution events stream to `/api/events` with vocabulary matching existing UI execution states
+**Plans**: TBD
+
+### Phase 55: Graph Executor + Node Routes
+**Goal**: Full graph execution and all node/graph API mutations required by the UI and CLI work through Rust.
+**Depends on**: Phase 54
+**Requirements**: GRPH-01, GRPH-02
+**Success Criteria** (what must be TRUE):
+  1. User can execute approved graph topology with bind-time expert resolution, descendant blocking on failure, and single-pass/RLM enforcement matching v1.5
+  2. User can mutate nodes via all `/api/nodes/*` and `/api/graph/*` routes with matching status codes and error vocabulary
+  3. User can export/import workflow sidecars and resume run-state checkpoints from graph workflows
+  4. Plan-from-node and interactive graph execution complete end-to-end through Rust control-server routes
+**Plans**: TBD
+
+### Phase 56: Vector Index + Embeddings
+**Goal**: Semantic memory retrieval uses a Rust ANN index with Ollama embeddings and visible degraded states.
+**Depends on**: Phase 53
+**Requirements**: VIDX-01, VIDX-02, VIDX-03
+**Success Criteria** (what must be TRUE):
+  1. User sees scope-filtered top-k memory hits from the ANN index instead of JSON linear scan at comparable recall
+  2. Opening a session with existing `vector-index.json` imports records lazily on first open without losing vectors or metadata
+  3. Session save/reopen merges vector metadata losslessly between ANN index and bundle envelope
+  4. When Ollama embedding host is unavailable, UI and CLI show explicit degraded retrieval state instead of silent empty results
+**Plans**: TBD
+
+### Phase 57: Model Hosts + Model Library
+**Goal**: Ollama inference and the model library panel work through Rust adapters and routes.
+**Depends on**: Phase 54
+**Requirements**: MDLH-01, MDLH-02, MDLH-03
+**Success Criteria** (what must be TRUE):
+  1. User can run agents against Ollama with streaming completions and tool-calling policy flags used by the recursive engine
+  2. User can browse curated catalog, search models, track install progress, and select tiers in the model library panel via Rust routes
+  3. User can search Hugging Face and download validated artifacts to local registry without a Python dependency
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 58: Built-in Plugins + MCP + Registry
+**Goal**: Tool rounds, plugin admin, and MCP interop run through Rust with v1.7 trust and discovery semantics.
+**Depends on**: Phase 57
+**Requirements**: PLUG-01, PLUG-02, PLUG-03, PLUG-04
+**Success Criteria** (what must be TRUE):
+  1. Built-in shell, file-write, web-search, and web-fetch tools execute through Rust ExtensionHost with the same trust and guard semantics as v1.7
+  2. User can list/install/enable/disable/uninstall/doctor/inspect/validate plugins via CLI and `/api/plugins/*` with registry parity to v1.7
+  3. MCP/skill interop initializes in v1.7 order (plugins → interop → tools resolver → agent registry → models)
+  4. Remote HTTPS/git plugin install rejects zip-slip and oversized archives with confirm gate and doctor `--fix` repair
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 59: Rust CLI + Parity CI
+**Goal**: The Rust `rlm` binary replaces Node for all CLI run modes and CI gates parity before cutover.
+**Depends on**: Phase 58
+**Requirements**: CLI-01, CLI-02, REG-02
+**Success Criteria** (what must be TRUE):
+  1. User can run all `rlm` run modes (ask, ui, plan-only, workflow, session/memory flags, full `rlm plugin` surface) from the Rust binary
+  2. Developer can switch `RLM_RUNTIME=node|rust` for strangler comparison during migration
+  3. Combined CI stays green: `npm run check` for UI/tooling plus `check:rust` (fmt, clippy, test) for the Rust workspace
+  4. Parity fixture job compares TypeScript golden responses to Rust before Node removal is allowed
+**Plans**: TBD
+
+### Phase 60: Tauri In-Process + Packaging
+**Goal**: Desktop ships without bundled Node — Tauri embeds the Rust server in-process and release artifacts pass smoke.
+**Depends on**: Phase 59
+**Requirements**: PACK-01, PACK-02, PACK-03, REG-01
+**Success Criteria** (what must be TRUE):
+  1. Desktop app launches with in-process Rust control server on `127.0.0.1` — no managed Node child — and shuts down gracefully on window close
+  2. Release bundle contains no bundled Node runtime; ships Rust binary, static UI assets, and documented Ollama readiness check in Rust
+  3. Linux `.deb` from existing packaging scripts produces an installable artifact passing package smoke with Rust-only runtime layout
+  4. User can complete graph authoring, execution, session save/reopen, model library, and plugin panel workflows when served by the Rust runtime — no intentional semantic drift except documented Rust-mode plugin limitations
+**Plans**: TBD
+**UI hint**: yes
 
 ### Phase 43: Boundary Fixes
 **Goal**: Layer import directions are corrected and plugin registration contracts decouple from application types — prerequisite for runtime split and taxonomy moves.
@@ -184,11 +303,20 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 43 → 44 → … → 51
+**Execution Order (v1.8):**
+Phases execute in numeric order: 52 → 53 → … → 60
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
+| 52. Rust Workspace + Control Server Strangler | v1.8 | 0/TBD | Not started | - |
+| 53. Persistence Ports | v1.8 | 0/TBD | Not started | - |
+| 54. Recursive Engine + ExecutionController | v1.8 | 0/TBD | Not started | - |
+| 55. Graph Executor + Node Routes | v1.8 | 0/TBD | Not started | - |
+| 56. Vector Index + Embeddings | v1.8 | 0/TBD | Not started | - |
+| 57. Model Hosts + Model Library | v1.8 | 0/TBD | Not started | - |
+| 58. Built-in Plugins + MCP + Registry | v1.8 | 0/TBD | Not started | - |
+| 59. Rust CLI + Parity CI | v1.8 | 0/TBD | Not started | - |
+| 60. Tauri In-Process + Packaging | v1.8 | 0/TBD | Not started | - |
 | 43. Boundary Fixes | v1.7 | 1/1 | Complete | 2026-05-22 |
 | 44. Runtime & Interop Split | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 45. Application Concern Grouping | v1.7 | 1/1 | Complete   | 2026-05-22 |

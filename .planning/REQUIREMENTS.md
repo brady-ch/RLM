@@ -86,40 +86,40 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | TBD | Pending |
-| REG-02 | TBD | Pending |
-| REG-03 | TBD | Pending |
-| RWRK-01 | TBD | Pending |
-| RWRK-02 | TBD | Pending |
-| RWRK-03 | TBD | Pending |
-| PERS-01 | TBD | Pending |
-| PERS-02 | TBD | Pending |
-| PERS-03 | TBD | Pending |
-| PERS-04 | TBD | Pending |
-| ENGN-01 | TBD | Pending |
-| ENGN-02 | TBD | Pending |
-| GRPH-01 | TBD | Pending |
-| GRPH-02 | TBD | Pending |
-| VIDX-01 | TBD | Pending |
-| VIDX-02 | TBD | Pending |
-| VIDX-03 | TBD | Pending |
-| MDLH-01 | TBD | Pending |
-| MDLH-02 | TBD | Pending |
-| MDLH-03 | TBD | Pending |
-| PLUG-01 | TBD | Pending |
-| PLUG-02 | TBD | Pending |
-| PLUG-03 | TBD | Pending |
-| PLUG-04 | TBD | Pending |
-| CLI-01 | TBD | Pending |
-| CLI-02 | TBD | Pending |
-| PACK-01 | TBD | Pending |
-| PACK-02 | TBD | Pending |
-| PACK-03 | TBD | Pending |
+| REG-01 | Phase 60 | Pending |
+| REG-02 | Phase 59 | Pending |
+| REG-03 | Phase 53 | Pending |
+| RWRK-01 | Phase 52 | Pending |
+| RWRK-02 | Phase 52 | Pending |
+| RWRK-03 | Phase 52 | Pending |
+| PERS-01 | Phase 53 | Pending |
+| PERS-02 | Phase 53 | Pending |
+| PERS-03 | Phase 53 | Pending |
+| PERS-04 | Phase 53 | Pending |
+| ENGN-01 | Phase 54 | Pending |
+| ENGN-02 | Phase 54 | Pending |
+| GRPH-01 | Phase 55 | Pending |
+| GRPH-02 | Phase 55 | Pending |
+| VIDX-01 | Phase 56 | Pending |
+| VIDX-02 | Phase 56 | Pending |
+| VIDX-03 | Phase 56 | Pending |
+| MDLH-01 | Phase 57 | Pending |
+| MDLH-02 | Phase 57 | Pending |
+| MDLH-03 | Phase 57 | Pending |
+| PLUG-01 | Phase 58 | Pending |
+| PLUG-02 | Phase 58 | Pending |
+| PLUG-03 | Phase 58 | Pending |
+| PLUG-04 | Phase 58 | Pending |
+| CLI-01 | Phase 59 | Pending |
+| CLI-02 | Phase 59 | Pending |
+| PACK-01 | Phase 60 | Pending |
+| PACK-02 | Phase 60 | Pending |
+| PACK-03 | Phase 60 | Pending |
 
 **Coverage:**
 - v1.8 requirements: 28 total
-- Mapped to phases: pending roadmap
-- Unmapped: 28 ⚠️
+- Mapped to phases: 28/28 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-22*
