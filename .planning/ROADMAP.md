@@ -27,9 +27,9 @@
 **Milestone Goal:** Desktop and CLI ship a Rust-only runtime that preserves all v1.7 workflows over the existing HTTP/SSE contract — no bundled Node.
 
 - [x] **Phase 52: Rust Workspace + Control Server Strangler** — Cargo workspace, Axum router, static UI, golden HTTP/SSE fixtures (1/1 plan) — 2026-05-22
-- [ ] **Phase 53: Persistence Ports** — File stores, config YAML, dual-read `.rlm/` formats
-- [x] **Phase 54: Recursive Engine + ExecutionController** — RLM orchestrator and session authority in Rust
-- [ ] **Phase 55: Graph Executor + Node Routes** — DAG walker, node/graph mutations, workflow sidecars
+- [x] **Phase 53: Persistence Ports** — File stores, config YAML, dual-read `.rlm/` formats (1/1 plan) — 2026-05-22
+- [x] **Phase 54: Recursive Engine + ExecutionController** — RLM orchestrator and session authority in Rust (1/1 plan) — 2026-05-22
+- [x] **Phase 55: Graph Executor + Node Routes** — DAG walker, node/graph mutations, workflow sidecars (1/1 plan) — 2026-05-22
 - [ ] **Phase 56: Vector Index + Embeddings** — usearch ANN, Ollama embed, JSON import
 - [ ] **Phase 57: Model Hosts + Model Library** — Ollama adapter, catalog/search/install, HF metadata
 - [ ] **Phase 58: Built-in Plugins + MCP + Registry** — Rust builtins, PluginRegistryService, interop wiring
@@ -310,8 +310,8 @@ Phases execute in numeric order: 52 → 53 → … → 60
 |-------|-----------|----------------|--------|-----------|
 | 52. Rust Workspace + Control Server Strangler | v1.8 | 1/1 | Complete | 2026-05-22 |
 | 53. Persistence Ports | v1.8 | 1/1 | Complete   | 2026-05-22 |
-| 54. Recursive Engine + ExecutionController | v1.8 | 0/TBD | Not started | - |
-| 55. Graph Executor + Node Routes | v1.8 | 0/TBD | Not started | - |
+| 54. Recursive Engine + ExecutionController | v1.8 | 1/1 | Complete | 2026-05-22 |
+| 55. Graph Executor + Node Routes | v1.8 | 1/1 | Complete | 2026-05-22 |
 | 56. Vector Index + Embeddings | v1.8 | 0/TBD | Not started | - |
 | 57. Model Hosts + Model Library | v1.8 | 0/TBD | Not started | - |
 | 58. Built-in Plugins + MCP + Registry | v1.8 | 0/TBD | Not started | - |

@@ -747,12 +747,8 @@ impl RecursiveLanguageModel {
             prompt: Some(task.prompt.clone()),
             depth: task.depth,
             status: ExecutionStatus::Planned,
-            approval_token: None,
             model_override: task.model_override.clone(),
-            approval_source: None,
-            approval_reason: None,
-            spawned_after_initial_approval: None,
-            position: None,
+            ..Default::default()
         };
         let mut state = self.state.lock().expect("engine lock");
         state.execution_nodes.insert(task.id.clone(), node);
@@ -802,12 +798,8 @@ impl RecursiveLanguageModel {
             prompt: Some(task.prompt.clone()),
             depth: task.depth,
             status: ExecutionStatus::Planned,
-            approval_token: None,
             model_override: task.model_override.clone(),
-            approval_source: None,
-            approval_reason: None,
-            spawned_after_initial_approval: None,
-            position: None,
+            ..Default::default()
         };
         if let Some(ctrl) = execution {
             Ok(ctrl.wait_for_node_approval(node).await)
@@ -998,12 +990,7 @@ impl ModelCompletionHost for EngineHost<'_> {
                 prompt: Some(task.prompt.clone()),
                 depth: task.depth,
                 status: ExecutionStatus::AwaitingApproval,
-                approval_token: None,
-                model_override: None,
-                approval_source: None,
-                approval_reason: None,
-                spawned_after_initial_approval: None,
-                position: None,
+                ..Default::default()
             };
             ctrl.register_node(node);
             ctrl.update_node_status(

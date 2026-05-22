@@ -52,6 +52,128 @@ pub struct ExecutionGraphNode {
     pub spawned_after_initial_approval: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub position: Option<GraphPosition>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub original_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expert_agent_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expert_assignment_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expert_runtime: Option<ExpertRuntimeMode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expert_tool_allowlist: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expert_purpose_tiers: Option<HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sampling_override: Option<SamplingOverride>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub composer: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub editable_fields: Option<Vec<String>>,
+}
+
+impl Default for ExecutionGraphNode {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            parent_id: None,
+            kind: "task".into(),
+            label: String::new(),
+            prompt: None,
+            depth: 0,
+            status: ExecutionStatus::Planned,
+            approval_token: None,
+            model_override: None,
+            approval_source: None,
+            approval_reason: None,
+            spawned_after_initial_approval: None,
+            position: None,
+            original_prompt: None,
+            expert_agent_id: None,
+            expert_assignment_mode: None,
+            expert_runtime: None,
+            expert_tool_allowlist: None,
+            expert_purpose_tiers: None,
+            sampling_override: None,
+            composer: None,
+            editable_fields: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ExpertRuntimeMode {
+    #[serde(rename = "single-pass")]
+    SinglePass,
+    Rlm,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeleteStrategy {
+    RewireDependents,
+    DeleteSubtree,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReplanChoice {
+    Replace,
+    Merge,
+    Cancel,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphMutationError {
+    pub code: String,
+    pub error: String,
+    pub node_ids: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub suggested_fix: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComposerPlanBudget {
+    pub max_depth: i32,
+    pub max_nodes: i32,
+    pub used_depth: i32,
+    pub used_nodes: i32,
+    pub remaining_depth: i32,
+    pub remaining_nodes: i32,
+    pub exhausted: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub approval_required: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanNodeResult {
+    pub planned_node_ids: Vec<String>,
+    pub budget: ComposerPlanBudget,
+    pub exhausted: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatRunReadiness {
+    pub state: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphWorkflowMetadata {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub linked_workflow_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_variant: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exported_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -47,12 +47,7 @@ mod tests {
                 prompt: Some("p".into()),
                 depth: 0,
                 status: ExecutionStatus::Running,
-                approval_token: None,
-                model_override: None,
-                approval_source: None,
-                approval_reason: None,
-                spawned_after_initial_approval: None,
-                position: None,
+                ..Default::default()
             },
         );
         let config = RecursiveModelConfig {

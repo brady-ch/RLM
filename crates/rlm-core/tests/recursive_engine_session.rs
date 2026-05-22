@@ -69,18 +69,10 @@ async fn session_approve_node_rejects_stale_token() {
     let session = InteractiveExecutionSession::new(ApprovalMode::Full);
     let node = rlm_core::domain::types::ExecutionGraphNode {
         id: "n1".into(),
-        parent_id: None,
-        kind: "task".into(),
         label: "task".into(),
         prompt: Some("do work".into()),
-        depth: 0,
         status: ExecutionStatus::Planned,
-        approval_token: None,
-        model_override: None,
-        approval_source: None,
-        approval_reason: None,
-        spawned_after_initial_approval: None,
-        position: None,
+        ..Default::default()
     };
 
     let session_clone = Arc::clone(&session);
@@ -128,18 +120,10 @@ async fn session_duplicate_approval_token_returns_duplicate() {
     let session = InteractiveExecutionSession::new(ApprovalMode::Full);
     let node = rlm_core::domain::types::ExecutionGraphNode {
         id: "n2".into(),
-        parent_id: None,
-        kind: "task".into(),
         label: "task".into(),
         prompt: Some("work".into()),
-        depth: 0,
         status: ExecutionStatus::Planned,
-        approval_token: None,
-        model_override: None,
-        approval_source: None,
-        approval_reason: None,
-        spawned_after_initial_approval: None,
-        position: None,
+        ..Default::default()
     };
 
     let session_clone = Arc::clone(&session);

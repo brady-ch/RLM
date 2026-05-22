@@ -9,30 +9,38 @@ use crate::domain::recursive_language_model::ExecutionControl;
 use crate::domain::types::{
     approval_mode_label, ApprovalMode, ChatReadiness, ChatSnapshot, ClarificationQuestion,
     ClarificationRecord, ExecutionEvent, ExecutionGraph, ExecutionGraphEdge, ExecutionGraphNode,
-    ExecutionStatus, ExecutionStatusUpdateDetail, GraphViewport, NodeApprovalDecision,
-    NodeApprovalStatus, RunModeSnapshot, RunSummary, SessionSnapshot,
+    ExecutionStatus, ExecutionStatusUpdateDetail, GraphViewport, GraphWorkflowMetadata,
+    NodeApprovalDecision, NodeApprovalStatus, RunModeSnapshot, RunSummary, SessionSnapshot,
 };
 
 use super::cancellation::CancellationController;
 
 type ApprovalWaiter = oneshot::Sender<NodeApprovalDecision>;
 
-struct PendingApproval {
-    token: String,
-    sender: ApprovalWaiter,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RunLifecycle {
+    Idle,
+    Running,
+}
+
+pub(crate) struct PendingApproval {
+    pub(crate) token: String,
+    pub(crate) sender: ApprovalWaiter,
 }
 
 pub struct InteractiveExecutionSession {
-    nodes: Mutex<HashMap<String, ExecutionGraphNode>>,
-    edges: Mutex<Vec<ExecutionGraphEdge>>,
-    viewport: Mutex<GraphViewport>,
-    pending: Mutex<HashMap<String, PendingApproval>>,
-    resolved_tokens: Mutex<HashSet<String>>,
+    pub(crate) nodes: Mutex<HashMap<String, ExecutionGraphNode>>,
+    pub(crate) edges: Mutex<Vec<ExecutionGraphEdge>>,
+    pub(crate) viewport: Mutex<GraphViewport>,
+    pub(crate) pending: Mutex<HashMap<String, PendingApproval>>,
+    pub(crate) resolved_tokens: Mutex<HashSet<String>>,
     approval_mode: Mutex<ApprovalMode>,
     auto_approval_paused: Mutex<bool>,
     initial_plan_accepted: Mutex<bool>,
     approval_version: Mutex<u32>,
     auto_approve_next_root: Mutex<bool>,
+    run_lifecycle: Mutex<RunLifecycle>,
+    pub(crate) graph_workflow_metadata: Mutex<Option<GraphWorkflowMetadata>>,
     cancellation: CancellationController,
     pending_clarification: Mutex<Option<ClarificationQuestion>>,
     clarification_history: Mutex<Vec<ClarificationRecord>>,
@@ -54,6 +62,8 @@ impl InteractiveExecutionSession {
             initial_plan_accepted: Mutex::new(false),
             approval_version: Mutex::new(0),
             auto_approve_next_root: Mutex::new(false),
+            run_lifecycle: Mutex::new(RunLifecycle::Idle),
+            graph_workflow_metadata: Mutex::new(None),
             cancellation: CancellationController::new(),
             pending_clarification: Mutex::new(None),
             clarification_history: Mutex::new(Vec::new()),
@@ -160,6 +170,27 @@ impl InteractiveExecutionSession {
 
     pub fn begin_confirmed_execution(&self) {
         *self.auto_approve_next_root.lock().expect("auto") = true;
+        *self.run_lifecycle.lock().expect("lifecycle") = RunLifecycle::Running;
+    }
+
+    pub fn finish_confirmed_execution(&self) {
+        *self.run_lifecycle.lock().expect("lifecycle") = RunLifecycle::Idle;
+        *self.auto_approve_next_root.lock().expect("auto") = false;
+    }
+
+    pub fn is_confirmed_execution_running(&self) -> bool {
+        *self.run_lifecycle.lock().expect("lifecycle") == RunLifecycle::Running
+    }
+
+    pub fn register_node_for_test(&self, node: ExecutionGraphNode) {
+        self.register_node_internal(node);
+    }
+
+    pub(crate) fn register_node_internal(&self, node: ExecutionGraphNode) {
+        self.nodes
+            .lock()
+            .expect("nodes")
+            .insert(node.id.clone(), node);
     }
 
     pub fn approve_node(&self, node_id: &str, token: Option<&str>) -> Result<bool, String> {
@@ -298,7 +329,7 @@ impl InteractiveExecutionSession {
         Ok(())
     }
 
-    fn publish(&self, mut event: ExecutionEvent) {
+    pub(crate) fn publish(&self, mut event: ExecutionEvent) {
         if event.event_type.is_empty() {
             event.event_type = "execution".into();
         }
@@ -437,14 +468,7 @@ impl InteractiveExecutionSession {
         })
     }
 
-    fn register_node_internal(&self, node: ExecutionGraphNode) {
-        self.nodes
-            .lock()
-            .expect("nodes")
-            .insert(node.id.clone(), node);
-    }
-
-    fn update_node_status_internal(
+    pub(crate) fn update_node_status_internal(
         &self,
         node_id: &str,
         status: ExecutionStatus,

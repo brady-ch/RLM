@@ -35,6 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ui_dist_dir: ui_dist,
         project_root: args.project_root,
         memory_session_id: None,
+        session: None,
     })
     .await?;
 

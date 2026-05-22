@@ -16,6 +16,7 @@ async fn saved_sessions_returns_list_when_configured() {
         ui_dist_dir: None,
         project_root: project_root.clone(),
         memory_session_id: Some("run-1".into()),
+        session: None,
     })
     .await
     .expect("start server");
@@ -41,6 +42,7 @@ async fn memory_returns_inspect_when_configured() {
         ui_dist_dir: None,
         project_root: project_root.clone(),
         memory_session_id: Some("run-1".into()),
+        session: None,
     })
     .await
     .expect("start server");

@@ -1,6 +1,7 @@
 pub mod control_server;
 pub mod domain;
 pub mod execution;
+pub mod graph;
 pub mod persistence;
 pub mod ports;
 pub mod server;
