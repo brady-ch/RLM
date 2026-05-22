@@ -222,7 +222,7 @@ pub fn resolve_language_models(
     )
 }
 
-fn default_queue_models() -> (Arc<dyn LanguageModel>, Arc<dyn LanguageModel>) {
+pub fn default_queue_models() -> (Arc<dyn LanguageModel>, Arc<dyn LanguageModel>) {
     (
         Arc::new(QueueModel::new([
             r#"{"children":[{"label":"Step","prompt":"Child task","type":"AI","complexity":"low","agentId":"default","runtime":"single-pass"}]}"#,

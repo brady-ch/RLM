@@ -1,10 +1,17 @@
 pub mod ask;
+pub mod plan_node;
 pub mod plugin;
+pub mod session;
 pub mod ui;
+pub mod workflow_io;
+
+pub use plan_node::PlanNodeCommand;
 
 use std::path::PathBuf;
 
 use clap::Subcommand;
+
+use crate::flags::ExecutionFlags;
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
@@ -17,26 +24,43 @@ pub enum Commands {
         /// Path to built UI assets (ui/dist)
         #[arg(long)]
         ui_dist: Option<PathBuf>,
+
+        #[command(flatten)]
+        flags: ExecutionFlags,
     },
-    /// Run a one-shot prompt (stub — use RLM_RUNTIME=node for full execution)
+    /// Run a one-shot prompt against the recursive engine
     Ask {
         /// Prompt text
-        prompt: Vec<String>,
+        #[arg(value_name = "PROMPT")]
+        prompt_parts: Vec<String>,
+
+        #[command(flatten)]
+        flags: ExecutionFlags,
     },
     /// Plugin registry administration
     Plugin {
         #[command(subcommand)]
         sub: PluginCommands,
     },
-    /// Plan a node subgraph (not yet implemented in Rust)
+    /// Plan a node subgraph from the root composer prompt
     PlanNode {
-        #[arg(long)]
-        node_id: Option<String>,
+        #[command(flatten)]
+        flags: ExecutionFlags,
+
+        /// Positional prompt text (optional when --prompt is set)
+        #[arg(value_name = "PROMPT")]
+        prompt_parts: Vec<String>,
     },
-    /// Export workflow sidecar (not yet implemented in Rust)
-    WorkflowExport,
-    /// Import workflow sidecar (not yet implemented in Rust)
-    WorkflowImport,
+    /// Export a saved session graph to a workflow sidecar
+    WorkflowExport {
+        #[command(flatten)]
+        flags: ExecutionFlags,
+    },
+    /// Import a workflow sidecar and print graph summary
+    WorkflowImport {
+        #[command(flatten)]
+        flags: ExecutionFlags,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -66,12 +90,4 @@ pub enum PluginCommands {
     Validate {
         path: String,
     },
-}
-
-pub fn not_implemented(command: &str) -> ! {
-    eprintln!(
-        "{command} is not yet implemented in the Rust CLI. \
-         Use RLM_RUNTIME=node for full execution during migration."
-    );
-    std::process::exit(2);
 }

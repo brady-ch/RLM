@@ -29,7 +29,7 @@
 - [x] **Phase 63: Quality Loop Parity** — Port full TS quality loop to Rust with golden tests — 2026-05-22
 - [x] **Phase 64: Resume Consumer + Run-State Port** — Cross-session resume loader, ARCH-01 boundary fix — 2026-05-22
 - [ ] **Phase 65: Skill Interop** — Port skill runtime and register `skill` tool in Rust
-- [ ] **Phase 66: CLI Full Parity** — All Node run modes and flags in `rlm-cli`
+- [x] **Phase 66: CLI Full Parity** — All Node run modes and flags in `rlm-cli` — 2026-05-22
 - [ ] **Phase 67: PACK-03 CI Smoke** — Headless `.deb` install smoke in release CI
 - [ ] **Phase 68: Application Layer + Handler Split** — `application/` grouping and split `routes.rs`
 - [ ] **Phase 69: Large File Decomposition** — Split orchestrator, session_graph, registry, config
@@ -167,7 +167,7 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 | 63. Quality Loop Parity | v1.9 | 1/1 | Complete   | 2026-05-22 |
 | 64. Resume Consumer + Run-State Port | v1.9 | 1/1 | Complete   | 2026-05-22 |
 | 65. Skill Interop | v1.9 | 1/1 | Complete   | 2026-05-22 |
-| 66. CLI Full Parity | v1.9 | 0/? | Not started | — |
+| 66. CLI Full Parity | v1.9 | 1/1 | Complete | 2026-05-22 |
 | 67. PACK-03 CI Smoke | v1.9 | 0/? | Not started | — |
 | 68. Application Layer + Handler Split | v1.9 | 0/? | Not started | — |
 | 69. Large File Decomposition | v1.9 | 0/? | Not started | — |

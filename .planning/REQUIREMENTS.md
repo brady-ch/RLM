@@ -29,8 +29,8 @@
 
 ### CLI
 
-- [ ] **CLI-01**: Rust `rlm` binary supports all Node run modes without fallback: `plan-node`, `workflow-export`, `workflow-import`, session/memory flags, and full approval/plan-only/workflow/agent config surface from `args.ts`.
-- [ ] **CLI-02**: Parity CI gate covers new CLI commands; `RLM_RUNTIME=rust` is sufficient for documented workflows.
+- [x] **CLI-01**: Rust `rlm` binary supports all Node run modes without fallback: `plan-node`, `workflow-export`, `workflow-import`, session/memory flags, and full approval/plan-only/workflow/agent config surface from `args.ts`.
+- [x] **CLI-02**: Parity CI gate covers new CLI commands; `RLM_RUNTIME=rust` is sufficient for documented workflows.
 
 ### Packaging
 
@@ -79,8 +79,8 @@
 | PERS-03 | Phase 64 | Complete |
 | PLUG-01 | Phase 65 | Complete |
 | PLUG-02 | Phase 65 | Complete |
-| CLI-01 | Phase 66 | Pending |
-| CLI-02 | Phase 66 | Pending |
+| CLI-01 | Phase 66 | Complete |
+| CLI-02 | Phase 66 | Complete |
 | PACK-01 | Phase 67 | Pending |
 | ARCH-01 | Phase 64 | Complete |
 | ARCH-02 | Phase 68 | Pending |

@@ -1,9 +1,12 @@
 mod commands;
+mod exec_control;
+mod flags;
 
 use std::path::PathBuf;
 
 use clap::Parser;
-use commands::{ask, plugin, ui, Commands};
+use commands::{ask, plugin, session, ui, workflow_io, Commands, PlanNodeCommand};
+use flags::CommandContext;
 
 #[derive(Parser, Debug)]
 #[command(name = "rlm", about = "Recursive Language Model CLI (Rust runtime)")]
@@ -30,17 +33,71 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    let cli = Cli::parse();
+    let Cli {
+        json,
+        project_root,
+        config,
+        command,
+    } = Cli::parse();
 
-    match cli.command.unwrap_or(Commands::Ui {
+    match command.unwrap_or(Commands::Ui {
         port: 0,
         ui_dist: None,
+        flags: flags::ExecutionFlags::default(),
     }) {
-        Commands::Ui { port, ui_dist } => ui::run(port, ui_dist, cli.project_root).await,
-        Commands::Ask { prompt } => ask::run(prompt, cli.json, cli.project_root, cli.config).await,
-        Commands::Plugin { sub } => plugin::run(sub, cli.project_root, cli.config, cli.json).await,
-        Commands::PlanNode { .. } => commands::not_implemented("plan-node"),
-        Commands::WorkflowExport => commands::not_implemented("workflow-export"),
-        Commands::WorkflowImport => commands::not_implemented("workflow-import"),
+        Commands::Ui {
+            port,
+            ui_dist,
+            flags,
+        } => {
+            let ctx = command_context(&project_root, &config, json, flags);
+            if session::handle_session_flags(&ctx).await? {
+                return Ok(());
+            }
+            ui::run(port, ui_dist, project_root).await
+        }
+        Commands::Ask { prompt_parts, flags } => {
+            let ctx = command_context(&project_root, &config, json, flags);
+            if session::handle_session_flags(&ctx).await? {
+                return Ok(());
+            }
+            ask::run(&ctx, prompt_parts).await
+        }
+        Commands::PlanNode { flags, prompt_parts } => {
+            let ctx = command_context(&project_root, &config, json, flags);
+            if session::handle_session_flags(&ctx).await? {
+                return Ok(());
+            }
+            PlanNodeCommand::run(&ctx, prompt_parts).await
+        }
+        Commands::WorkflowExport { flags } => {
+            let ctx = command_context(&project_root, &config, json, flags);
+            if session::handle_session_flags(&ctx).await? {
+                return Ok(());
+            }
+            workflow_io::run_export(&ctx).await
+        }
+        Commands::WorkflowImport { flags } => {
+            let ctx = command_context(&project_root, &config, json, flags);
+            if session::handle_session_flags(&ctx).await? {
+                return Ok(());
+            }
+            workflow_io::run_import(&ctx).await
+        }
+        Commands::Plugin { sub } => plugin::run(sub, project_root, config, json).await,
+    }
+}
+
+fn command_context(
+    project_root: &PathBuf,
+    config: &Option<PathBuf>,
+    json: bool,
+    flags: flags::ExecutionFlags,
+) -> CommandContext {
+    CommandContext {
+        project_root: project_root.clone(),
+        config_path: config.clone(),
+        json,
+        flags,
     }
 }

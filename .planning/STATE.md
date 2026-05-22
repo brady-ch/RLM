@@ -7,10 +7,10 @@ last_updated: "2026-05-22T23:30:00.000Z"
 last_activity: 2026-05-22 — Phase 65 Skill Interop complete
 progress:
   total_phases: 10
-  completed_phases: 5
-  total_plans: 5
-  completed_plans: 5
-  percent: 50
+  completed_phases: 6
+  total_plans: 6
+  completed_plans: 6
+  percent: 60
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 ## Current Position
 
-Phase: 65 — Skill Interop (complete)
-Plan: 01 of 01
-Status: Complete
-Last activity: 2026-05-22 — Rust skill tool, path policies, doctor warnings
+Phase: 67 — PACK-03 CI Smoke (not started)
+Plan: —
+Status: Ready to plan
+Last activity: 2026-05-22 — Phase 66 CLI full parity complete
 
 ## Performance Metrics
 
