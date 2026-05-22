@@ -1,198 +1,255 @@
-# Project Research Summary
+# Project Research Summary — v1.8 Rust Runtime Migration
 
 **Project:** Recursive Language Model CLI  
-**Domain:** Local-first plugin taxonomy, runtime/interop split, boundary enforcement  
-**Milestone:** v1.7 — Adapter & Plugin Taxonomy  
+**Domain:** Local-first recursive agent runtime — strangler migration from Node/TypeScript orchestration to embedded Rust (`rlm-core`), React/Vite UI unchanged in Tauri webview  
 **Researched:** 2026-05-22  
-**Confidence:** HIGH overall — repo-verified wiring, seeds, and v1.6 audit; MEDIUM for remote-fetch security and plugin manager UX (no existing implementation)
+**Confidence:** HIGH overall for migration strategy and TS→Rust seam map; MEDIUM for ANN crate selection and `hf-hub` 1.x stability; LOW for external-plugin dynamic loading and managed in-process inference timing
 
 ## Executive Summary
 
-v1.7 extends the v1.6 layered architecture rather than replacing it. The repo already has the right conceptual split — ports define contracts, adapters implement infrastructure I/O, application orchestrates use cases — but three concepts remain conflated: core infrastructure adapters, tool implementations, and registration/distribution packages. The milestone makes the third concept first-class as **plugins**, reserves `src/adapters/` for runtime infrastructure only, and moves composition/interop wiring into `src/runtime/`.
+RLM v1.8 replaces the **Node orchestration runtime** with an embedded Rust workspace while keeping the **TypeScript/React UI** unchanged. Experts migrate local AI dev tools via a **strangler fig** over a frozen **HTTP/SSE contract** — not a big-bang rewrite. The React webview continues calling `localhost` APIs; implementation moves module-by-module from TypeScript to Rust until the bundled Node child and `dist/src/index.js` are removed from the desktop installer.
 
-Experts in extensible CLI systems (OpenClaw, GitHub CLI extensions, VS Code, krew) converge on a small pattern: static manifest read **before** `import()`, a stable namespaced plugin id, category taxonomy, enable/disable without reinstall, and a doctor command that fails closed. RLM already has the hard parts from v1.1 — `ExtensionHost`, allowlist trust gate, YAML-first discovery, parallel registries — so v1.7 is primarily **taxonomy + distribution + boundary enforcement**, not a new orchestration framework. Stack additions are minimal: `tar` and `semver` for remote fetch and compatibility checks; everything else reuses Zod, Node built-ins, and existing dependency-cruiser.
+The recommended approach mirrors the existing concern map: `src/ports/` → Rust traits (`rlm-ports`), `src/domain/` → pure policy (`rlm-domain`), `src/adapters/` → I/O (`rlm-adapters`), `src/application/` → use-case services, control-server → Axum router. Tauri today spawns a Node child (`spawn_rlm_ui`); the end state embeds `rlm_core::start_server()` in-process on `127.0.0.1`, serves `ui-dist/` statically, and ships a Rust `rlm` binary only. **Ollama HTTP remains the default inference host** on day one; HF path is search/download/registry without Python; managed llama.cpp and fine-tuning are explicitly deferred.
 
-The recommended build order is **extract responsibilities first, rename directories second** (per architecture-boundary-cleanup direction). Fix three baselined ARCH-02 violations, split runtime/interop from application, introduce `PluginLoader` + manifest schema, migrate built-ins to `plugins/builtin/`, then deliver CLI plugin manager commands before ratcheting dependency-cruiser to error severity. Remote fetch-to-local is secondary to local-folder install and must never execute code during download or validation.
+Key risks are **HTTP contract drift** (silent UI breakage), **async concurrency bugs** in the recursive engine port, **session/vector data loss** during ANN migration, and **premature plugin re-port** after v1.7 just shipped the TS taxonomy. Mitigation: golden JSON/SSE fixtures from Wave 1, ports-first porting, dual-read on-disk formats, Rust-native builtins only in the critical path with external plugins deferred to a post-cutover bridge phase, and a parity matrix mapping 471 TS tests to Rust equivalents before Node removal.
 
-Key risks: cosmetic folder moves without loader changes (taxonomy theater), parallel plugin discovery paths (YAML + manager + static builtins), UI/runtime desync if handlers bypass a shared registry service, and flag-day depcruise severity before baseline is empty. Mitigate with one canonical discovery pipeline feeding `ExtensionHost`, a shared `PluginRegistryService` for CLI and control-server, manifest-only validation until allowlist approval, and fix-then-shrink baseline before error ratchet.
+---
 
 ## Key Findings
 
 ### Recommended Stack
 
-v1.7 adds two runtime dependencies and extends existing tooling — no new UI framework, no plugin marketplace SDK, no sandbox VM.
+Adopt a **Cargo workspace at repo root** with `crates/rlm-core` (lib: engine, control server, persistence, adapters), `crates/rlm-cli` (bin: headless CLI), and existing `src-tauri/` (desktop shell depending on `rlm-core`). Inner crates can split further (`rlm-ports`, `rlm-domain`, `rlm-adapters`, `rlm-application`, `rlm-runtime`, `rlm-control-server`, `rlm-config`) mirroring v1.7 boundaries.
 
 **Core technologies:**
-- **Zod** (`^4.4.3`, existing): `rlm.plugin.json` manifest parse + doctor validation — same dialect as project config schema
-- **tar** (`^7.5.15`, new): Extract remote `.tar.gz`/`.tgz` into `~/.rlm/plugins/<id>/` with path-traversal filters
-- **semver** (`^7.8.1`, new): Manifest `engines.rlm` compatibility checks in doctor
-- **Node built-in `fetch` + `fs/promises`**: Download archives and local-folder copy via `fs.cp`; no axios/node-fetch
-- **dependency-cruiser** (`^17.4.0`, existing): ARCH-02 error ratchet — fix 3 baseline violations, add `plugins/`/`runtime/` rules, empty baseline, then `severity: "error"`
 
-**Module moves (no new packages):**
-- `src/runtime/composition/` — `ExtensionHost`, `buildRuntimeContext`, plugin loader, tool/model factories
-- `src/runtime/interop/` — MCP stdio clients, skill discovery, interop tool factories
-- `src/plugins/builtin/` — first-party tool plugins with manifest + `register.ts`
-- `src/plugins/external/` — loader, manifest, registry, doctor for installed plugins
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| **Rust (stable)** | `1.80+` | Runtime language | Axum 0.8 MSRV; desktop CI matrix |
+| **Tokio** | `1.52` | Async runtime | De facto standard; axum/reqwest/hf-hub integration |
+| **Axum** | `0.8.9` | Control server | Built-in SSE, Tower middleware, localhost REST |
+| **Tower / tower-http** | `0.6.11` | Middleware | Trace, static UI (`ServeDir`), timeouts |
+| **Serde + yaml_serde** | `1.0` / `0.10.4` | JSON + config | Replace deprecated `serde_yaml` (RUSTSEC-2024-0406) |
+| **reqwest** | `0.13.3` | Ollama + HF HTTP | Async JSON + streaming; `rustls-tls` for static builds |
+| **usearch** | `2.25.2` | ANN vector index | Single-file persistence, mmap, incremental upsert; fallback `hnsw_rs` if C++ build fails |
+| **hf-hub** | `1.0.0-rc.1` | HF download/cache | Pin exact version; fallback reqwest to HF API |
+| **clap** | `4.6.1` | CLI parsing | Derive-based; maps v1.7 plugin subcommands |
+| **tracing** | `0.1.44` | Structured logging | Replace stderr patterns |
+| **cargo-nextest** | `0.9.136` | CI test runner | Parallel failures; complements `cargo test` |
 
-**Explicitly avoid:** OpenVSX/npm marketplace SDK, remote `import()`, VM2/isolated-vm sandbox, simple-git/degit (git-on-PATH requirement), axios/node-fetch, plugin hot reload (chokidar), second boundary tool (eslint-plugin-boundaries).
+**CI gate:** `check:rust` = `cargo fmt --check && cargo clippy -D warnings && cargo test --workspace`; keep `npm run check` for UI until TS runtime deleted, then `check:all`.
+
+**Explicitly do not add:** bundled Node, Python/PyO3, candle/ort in default features, embedded Qdrant, napi-rs bridge for core orchestration, grpc for control plane, WebSocket (UI uses SSE).
 
 ### Expected Features
 
 **Must have (table stakes):**
-- **Plugin manifest schema** (`rlm.plugin.json`) — id, name, version, category, capabilities, `engines.rlm`; validated before `import()`
-- **Stable plugin id + version** — durable identity for enable/disable, doctor, config references
-- **Category taxonomy** — shell, files, web, interop; aligns with `plugins/builtin/{shell,files,web}/`
-- **Built-in plugins use same contract as external** — migrate `extensions/tools/*.extension.ts` → `plugins/builtin/*/register.ts`
-- **`plugins list`** — installed, enabled, contributed tools; `--json` for scripting
-- **`plugins install <local-path>`** — copy to managed dir, manifest validate, trust gate, config update
-- **`plugins enable` / `disable` / `uninstall`** — config-backed lifecycle without reinstall
-- **Trust gate on first code load** — extend existing `.rlm-allowlist.json` + `ExtensionHost.loadExternal`
-- **`plugins doctor`** — broken manifests, stale ids, duplicates, missing paths; non-zero exit on failure
-- **YAML/config integration** — evolve `extensions.load` toward `plugins.entries.<id>` with backward compat
-- **ARCH-02 dependency-cruiser completion** — fix 3 violations, ratchet warn → error
-- **Contributor taxonomy docs** — AGENTS.md updated after directory moves
 
-**Should have (differentiators):**
-- **`plugins inspect`** — manifest, permissions, contributed capabilities before enable
-- **`plugins validate <path>`** — author-facing CI hook; no runtime boot
-- **`plugins doctor --fix`** — quarantine bad entries, prune stale config; explicit `--fix` only
-- **Remote fetch-to-local** (`install git:…`, `install https://…`) — secondary to local install; no exec during fetch
-- **Permission hints in manifest** — declarative network/shell/filesystem for trust decisions
-- **Unified builtin + external list** — single mental model with source column
-- **Runtime/interop split** — MCP/skill tools separated from adapter taxonomy
+- Full control-server route parity (~45 REST routes + `/api/events` SSE) — every UI panel maps to an API
+- Recursive engine + graph executor behavioral parity — budget guards, quality loop, approval boundaries, cancellation
+- Session save/reopen + memory/preferences + run-state checkpoint/resume — compatible `.rlm/` formats
+- CLI command parity (`rlm ask`, `rlm ui`, session/memory, plugin admin) — single Rust binary
+- Ollama adapter (completions + embeddings) + curated model install + HF search + tier select
+- Plugin list/doctor/enable/install (local) + built-in shell/files/web tools
+- Tauri without Node child — in-process Axum on `127.0.0.1`; no `bin/node` in release bundle
+- Vector retrieval semantics — scope ACL, degraded states, session merge (`mergeSessionRecords`)
+- Config + YAML validation + trust allowlist — same security model as v1.7
 
-**Defer (post–v1.7):**
-- Plugin marketplace, signed plugins, auto-update channel
-- UI plugin manager panel (consume control-server API once CLI stable)
-- WASM/subprocess sandbox for third-party plugins
-- `plugins upgrade` with semver resolution
-- Plugin hot reload
+**Should have (differentiators, ship in v1.8 if capacity):**
+
+- ANN vector index (usearch) with JSON → ANN one-time import
+- HF GGUF download + local registry + Ollama handoff
+- Native `ensure-ollama` in Rust (remove last `.mjs` from bundle)
+- Shadow-mode parity CI (TS vs Rust golden fixture diff)
+
+**Defer (post–v1.8):**
+
+- Managed in-process llama.cpp (`llama-cpp-2` behind optional Cargo feature)
+- WASM / `dlopen` external plugin dynamic loading
+- Fine-tuning / LoRA / QLoRA
+- React UI rewrite; replacing Ollama on day one
+- Embedded SQLite/Postgres for run state (ARTF-01)
 
 ### Architecture Approach
 
-v1.7 follows the two-pass rule: **extract responsibilities first, rename directories second**. `PluginManager` (application + control-server) owns install/enable/doctor UX; `PluginLoader` (runtime/composition) discovers and loads plugins into `ExtensionHost`; domain and graph execution remain unchanged. Bootstrap init order is preserved: ExtensionHost → PluginLoader (builtins + configured + installed) → interop tools → `createToolsResolver` → agent registry → models.
+Migration follows **8 architecture waves** (plus v1.7 Wave 0 gate) aligned with `.planning/notes/rust-runtime-migration-direction.md`. TS and Rust coexist behind `RLM_RUNTIME=node|rust` during development; production desktop ships one runtime after cutover. Parity is enforced by **HTTP/SSE golden fixtures**, not OpenAPI-first. Loopback TCP (`127.0.0.1:0`) is preferred over Tauri custom protocols because `/api/events` SSE is contract-critical.
 
 **Major components:**
-1. **PluginManifest / ExtensionHostPort** (ports) — taxonomy types and registration interface decoupled from concrete host
-2. **PluginLoader + ExtensionHost** (runtime/composition) — discover, validate manifest, dynamic import, register tools/skills/model-hosts
-3. **PluginManager + control-server handlers** (application) — install/enable/list/doctor/fetch; writes catalog + YAML; no direct `import()` of plugins
-4. **plugins/builtin/** — first-party registration packages containing adapter implementations
-5. **dependency-cruiser rules** — enforce `plugins→application` forbidden, `runtime→cli` forbidden, empty baseline at ratchet
+
+1. **`rlm-ports`** — trait contracts (`LanguageModelPort`, stores, `ExtensionHostPort`, etc.)
+2. **`rlm-domain`** — recursion policy, budget guard, quality loop, graph sync
+3. **`rlm-adapters`** — file persistence, Ollama/HF clients, ANN vector index
+4. **`rlm-application`** — ExecutionController, GraphExecutor, MemoryManager, PluginRegistryService
+5. **`rlm-runtime`** — composition root, ExtensionHost, PluginLoader, MCP interop
+6. **`rlm-control-server`** — Axum router preserving `route-request.ts` probe order
+7. **`rlm-cli` + `src-tauri`** — thin entrypoints calling `build_runtime_context`
+
+**Build-order dependency:** `rlm-ports` → `rlm-domain` → adapters/plugins → application → runtime → control-server → cli/tauri.
 
 ### Critical Pitfalls
 
-1. **Cosmetic taxonomy move before extraction** — Renaming `extensions/` → `plugins/` while keeping hardcoded `loadBuiltins([...])` and baselined import violations. Fix `content-tree`, `AgentConfig`, and `ExtensionHostPort` direction first; one built-in category per slice with `npm run check` green.
+1. **Big-bang rewrite / fake strangler** — Ship control-server first; each slice must pass parity tests and produce a working desktop build; Node removal only after Phases 51–58 green.
+2. **HTTP API drift** — Golden JSON + SSE fixtures before handler ports; preserve route probe order; match 409 mutation errors and nullable field rules.
+3. **Async/concurrency bugs in recursive engine** — Single-owner budget guard; serializing SSE channel; `tokio::select!` biased for stop; avoid `Arc<Mutex<RLM>>`.
+4. **Session/vector data loss** — Dual-read JSON sections; lazy ANN import from `vector-index.json`; keep session bundle envelope; never destructive first-boot migration.
+5. **Plugin re-port too early** — Rust builtins + MCP in critical path; external ESM plugins via documented bridge (Phase 60); do not block Tauri cutover on WASM/dylib ABI.
+6. **Tauri lifecycle** — Bind `:0`, inject URL to webview (not stderr scrape); shutdown hook; port `ensure-ollama.mjs` before deleting Node.
+7. **Test parity gap** — Map 471 TS tests to Rust; ≥80% behavioral coverage before Node removal; golden HTTP tests runnable against both runtimes.
 
-2. **Plugin vs adapter boundary collapse** — New tools landing in `adapters/tools/` or application importing external plugin paths directly. Codify: adapters = infra only; plugins = registration/distribution; application resolves via composition.
-
-3. **Flag-day dependency-cruiser error severity** — Flipping all rules to `error` while 3 baseline violations remain blocks CI. Fix each violation → shrink baseline → then ratchet. Goal: empty baseline, remove `--ignore-known`, switch `check` to `depcruise:strict`.
-
-4. **Parallel plugin loading paths** — YAML `extensions.load`, static builtins, manager install dir, and interop each with different allowlist/enable semantics. One pipeline: discover manifests → validate (no execute) → resolve enabled → allowlist → import → register.
-
-5. **Executing plugin code during fetch or validate** — `import()` in doctor/install dry-run bypasses trust gate. Manifest schema + Zod only until allowlist approval; fetch writes files, never runs entry module.
-
-6. **Plugin manager UX diverges from runtime truth** — Control-server handlers owning filesystem separately from bootstrap. Shared `PluginRegistryService`; CLI and HTTP API call same service; return `{ requiresRestart: true }` after install/enable changes.
-
-7. **Breaking existing extension config without migration** — v1.1 `extensions.load` projects lose tools. Compatibility shim normalizing legacy entries to plugin manifest shape; integration test with v1.1 fixture.
+---
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure for v1.7:
+Suggested **9 core phases (51–59)** plus **1 optional stretch (60)** — 10 total, continuing from Phase 50 (v1.7 complete). Phase numbers are planning placeholders for the roadmapper.
 
-### Phase 1: Boundary Fixes + Runtime/Interop Split
-**Rationale:** ARCH-02 prerequisite and composition foundation; must precede plugin taxonomy moves to avoid carrying violations into new paths.  
-**Delivers:** `AgentConfig` in domain; `ExtensionHostPort` in ports; `content-tree` relocated; `src/runtime/interop/` and `src/runtime/composition/` with moved modules; bootstrap facade re-export; composition init-order test.  
-**Addresses:** ARCH-02 violation fixes (table stakes), runtime/interop split (differentiator).  
-**Avoids:** Cosmetic move (Pitfall 1), runtime duplication (Pitfall 8), barrel cycles (Pitfall 9).
+### Phase 51: Rust Workspace + Control Server Strangler
+**Rationale:** Freeze UI contract first; all other work depends on HTTP/SSE seam.  
+**Delivers:** Cargo workspace scaffold, `rlm-ports` skeleton, Axum router, static UI, `/api/session` + SSE stub/parity, golden fixture catalog in `tests/fixtures/control-server/`.  
+**Addresses:** Control-server route parity (read paths), SSE reliability.  
+**Avoids:** HTTP API drift (Pitfall 2), SSE event loss (Pitfall 11), OpenAPI-only testing.
 
-### Phase 2: Plugin Taxonomy + Built-in Migration
-**Rationale:** Manifest schema and `PluginLoader` must exist before manager UX or directory moves have meaning.  
-**Delivers:** `PluginManifest` types in ports; `plugins/builtin/tools/{shell,file-write,web-search,web-fetch}/` with manifest + register; `PluginLoader` replacing hardcoded `loadBuiltins([...])`; config schema extension with `extensions.load` compat shim; deprecation of `src/extensions/tools/`.  
-**Addresses:** Manifest schema, category taxonomy, built-in same contract as external, YAML integration, contributor docs.  
-**Avoids:** Adapter/plugin collapse (Pitfall 2), manifest without versioning (Pitfall 10), legacy YAML break (Pitfall 7), new layer scope blindness (Pitfall 13).
+### Phase 52: Persistence Ports
+**Rationale:** Session/graph read APIs need file stores before engine writes state.  
+**Delivers:** `FileSessionStore`, `FileMemoryStore`, `FileRunStateStore`, preferences; dual-verify writes against TS during strangler.  
+**Addresses:** Session save/reopen, memory, run-state, config YAML load (`yaml_serde`).  
+**Avoids:** Session data loss (Pitfall 4), Windows path regressions (Pitfall 13).
 
-### Phase 3: Dependency-Cruiser Ratchet
-**Rationale:** Enforcement wave after violations fixed and new directories exist; prevents taxonomy decay.  
-**Delivers:** Rules for `plugins→application`, `plugins→cli`, `runtime→cli`, `builtin→external-loader`; severity `error`; empty baseline; `check` uses `depcruise:strict`; optional `no-application-to-adapters` once imports centralized.  
-**Addresses:** ARCH-02 completion (table stakes).  
-**Avoids:** Flag-day severity (Pitfall 3), baseline deleted without fixes.
+### Phase 53: Recursive Engine + ExecutionController
+**Rationale:** Largest logic block; depends on ports + persistence for checkpoints.  
+**Delivers:** `RecursiveLanguageModel` in Rust, chat preview routes, `/api/graph` snapshot, execution events to SSE.  
+**Addresses:** Engine behavioral parity, cancellation, budget guards, approval boundaries.  
+**Avoids:** Async/concurrency bugs (Pitfall 3); port budget-guard and graph-sync modules in isolation first.
 
-### Phase 4: Local Plugin Manager UX
-**Rationale:** Depends on Phase 2 loader; local flows must be stable before remote fetch.  
-**Delivers:** `PluginManager` service; `rlm plugin list|install|enable|disable|uninstall|doctor|inspect|validate`; catalog under `.rlm/plugins/`; control-server `handlers/plugins.ts`; CLI + bootstrap integration tests; single enablement store.  
-**Addresses:** list, install, enable/disable, uninstall, doctor, inspect, validate, trust gate extension.  
-**Avoids:** Parallel loaders (Pitfall 4), manager/runtime desync (Pitfall 5), execute on validate (Pitfall 6), enablement split stores (Pitfall 11), Windows path regression (Pitfall 15), doctor false OK (Pitfall 16).
+### Phase 54: Graph Executor + Node Routes + Workflows
+**Rationale:** Full execution requires DAG walker + all `/api/nodes/*` mutations.  
+**Delivers:** `GraphExecutor`, planner integration, workflow export/import routes, interactive execution session.  
+**Addresses:** Graph executor parity, workflow sidecars, node mutation surface.  
+**Avoids:** Parallel child without parent-fail propagation; port graph test suite (tests 35–38+).
 
-### Phase 5: Remote Fetch + Enhancements
-**Rationale:** Secondary per seed trigger condition — only after local install/doctor stable.  
-**Delivers:** `plugins install <url>` via fetch+tar (primary) or optional git spawn; staging → manifest validate → user confirm → atomic move to `~/.rlm/plugins/<id>/`; `doctor --fix`; permission hints in manifest.  
-**Uses:** tar, semver, Node fetch; same manifest/trust/enable pipeline as local.  
-**Avoids:** Remote execution (Pitfall 12), npm lifecycle scripts, import-before-approval.
+### Phase 55: Vector Index + Embedding Adapter
+**Rationale:** First measurable perf win; depends on embedding port + memory scope filter.  
+**Delivers:** usearch ANN index, Ollama embed HTTP, JSON import on first open, scope-filtered top-k, async rebuild.  
+**Addresses:** Vector retrieval semantics, session merge, degraded states.  
+**Avoids:** Empty ANN after JSON existed; embedding dimension mismatch; scope ACL after ANN only.
+
+### Phase 56: Model Hosts + Model Library
+**Rationale:** Agents need Ollama completions; UI model library panel depends on these routes.  
+**Delivers:** Ollama HTTP adapter (reqwest), model-library GET/search/install/tier-select, HF search via reqwest or hf-hub.  
+**Addresses:** Ollama adapter, curated install, HF search, tier selection.  
+**Avoids:** Breaking Ollama streaming; blocking migration on in-process llama.cpp.
+
+### Phase 57: Built-in Plugins + MCP Interop
+**Rationale:** Tool rounds require shell/files/web; MCP unchanged semantics.  
+**Delivers:** Rust `register(host)` for builtins, PluginLoader discovery order, registry service + `/api/plugins/*`, MCP subprocess interop port.  
+**Addresses:** Plugin list/doctor/enable/install, built-in tools, trust allowlist validation.  
+**Avoids:** Rewriting external ESM plugin loader in critical path; document `unsupported_rust_runtime` for external catalog entries.
+
+### Phase 58: Rust CLI + Parity CI Gate
+**Rationale:** CLI is thin facade; needs full runtime bootstrap before replacing Node entry.  
+**Delivers:** `rlm-cli` binary (clap), all run modes + plugin subcommands, `RLM_RUNTIME` switch, parity CI job (TS vs Rust fixture diff).  
+**Addresses:** CLI command parity, dual-runtime sunset documentation.  
+**Avoids:** Dual runtime operational debt (Pitfall 10); test parity gap (Pitfall 7).
+
+### Phase 59: Tauri In-Process + Packaging (No Node)
+**Rationale:** Success criterion — desktop ships without bundled Node; depends on all prior phases green.  
+**Delivers:** Tauri `setup` starts in-process server, Rust Ollama readiness, graceful shutdown, `build-release.mjs` ships `bin/rlm` + `ui-dist/` only, delete TS runtime from release artifact.  
+**Addresses:** Tauri without Node child, release layout, native ensure-ollama.  
+**Avoids:** Orphan processes, port race, blank webview on launch (Pitfall 6); fake strangler with hidden Node sidecar.
+
+### Phase 60 (Optional Stretch): HF GGUF Download + External Plugin Bridge
+**Rationale:** Differentiators and post-cutover extensibility — not blocking Node removal.  
+**Delivers:** hf-hub download pipeline with zip-slip defenses (port v1.7 remote-fetch tests), local GGUF registry, Ollama import mapping; external plugin bridge strategy (subprocess/WASM/deferred).  
+**Addresses:** HF GGUF download/registry differentiator; external plugin promise.  
+**Avoids:** HF zip-slip recurrence (Pitfall 9); plugin security regression.
 
 ### Phase Ordering Rationale
 
-- **Wave 1 before Wave 2:** Port types and runtime split unblock `PluginLoader` without import-direction churn mid-migration.
-- **Wave 2 before Wave 4:** Manager install paths require manifest schema and unified discovery; cosmetic moves without loader are worthless.
-- **Wave 3 after Wave 1–2:** Ratchet only when baseline empty and new path rules cover `plugins/` and `runtime/`.
-- **Wave 5 last:** Remote fetch security (TLS, checksum, zip slip, size limits) needs threat-model spike; local flows prove registry merge strategy first.
-- **Interop registration order preserved:** builtins → external plugins → interop tools → `createToolsResolver` — same as v1.6.
+- **Transport before orchestration:** UI is unchanged — control server + fixtures must land before recursive engine (direction doc + Pitfall 1).
+- **Persistence before engine writes:** Run-state checkpoints and session envelopes are authoritative spec for Rust ports.
+- **Engine before full graph surface:** Chat/SSE can ship with partial node routes; full executor needs engine stable.
+- **Vector after memory stores:** ANN imports JSON records produced by memory/session save paths.
+- **Model hosts parallel-ready but after core execution:** Ollama needed for agent runs but not for HTTP/static UI scaffold.
+- **Plugins after runtime bootstrap:** Tools resolver wires through composition init order (v1.7 seam).
+- **CLI before Tauri cutover:** Headless parity validates runtime without desktop lifecycle complexity.
+- **Tauri last:** Node removal is irreversible gate — only after ≥80% test parity and contract tests green.
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 5 (Remote fetch):** TLS, checksum, size limits, zip slip — plan-phase security spike before implementation
-- **Phase 4 (UI integration):** UI-SPEC if control-server plugin panel ships in v1.7; CLI-first MVP can skip
-- **Phase 3 (`no-application-to-adapters`):** Enumerate legitimate bootstrap exceptions before rule lands
+Phases likely needing `/gsd-research-phase` during planning:
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1 (Runtime split):** Files and init order verified in live `build-runtime-context.ts`
-- **Phase 2 (Manifest schema):** Align with OpenClaw/VS Code fields only where useful; Zod already project standard
-- **Phase 4 (CLI commands):** OpenClaw/gh/krew command set well documented; adapt to RLM scope
+- **Phase 55:** ANN crate selection — usearch vs hnsw_rs cross-compile on Tauri CI matrix (`.planning/research/questions.md` Q1–Q2)
+- **Phase 56–60:** HF Rust download path — `hf-hub` 1.x RC stability vs direct reqwest (Q6)
+- **Phase 59:** SSE on Tauri Windows — loopback binding edge cases if port issues arise
+- **Phase 60:** External plugin ABI — WASM vs subprocess vs dylib (defer decision)
+
+Phases with standard patterns (skip deep research):
+
+- **Phase 51:** Axum + SSE — official docs, repo-verified control-server handlers
+- **Phase 52:** File persistence — TS adapters are authoritative spec
+- **Phase 53–54:** Domain port — `ports/` trait map is documented
+- **Phase 58:** Clap CLI — mirrors existing `src/cli/args.ts`
+
+---
+
+## Open Questions
+
+| # | Question | Impact | Suggested resolution |
+|---|----------|--------|----------------------|
+| 1 | **usearch vs hnsw_rs** on Windows/macOS Tauri CI — C++ build pain? | Phase 55 | Spike in Phase 55 plan; hnsw_rs fallback documented |
+| 2 | **hf-hub 1.0.0-rc.1** stability for production pin | Phase 56/60 | Pin + parity test against known GGUF repo; reqwest fallback |
+| 3 | **External plugin ABI** for v1.8 ship — builtins-only vs bridge | Phase 57/60 | Ship builtins + MCP; external `unsupported_rust_runtime` in doctor until Phase 60 |
+| 4 | **Monolithic `rlm-core` vs split crates** at workspace scaffold | Phase 51 | Start with logical modules inside one crate; split when dep graph stabilizes |
+| 5 | **Managed llama.cpp** entry criteria | Post-v1.8 | Gate behind `managed-llama` Cargo feature after HF install stable |
+| 6 | **v1.7 completion gate** — is plugin taxonomy frozen enough to start Phase 51? | Phase 51 | Confirm manifest schema + registry service stable before Rust port begins |
+
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Repo-verified deps; tar/semver versions confirmed via npm; only remote transport is new code |
-| Features | HIGH | RLM v1.1 extension host + v1.6 bootstrap ground truth; ecosystem patterns MEDIUM adaptation |
-| Architecture | HIGH | Live `src/` layout, baseline violations enumerated, init order verified |
-| Pitfalls | HIGH | Repo-specific wiring + v1.6 audit ARCH-02 deferral; remote fetch security MEDIUM |
+| Stack | **HIGH** | Workspace layout, axum/tokio/serde/yaml_serde verified; usearch/hf-hub MEDIUM within stack |
+| Features | **HIGH** | Complete route inventory from live handlers; 471 TS tests as behavioral spec |
+| Architecture | **HIGH** | TS→Rust module map verified against `ports/`, control-server, persistence layouts |
+| Pitfalls | **HIGH** | Repo-specific pitfalls with detection/prevention; Rust ecosystem choices MEDIUM |
+| Plugin external loading | **LOW** | No RLM decision yet; explicit defer to Phase 60 |
+| Managed inference | **LOW** | Defer until Ollama strangler path stable |
 
-**Overall confidence:** HIGH
+**Overall confidence:** **HIGH** for migration strategy, phase ordering, and table-stakes scope; **MEDIUM** for ANN/HF crate choices and external plugin bridge.
 
 ### Gaps to Address
 
-- **Remote fetch security model:** Plan-phase spike for TLS pinning, checksum strategy, max archive size, zip-slip defenses before Phase 5.
-- **Config migration path:** Decide `extensions.load` → `plugins.enabled` shim vs one-release dual-read; validate with v1.1 fixture project during Phase 2 planning.
-- **Enablement store authority:** Pick project-local vs user-global default for enable/disable; document override for desktop/Tauri.
-- **UI plugin panel scope:** Confirm CLI-only MVP for v1.7 or schedule UI-SPEC phase if control-server panel is in scope.
-- **Tool implementation location during migration:** Built-in tool classes may temporarily stay in `adapters/tools/` while plugins own registration — document transition in AGENTS.md.
+- **ANN cross-compile validation:** Run usearch build on all three desktop CI targets during Phase 55 planning; confirm fallback path.
+- **hf-hub 1.x GA watch:** Pin RC with explicit upgrade task when stable releases.
+- **External plugin user communication:** Doctor output and docs must state Rust-mode limitations before cutover to avoid v1.7 trust regression.
+- **Parity matrix ownership:** Assign TS test → Rust test mapping early in Phase 51; block Phase 59 without ≥80% coverage.
+- **Composition init order:** Port `COMPOSITION_INIT_ORDER` with unit test equivalent to v1.7 init-order test in Phase 57.
+
+---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `.planning/PROJECT.md` — v1.7 milestone scope, plugin vs adapter decision
-- `.planning/notes/architecture-boundary-cleanup-direction.md` — two-pass cleanup, target directories
-- `.planning/seeds/first-class-plugin-taxonomy-for-future-tools.md` — category layout, constraints
-- `.planning/seeds/remote-plugin-fetch-to-local-folder.md` — fetch scope, no remote execution
-- `.planning/milestones/v1.6-MILESTONE-AUDIT.md` — ARCH-02 deferred, 359 tests baseline
-- Repo: `package.json`, `.dependency-cruiser.js`, `dependency-cruiser-baseline.json`, `extension-host.ts`, `build-runtime-context.ts`, `AGENTS.md`
+- `.planning/notes/rust-runtime-migration-direction.md` — priority order, success criteria, deferred scope
+- `.planning/PROJECT.md` — v1.8 milestone scope, v1.7 baseline (471 tests)
+- `src/application/control-server/handlers/*`, `route-request.ts` — HTTP contract inventory
+- `src/ports/*`, `src/domain/*`, `src/adapters/persistence/*` — migration map and on-disk formats
+- `src-tauri/src/main.rs`, `scripts/packaging/build-release.mjs` — Node child lifecycle and release layout
+- `.planning/seeds/rust-vector-index.md`, `.planning/seeds/managed-llama-cpp-runtime.md` — vector and inference deferrals
 
 ### Secondary (MEDIUM confidence)
-- [dependency-cruiser CLI](https://github.com/sverweij/dependency-cruiser/blob/main/doc/cli.md) — baseline, `--ignore-known`, ratchet strategy
-- [dependency-cruiser rules reference](https://github.com/sverweij/dependency-cruiser/blob/main/doc/rules-reference.md) — `severity: "error"`
-- [OpenClaw plugin manifest](https://docs.openclaw.ai/plugins/manifest) — static manifest before code load; doctor/fix patterns
-- [OpenClaw CLI plugins](https://docs.openclaw.ai/cli/plugins) — install/enable/disable/list/doctor command set
-- [VS Code extension manifest](https://code.visualstudio.com/api/references/extension-manifest) — categories, contributes metadata
-- [GitHub CLI extensions](https://cli.github.com/manual/gh_extension) — install/list/remove patterns
-- [krew developer guide](https://github.com/kubernetes-sigs/krew/blob/master/docs/DEVELOPER_GUIDE.md) — manifest + archive install
-- npm registry — `tar@^7.5.15`, `semver@^7.8.1` version verification (2026-05-22)
+- [axum SSE docs](https://docs.rs/axum/latest/axum/response/sse/index.html) — SSE stack
+- [hf-hub crate](https://docs.rs/hf-hub/latest/hf_hub/) — 1.x RC stability
+- [usearch docs](https://docs.rs/crate/usearch/) — ANN persistence
+- [Microsoft Strangler Fig pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/strangler-fig) — migration rhythm
+- [Tauri v2 sidecar docs](https://v2.tauri.app/develop/sidecar/) — lifecycle lessons
+- RAGtronic / Node→Rust case studies — streaming + memory motivations
 
 ### Tertiary (LOW confidence)
-- KickJS / plugin architecture articles — adapter wraps legacy; plugin is distribution bundle (conceptual only)
+- WASM / dylib external plugin approaches — deferred; needs Phase 60 spike
+- `llama-cpp-2` in-process timing — defer until HF path stable
+- [candle GGUF RoPE issue #3410](https://github.com/huggingface/candle/issues/3410) — confirms candle deferral
 
 ---
 *Research completed: 2026-05-22*  
-*Milestone: v1.7 Adapter & Plugin Taxonomy*  
-*Ready for roadmap: yes*
+*Ready for roadmap: yes — proceed to REQUIREMENTS.md and ROADMAP phases 51–59 (60 optional)*

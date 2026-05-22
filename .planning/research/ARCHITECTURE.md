@@ -1,420 +1,406 @@
-# Architecture Patterns
+# Architecture Patterns — v1.8 Rust Runtime Migration
 
-**Domain:** Local recursive LM CLI + control-server UI — plugin taxonomy, runtime/interop split, boundary enforcement  
-**Milestone:** v1.7 — Adapter & Plugin Taxonomy  
+**Domain:** Strangler migration from TypeScript `src/` layers to embedded Rust `rlm-core`, preserving React/Tauri UI via HTTP/SSE  
+**Milestone:** v1.8 — Rust Runtime Migration  
 **Researched:** 2026-05-22  
-**Confidence:** HIGH (grounded in live `src/` layout post-v1.6, `architecture-boundary-cleanup-direction.md`, dependency-cruiser baseline, and bootstrap composition code)
+**Confidence:** HIGH for TS→Rust seam map (live `ports/`, control-server handlers, persistence layouts verified); MEDIUM for plugin ABI choice and ANN crate selection (phase-specific spikes in `.planning/research/questions.md`)
 
 ## Executive Summary
 
-v1.7 extends the v1.6 layered architecture rather than replacing it. The repo already has the right conceptual split — ports define contracts, adapters implement I/O, application orchestrates use cases, domain holds recursion policy — but **three concepts are conflated today**: (1) core infrastructure adapters (persistence, model hosts), (2) tool implementations (`adapters/tools/*`), and (3) registration/distribution packages (`extensions/tools/*.extension.ts` + `ExtensionHost`). v1.7 makes that third concept first-class as **plugins**, reserves `src/adapters/` for runtime infrastructure only, and moves composition/interop wiring out of overloaded `application/` modules into `src/runtime/`.
+v1.8 replaces the **Node orchestration runtime** with an embedded Rust workspace while keeping the **TypeScript/React UI** unchanged. The migration map is already drawn: `src/ports/` become Rust traits, `src/domain/` becomes pure policy crates, `src/adapters/` become infrastructure impls, and `src/application/control-server/` becomes an Axum (or equivalent) HTTP surface. Tauri today spawns a bundled Node child (`spawn_rlm_ui` in `src-tauri/src/main.rs`); the end state embeds the Rust server in-process, serves `ui/dist` as static assets, and drops `dist/release/*/bin/node` from the installer.
 
-Integration follows the two-pass rule from `architecture-boundary-cleanup-direction.md`: **extract responsibilities first, rename directories second**. Boundary enforcement (ARCH-02) runs in parallel with extractions — fix the three baseline violations, then ratchet dependency-cruiser from `warn` to `error`. The plugin manager is an **application + control-server surface** over a **runtime plugin loader**; it does not execute remote code or replace `ExtensionHost`.
-
-Primary data flow is unchanged at the domain boundary: CLI/UI → `buildRuntimeContext()` → application runners → `RecursiveLanguageModel` → ports → adapters. What changes is **where** plugins are discovered, **how** manifests describe capabilities, and **which modules** may import which layers.
+The strangler path follows the priority order in `.planning/notes/rust-runtime-migration-direction.md`: **control server first** (UI contract freeze), then **recursive engine + graph executor**, then **persistence**, **vector index**, **model hosts**, and finally **CLI + Tauri shell cutover**. TS and Rust coexist behind an explicit runtime switch during development; parity is enforced by **HTTP/SSE golden fixtures**, not by maintaining two orchestration implementations in production.
 
 ---
 
-## Recommended Architecture
+## Target System Overview
 
-### System Overview (Post-v1.7 Target)
-
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  Entry & I/O                                                                │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────────────────┐  │
-│  │ index.ts    │  │ cli/run-modes│  │ ui/ + control-server handlers    │  │
-│  │ (thin)      │  │ + plugin CLI │  │ + plugin manager API             │  │
-│  └──────┬──────┘  └──────────────┘  └──────────────┬───────────────────┘  │
-├─────────┴────────────────────────────────────────────┴──────────────────────┤
-│  Application orchestration (src/application/)                               │
-│  ┌────────────────┐ ┌─────────────────┐ ┌────────────────────────────────┐  │
-│  │ execution-*    │ │ graph-planner/  │ │ plugin-manager *               │  │
-│  │ agent-runner   │ │ executor        │ │ (install/enable/list/doctor) │  │
-│  │ workflow-runner│ │ control-server  │ │ config merge for plugins.load  │  │
-│  └────────┬───────┘ └────────┬────────┘ └───────────────┬────────────────┘  │
-├───────────┴────────────────────┴─────────────────────────┴──────────────────┤
-│  Runtime layer (src/runtime/) * NEW                                         │
-│  ┌─────────────────────────────┐  ┌──────────────────────────────────────┐  │
-│  │ composition/                │  │ interop/                             │  │
-│  │ build-runtime-context       │  │ mcp-skill-runtime, interop-runtime   │  │
-│  │ extension-host, plugin-loader│ │ skill/MCP tool factories             │  │
-│  │ runtime-composition (tools/  │  └──────────────────────────────────────┘  │
-│  │   model factories)          │                                            │
-│  └──────────────┬──────────────┘                                            │
-├─────────────────┴──────────────────────────────────────────────────────────┤
-│  Plugins (src/plugins/) * NEW          │  Domain (src/domain/)               │
-│  ┌─────────────────────────────┐     │  recursion policy, agent profiles   │
-│  │ builtin/<category>/<id>/    │     │  (AgentConfig types moved here)     │
-│  │ manifest + register()       │     └─────────────────────────────────────┘
-│  └─────────────────────────────┘                                            │
-├──────────────────────────────────────────────────────────────────────────────┤
-│  Ports (src/ports/)              │  Adapters (src/adapters/) — infra only  │
-│  ToolPort, ExtensionHostPort *,  │  persistence/, models/, tracing/        │
-│  PluginManifest *, PluginLoaderPort *│  (tool impls live in plugins)       │
-└──────────────────────────────────┴──────────────────────────────────────────┘
-
-* = new or substantially moved in v1.7
+│  ui/ — React 19 + Vite (unchanged)                                          │
+│  fetch("/api/…") · EventSource("/api/events") · static assets from dist     │
+└───────────────────────────────┬─────────────────────────────────────────────┘
+                                │ http://127.0.0.1:{port}  (preserve today)
+┌───────────────────────────────▼─────────────────────────────────────────────┐
+│  src-tauri/ — Tauri 2 shell                                                 │
+│  · setup: start embedded rlm-core server (no Node child)                    │
+│  · redirect webview to listening URL (same stderr/redirect pattern optional)│
+│  · ensure Ollama readiness (Rust or retained small helper script)           │
+│  · on close: stop server + cleanup MCP children                             │
+└───────────────────────────────┬─────────────────────────────────────────────┘
+                                │ in-process library call
+┌───────────────────────────────▼─────────────────────────────────────────────┐
+│  rlm-core workspace (Rust)                                                  │
+│  ┌─────────────────┐  ┌──────────────────┐  ┌───────────────────────────┐ │
+│  │ control-server  │  │ application svc  │  │ runtime/composition         │ │
+│  │ HTTP + SSE      │→ │ session · graph  │→ │ plugin loader · interop MCP │ │
+│  └─────────────────┘  │ memory · plugins │  └─────────────┬─────────────┘ │
+│                        └────────┬─────────┘                │               │
+│                                 ▼                          ▼               │
+│                        ┌────────────────┐         ┌───────────────────────┐ │
+│                        │ domain         │         │ adapters              │ │
+│                        │ recursion RLM  │         │ persistence · models    │ │
+│                        │ graph policy   │         │ vector · embeddings   │ │
+│                        └────────┬───────┘         └───────────┬───────────┘ │
+│                                 └────────── ports (traits) ───┘             │
+└───────────────────────────────┬─────────────────────────────────────────────┘
+                                │ HTTP (default) / optional in-proc later
+┌───────────────────────────────▼─────────────────────────────────────────────┐
+│  Ollama · Hugging Face hub (download/registry) · optional llama.cpp          │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Layer Definitions (v1.7 Contract)
-
-| Concept | Owns | Does not own |
-|---------|------|--------------|
-| **Port** | Interface contracts (`ToolPort`, store ports, `ExtensionHostPort`, `PluginManifest`) | Registration, filesystem, HTTP |
-| **Adapter** | Core runtime infrastructure I/O (file stores, Ollama/HTTP model hosts, trace sinks) | Plugin manifests, agent YAML resolution |
-| **Plugin** | Registration package: manifest + `register(host)` + bundled adapter(s) + capability metadata | Session/graph policy, recursion |
-| **Runtime** | Composition root wiring: discover plugins, build interop tools, populate `ExtensionHost`, produce `RuntimeContext` | Business use cases (plan, approve, execute) |
-| **Application** | Use cases, plugin manager UX, config merge, control-server transport | MCP stdio protocol, allowlist file I/O details |
-| **Domain** | Recursion policy, shared config shapes used by domain (`AgentConfig`, agent profiles) | Extension loading, tool I/O |
+**Integration principle:** The UI never imports Rust. Tauri never duplicates business logic. All execution authority lives in `rlm-core`; the webview is a transport client exactly as it is today against the TypeScript control server.
 
 ---
 
-## Component Boundaries
+## Crate / Module Map (`rlm-core`)
 
-| Component | Layer | Responsibility | Communicates with |
-|-----------|-------|----------------|-------------------|
-| `PluginManifest` / taxonomy types | Ports | Category, capabilities, permissions, version schema | Config validation, plugin loader |
-| `ExtensionHostPort` | Ports | Tool/skill/model-host registration API (interface only) | `ExtensionHost` impl, plugin `register()` |
-| `ExtensionHost` | Runtime/composition | In-memory registries, duplicate detection, external load + allowlist | Plugin loader, interop registration |
-| `PluginLoader` | Runtime/composition | Discover builtin + configured + installed plugins; invoke `register()` | ExtensionHost, `.rlm/plugins/` catalog |
-| `buildRuntimeContext` | Runtime/composition | Ordered init: plugins → interop → tools resolver → registry → models | Application runners via `RuntimeContext` |
-| `buildInteropRuntime` | Runtime/interop | MCP client lifecycle, skill discovery, `McpSkillRuntime` events | ExtensionHost, ResourceCleanup |
-| `PluginManager` | Application | Install/enable/disable/list/doctor; remote fetch-to-local; config patch | Filesystem, config loader, control-server |
-| `plugins/builtin/*` | Plugins | First-party tool plugins (shell, file-write, web-search, web-fetch) | Adapters (tool impl), ExtensionHost |
-| `.rlm/plugins/` | Data (project-local) | Installed third-party plugin folders + enablement state | PluginManager, PluginLoader |
-| `adapters/persistence|models` | Adapters | Stores, embeddings, language models | Bootstrap/runtime composition only |
-| `dependency-cruiser` rules | Build | Layer forbidden arcs; baseline ratchet ARCH-02 | CI `depcruise:ci` |
+Use a **Cargo workspace** at repo root (alongside `src-tauri/`) with crate boundaries mirroring v1.7 concern map and dependency-cruiser direction. Inner crates depend inward: `ports` ← `domain` ← `adapters` / `plugins`; `runtime` and `control-server` compose at the top; `cli` and `tauri` are thin entrypoints.
 
----
+| Rust crate | TS mirror | Responsibility | Key traits / types |
+|------------|-----------|----------------|-------------------|
+| **`rlm-ports`** | `src/ports/` | Contract-only traits + shared DTOs | `LanguageModelPort`, `ToolPort`, `EmbeddingPort`, `MemoryStorePort`, `SessionStorePort`, `RunStateStorePort`, `TracePort`, `RuntimeLoggerPort`, `ExtensionHostPort`, `SkillLoaderPort` |
+| **`rlm-domain`** | `src/domain/` | Recursion policy, agent profiles, shared result types | `RecursiveLanguageModel`, `budget-guard`, `tool-round-loop`, `quality-loop`, `execution-graph-sync`, `RunStatePersistence`, `types` |
+| **`rlm-adapters`** | `src/adapters/` | Infrastructure I/O only | `FileSessionStore`, `FileMemoryStore`, `FileRunStateStore`, `FileVectorIndex` → `AnnVectorIndex`, `OllamaLanguageModel`, `OllamaEmbeddingModel`, HF registry client, `InMemoryTrace` |
+| **`rlm-plugins`** | `src/plugins/builtin/` | Built-in tool registrations (Rust impls) | `register(host)` per category: shell, files, web |
+| **`rlm-runtime`** | `src/runtime/` | Composition root + interop | `build_runtime_context`, `ExtensionHost`, `PluginLoader`, MCP/skill interop (`interop-runtime`, `mcp-skill-runtime`) |
+| **`rlm-application`** | `src/application/` (orchestration only) | Use-case services consumed by HTTP handlers | `ExecutionController`, `GraphExecutor`, `GraphPlanner`, `MemoryManager`, `MemoryResolver`, `SemanticMemoryIndex`, `PluginRegistryService`, agent/workflow runners |
+| **`rlm-control-server`** | `src/application/control-server/` | HTTP routing, SSE, static UI | Route chain matching `route-request.ts` precedence; handler modules: session, graph, workflows, model-library, plugins, static-ui |
+| **`rlm-config`** | `src/application/config/` | YAML load, validate, resolve | Zod-equivalent: `serde` + custom validator or `validator` crate; same paths (`rlm.config.yaml`, `.rlm/`) |
+| **`rlm-cli`** | `src/index.ts` + `src/cli/` | `rlm ui`, agent/workflow run modes, plugin admin | Clap subcommands; calls `build_runtime_context` + `start_control_server` |
+| **`rlm-tauri-bridge`** (optional) | `src-tauri/src/main.rs` lifecycle | Start/stop server, Ollama gate, webview URL | Linked by `recursive-language-model` Tauri crate |
 
-## Patterns to Follow
+### Submodule layout inside crates
 
-### Pattern 1: Plugin as Registration Package (Not Adapter)
+```text
+rlm-domain/
+  recursion/          # prompt-utilities, budget-guard, tool-round-loop, quality-loop, execution-graph-sync
+  recursive_language_model.rs
+  agents.rs, types.rs, run_state_persistence.rs
 
-**What:** A plugin exports `register(host: ExtensionHostPort)` and optionally a manifest; it **contains** adapters but is not synonymous with a single `ToolPort`.  
-**When:** Any distributable tool/skill/model-host bundle — builtin or third-party.  
-**Example (target shape):**
+rlm-adapters/
+  persistence/        # file-* stores, ann-vector-index
+  models/             # ollama, http, hf-hub registry
+  tracing/
 
-```typescript
-// src/plugins/builtin/tools/web-fetch/manifest.ts
-export const manifest: PluginManifest = {
-  id: "rlm.builtin.web-fetch",
-  category: "tools",
-  capabilities: [{ kind: "tool", name: "web_fetch" }],
-  permissions: ["network"],
-};
+rlm-runtime/
+  composition/        # build_runtime_context, extension_host, plugin_loader, runtime_composition, init_order
+  interop/            # mcp-skill-runtime, interop-runtime
 
-// src/plugins/builtin/tools/web-fetch/index.ts
-export function register(host: ExtensionHostPort): void {
-  host.tools.register(new WebFetchTool());
-}
+rlm-control-server/
+  handlers/           # session, graph, workflows, model_library, plugins, static_ui
+  route_request.rs    # preserve legacy probe order
+  http_utils.rs
 ```
 
-**Trade-offs:** (+) Clear install/distribution unit; (+) taxonomy metadata; (−) More files than today's one-line extension shims.
-
-### Pattern 2: Runtime/Interop Split
-
-**What:** Move `interop-runtime.ts`, `mcp-skill-runtime.ts`, and interop portions of `build-runtime-context.ts` to `src/runtime/interop/`; keep composition in `src/runtime/composition/`.  
-**When:** Modules mix MCP stdio protocol, skill path scanning, and agent registry wiring.  
-**Trade-offs:** (+) Application stops owning transport protocols; (+) interop testable in isolation; (−) import path migration across bootstrap callers.
-
-**Init contract (preserve v1.6 order):**
-
-```
-1. ExtensionHost constructed
-2. McpSkillRuntime + event sinks
-3. PluginLoader.loadBuiltins() + loadConfigured() + loadInstalled()
-4. buildInteropRuntime() → interop ToolPort[]
-5. Register interop tools on ExtensionHost
-6. createToolsResolver(projectConfig, extensionHost, interopTools)
-7. Agent registry, model factory, execution control, shutdown
-```
-
-### Pattern 3: Bootstrap Facade Re-export
-
-**What:** Keep `application/bootstrap/` as a thin public facade re-exporting `runtime/composition/build-runtime-context`.  
-**When:** ~15 call sites import `buildRuntimeContext` from bootstrap today.  
-**Trade-offs:** (+) No flag-day import churn for CLI/control-server; (−) Temporary indirection until docs/AGENTS.md migrate.
-
-### Pattern 4: Boundary Violation Fixes Before Ratchet
-
-**What:** Eliminate three baseline violations, shrink baseline to `[]`, set rule severity to `error`.  
-**Fixes (verified in repo):**
-
-| Violation | Fix |
-|-----------|-----|
-| `domain/agents.ts` → `application/project-config` (`AgentConfig`) | Move `AgentConfig` (and related agent config types) to `domain/types.ts` or `domain/agent-config.ts`; config module imports from domain |
-| `ports/extension-port.ts` → `application/extension-host` | Define `ExtensionHostPort` interface in ports; `ExtensionHost` class implements it in runtime/composition |
-| `adapters/tools/web-fetch-tool.ts` → `application/content-tree` | Move `content-tree` helpers to `adapters/tools/content-tree.ts` or `domain/content-analysis.ts` (pure functions, no application imports) |
-
-**Additional hardening (not in baseline but violates AGENTS.md intent):** Route application adapter imports through `bootstrap/adapters.ts` only — extend depcruise with `no-application-to-adapters` once `agent-runner`, `runtime-composition`, and control-server types stop deep-linking `adapters/index.js`.
-
-### Pattern 5: Plugin Manager as Config + Catalog Authority
-
-**What:** `PluginManager` writes to `.rlm/plugins/<id>/` and updates `rlm.config.yaml` `extensions.load` (or successor `plugins.enabled` block). Runtime reads catalog on next `buildRuntimeContext`.  
-**When:** Install, enable, disable, doctor, remote fetch-to-local.  
-**Trade-offs:** (+) No hot-reload complexity in v1.7; (+) explicit config diff; (−) Requires restart or session rebuild to pick up changes (document in UX).
-
----
-
-## Data Flow
-
-### Runtime Startup (Plugin Load Path)
-
-```
-CLI/UI start
-    ↓
-loadProjectConfig (application/config)
-    ↓
-buildRuntimeContext (runtime/composition)
-    ↓
-PluginLoader
-    ├─ scan src/plugins/builtin/** (compile-time bundled)
-    ├─ read .rlm/plugins/catalog.json (installed, enable flags)
-    └─ merge extensions.load from YAML (legacy + explicit paths)
-    ↓
-For each enabled plugin: validate manifest → dynamic import → register(host)
-    ↓
-buildInteropRuntime (runtime/interop)
-    ├─ createSkillTool(McpSkillRuntime)
-    └─ createMcpTools(servers) + cleanup.track(child processes)
-    ↓
-extensionHost.tools.register(each interop tool)
-    ↓
-createToolsResolver → createAgentRegistry → createModelFactory
-    ↓
-RuntimeContext returned to run mode / control-server
-    ↓
-runConfiguredAgent / GraphExecutor → RecursiveLanguageModel → ToolPort.execute
-```
-
-### Plugin Install Flow (Manager UX)
-
-```
-User: plugin install <local-path|remote-url>  (CLI or POST /api/plugins/install)
-    ↓
-PluginManager
-    ├─ fetch (if remote) → temp dir → verify checksum/size
-    ├─ validate PluginManifest (schema, permissions, capability names)
-    ├─ doctor: manifest present, register export, adapter deps, allowlist hint
-    └─ copy to .rlm/plugins/<plugin-id>/
-    ↓
-Update catalog + patch project config (extensions.load or plugins.enabled)
-    ↓
-Response: success + restart hint (no silent apply to running ExtensionHost)
-    ↓
-Next buildRuntimeContext picks up plugin via PluginLoader
-```
-
-### State Ownership
-
-| State | Owner | v1.7 change |
-|-------|-------|-------------|
-| Tool registry (runtime) | `ExtensionHost` | Unchanged; populated by PluginLoader + interop |
-| Plugin install metadata | `.rlm/plugins/catalog.json` + YAML config | **NEW** — manager writes, loader reads |
-| Allowlist hashes | `.rlm-allowlist.json` (config-adjacent) | Keep; manager may pre-approve on install |
-| MCP/skill interop events | `McpSkillRuntime` | Move to `runtime/interop/` |
-| Agent tool bindings | `createToolsResolver` + YAML `agents.*.tools` | Unchanged semantics; manifest validates tool names |
-| Execution graph / approvals | `InteractiveExecutionSession` | Unchanged |
+**Dependency rule (Rust analogue of depcruise):** `rlm-ports` imports nothing project-local; `rlm-domain` → `rlm-ports` only; `rlm-adapters` → `rlm-ports` + `rlm-domain` (types); `rlm-application` → `domain` + `ports`; `rlm-runtime` → `application` + `adapters` + `plugins`; `rlm-control-server` → `application` + `runtime`; `rlm-cli` → all. Enforce with `cargo-deny` or a small custom lint in CI.
 
 ---
 
 ## Integration Points
 
-### Internal Boundaries
+### Tauri ↔ Rust server ↔ static UI
 
-| Boundary | Communication | v1.7 notes |
-|----------|---------------|------------|
-| `application/bootstrap` ↔ `runtime/composition` | Re-export `buildRuntimeContext` | Facade during migration |
-| `PluginManager` ↔ `application/config` | Read/write YAML fragments | New config fields for plugin taxonomy; preserve validation path context |
-| `PluginManager` ↔ control-server | HTTP handlers in `handlers/plugins.ts` | Transport only; delegate to manager |
-| `PluginLoader` ↔ `ExtensionHost` | `register()` calls | Replaces inline `loadBuiltins([...])` array in bootstrap |
-| `PluginLoader` ↔ ports | Manifest schema, `ExtensionHostPort` | No import of application modules |
-| `runtime/interop` ↔ `ResourceCleanup` | MCP child process track/close | Preserve cleanup callback contract from v1.6 |
-| `plugins/builtin` ↔ `adapters/tools` | Tool classes imported by plugin index | Tool **implementations** may stay in adapters temporarily; plugin owns registration |
-| `dependency-cruiser` ↔ CI | `depcruise:ci --ignore-known baseline` | Ratchet: fix 3 → empty baseline → severity `error` |
+| Concern | Today (v1.7) | Target (v1.8) |
+|---------|--------------|---------------|
+| Process model | Tauri spawns `rlm ui` Node child (`main.rs` `spawn_rlm_ui`) | Tauri calls `rlm_core::start_desktop()` in `setup` — no child process |
+| UI assets | Node control server serves `uiDistDir` via `serveUiAsset` | Rust `static-ui` handler serves `frontendDist` (`../ui/dist` in `tauri.conf.json`) |
+| API base URL | Child prints `RLM UI listening at http://127.0.0.1:{port}`; Tauri `eval` redirect | Same URL pattern: bind `127.0.0.1:0`, log/emit URL, redirect webview |
+| Dev mode | `devUrl: http://127.0.0.1:5173` (Vite) proxies or hits TS server | Vite dev proxy → Rust server on fixed dev port **or** env `RLM_CONTROL_PORT` |
+| Ollama check | Node runs `ensure-ollama.mjs` | Port to Rust (HTTP probe + model list) or keep script until Wave 6 |
+| Shutdown | Kill Node child on window close | Drop server handle + `ResourceCleanup` for MCP children |
+| Release bundle | `dist/release/{platform}/` includes `bin/node`, `dist/`, `ui-dist/`, shims | `bin/rlm` Rust binary + `ui-dist/` only; drop Node + TS `dist/src` |
 
-### External Services (Unchanged)
+**Recommendation:** Keep **real TCP localhost** (`127.0.0.1`) for the control server, not Tauri custom URL schemes. The UI relies on **`EventSource("/api/events")`** for SSE; `tauri-plugin-axum` custom protocols historically limit streaming (see [tauri-plugin-axum docs](https://docs.rs/tauri-plugin-axum)). Binding Axum to loopback preserves zero UI changes and matches the existing redirect contract.
 
-| Service | Integration | v1.7 touch |
-|---------|-------------|------------|
-| Ollama / HTTP models | `adapters/models` via `createModelFactory` | Stay infrastructure adapters |
-| MCP servers | `runtime/interop` stdio clients | Module move only |
-| Remote plugin URLs | PluginManager fetch-to-local | **NEW** — download only; execution stays local |
-| Skill search paths | `interop.skills.searchPaths` in config | Unchanged |
+### HTTP surface (must remain stable)
 
----
+Route inventory derived from `src/application/control-server/handlers/` — **40+ endpoints** including:
 
-## New vs Modified Components
+| Surface | Methods / paths | Notes |
+|---------|-----------------|-------|
+| Session | `GET /api/session`, `/api/run-mode`, `/api/events` (SSE) | SSE is contract-critical |
+| Chat / control | `POST /api/chat/*`, `/api/clarifications/*`, `/api/stop`, approval modes | Mutation errors → 409 JSON |
+| Graph | `GET/POST /api/graph`, `/api/graph/layout`, `/api/graph/viewport` | |
+| Nodes | `POST /api/nodes/{id}/{plan,edit,approve,…}` | Largest handler surface |
+| Memory | `GET/POST/DELETE /api/memory*` | |
+| Saved sessions | `GET/POST /api/saved-sessions*` | Multi-section bundle restore |
+| Workflows | `/api/graph-workflows/*` | |
+| Model library | `/api/model-library*` | HF search/install |
+| Plugins | `/api/plugins*` | v1.7 registry service |
+| Static | fallback → `ui/dist` | Same as `serveUiAsset` |
 
-### New Components
+Dispatch **must preserve probe order** from `route-request.ts` (session snapshot before graph before static fallback) to avoid subtle UI regressions.
 
-| Component | Path | Responsibility |
-|-----------|------|----------------|
-| `ExtensionHostPort` | `ports/extension-host-port.ts` | Registration interface decoupled from concrete host |
-| `PluginManifest` types | `ports/plugin-port.ts` | Taxonomy: id, category, capabilities, permissions, version |
-| `PluginLoader` | `runtime/composition/plugin-loader.ts` | Discover/load builtin + installed + configured plugins |
-| `buildInteropRuntime` | `runtime/interop/build-interop-runtime.ts` | MCP + skill tool factory bundle |
-| `McpSkillRuntime` (relocated) | `runtime/interop/mcp-skill-runtime.ts` | Interop event sequencing (moved from application) |
-| `interop-runtime` (relocated) | `runtime/interop/interop-runtime.ts` | MCP stdio client, skill tool (moved from application) |
-| `buildRuntimeContext` (relocated) | `runtime/composition/build-runtime-context.ts` | Composition root (moved from application/bootstrap) |
-| `ExtensionHost` (relocated) | `runtime/composition/extension-host.ts` | Registry impl (moved from application) |
-| Builtin plugins | `plugins/builtin/tools/*` | Manifest + register per built-in tool |
-| `PluginManager` | `application/plugin-manager.ts` | Install/enable/list/doctor/fetch |
-| Plugin catalog | `.rlm/plugins/catalog.json` | Installed plugin records (runtime data, not src) |
-| Control-server plugin routes | `control-server/handlers/plugins.ts` | HTTP surface for manager UX |
-| CLI plugin commands | `cli/run-modes/plugin-admin.ts` | `rlm plugin install|list|doctor|...` |
-| Depcruise rule | `.dependency-cruiser.js` | Optional `no-application-to-adapters`; severity `error` |
-| Tests | `tests/runtime/composition/`, `tests/application/plugin-manager/` | Loader order, manifest validation, manager I/O |
+### External services (unchanged semantics)
 
-### Modified Components
-
-| Component | Change | Risk |
-|-----------|--------|------|
-| `application/bootstrap/build-runtime-context.ts` | Thin re-export or delete after move | Low with facade |
-| `application/bootstrap/types.ts` | Import paths from runtime/composition | Low |
-| `application/runtime-composition.ts` | Move to `runtime/composition/`; model factory may stay co-located | Low |
-| `src/extensions/tools/*.extension.ts` | Deprecated; replaced by `plugins/builtin` | Medium — update tests referencing paths |
-| `application/config/schema.ts` | Add `plugins` block (category, capabilities) alongside `extensions` | Medium — backward compat |
-| `domain/agents.ts` | Import `AgentConfig` from domain, not application | Low |
-| `adapters/tools/web-fetch-tool.ts` | Import content-tree from colocated module | Low |
-| `ports/extension-port.ts` | Type-only port surface; no application imports | Low |
-| `agent-runner.ts`, `control-server/types.ts` | Route adapter types through bootstrap barrel | Medium — depcruise cleanup |
-| `AGENTS.md` | Document runtime/, plugins/, manager | Low |
-| `dependency-cruiser-baseline.json` | Shrink to `[]` after fixes | Low |
-
-### Explicitly Unchanged (Defer)
-
-| Component | Reason |
-|-----------|--------|
-| `execution-controller.ts` | Session authority; unrelated to plugin taxonomy |
-| `graph-planner.ts`, `graph-executor.ts` | Consume `RuntimeContext.toolsFor`; no plugin awareness needed |
-| `domain/recursive-language-model.ts` | Tool execution via `ToolPort` only |
-| `ui/src/*` feature logic | Server exposes plugin API; UI consumes endpoints incrementally |
-| Remote plugin execution / marketplace | Out of scope per PROJECT.md — fetch-to-local only |
+| Service | Rust adapter location | v1.8 scope |
+|---------|----------------------|------------|
+| Ollama | `rlm-adapters/models/ollama` | Default inference host; keep HTTP client (`reqwest`) |
+| Hugging Face | `rlm-adapters/models/hf` | Search, download, GGUF registry — no Python |
+| MCP servers | `rlm-runtime/interop` | Subprocess stdio — port `createMcpTools` behavior |
+| llama.cpp managed | Deferred | Handoff only per `managed-llama-cpp-runtime.md` seed |
 
 ---
 
-## Suggested Build Order
+## HTTP / SSE Contract Stability Strategy
 
-Order follows **responsibility extraction → taxonomy → manager → enforcement**, keeping `npm run check` green after each wave. Critical path: boundary fixes → runtime split → plugin taxonomy → manager → depcruise ratchet.
+**Primary gate: golden HTTP fixtures**, not a big-bang OpenAPI rewrite.
 
-### Wave 1 — Boundary Violation Fixes (ARCH-02 Prerequisite)
+### Layer 1 — Fixture catalog (required from Wave 1)
 
-1. Move `AgentConfig` (+ related types) to `domain/agent-config.ts`; update config schema imports.
-2. Introduce `ExtensionHostPort` in ports; make `ExtensionHost` implement it; fix `extension-port.ts` import direction.
-3. Relocate `content-tree` analysis next to `web-fetch-tool` (adapter-local or domain-pure).
-4. Remove fixed entries from `dependency-cruiser-baseline.json`; verify `depcruise:ci` passes.
-5. **Depends on:** nothing. **Blocks:** ratchet to error, plugin port definitions.
+1. Record representative request/response pairs from the TS control server into `tests/fixtures/control-server/` (JSON + raw SSE streams).
+2. Rust integration tests spin up `rlm-control-server` on ephemeral port and `assert` status, headers, and JSON body (normalize timestamps/run-ids).
+3. Cover at minimum: `GET /api/session`, `GET /api/graph`, `GET /api/events` (first N SSE frames), `POST /api/chat/message`, `POST /api/nodes/{id}/plan`, saved-session save/open round-trip, plugin list, model-library GET.
 
-### Wave 2 — Runtime/Interop Split
+### Layer 2 — OpenAPI as derived documentation (recommended Wave 2)
 
-1. Create `src/runtime/interop/` — move `mcp-skill-runtime.ts`, `interop-runtime.ts` (+ tests).
-2. Extract `buildInteropRuntime()` with same MCP cleanup + skill tool contract.
-3. Create `src/runtime/composition/` — move `extension-host.ts`, `runtime-composition.ts`.
-4. Move `build-runtime-context.ts` body; leave `application/bootstrap/` as re-export facade.
-5. Add composition unit test: plugin/interop registration order, cleanup hooks.
-6. **Depends on:** Wave 1 port types. **Blocks:** plugin loader integration.
+- Generate OpenAPI 3.1 from the route table + handler request/response types (`utoipa` + Axum or manual spec).
+- Treat spec as **downstream of fixtures**, not the source of truth — fixtures catch SSE and error-shape edge cases OpenAPI omits.
 
-### Wave 3 — Plugin Taxonomy + Builtin Migration
+### Layer 3 — UI smoke (existing)
 
-1. Define `PluginManifest`, categories (`tools`, `skills`, `model-hosts`), capability metadata in ports.
-2. Create `plugins/builtin/tools/{shell,file-write,web-search,web-fetch}/` with manifest + register.
-3. Implement `PluginLoader`: builtins scan, manifest validation, replace hardcoded `loadBuiltins([...])`.
-4. Deprecate `src/extensions/tools/` (delete after parity tests).
-5. Extend config schema: optional `plugins.enabled` / manifest references; keep `extensions.load` compat.
-6. **Depends on:** Wave 2 `ExtensionHost` location. **Blocks:** manager install paths.
+- Keep Vite build; optional Playwright against Rust server in CI desktop job.
 
-### Wave 4 — Plugin Manager UX
+### SSE-specific rules
 
-1. Implement `PluginManager` (local-folder install, enable/disable, list, doctor).
-2. Add remote fetch-to-local (download, verify, install as local folder — no remote execution).
-3. Persist catalog under `.rlm/plugins/`; patch YAML on enable/disable.
-4. CLI `plugin-admin` run mode; control-server `handlers/plugins.ts`.
-5. Integration tests: install → config update → next `buildRuntimeContext` sees tools.
-6. **Depends on:** Wave 3 loader + manifest. **Parallel-safe with:** Wave 5 doc updates.
+- Event names and JSON payload keys must match TS `streamEvents` output character-for-character during migration.
+- Add a dedicated SSE snapshot test that reads until `graph.updated` or timeout — do not rely on JSON-only tests.
 
-### Wave 5 — Dependency-Cruiser Ratchet + Application→Adapter Cleanup
+**Confidence:** HIGH for fixture approach (pattern used implicitly in `tests/domain/recursion/recursive-language-model.test.ts` with `startControlServer`); MEDIUM for OpenAPI tooling choice until crate picked in STACK research.
 
-1. Set forbidden rule severity to `error` in `.dependency-cruiser.js`.
-2. Add `no-application-to-adapters` (or tighten existing rules) once imports centralized in bootstrap.
-3. Fix remaining application deep-links (`agent-runner`, `runtime-composition` model adapters → runtime/composition).
-4. Remove `--ignore-known` from CI when baseline empty (or keep empty baseline file).
-5. Update AGENTS.md contributor map.
-6. **Depends on:** Waves 1–4 stable. **Last** enforcement wave.
+---
 
-### Build Order Diagram
+## Migration Waves (match direction note priority)
+
+Waves align with `.planning/notes/rust-runtime-migration-direction.md` and v1.7 seam completion.
 
 ```
-Wave 1 (boundary fixes) ──→ Wave 5 (depcruise error + app→adapter cleanup)
-         │
-         └──→ Wave 2 (runtime/interop split)
-                    │
-                    └──→ Wave 3 (plugin taxonomy + builtins)
-                               │
-                               └──→ Wave 4 (plugin manager UX)
+Wave 0 ─ v1.7 stable (ports, runtime/, plugin loader) ─────────────────────┐
+                                                                            │
+Wave 1 ─ Workspace + control-server + static UI + SSE + fixtures ──────────┤
+Wave 2 ─ Persistence ports (session, memory, run-state, preferences) ──────┤
+Wave 3 ─ Recursive engine + ExecutionController + graph snapshot routes ───┤
+Wave 4 ─ Graph executor + planner + node mutation routes + workflows ──────┤
+Wave 5 ─ Vector + embedding (ANN index, scope-filtered retrieval) ─────────┤
+Wave 6 ─ Model hosts + model-library + HF download path ───────────────────┤
+Wave 7 ─ Built-in plugins (Rust) + MCP interop port ───────────────────────┤
+Wave 8 ─ CLI binary + Tauri embed + packaging (no Node) + delete TS runtime ┘
 ```
 
-**Parallelization:** Waves 2 and 1 can overlap only on non-conflicting files; prefer sequential 1→2 to avoid port type churn. Wave 4 should not start until `PluginLoader` replaces hardcoded builtins.
+### Wave detail
+
+| Wave | Delivers | TS coexistence | Delete candidate |
+|------|----------|----------------|------------------|
+| **0** | v1.7 complete | TS only | — |
+| **1** | `rlm-ports` skeleton, Axum router, static UI, `/api/session` stub or proxy | `RLM_RUNTIME=rust` serves UI; engine still TS optional | — |
+| **2** | File stores read/write parity | Rust serves read APIs; writes dual-verify against TS | — |
+| **3** | `RecursiveLanguageModel` in Rust; `GET /api/graph`, chat preview | Dual-run parity tests on orchestration | `src/domain/` (after parity) |
+| **4** | `GraphExecutor`, full `/api/nodes/*`, workflows | TS engine behind flag for diff | `src/application/graph/`, execution runners |
+| **5** | HNSW/USEARCH index; migrate `vector-index.json` | Read legacy JSON, write new sidecar | `FileVectorIndex`, `SemanticMemoryIndex` TS |
+| **6** | Ollama + HF adapters, model-library routes | TS adapters deleted after parity | `src/adapters/models/` |
+| **7** | Rust builtins + MCP interop | External ESM plugins: see plugin section | `src/plugins/builtin/` TS impls, `src/runtime/interop/` TS |
+| **8** | `rlm` binary, Tauri in-process, release without Node | Remove TS runtime from CI/deb | `src/index.ts`, control-server, most `src/application/`, `src/adapters/`, bundled Node |
+
+### Build-order dependency graph
+
+```text
+rlm-ports
+    └── rlm-domain
+            ├── rlm-adapters (persistence → models → vector)
+            ├── rlm-plugins (builtin tools)
+            └── rlm-application (execution, graph, memory, plugins svc)
+                    └── rlm-runtime (composition + interop)
+                            └── rlm-control-server
+                                    ├── rlm-cli
+                                    └── rlm-tauri-bridge → src-tauri
+
+rlm-config → consumed by rlm-runtime (parallel to domain after ports)
+```
+
+**CI gates:** `cargo test --workspace` + `cargo clippy -D warnings` + fixture HTTP tests + existing `npm run check` for UI/tsconfig until TS runtime deleted; then split into `npm run check:ui` + `cargo test`.
+
+---
+
+## TS / Rust Coexistence During Strangler
+
+### Runtime switch (recommended)
+
+| Mechanism | Use |
+|-----------|-----|
+| **`RLM_RUNTIME=node\|rust`** env var | Dev and CI select backend; default `node` until Wave 8 |
+| **`--features rust-runtime`** in Tauri | Ship Rust-only in release; keep Node fallback in dev during Waves 1–7 |
+| **No dual orchestration in production desktop** | Installer ships one runtime; flag is dev/CI only |
+
+### Dual-run parity (CI only)
+
+- **Not** two servers on one port.
+- Pattern: same fixture inputs → run TS test harness → run Rust test harness → diff normalized JSON.
+- For long orchestration: golden trace files from `TracePort` / execution events.
+
+### Avoid napi-rs for core orchestration
+
+- napi-rs bridge tempting for incremental port but creates **third boundary** (TS↔Rust FFI) with threading and error-mapping cost.
+- Prefer **module-by-module port** with HTTP-level parity at the control-server seam first, then delete TS module.
+
+### Vite dev proxy
+
+- Point `ui` dev server proxy `/api` → Rust port when `RLM_RUNTIME=rust`.
+- Production Tauri loads same-origin static + API from embedded server.
+
+---
+
+## Plugin Strategy: WASM vs Native vs Rust Reimplement
+
+| Approach | Fit for RLM | v1.8 recommendation |
+|----------|-------------|---------------------|
+| **Reimplement builtins in Rust** | shell, file-write, web-search, web-fetch | **Yes — Wave 7.** Matches shipped binary without dynamic JS; tools today are thin wrappers in `src/plugins/builtin/`. |
+| **MCP interop (subprocess)** | External tool servers | **Port to Rust** — same as TS `runtime/interop`; not plugins in the WASM sense. |
+| **Native `.so` / dylib** (`libloading`) | Third-party plugins | **Defer.** Same trust model as ESM `import()` but harder to audit; needs stable C ABI + manifest. Post-v1.8. |
+| **WASM** (`wasmtime` / `wasmer`) | Sandboxed third-party tools | **Defer.** No filesystem/shell/network without WASI host calls; MCP and shell plugins don't map cleanly. Research spike only if marketplace returns. |
+| **Retain Node for external ESM plugins** | v1.7 `PluginLoader` dynamic import | **Anti-pattern for v1.8 ship goal** (bundled Node). Accept: **external plugins disabled in Rust-only mode** until ABI lands; document in doctor output. |
+
+### v1.8 plugin contract
+
+```text
+Built-in:     rlm-plugins → compile-time linked register() calls
+MCP/skills:   rlm-runtime/interop → subprocess + allowlist (unchanged semantics)
+External:     catalog.json entries show status=unsupported_rust_runtime until dylib ABI
+```
+
+Manifest schema (`rlm.plugin.json`) **stays** — Rust `PluginLoader` validates the same JSON for forward compatibility.
+
+---
+
+## Data Migration — On-Disk Formats
+
+All paths remain project-local under `.rlm/` and `~/.rlm/plugins/` unless noted.
+
+| Artifact | Location | Format today | Rust migration strategy |
+|----------|----------|--------------|-------------------------|
+| **Session bundle** | `.rlm/sessions/{id}/` | `manifest.json` + section envelopes (`session.json`, `run-state.json`, `memory.json`, `preferences.json`, `vector-index.json`, …) version **1** | **Read/write identical JSON.** Rust `FileSessionStore` ports `file-session-store.ts` envelope shape verbatim. |
+| **Live vector index** | `.rlm/memory/vector-index.json` | JSON array of `VectorIndexRecord` | **Wave 5:** On first Rust open, ingest JSON → build ANN sidecar (e.g. `.rlm/memory/vector.index.bin`); keep JSON export for downgrade/debug; session bundle still embeds JSON snapshot for v1.4 restore semantics. |
+| **Memory scopes / episodic** | `.rlm/memory/` (per run/session files) | JSON documents + audit log | Port TS layout; no schema bump unless corruption fixes require version **2** (bump `SECTION_VERSION` with migration). |
+| **Run state** | `.rlm/runs/{run-id}/` | Versioned snapshot + mutation log | Port `FileRunStateStore`; optimistic concurrency unchanged. |
+| **Workflows** | `.rlm/workflows/*.yaml` | YAML sidecars | Rust reads via `serde_yaml`; same as TS `graph-workflow-store.ts`. |
+| **Plugin catalog** | `~/.rlm/plugins/catalog.json`, `.rlm/plugins/catalog.json` | JSON catalog from v1.7 | Same schema; Rust registry service reads/writes. |
+| **Project config** | `rlm.config.yaml` | YAML + Zod validation | Rust `rlm-config` validates equivalent rules; share golden config fixtures. |
+| **Allowlist** | `.rlm-allowlist.json` | SHA-256 hashes | Port hash logic from `ExtensionHost` allowlist. |
+
+### Migration principles
+
+1. **No big-bang converter** — lazy migration on read (vector index) or transparent dual-write during transition.
+2. **Restore verification** — preserve `SavedSessionVerification` degraded/complete/failed semantics from `SessionStorePort`.
+3. **Scope ACL before ANN** — filter by `memoryScopes` after top-k retrieval; never trust index alone (from `rust-vector-index.md` seed).
+
+---
+
+## What Gets Deleted vs Kept in `src/` After Migration
+
+### Delete (post Wave 8)
+
+| Path | Reason |
+|------|--------|
+| `src/index.ts` | Replaced by `rlm-cli` binary |
+| `src/cli/run-modes/*` (execution paths) | Rust CLI |
+| `src/application/control-server/` | `rlm-control-server` |
+| `src/application/execution/` | Rust application crate |
+| `src/application/graph/` | Rust graph services |
+| `src/application/memory/` | Rust memory services |
+| `src/application/plugins/` facade | Rust registry (keep thin TS only if UI build needs types — prefer OpenAPI gen) |
+| `src/domain/` | `rlm-domain` |
+| `src/adapters/` | `rlm-adapters` |
+| `src/runtime/` | `rlm-runtime` |
+| `src/plugins/builtin/` TS tool impls | Rust `rlm-plugins` |
+| `dist/release/*/bin/node` | No bundled Node |
+| `dist/src/` packaged TS output | Rust binary only |
+| `spawn_rlm_ui` / Node lifecycle in `main.rs` | In-process server |
+
+### Keep
+
+| Path | Reason |
+|------|--------|
+| `ui/` | React UI — explicit non-goal to rewrite |
+| `src-tauri/` | Desktop shell (rewired to Rust server) |
+| `src/application/config/` (optional transitional) | Delete when `rlm-config` at parity; may remain briefly for shared YAML test fixtures |
+| `tests/fixtures/` | HTTP golden files — language-agnostic |
+| `tests/integration/` (rewritten) | Drive against Rust server |
+| `scripts/packaging/build-release.mjs` | **Rewrite** for Rust artifact staging |
+| `scripts/desktop/ensure-ollama.mjs` | Until Wave 6 Rust Ollama gate ships |
+| `AGENTS.md` | Update concern map to Rust workspace |
+| `.dependency-cruiser.js` | Scope shrinks to `ui/` + any remaining TS; or replace with UI-only ESLint |
+
+### Transitional keep (Waves 1–7 only)
+
+- Entire TS runtime behind `RLM_RUNTIME=node` for parity diffing.
+- `npm run build` TS output for comparison tests — removed from release packaging Wave 8.
+
+---
+
+## Patterns to Follow
+
+### Pattern 1: Ports-first porting
+
+Port `src/ports/*.ts` to `rlm-ports` **before** adapters or domain logic. Each trait gets a mock impl for unit tests — mirrors `tests/helpers/` pattern.
+
+### Pattern 2: Control-server strangler
+
+Implement Rust handlers that delegate to the **same service boundaries** as TS (`ControlServerDeps` → Rust `AppState` struct with `Arc<dyn SessionService>` etc.). Do not merge handler logic into Axum closures.
+
+### Pattern 3: Composition init order preserved
+
+Port `COMPOSITION_INIT_ORDER` from `src/runtime/composition/init-order.ts` verbatim; add a Rust unit test equivalent to `tests/runtime/composition/runtime-composition-init-order.test.ts`.
+
+### Pattern 4: Error vocabulary frozen
+
+Mutation errors return `{ error: string }` with 409 for stale approval — match `route-request.ts` catch block. CLI exit codes stay aligned with `render.ts` semantics.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Cosmetic Plugin Folder Move Without Loader
+### Anti-Pattern 1: Tauri custom-protocol API without SSE validation
 
-**What:** Rename `extensions/` → `plugins/` but keep hardcoded `loadBuiltins([...])` in bootstrap.  
-**Why bad:** Taxonomy is theater; manager cannot discover or validate plugins.  
-**Instead:** Introduce `PluginLoader` + manifest schema first, then move directories.
+**What:** Switch to `axum://localhost` for all API traffic to avoid TCP.  
+**Why bad:** `/api/events` SSE may break or buffer differently.  
+**Instead:** Loopback HTTP until SSE parity proven on target platform.
 
-### Anti-Pattern 2: Plugin Manager Hot-Reloading ExtensionHost
+### Anti-Pattern 2: Port recursive engine before session/graph read APIs
 
-**What:** Mutate in-memory registries when user clicks Enable in UI.  
-**Why bad:** Running sessions hold stale tool references; cleanup/MCP lifecycle races.  
-**Instead:** Persist enablement; require rebuild of `RuntimeContext` or explicit session restart.
+**What:** Rust orchestration while UI still hits TS for `/api/graph`.  
+**Why bad:** Split-brain session state.  
+**Instead:** Wave 1–2 freeze transport; single runtime owns session.
 
-### Anti-Pattern 3: Adapters Directory as Plugin Dump
+### Anti-Pattern 3: Big-bang vector format breaking session restore
 
-**What:** Keep adding tool implementations under `adapters/tools/` for third-party contributions.  
-**Why bad:** Recreates the grab-bag v1.7 is eliminating; blurs infra vs distributable tools.  
-**Instead:** Third-party tools ship as plugins under `.rlm/plugins/`; adapters hold infra only.
+**What:** Replace `vector-index.json` with binary-only without envelope migration.  
+**Why bad:** v1.4 saved sessions fail verification.  
+**Instead:** Lazy ingest + keep section envelope in bundles.
 
-### Anti-Pattern 4: Ratcheting Depcruise Before Fixing Baseline
+### Anti-Pattern 4: Keeping Node for “just external plugins”
 
-**What:** Flip severity to `error` while three known violations remain.  
-**Why bad:** CI blocks all progress; team bypasses with `--ignore-known` permanently.  
-**Instead:** Fix three violations (Wave 1), empty baseline, then ratchet (Wave 5).
+**What:** Ship Rust core + Node sidecar for ESM plugins.  
+**Why bad:** Defeats v1.8 success criterion (no bundled Node).  
+**Instead:** Disable external plugins in Rust mode with explicit doctor message.
 
-### Anti-Pattern 5: Interop in Application After Split
+### Anti-Pattern 5: OpenAPI-only contract testing
 
-**What:** Add new MCP features to `application/interop-runtime.ts` during migration.  
-**Why bad:** Perpetuates overloaded application layer.  
-**Instead:** All new interop code lands in `runtime/interop/`; application calls facades only.
-
-### Anti-Pattern 6: Remote Plugin Execution
-
-**What:** Fetch and `import()` directly from URL each run.  
-**Why bad:** Supply-chain risk; conflicts with local-first, auditable allowlist model.  
-**Instead:** Fetch-to-local folder, manifest + allowlist, then load from disk.
+**What:** Generate spec first, skip SSE fixtures.  
+**Why bad:** Event stream shapes drift silently.  
+**Instead:** Golden fixtures primary; OpenAPI derived.
 
 ---
 
 ## Scalability Considerations
 
-| Concern | At project-local (v1.7) | At 50+ plugins | At multi-package future |
-|---------|-------------------------|----------------|-------------------------|
-| Plugin discovery | Scan builtins + `.rlm/plugins/` | Cache catalog; lazy import on enable | Package-per-plugin workspace |
-| Tool name collisions | `registerUnique` throws at load | Doctor command validates before enable | Namespace prefix in manifest (`publisher.tool`) |
-| MCP process count | Configured servers × 1 process | Same; interop runtime owns lifecycle | Optional connection pooling — out of v1.7 |
-| Config size | `extensions.load` list | Catalog file + enabled ids in YAML | Dedicated plugins lockfile |
-| CI boundary checks | `src/` only | Add `plugins/` path rules when third-party tree grows | dependency-cruiser tags per package |
-
-### Scaling Priorities
-
-1. **First bottleneck:** Hardcoded builtin list in `build-runtime-context.ts` — blocks manager and taxonomy.
-2. **Second bottleneck:** Application-owned interop — MCP changes risk composition order regressions.
-3. **Third bottleneck:** Three depcruise violations — block enforcement and encode wrong direction for new code.
+| Concern | TS today | Rust v1.8 |
+|---------|----------|-------------|
+| Vector search | O(n) JSON scan | Sub-linear ANN (HNSW/USEARCH) |
+| Session bundle size | Full read/write | Same; optional section streaming later |
+| MCP processes | 1 per configured server | Same; Rust tokio subprocess management |
+| Control server concurrency | Node single-thread + async | Tokio thread pool; watch `ExecutionController` mutex semantics |
+| Desktop memory | Node + Rust during strangler | Single process after Wave 8 |
 
 ---
 
@@ -422,12 +408,12 @@ Wave 1 (boundary fixes) ──→ Wave 5 (depcruise error + app→adapter cleanu
 
 | Phase topic | Deeper research? | Reason |
 |-------------|------------------|--------|
-| Plugin manifest schema | Maybe | Align with VS Code/Cursor extension fields only where useful; avoid over-spec |
-| Remote fetch security | Yes | TLS, checksum, size limits, zip slip — plan-phase spike before Wave 4 |
-| Config migration `extensions` → `plugins` | Unlikely | Barrel compat sufficient for v1.7 |
-| UI plugin manager screens | Yes | UI-SPEC in phase if not CLI-only MVP |
-| `no-application-to-adapters` scope | Maybe | Enumerate legitimate bootstrap exceptions before rule lands |
-| Hot-reload plugins | Defer | Explicitly out of v1.7; document restart semantics |
+| ANN crate selection | **Yes** | `.planning/research/questions.md` Q1–Q2 |
+| HF Rust download path | **Yes** | Q6 — `hf-hub` vs custom |
+| SSE on Tauri Windows | **Maybe** | Loopback vs plugin-axum if port binding issues |
+| External plugin ABI | **Defer** | Post-v1.8; document unsupported state |
+| llama.cpp in-process | **Defer** | `managed-llama-cpp-runtime.md` seed |
+| Config schema parity | **Unlikely** | Share fixtures between Zod and serde |
 
 ---
 
@@ -435,30 +421,30 @@ Wave 1 (boundary fixes) ──→ Wave 5 (depcruise error + app→adapter cleanu
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Layer integration model | HIGH | Matches shipped v1.6 layout + boundary direction note |
-| Runtime/interop split targets | HIGH | Files and init order verified in `build-runtime-context.ts` |
-| Baseline violation fixes | HIGH | Three edges enumerated in `dependency-cruiser-baseline.json` |
-| Plugin manager data flow | MEDIUM | No existing manager code; aligned with PROJECT.md decisions |
-| Remote fetch security | MEDIUM | Requires phase-specific threat model |
-| Final directory names | MEDIUM | `runtime/` and `plugins/` from direction note; may adjust during execution |
+| TS→Rust module map | HIGH | Verified against live `ports/`, `domain/`, `runtime/`, control-server handlers |
+| Tauri integration | HIGH | Current `main.rs` spawn model documented; loopback HTTP recommended |
+| HTTP contract strategy | HIGH | Fixture approach matches existing test patterns |
+| Plugin ABI | MEDIUM | Clear v1.8 scope: Rust builtins + MCP; external deferred |
+| Vector migration | MEDIUM | ANN crate choice open; lazy migration path sound |
+| Delete vs keep inventory | HIGH | Aligned with direction note and PROJECT.md |
 
 ---
 
 ## Sources
 
-- `.planning/PROJECT.md` — v1.7 milestone goals, key decisions
-- `.planning/notes/architecture-boundary-cleanup-direction.md` — two-pass cleanup, target directories
-- `.planning/milestones/v1.6-MILESTONE-AUDIT.md` — ARCH-02 deferred items, 359 tests baseline
-- `src/application/bootstrap/build-runtime-context.ts` — current composition + extension/interop order
-- `src/application/extension-host.ts` — registry + external load + allowlist
-- `src/application/interop-runtime.ts`, `mcp-skill-runtime.ts` — interop candidates for split
-- `src/extensions/tools/*.extension.ts` — current builtin registration shims
-- `src/ports/extension-port.ts` — port/application violation
-- `src/domain/agents.ts` — domain/application type violation
-- `src/adapters/tools/web-fetch-tool.ts` — adapter/application violation
-- `.dependency-cruiser.js`, `dependency-cruiser-baseline.json` — three known violations
-- `AGENTS.md` — v1.6 contributor map (pre-v1.7)
+- `.planning/notes/rust-runtime-migration-direction.md` — priority order, target diagram, success criteria — **HIGH**
+- `.planning/PROJECT.md` — v1.8 milestone scope — **HIGH**
+- `.planning/seeds/rust-vector-index.md` — vector migration constraints — **HIGH**
+- `.planning/seeds/managed-llama-cpp-runtime.md` — deferred inference — **HIGH**
+- `src-tauri/src/main.rs`, `src-tauri/tauri.conf.json` — current Tauri/Node lifecycle — **HIGH**
+- `src/application/control-server/route-request.ts`, `handlers/*.ts` — HTTP surface — **HIGH**
+- `src/ports/*.ts` — trait map — **HIGH**
+- `src/adapters/persistence/file-session-store.ts`, `file-vector-index.ts` — on-disk formats — **HIGH**
+- `src/runtime/composition/build-runtime-context.ts`, `init-order.ts` — composition — **HIGH**
+- `scripts/packaging/build-release.mjs` — release layout with bundled Node — **HIGH**
+- [tauri-plugin-axum](https://docs.rs/tauri-plugin-axum) — streaming limitation on custom protocols — **MEDIUM**
+- `.planning/research/questions.md` — open Rust crate questions — **HIGH**
 
 ---
-*Architecture research for: v1.7 Adapter & Plugin Taxonomy*  
+*Architecture research for: v1.8 Rust Runtime Migration*  
 *Researched: 2026-05-22*
