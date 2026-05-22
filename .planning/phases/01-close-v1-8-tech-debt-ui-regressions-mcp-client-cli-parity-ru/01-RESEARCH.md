@@ -384,22 +384,13 @@ pub fn persist_resume_cursor(&self, cursor: &ResumeCursor) -> std::io::Result<()
 | A3 | Skill tool (`createSkillTool`) is out of PLUG-03 scope | Architecture | Users with skill-only interop config get no skill tool until follow-on |
 | A4 | HF search `entry.id` is valid `repo_id` for download body | Pattern 5 | Download fails if id format differs from HF API expectation |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should Rust pause route return 409 for terminal sessions like TS?**
-   - What we know: TS rejects finished runs; Rust always pauses `[VERIFIED: session.ts vs routes.rs]`
-   - What's unclear: Whether UI depends on 409 payload
-   - Recommendation: Match TS in same plan as TopBar wiring (low cost)
+1. **Should Rust pause route return 409 for terminal sessions like TS?** → **RESOLVED: Yes.** Match TS 409 on terminal sessions in plan 01-01 Task 1 alongside TopBar wiring (low cost; UI may rely on error shape).
 
-2. **CLI workflow: graph sidecar only or YAML config workflows too?**
-   - What we know: TS `runWorkflow` resolves both config and disk sidecars
-   - What's unclear: Which paths operators use in production
-   - Recommendation: Stage 1 = `ask`; Stage 2 = graph sidecar workflow via existing `graph/workflow.rs`
+2. **CLI workflow: graph sidecar only or YAML config workflows too?** → **RESOLVED: Ask-first staging.** Plan 01-04 ships `rlm ask` on Rust path; workflow remains Node-only via `RLM_RUNTIME=node` with actionable error. Graph sidecar workflow is stretch goal only — YAML config workflows deferred to post-phase. Session CLI execution explicitly deferred (same Node fallback).
 
-3. **PERS-03 minimum viable cursor fields?**
-   - What we know: Store accepts arbitrary JSON at `resumeCursor`
-   - What's unclear: Consumer for resume (none exists yet)
-   - Recommendation: Persist `{ activeNodeId, completedNodeIds, variant }` at executor checkpoints; document no reload-yet
+3. **PERS-03 minimum viable cursor fields?** → **RESOLVED: `{ activeNodeId, completedNodeIds, variant }`.** Plan 01-05 persists these at executor checkpoints into `resumeCursor`; document that no reload consumer exists yet (shared TS/Rust gap).
 
 ## Environment Availability
 
