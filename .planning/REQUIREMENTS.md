@@ -105,12 +105,49 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| _Populated during roadmap creation_ | — | — |
+| REG-01 | Phase 43 | Pending |
+| REG-02 | Phase 43 | Pending |
+| TAXN-01 | Phase 47 | Pending |
+| TAXN-02 | Phase 45 | Pending |
+| TAXN-03 | Phase 44 | Pending |
+| TAXN-04 | Phase 46 | Pending |
+| TAXN-05 | Phase 47 | Pending |
+| TAXN-06 | Phase 47 | Pending |
+| RUNT-01 | Phase 43 | Pending |
+| RUNT-02 | Phase 43 | Pending |
+| RUNT-03 | Phase 44 | Pending |
+| RUNT-04 | Phase 44 | Pending |
+| RUNT-05 | Phase 44 | Pending |
+| PLUG-01 | Phase 46 | Pending |
+| PLUG-02 | Phase 46 | Pending |
+| PLUG-03 | Phase 46 | Pending |
+| PLUG-04 | Phase 46 | Pending |
+| PLUG-05 | Phase 46 | Pending |
+| PLUG-06 | Phase 46 | Pending |
+| DEPS-01 | Phase 48 | Pending |
+| DEPS-02 | Phase 47 | Pending |
+| DEPS-03 | Phase 48 | Pending |
+| DEPS-04 | Phase 48 | Pending |
+| MGR-01 | Phase 49 | Pending |
+| MGR-02 | Phase 49 | Pending |
+| MGR-03 | Phase 49 | Pending |
+| MGR-04 | Phase 49 | Pending |
+| MGR-05 | Phase 49 | Pending |
+| MGR-06 | Phase 49 | Pending |
+| MGR-07 | Phase 49 | Pending |
+| RMT-01 | Phase 50 | Pending |
+| RMT-02 | Phase 50 | Pending |
+| RMT-03 | Phase 50 | Pending |
+| RMT-04 | Phase 50 | Pending |
+| UI-01 | Phase 51 | Pending |
+| UI-02 | Phase 51 | Pending |
+| UI-03 | Phase 51 | Pending |
+| UI-04 | Phase 51 | Pending |
 
 **Coverage:**
 - v1.7 requirements: 38 total
-- Mapped to phases: pending roadmap
-- Unmapped: 38 ⚠️
+- Mapped to phases: 38/38 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-22*  

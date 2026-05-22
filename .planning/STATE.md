@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Adapter & Plugin Taxonomy
-status: planning
-last_updated: "2026-05-22T16:13:50.100Z"
+status: ready_to_plan
+last_updated: "2026-05-22"
 last_activity: 2026-05-22
 progress:
-  total_phases: 0
+  total_phases: 9
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,48 +17,64 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-05-22 after v1.6 ship)
+See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Planning the next milestone (`/gsd-new-milestone`).
+**Current focus:** Milestone v1.7 — Phase 43 Boundary Fixes (ready to plan).
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-05-22 — Milestone v1.7 started
+Phase: 43 of 51 (Boundary Fixes)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-22 — v1.7 roadmap created (Phases 43-51)
 
-## Recently Completed
+Progress: [░░░░░░░░░░] 0%
 
-- **Milestone v1.6 — Architecture Cleanup** — dev tooling guardrails; `application/config/` split; `buildRuntimeContext()` bootstrap; adapter taxonomy; `domain/recursion/` decomposition; control-server handlers; test restructure and `AGENTS.md` refresh. Archive: `.planning/milestones/v1.6-ROADMAP.md`, `v1.6-REQUIREMENTS.md`, `v1.6-MILESTONE-AUDIT.md`.
+## Performance Metrics
 
-## Pending Todos
+**Velocity:**
+- Total plans completed (v1.7): 0
+- v1.6 close: 15 plans, 359 tests green
 
-Open artifact audit at milestone close reported **3** pending items under `.planning/todos/pending/` — acknowledged as deferred (see **Deferred Items**).
+**By Phase:**
 
-## Blockers/Concerns
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 43-51 | 0 | TBD | — |
 
-None for v1.6 closure — milestone audit **passed** (`v1.6-MILESTONE-AUDIT.md`).
+## Accumulated Context
+
+### Decisions
+
+See PROJECT.md Key Decisions. v1.7 direction:
+- Extract responsibilities first, rename directories second (strangler pattern)
+- Plugins distinct from core adapters; built-ins migrate to `plugins/builtin/` before external API hardens
+- Shared `PluginRegistryService` for CLI and control-server; `{ requiresRestart: true }` on runtime-affecting changes
+- dependency-cruiser ratchets to error only when baseline is empty
+
+### Pending Todos
+
+3 pending items under `.planning/todos/pending/` (deferred from v1.6 close).
+
+### Blockers/Concerns
+
+None — roadmap complete, ready for `/gsd-plan-phase 43`.
 
 ## Deferred Items
-
-Items acknowledged and deferred at milestone close on **2026-05-22** (open artifact audit: pending todos):
 
 | Category | Item | Status |
 |----------|------|--------|
 | todos | `2026-05-14-create-next-milestone-roadmap.md` | pending |
-| todos | `2026-05-22-extract-runtime-composition-from-cli-entrypoint.md` | pending |
+| todos | `2026-05-22-extract-runtime-composition-from-cli-entrypoint.md` | pending (addressed by Phase 44) |
 | todos | `2026-05-22-split-config-loader-resolver-validation.md` | pending |
-
-Prior deferred tables from earlier milestones remain in git history if needed.
 
 ## Session Continuity
 
 Last session: 2026-05-22  
-Stopped at: Milestone v1.6 complete-milestone workflow  
+Stopped at: v1.7 roadmap creation  
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with `/gsd-new-milestone`
+- `/gsd-plan-phase 43` — Boundary Fixes (RUNT-01, RUNT-02, REG-01, REG-02)
