@@ -30,7 +30,7 @@
 - [x] **Phase 47: Concern Map, Tests Mirror & Depcruise Rules** — AGENTS.md taxonomy, mirrored tests, new path rules (1/1 plan) — 2026-05-22
 - [x] **Phase 48: Dependency-Cruiser Ratchet** — Empty baseline, warn→error severity, strict `npm run check`
 - [x] **Phase 49: Local Plugin Manager** — CLI commands, shared registry service, catalog under `~/.rlm/plugins/` (1/1 plan) — 2026-05-22
-- [ ] **Phase 50: Remote Fetch** — HTTPS archive and optional git fetch-to-local with security defenses
+- [x] **Phase 50: Remote Fetch** — HTTPS archive and optional git fetch-to-local with security defenses (1/1 plan) — 2026-05-22
 - [ ] **Phase 51: Plugin Manager UI** — Control-server endpoints and UI panel aligned with CLI semantics
 
 <details>
@@ -165,7 +165,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   2. Archive extraction rejects path traversal (zip-slip) and enforces a documented max archive size
   3. Optional git-based install (`git:` URL or documented equivalent) uses spawn/fetch-to-local only — no remote code execution during fetch
   4. User can run `rlm plugin doctor --fix` to quarantine invalid entries and prune stale config refs; repair never happens without explicit `--fix`
-**Plans**: TBD
+**Plans**: 1/1 complete
 
 ### Phase 51: Plugin Manager UI
 **Goal**: UI plugin panel exposes the same plugin management capabilities as CLI with aligned vocabulary and trust/restart semantics.
@@ -193,7 +193,7 @@ Phases execute in numeric order: 43 → 44 → … → 51
 | 47. Concern Map, Tests Mirror & Depcruise Rules | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 48. Dependency-Cruiser Ratchet | v1.7 | 0/TBD | Not started | - |
 | 49. Local Plugin Manager | v1.7 | 1/1 | Complete   | 2026-05-22 |
-| 50. Remote Fetch | v1.7 | 0/TBD | Not started | - |
+| 50. Remote Fetch | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 51. Plugin Manager UI | v1.7 | 0/TBD | Not started | - |
 | 36-42 Architecture Cleanup | v1.6 | 15/15 | Complete | 2026-05-22 |
 | 30-35 Dynamic Graph Authoring | v1.5 | 18/18 | Complete | 2026-05-22 |

@@ -56,10 +56,10 @@
 
 ### Remote Fetch
 
-- [ ] **RMT-01**: User can run `rlm plugin install <https-url>` to fetch an archive (`.tar.gz`/`.tgz`) into a staging dir, validate manifest without executing plugin code, confirm, then atomically move to `~/.rlm/plugins/<id>/`.
-- [ ] **RMT-02**: Archive extraction rejects path traversal (zip-slip defenses) and enforces a documented max archive size.
-- [ ] **RMT-03**: Optional git-based install (`git:` URL or documented equivalent) uses spawn/fetch-to-local only — no remote code execution during fetch.
-- [ ] **RMT-04**: `rlm plugin doctor --fix` can quarantine invalid entries and prune stale config refs with explicit `--fix` (never silent auto-repair).
+- [x] **RMT-01**: User can run `rlm plugin install <https-url>` to fetch an archive (`.tar.gz`/`.tgz`) into a staging dir, validate manifest without executing plugin code, confirm, then atomically move to `~/.rlm/plugins/<id>/`.
+- [x] **RMT-02**: Archive extraction rejects path traversal (zip-slip defenses) and enforces a documented max archive size.
+- [x] **RMT-03**: Optional git-based install (`git:` URL or documented equivalent) uses spawn/fetch-to-local only — no remote code execution during fetch.
+- [x] **RMT-04**: `rlm plugin doctor --fix` can quarantine invalid entries and prune stale config refs with explicit `--fix` (never silent auto-repair).
 
 ### Plugin Manager UI
 
@@ -135,10 +135,10 @@
 | MGR-05 | Phase 49 | Complete |
 | MGR-06 | Phase 49 | Complete |
 | MGR-07 | Phase 49 | Complete |
-| RMT-01 | Phase 50 | Pending |
-| RMT-02 | Phase 50 | Pending |
-| RMT-03 | Phase 50 | Pending |
-| RMT-04 | Phase 50 | Pending |
+| RMT-01 | Phase 50 | Complete |
+| RMT-02 | Phase 50 | Complete |
+| RMT-03 | Phase 50 | Complete |
+| RMT-04 | Phase 50 | Complete |
 | UI-01 | Phase 51 | Pending |
 | UI-02 | Phase 51 | Pending |
 | UI-03 | Phase 51 | Pending |

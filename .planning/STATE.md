@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Adapter & Plugin Taxonomy
-status: executing
-stopped_at: Completed 49-01-PLAN.md
-last_updated: "2026-05-22"
-last_activity: 2026-05-22 — Phase 49 complete (PluginRegistryService, rlm plugin CLI, control-server API, 459 tests green)
+status: planning
+stopped_at: Completed 50-01-PLAN.md
+last_updated: "2026-05-22T16:51:40.660Z"
+last_activity: 2026-05-22 — Phase 50 complete (remote fetch, doctor --fix, 471 tests green)
 progress:
   total_phases: 9
-  completed_phases: 7
-  total_plans: 7
-  completed_plans: 7
-  percent: 78
+  completed_phases: 8
+  total_plans: 8
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone v1.7 — Phase 50 Remote Fetch.
+**Current focus:** Milestone v1.7 — Phase 51 Plugin Manager UI.
 
 ## Current Position
 
-Phase: 50 of 51 (Remote Fetch)
+Phase: 51 of 51 (Plugin Manager UI)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-22 — Phase 49 complete (PluginRegistryService, rlm plugin CLI, control-server API, 459 tests green)
+Last activity: 2026-05-22 — Phase 50 complete (remote fetch, doctor --fix, 471 tests green)
 
-Progress: [███████░░░] 78%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v1.7): 7
+- Total plans completed (v1.7): 8
 - Phase 43: 1 plan, 359 tests green
 - Phase 44: 1 plan, 360 tests green
 - Phase 45: 1 plan, 360 tests green
@@ -44,6 +44,7 @@ Progress: [███████░░░] 78%
 - Phase 47: 1 plan, 450 tests green
 - Phase 48: 1 plan, 451 tests green
 - Phase 49: 1 plan, 459 tests green
+- Phase 50: 1 plan, 471 tests green
 
 **By Phase:**
 
@@ -56,7 +57,8 @@ Progress: [███████░░░] 78%
 | 47 | 1 | 1 | 1 |
 | 48 | 1 | 1 | 1 |
 | 49 | 1 | 1 | 1 |
-| 50-51 | 0 | TBD | — |
+| 50 | 1 | 1 | 1 |
+| 51 | 0 | TBD | — |
 
 ## Accumulated Context
 
@@ -69,13 +71,13 @@ See PROJECT.md Key Decisions. v1.7 direction:
 - Shared `PluginRegistryService` for CLI and control-server; `{ requiresRestart: true }` on runtime-affecting changes — **done Phase 49**
 - dependency-cruiser ratchets to error only when baseline is empty — **done Phase 48**
 
+Phase 50 completed: remote HTTPS archive + optional `git:` install with confirm gate; zip-slip and size limits; `doctor --fix` quarantine; 471 tests green.
+
 Phase 49 completed: `PluginRegistryService` with user catalog at `~/.rlm/plugins/`; `rlm plugin list|install|enable|disable|uninstall|doctor|inspect|validate`; control-server `/api/plugins/*`; 459 tests green.
 
-Phase 48 completed: RuntimeCliWiring bootstrap injection clears runtime→cli; all depcruise rules at error severity; npm run check uses depcruise:strict; 451 tests green.
-
-- User install root at ~/.rlm/plugins/<id>; runtime loads user + project catalogs
-- PluginRegistryService shared by CLI and control-server; mutations return requiresRestart: true
-- Install pre-approves allowlist without executing plugin code on validate/inspect
+- Remote install: 50MiB download / 100MiB extract caps; manifest validated before catalog write
+- `git:` URLs use spawn-only clone; no npm lifecycle during fetch
+- Doctor repair requires explicit `--fix`; quarantine under `~/.rlm/plugins/.quarantine/`
 
 ### Pending Todos
 
@@ -95,10 +97,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-22
-Stopped at: Completed 49-01-PLAN.md
+Last session: 2026-05-22T16:51:40.656Z
+Stopped at: Completed 50-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
 
-Proceed with Phase 50 Remote Fetch (HTTPS archive and optional git fetch-to-local).
+Proceed with Phase 51 Plugin Manager UI (control-server endpoints + UI panel aligned with CLI semantics).
