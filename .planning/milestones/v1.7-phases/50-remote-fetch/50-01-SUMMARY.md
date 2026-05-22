@@ -70,7 +70,7 @@ completed: 2026-05-22
 3. **Task 3: CLI and control-server wiring** - `451a720` (feat)
 4. **Task 4: Tests** - `ea86717` (test)
 
-**Plan metadata:** pending (docs: complete plan)
+**Plan metadata:** `347b5e6` (docs: complete plan)
 
 ## Files Created/Modified
 
