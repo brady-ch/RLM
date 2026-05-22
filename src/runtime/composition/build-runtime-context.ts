@@ -12,8 +12,6 @@ import {
 } from "../../application/execution-controller.js";
 import { createAgentRegistry } from "../../application/agent-registry.js";
 import { ResourceCleanup } from "../../application/resource-cleanup.js";
-import { createStderrRuntimeLogger } from "../../cli/runtime-logger.js";
-import { installShutdownHandlers } from "../../cli/shutdown.js";
 import { PluginLoader } from "../../plugins/plugin-loader.js";
 import type { ExecutionEvent } from "../../domain/types.js";
 import type { LanguageModelPort } from "../../ports/language-model-port.js";
@@ -38,11 +36,35 @@ import type {
   BuildRuntimeContextInput,
   RuntimeContext,
 } from "../../application/bootstrap/types.js";
+import type { RuntimeLogger } from "../../ports/runtime-logger-port.js";
 
 export { COMPOSITION_INIT_ORDER, type CompositionInitStage, type CompositionInitStageRecorder };
 
+export type ShutdownController = {
+  markCompleted(): void;
+};
+
+export type RuntimeCliWiring = {
+  createLogger: (verbose: boolean) => RuntimeLogger | undefined;
+  installShutdown: (input: {
+    cleanup: (reason: string) => Promise<void>;
+    json: boolean;
+    logger?: RuntimeLogger | undefined;
+  }) => ShutdownController;
+};
+
+const noopShutdown: ShutdownController = {
+  markCompleted(): void {},
+};
+
+const defaultCliWiring: RuntimeCliWiring = {
+  createLogger: () => undefined,
+  installShutdown: () => noopShutdown,
+};
+
 export type BuildRuntimeContextOptions = {
   onInitStage?: CompositionInitStageRecorder;
+  cliWiring?: RuntimeCliWiring;
 };
 
 export async function buildRuntimeContext(
@@ -56,7 +78,8 @@ export async function buildRuntimeContext(
   const cwd = input.cwd ?? process.cwd();
 
   const { options: cliOptions } = input;
-  const logger = cliOptions.verbose ? createStderrRuntimeLogger() : undefined;
+  const cliWiring = options?.cliWiring ?? defaultCliWiring;
+  const logger = cliWiring.createLogger(cliOptions.verbose);
   const cleanup = new ResourceCleanup(logger);
 
   logger?.log({
@@ -86,7 +109,7 @@ export async function buildRuntimeContext(
     cancellation,
     onEvent: onExecutionEvent,
   });
-  const shutdown = installShutdownHandlers({
+  const shutdown = cliWiring.installShutdown({
     json: cliOptions.json,
     logger,
     cleanup: async (reason) => {
