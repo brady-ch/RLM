@@ -29,12 +29,12 @@
 
 ### Runtime Bootstrap
 
-- [ ] **BOOT-01**: Runtime construction extracts from `src/index.ts` into `application/bootstrap/` with a typed `RuntimeContext` and single `buildRuntimeContext()` entry point.
-- [ ] **BOOT-02**: `index.ts` reads primarily as CLI argument parsing, early command exits, runtime build, and dispatch (<150 LOC target).
-- [ ] **BOOT-03**: CLI run-mode dispatch moves to `cli/run-modes/*`; each mode receives a built `RuntimeContext` rather than constructing stores/adapters inline.
-- [ ] **BOOT-04**: Init order preserved in one composition pipeline: extensions → MCP cleanup tracking → tool resolver → agent registry → model factory → execution control → shutdown wiring.
-- [ ] **BOOT-05**: Extension/tool registration stays unified — built-ins, external extensions, and interop MCP/skill tools register through one path with no duplication.
-- [ ] **BOOT-06**: Runtime builders are unit-testable without spawning the full CLI or control server.
+- [x] **BOOT-01**: Runtime construction extracts from `src/index.ts` into `application/bootstrap/` with a typed `RuntimeContext` and single `buildRuntimeContext()` entry point.
+- [x] **BOOT-02**: `index.ts` reads primarily as CLI argument parsing, early command exits, runtime build, and dispatch (<150 LOC target).
+- [x] **BOOT-03**: CLI run-mode dispatch moves to `cli/run-modes/*`; each mode receives a built `RuntimeContext` rather than constructing stores/adapters inline.
+- [x] **BOOT-04**: Init order preserved in one composition pipeline: extensions → MCP cleanup tracking → tool resolver → agent registry → model factory → execution control → shutdown wiring.
+- [x] **BOOT-05**: Extension/tool registration stays unified — built-ins, external extensions, and interop MCP/skill tools register through one path with no duplication.
+- [x] **BOOT-06**: Runtime builders are unit-testable without spawning the full CLI or control server.
 
 ### Adapters & Tools
 
@@ -104,8 +104,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | 36-42 (cross-cutting gate in every phase) | Pending — Phase 37 gate green 2026-05-22 |
-| REG-02 | 36-42 (cross-cutting gate in every phase) | Pending — Phase 37 gate green 2026-05-22 |
+| REG-01 | 36-42 (cross-cutting gate in every phase) | Pending — Phases 36–38 gates green (`npm run check`); milestone-wide sign-off remains open through Phase 42 |
+| REG-02 | 36-42 (cross-cutting gate in every phase) | Pending — Phases 36–38 gates green; milestone-wide sign-off remains open through Phase 42 |
 | TOOL-01 | Phase 36 | Complete |
 | TOOL-02 | Phase 36 | Complete |
 | TOOL-03 | Phase 36 | Complete |
@@ -116,12 +116,12 @@
 | CONF-04 | Phase 37 | Complete |
 | CONF-05 | Phase 37 | Complete |
 | CONF-06 | Phase 37 | Complete |
-| BOOT-01 | Phase 38 | Pending |
-| BOOT-02 | Phase 38 | Pending |
-| BOOT-03 | Phase 38 | Pending |
-| BOOT-04 | Phase 38 | Pending |
-| BOOT-05 | Phase 38 | Pending |
-| BOOT-06 | Phase 38 | Pending |
+| BOOT-01 | Phase 38 | Complete |
+| BOOT-02 | Phase 38 | Complete |
+| BOOT-03 | Phase 38 | Complete |
+| BOOT-04 | Phase 38 | Complete |
+| BOOT-05 | Phase 38 | Complete |
+| BOOT-06 | Phase 38 | Complete |
 | ADPT-01 | Phase 39 | Pending |
 | ADPT-02 | Phase 39 | Pending |
 | ADPT-03 | Phase 39 | Pending |

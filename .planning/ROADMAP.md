@@ -26,7 +26,7 @@ v1.6 is a behavior-preserving architecture cleanup: land dev-tooling guardrails,
 
 - [x] **Phase 36: Dev Tooling Guardrails** — ESLint, Prettier, dependency-cruiser baselines and expanded `npm run check`.
 - [x] **Phase 37: Config Layer Split** — Focused `application/config/` modules with barrel facade and unit tests (2026-05-22).
-- [ ] **Phase 38: Runtime Bootstrap** — `RuntimeContext`, `buildRuntimeContext()`, slim `index.ts`, and `cli/run-modes/*`.
+- [x] **Phase 38: Runtime Bootstrap** — `RuntimeContext`, `buildRuntimeContext()`, slim `index.ts`, and `cli/run-modes/*` (2026-05-22).
 - [ ] **Phase 39: Adapters & Tools Taxonomy** — Group tools, persistence, and model adapters by concern with aligned extension shims.
 - [ ] **Phase 40: Domain Engine Decomposition** — `domain/recursion/` concern modules with orchestrator retaining flow.
 - [ ] **Phase 41: Control-Server Boundary** — Handler modules with bootstrap-injected dependencies and transport-only routes.
@@ -101,7 +101,11 @@ Plans:
   3. CLI run modes live in `cli/run-modes/*` and receive a built `RuntimeContext` instead of constructing stores/adapters inline.
   4. Init order is preserved in one pipeline: extensions → MCP cleanup tracking → tool resolver → agent registry → model factory → execution control → shutdown wiring.
   5. Extension/tool registration stays unified through one path; bootstrap builders have unit tests; full suite and `npm run check` stay green.
-**Plans**: TBD
+**Plans**: `38-01-PLAN.md`, `38-02-PLAN.md` — shipped 2026-05-22
+
+Plans:
+- [x] `38-01-PLAN.md` — Typed `RuntimeContext` + `buildRuntimeContext()` with bootstrap unit coverage
+- [x] `38-02-PLAN.md` — `cli/run-modes/*` dispatch + slim CLI entry (`src/index.ts`)
 
 ### Phase 39: Adapters & Tools Taxonomy
 **Goal**: Adapters are grouped by concern with extension shims aligned and ports remaining the public contract.
@@ -160,9 +164,9 @@ Phases execute in numeric order: 36 → 37 → 38 → 39 → 40 → 41 → 42
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 36. Dev Tooling Guardrails | v1.6 | 0/TBD | Not started | - |
-| 37. Config Layer Split | v1.6 | 3/3 | Planned (ready to execute) | - |
-| 38. Runtime Bootstrap | v1.6 | 0/TBD | Not started | - |
+| 36. Dev Tooling Guardrails | v1.6 | 2/2 | Complete | 2026-05-22 |
+| 37. Config Layer Split | v1.6 | 3/3 | Complete | 2026-05-22 |
+| 38. Runtime Bootstrap | v1.6 | 2/2 | Complete | 2026-05-22 |
 | 39. Adapters & Tools Taxonomy | v1.6 | 0/TBD | Not started | - |
 | 40. Domain Engine Decomposition | v1.6 | 0/TBD | Not started | - |
 | 41. Control-Server Boundary | v1.6 | 0/TBD | Not started | - |
