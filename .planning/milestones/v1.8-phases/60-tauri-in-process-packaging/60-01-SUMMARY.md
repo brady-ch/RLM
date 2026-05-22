@@ -70,9 +70,8 @@ completed: 2026-05-22
 
 ## Known Stubs / Deferred
 
-- PACK-03 `.deb` install smoke — human_needed (requires `libdbus-1-dev`, `tauri build`, dpkg on target runner)
-- REG-01 full UI workflow UAT — human_needed (desktop shell build + manual graph/session/plugin flows)
 - MCP/external plugin limitations unchanged from Phase 58
+- Human UAT (PACK-03, REG-01) signed off in `60-UAT.md` (2026-05-22)
 
 ## Self-Check: PASSED
 
