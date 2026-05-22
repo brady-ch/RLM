@@ -3,22 +3,22 @@ use std::sync::Arc;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Json};
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::Router;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use crate::adapters::OllamaEmbeddingModel;
 use crate::domain::types::{
-    DeleteStrategy, ExpertRuntimeMode, GraphPosition, GraphViewport, ReplanChoice,
+    DeleteStrategy, ExpertRuntimeMode, GraphPosition, GraphViewport, ReplanChoice, SessionSnapshot,
 };
 use crate::execution::InteractiveExecutionSession;
+use crate::memory::{
+    build_saved_session_payload, restore_graph_workflow_metadata, restore_session_memory,
+};
 use crate::graph::{
     build_import_session_snapshot, execute_graph, export_and_save_graph_workflow,
     import_sidecar_to_graph, list_graph_workflows, load_graph_workflow, GraphExecutorInput,
 };
-use crate::memory::SemanticMemoryIndex;
-use crate::persistence::FileMemoryStore;
 use crate::ports::LanguageModel;
 
 use super::RouterState;
@@ -45,7 +45,7 @@ struct MemoryQuery {
     limit: Option<usize>,
 }
 
-pub fn build_router(state: RouterState) -> Router {
+pub fn build_router(state: Arc<RouterState>) -> Router {
     let api = Router::new()
         .route("/api/session", get(session))
         .route("/api/run-mode", get(run_mode))
@@ -53,10 +53,15 @@ pub fn build_router(state: RouterState) -> Router {
         .route("/api/graph/layout", post(graph_layout))
         .route("/api/graph/viewport", post(graph_viewport))
         .route("/api/saved-sessions", get(saved_sessions))
+        .route("/api/saved-sessions/save", post(saved_sessions_save))
+        .route("/api/saved-sessions/{id}", get(saved_sessions_detail))
+        .route("/api/saved-sessions/{id}/open", post(saved_sessions_open))
         .route("/api/graph-workflows", get(graph_workflows_list))
         .route("/api/graph-workflows/export", post(graph_workflows_export))
         .route("/api/graph-workflows/import", post(graph_workflows_import))
         .route("/api/memory", get(memory))
+        .route("/api/memory/preferences", post(memory_preferences_set))
+        .route("/api/memory/preferences/{key}", delete(memory_preferences_delete))
         .route("/api/model-library", get(model_library))
         .route("/api/model-library/search", get(model_library_search))
         .route("/api/model-library/install", post(model_library_install))
@@ -116,20 +121,20 @@ pub fn build_router(state: RouterState) -> Router {
     api.merge(ui).with_state(state)
 }
 
-async fn session(State(state): State<RouterState>) -> Json<Value> {
+async fn session(State(state): State<Arc<RouterState>>) -> Json<Value> {
     Json(json!(state.session.snapshot()))
 }
 
-async fn run_mode(State(state): State<RouterState>) -> Json<Value> {
+async fn run_mode(State(state): State<Arc<RouterState>>) -> Json<Value> {
     Json(json!(state.session.run_mode_snapshot()))
 }
 
-async fn graph_snapshot(State(state): State<RouterState>) -> Json<Value> {
+async fn graph_snapshot(State(state): State<Arc<RouterState>>) -> Json<Value> {
     Json(json!(state.session.snapshot().graph))
 }
 
 async fn graph_layout(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
     let raw = body.get("positions").ok_or_else(|| ApiError {
@@ -156,7 +161,7 @@ async fn graph_layout(
     Ok(Json(json!(state.session.snapshot())))
 }
 
-async fn graph_viewport(State(state): State<RouterState>, body: Json<Value>) -> Json<Value> {
+async fn graph_viewport(State(state): State<Arc<RouterState>>, body: Json<Value>) -> Json<Value> {
     state.session.set_graph_viewport(GraphViewport {
         x: body.get("x").and_then(|v| v.as_f64()).unwrap_or(0.0),
         y: body.get("y").and_then(|v| v.as_f64()).unwrap_or(0.0),
@@ -166,7 +171,7 @@ async fn graph_viewport(State(state): State<RouterState>, body: Json<Value>) -> 
 }
 
 async fn nodes_add(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
     let parent_id = body.get("parentId").and_then(|v| v.as_str()).unwrap_or("");
@@ -187,7 +192,7 @@ async fn nodes_add(
 }
 
 async fn nodes_edit(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -200,7 +205,7 @@ async fn nodes_edit(
 }
 
 async fn nodes_model(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -213,7 +218,7 @@ async fn nodes_model(
 }
 
 async fn nodes_sampling(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -225,7 +230,7 @@ async fn nodes_sampling(
 }
 
 async fn nodes_expert(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -262,7 +267,7 @@ async fn nodes_expert(
 }
 
 async fn nodes_plan(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -280,7 +285,7 @@ async fn nodes_plan(
 }
 
 async fn nodes_breakdown(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -288,7 +293,7 @@ async fn nodes_breakdown(
 }
 
 async fn nodes_extend_budget(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -311,7 +316,7 @@ async fn nodes_extend_budget(
 }
 
 async fn nodes_approve(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -327,7 +332,7 @@ async fn nodes_approve(
 }
 
 async fn nodes_skip(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -343,7 +348,7 @@ async fn nodes_skip(
 }
 
 async fn nodes_quality_accept(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -356,7 +361,7 @@ async fn nodes_quality_accept(
 }
 
 async fn nodes_quality_stop(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -369,7 +374,7 @@ async fn nodes_quality_stop(
 }
 
 async fn nodes_connect(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -390,7 +395,7 @@ async fn nodes_connect(
 }
 
 async fn nodes_delete(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
@@ -412,7 +417,7 @@ async fn nodes_delete(
     )))
 }
 
-async fn chat_confirm_run(State(state): State<RouterState>) -> Json<Value> {
+async fn chat_confirm_run(State(state): State<Arc<RouterState>>) -> Json<Value> {
     let readiness = state.session.confirm_graph_and_run();
     if readiness.state == "ready_to_run" && !state.session.is_confirmed_execution_running() {
         spawn_graph_execution(&state);
@@ -423,7 +428,7 @@ async fn chat_confirm_run(State(state): State<RouterState>) -> Json<Value> {
     ))
 }
 
-async fn stop_run(State(state): State<RouterState>, body: Json<Value>) -> Json<Value> {
+async fn stop_run(State(state): State<Arc<RouterState>>, body: Json<Value>) -> Json<Value> {
     let reason = body
         .get("reason")
         .and_then(|v| v.as_str())
@@ -433,7 +438,7 @@ async fn stop_run(State(state): State<RouterState>, body: Json<Value>) -> Json<V
 }
 
 async fn clarifications_answer(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
     let question_id = body
@@ -451,18 +456,18 @@ async fn clarifications_answer(
     Ok(Json(json!(state.session.snapshot())))
 }
 
-async fn pause_auto_approvals(State(state): State<RouterState>) -> Json<Value> {
+async fn pause_auto_approvals(State(state): State<Arc<RouterState>>) -> Json<Value> {
     state.session.pause_future_auto_approvals();
     Json(json!(state.session.snapshot()))
 }
 
-async fn graph_workflows_list(State(state): State<RouterState>) -> Json<Value> {
+async fn graph_workflows_list(State(state): State<Arc<RouterState>>) -> Json<Value> {
     let workflows = list_graph_workflows(&state.project_root).unwrap_or_default();
     Json(json!({ "workflows": workflows }))
 }
 
 async fn graph_workflows_export(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
     let workflow_id = body
@@ -510,7 +515,7 @@ async fn graph_workflows_export(
 }
 
 async fn graph_workflows_import(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
     let workflow_id = body
@@ -546,7 +551,7 @@ async fn graph_workflows_import(
     )))
 }
 
-fn spawn_graph_execution(state: &RouterState) {
+fn spawn_graph_execution(state: &Arc<RouterState>) {
     let session = Arc::clone(&state.session);
     state.session.begin_confirmed_execution();
     let runtime_config = state.runtime_config();
@@ -561,7 +566,11 @@ fn spawn_graph_execution(state: &RouterState) {
         create_model: Arc::new(move || Arc::clone(&exec_model) as Arc<dyn LanguageModel>),
         runtime: state.runtime_context.clone(),
     };
-    tokio::spawn(async move {
+    let lifecycle = state.lifecycle.clone();
+    lifecycle.clone().spawn(async move {
+        if lifecycle.is_shutdown() {
+            return;
+        }
         if let Err(err) = execute_graph(session.clone(), input).await {
             session.stop(err.message);
         }
@@ -636,7 +645,294 @@ use axum::response::Html;
 use futures::stream::{self, StreamExt};
 use tokio_stream::wrappers::BroadcastStream;
 
-async fn saved_sessions(State(state): State<RouterState>) -> impl IntoResponse {
+async fn memory_inspect_payload(
+    state: &Arc<RouterState>,
+    session_id: &str,
+) -> Result<Value, ApiError> {
+    if !state.paths.memory_configured() {
+        return Err(ApiError {
+            status: StatusCode::NOT_FOUND,
+            body: super::state::memory_unconfigured(),
+        });
+    }
+    let semantic = state.memory_index(session_id).await;
+    let snapshot = semantic.store().inspect(session_id).map_err(|err| ApiError {
+        status: StatusCode::INTERNAL_SERVER_ERROR,
+        body: json!({ "error": err.to_string() }),
+    })?;
+    let vector_index = semantic.status().await;
+    let mut value = serde_json::to_value(snapshot).map_err(|err| ApiError {
+        status: StatusCode::INTERNAL_SERVER_ERROR,
+        body: json!({ "error": err.to_string() }),
+    })?;
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert(
+            "vectorIndex".into(),
+            serde_json::to_value(vector_index).unwrap_or(json!({})),
+        );
+    }
+    Ok(value)
+}
+
+#[derive(Debug, Deserialize)]
+struct SavedSessionSaveBody {
+    id: Option<String>,
+    name: Option<String>,
+}
+
+async fn saved_sessions_save(
+    State(state): State<Arc<RouterState>>,
+    Json(body): Json<SavedSessionSaveBody>,
+) -> impl IntoResponse {
+    if !state.paths.sessions_configured() {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(super::state::saved_sessions_unconfigured()),
+        )
+            .into_response();
+    }
+    if !state.paths.memory_configured() {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(super::state::memory_unconfigured()),
+        )
+            .into_response();
+    }
+
+    let run_id = state.current_memory_session_id();
+    let snapshot = state.session.snapshot();
+    let snapshot_value = serde_json::to_value(&snapshot).unwrap_or(json!({}));
+    let semantic = state.memory_index(&run_id).await;
+    let ann_arc = semantic.ann();
+    let ann_guard = ann_arc.lock().await;
+    let payload = match build_saved_session_payload(
+        &snapshot_value,
+        &run_id,
+        semantic.store(),
+        ann_guard.json_index(),
+        None,
+        state.session.graph_workflow_metadata_value(),
+    ) {
+        Ok(payload) => payload,
+        Err(err) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+    drop(ann_guard);
+
+    let store = crate::persistence::FileSessionStore::new(state.paths.sessions_dir.clone());
+    match store.save(crate::persistence::session_store::SaveSessionRequest {
+        id: body.id,
+        name: body.name,
+        payload,
+    }) {
+        Ok(record) => (StatusCode::OK, Json(serde_json::to_value(record).unwrap())).into_response(),
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": err.to_string() })),
+        )
+            .into_response(),
+    }
+}
+
+async fn saved_sessions_detail(
+    State(state): State<Arc<RouterState>>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    if !state.paths.sessions_configured() {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(super::state::saved_sessions_unconfigured()),
+        )
+            .into_response();
+    }
+    let store = crate::persistence::FileSessionStore::new(state.paths.sessions_dir.clone());
+    match store.load(&id) {
+        Ok(record) => (StatusCode::OK, Json(serde_json::to_value(record).unwrap())).into_response(),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": format!("Saved session \"{id}\" not found.") })),
+        )
+            .into_response(),
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": err.to_string() })),
+        )
+            .into_response(),
+    }
+}
+
+async fn saved_sessions_open(
+    State(state): State<Arc<RouterState>>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    if !state.paths.sessions_configured() {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(super::state::saved_sessions_unconfigured()),
+        )
+            .into_response();
+    }
+    if !state.paths.memory_configured() {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(super::state::memory_unconfigured()),
+        )
+            .into_response();
+    }
+
+    let store = crate::persistence::FileSessionStore::new(state.paths.sessions_dir.clone());
+    let saved = match store.load(&id) {
+        Ok(record) => record,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": format!("Saved session \"{id}\" not found.") })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    if saved.verification.status != "complete" {
+        return (
+            StatusCode::CONFLICT,
+            Json(json!({
+                "error": "Saved session restore is unsafe.",
+                "savedSession": saved,
+            })),
+        )
+            .into_response();
+    }
+
+    let semantic = state.memory_index(&state.current_memory_session_id()).await;
+    let ann_arc = semantic.ann();
+    let mut ann = ann_arc.lock().await;
+    let restored_run_id = match restore_session_memory(&saved.payload, semantic.store(), &mut ann) {
+        Ok(run_id) => run_id,
+        Err(err) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+    drop(ann);
+    state.set_memory_session_id(restored_run_id.clone());
+
+    let snapshot: SessionSnapshot = match serde_json::from_value(saved.payload.session.clone()) {
+        Ok(snapshot) => snapshot,
+        Err(err) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+    state.session.restore_snapshot(snapshot);
+
+    let (metadata, degraded, note) = restore_graph_workflow_metadata(&saved.payload);
+    state
+        .session
+        .set_graph_workflow_metadata_from_restore(&metadata);
+
+    let mut response = snapshot_with_extra(&state.session, json!({ "savedSession": saved }));
+    if let Some(obj) = response.as_object_mut() {
+        obj.insert(
+            "graphWorkflowMetadataRestore".into(),
+            if degraded {
+                json!({ "degraded": true, "note": note })
+            } else {
+                json!({ "degraded": false })
+            },
+        );
+    }
+    (StatusCode::OK, Json(response)).into_response()
+}
+
+#[derive(Debug, Deserialize)]
+struct MemoryPreferenceBody {
+    key: Option<String>,
+    value: Option<String>,
+    lifetime: Option<String>,
+}
+
+async fn memory_preferences_set(
+    State(state): State<Arc<RouterState>>,
+    Json(body): Json<MemoryPreferenceBody>,
+) -> Result<Json<Value>, ApiError> {
+    if !state.paths.memory_configured() {
+        return Err(ApiError {
+            status: StatusCode::NOT_FOUND,
+            body: super::state::memory_unconfigured(),
+        });
+    }
+    let key = body.key.as_deref().unwrap_or("").trim();
+    let value = body.value.as_deref().unwrap_or("").trim();
+    if key.is_empty() {
+        return Err(ApiError {
+            status: StatusCode::BAD_REQUEST,
+            body: json!({ "error": "Preference key is required." }),
+        });
+    }
+    let lifetime = if body.lifetime.as_deref() == Some("permanent") {
+        "permanent"
+    } else {
+        "project"
+    };
+    let session_id = state.current_memory_session_id();
+    let semantic = state.memory_index(&session_id).await;
+    semantic
+        .store()
+        .set_preference(&session_id, key, value, "ui", lifetime)
+        .map_err(|err| ApiError {
+            status: StatusCode::BAD_REQUEST,
+            body: json!({ "error": err.to_string() }),
+        })?;
+    semantic.enqueue_rebuild();
+    memory_inspect_payload(&state, &session_id)
+        .await
+        .map(Json)
+}
+
+async fn memory_preferences_delete(
+    State(state): State<Arc<RouterState>>,
+    Path(key): Path<String>,
+) -> Result<Json<Value>, ApiError> {
+    if !state.paths.memory_configured() {
+        return Err(ApiError {
+            status: StatusCode::NOT_FOUND,
+            body: super::state::memory_unconfigured(),
+        });
+    }
+    let session_id = state.current_memory_session_id();
+    let semantic = state.memory_index(&session_id).await;
+    semantic
+        .store()
+        .delete_preference(&session_id, &key)
+        .map_err(|err| ApiError {
+            status: StatusCode::BAD_REQUEST,
+            body: json!({ "error": err.to_string() }),
+        })?;
+    semantic.enqueue_rebuild();
+    memory_inspect_payload(&state, &session_id)
+        .await
+        .map(Json)
+}
+
+async fn saved_sessions(State(state): State<Arc<RouterState>>) -> impl IntoResponse {
     if !state.paths.sessions_configured() {
         return (
             StatusCode::NOT_FOUND,
@@ -657,7 +953,7 @@ async fn saved_sessions(State(state): State<RouterState>) -> impl IntoResponse {
 }
 
 async fn memory(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Query(query): Query<MemoryQuery>,
 ) -> impl IntoResponse {
     if !state.paths.memory_configured() {
@@ -670,15 +966,10 @@ async fn memory(
 
     let session_id = query
         .session_id
-        .unwrap_or_else(|| state.memory_session_id.clone());
-    let store = FileMemoryStore::new(state.paths.memory_dir.clone());
-    let semantic = SemanticMemoryIndex::new(
-        session_id.clone(),
-        state.paths.memory_dir.clone(),
-        OllamaEmbeddingModel::default(),
-    );
+        .unwrap_or_else(|| state.current_memory_session_id());
+    let semantic = state.memory_index(&session_id).await;
 
-    match store.inspect(&session_id) {
+    match semantic.store().inspect(&session_id) {
         Ok(snapshot) => {
             let vector_index = semantic.status().await;
             let mut value = match serde_json::to_value(snapshot) {
@@ -739,7 +1030,7 @@ async fn memory(
     }
 }
 
-async fn model_library(State(state): State<RouterState>) -> impl IntoResponse {
+async fn model_library(State(state): State<Arc<RouterState>>) -> impl IntoResponse {
     let Some(library) = state.model_library.as_ref() else {
         return (
             StatusCode::NOT_FOUND,
@@ -751,7 +1042,7 @@ async fn model_library(State(state): State<RouterState>) -> impl IntoResponse {
 }
 
 async fn model_library_search(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     axum::extract::Query(query): axum::extract::Query<ModelLibrarySearchQuery>,
 ) -> impl IntoResponse {
     let Some(library) = state.model_library.as_ref() else {
@@ -785,7 +1076,7 @@ struct ModelLibraryInstallBody {
 }
 
 async fn model_library_install(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Json(body): Json<ModelLibraryInstallBody>,
 ) -> impl IntoResponse {
     let Some(library) = state.model_library.as_ref() else {
@@ -814,7 +1105,7 @@ struct ModelLibraryDownloadBody {
 }
 
 async fn model_library_download(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Json(body): Json<ModelLibraryDownloadBody>,
 ) -> impl IntoResponse {
     let Some(library) = state.model_library.as_ref() else {
@@ -848,7 +1139,7 @@ struct ModelLibrarySelectTierBody {
 }
 
 async fn model_library_select_tier(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Json(body): Json<ModelLibrarySelectTierBody>,
 ) -> impl IntoResponse {
     let Some(library) = state.model_library.as_ref() else {
@@ -873,7 +1164,7 @@ async fn model_library_select_tier(
     }
 }
 
-async fn plugins_list(State(state): State<RouterState>) -> impl IntoResponse {
+async fn plugins_list(State(state): State<Arc<RouterState>>) -> impl IntoResponse {
     let Some(registry) = state.plugin_registry.as_ref() else {
         return Json(super::state::plugins_list_empty()).into_response();
     };
@@ -887,7 +1178,7 @@ async fn plugins_list(State(state): State<RouterState>) -> impl IntoResponse {
     }
 }
 
-async fn plugins_doctor(State(state): State<RouterState>) -> impl IntoResponse {
+async fn plugins_doctor(State(state): State<Arc<RouterState>>) -> impl IntoResponse {
     let Some(registry) = state.plugin_registry.as_ref() else {
         return (
             StatusCode::NOT_FOUND,
@@ -905,7 +1196,7 @@ async fn plugins_doctor(State(state): State<RouterState>) -> impl IntoResponse {
     }
 }
 
-async fn plugins_doctor_fix(State(state): State<RouterState>) -> impl IntoResponse {
+async fn plugins_doctor_fix(State(state): State<Arc<RouterState>>) -> impl IntoResponse {
     let Some(registry) = state.plugin_registry.as_ref() else {
         return (
             StatusCode::NOT_FOUND,
@@ -933,7 +1224,7 @@ struct PluginInstallBody {
 }
 
 async fn plugins_install(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Json(body): Json<PluginInstallBody>,
 ) -> impl IntoResponse {
     let Some(registry) = state.plugin_registry.as_ref() else {
@@ -964,7 +1255,7 @@ struct PluginIdBody {
 }
 
 async fn plugins_enable(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Json(body): Json<PluginIdBody>,
 ) -> impl IntoResponse {
     plugin_id_mutation(state, body.id, |registry, id| async move {
@@ -974,7 +1265,7 @@ async fn plugins_enable(
 }
 
 async fn plugins_disable(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Json(body): Json<PluginIdBody>,
 ) -> impl IntoResponse {
     plugin_id_mutation(state, body.id, |registry, id| async move {
@@ -984,7 +1275,7 @@ async fn plugins_disable(
 }
 
 async fn plugins_uninstall(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Json(body): Json<PluginIdBody>,
 ) -> impl IntoResponse {
     plugin_id_mutation(state, body.id, |registry, id| async move {
@@ -994,7 +1285,7 @@ async fn plugins_uninstall(
 }
 
 async fn plugin_id_mutation<F, Fut>(
-    state: RouterState,
+    state: Arc<RouterState>,
     id: Option<String>,
     action: F,
 ) -> axum::response::Response
@@ -1029,7 +1320,7 @@ struct PluginValidateBody {
 }
 
 async fn plugins_validate(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Json(body): Json<PluginValidateBody>,
 ) -> impl IntoResponse {
     let Some(registry) = state.plugin_registry.as_ref() else {
@@ -1054,7 +1345,7 @@ async fn plugins_validate(
 }
 
 async fn plugins_inspect(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
     Path(plugin_id): Path<String>,
 ) -> impl IntoResponse {
     let Some(registry) = state.plugin_registry.as_ref() else {
@@ -1071,7 +1362,7 @@ async fn plugins_inspect(
 }
 
 async fn events(
-    State(state): State<RouterState>,
+    State(state): State<Arc<RouterState>>,
 ) -> Sse<impl StreamExt<Item = Result<Event, std::convert::Infallible>>> {
     let snapshot = state.session.snapshot();
     let initial = Event::default()

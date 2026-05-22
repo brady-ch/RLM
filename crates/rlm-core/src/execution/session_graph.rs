@@ -566,6 +566,37 @@ impl InteractiveExecutionSession {
         Ok(())
     }
 
+    pub fn graph_workflow_metadata_value(&self) -> Option<serde_json::Value> {
+        self.graph_workflow_metadata
+            .lock()
+            .expect("meta")
+            .as_ref()
+            .map(|meta| {
+                serde_json::json!({
+                    "version": 1,
+                    "linkedWorkflowId": meta.linked_workflow_id,
+                    "lastVariant": meta.last_variant,
+                    "exportedAt": meta.exported_at,
+                })
+            })
+    }
+
+    pub fn set_graph_workflow_metadata_from_restore(&self, metadata: &serde_json::Value) {
+        let linked = metadata
+            .get("linkedWorkflowId")
+            .and_then(|v| v.as_str())
+            .map(str::to_string);
+        let variant = metadata
+            .get("lastVariant")
+            .and_then(|v| v.as_str())
+            .map(str::to_string);
+        let exported = metadata
+            .get("exportedAt")
+            .and_then(|v| v.as_str())
+            .map(str::to_string);
+        self.patch_graph_workflow_metadata(linked, variant, exported);
+    }
+
     pub fn patch_graph_workflow_metadata(
         &self,
         linked_workflow_id: Option<String>,

@@ -255,43 +255,34 @@ impl FileMemoryStore {
         session_id: &str,
         key: &str,
         value: &str,
+        source: &str,
         lifetime: &str,
     ) -> io::Result<MemoryScopePatchResult> {
         let safe_key = sanitize_id(key).map_err(|err| {
             io::Error::new(io::ErrorKind::InvalidInput, err.to_string())
         })?;
-        if safe_key.is_empty() {
+        if safe_key.is_empty() || value.trim().is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "Preference key cannot be empty.",
+                "Preference key and value are required.",
             ));
         }
         let existing = self.read_scope(session_id, "project-preferences")?;
-        let current_version = existing.as_ref().map(|doc| doc.version).unwrap_or(0);
-        let mut content = existing
-            .as_ref()
-            .map(|doc| doc.content.clone())
-            .unwrap_or_else(|| json!({}));
-        if let Value::Object(ref mut map) = content {
-            map.insert(safe_key, Value::String(value.to_string()));
-        }
-        let next = MemoryScopeDocument {
+        self.patch_scope(MemoryScopePatchRequest {
             session_id: session_id.to_string(),
             scope_id: "project-preferences".into(),
-            lifetime: lifetime.to_string(),
-            version: current_version + 1,
-            content,
-            updated_at: iso_now(),
-        };
-        self.write_json(
-            &self.scope_path_for_lifetime(session_id, "project-preferences", lifetime),
-            &serde_json::to_value(&next)?,
-        )?;
-        Ok(MemoryScopePatchResult {
-            accepted: true,
-            reason: "accepted".into(),
-            next_version: next.version,
-            audit_seq: 0,
+            actor: "user".into(),
+            expected_version: existing.as_ref().map(|doc| doc.version).unwrap_or(0),
+            allowed_scopes: vec!["project-preferences".into()],
+            writes: vec!["preferences".into()],
+            patch: json!({
+                safe_key: {
+                    "value": value.trim(),
+                    "source": source,
+                    "updatedAt": iso_now(),
+                }
+            }),
+            lifetime: Some(lifetime.to_string()),
         })
     }
 
@@ -302,39 +293,19 @@ impl FileMemoryStore {
         if safe_key.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "Preference key cannot be empty.",
+                "Preference key is required.",
             ));
         }
-        let existing = self
-            .read_scope(session_id, "project-preferences")?
-            .ok_or_else(|| {
-                io::Error::new(io::ErrorKind::NotFound, "Preference scope not found.")
-            })?;
-        let mut content = existing.content.clone();
-        if let Value::Object(ref mut map) = content {
-            map.remove(&safe_key);
-        }
-        let next = MemoryScopeDocument {
+        let existing = self.read_scope(session_id, "project-preferences")?;
+        self.patch_scope(MemoryScopePatchRequest {
             session_id: session_id.to_string(),
             scope_id: "project-preferences".into(),
-            lifetime: existing.lifetime.clone(),
-            version: existing.version + 1,
-            content,
-            updated_at: iso_now(),
-        };
-        self.write_json(
-            &self.scope_path_for_lifetime(
-                session_id,
-                "project-preferences",
-                &existing.lifetime,
-            ),
-            &serde_json::to_value(&next)?,
-        )?;
-        Ok(MemoryScopePatchResult {
-            accepted: true,
-            reason: "accepted".into(),
-            next_version: next.version,
-            audit_seq: 0,
+            actor: "user".into(),
+            expected_version: existing.as_ref().map(|doc| doc.version).unwrap_or(0),
+            allowed_scopes: vec!["project-preferences".into()],
+            writes: vec!["preferences".into()],
+            patch: json!({ safe_key: null }),
+            lifetime: existing.as_ref().map(|doc| doc.lifetime.clone()),
         })
     }
 

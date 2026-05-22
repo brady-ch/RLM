@@ -2,12 +2,15 @@ pub mod routes;
 pub mod state;
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
+use tokio::sync::Mutex as AsyncMutex;
 
+use crate::adapters::OllamaEmbeddingModel;
 use crate::adapters::OllamaLanguageModel;
-use crate::execution::InteractiveExecutionSession;
+use crate::execution::{InteractiveExecutionSession, ProcessShutdown};
+use crate::memory::SemanticMemoryIndex;
 use crate::model_library::ModelLibraryService;
 use crate::persistence::{load_project_config, LoadedProjectConfig, ProjectPaths};
 use crate::plugins::{
@@ -21,11 +24,13 @@ pub struct RouterState {
     pub project_root: PathBuf,
     pub paths: ProjectPaths,
     pub project_config: Option<LoadedProjectConfig>,
-    pub memory_session_id: String,
+    pub memory_session_id: Arc<Mutex<String>>,
     pub session: Arc<InteractiveExecutionSession>,
     pub model_library: Option<Arc<ModelLibraryService>>,
     pub plugin_registry: Option<Arc<PluginRegistryService>>,
     pub runtime_context: Option<RuntimeContext>,
+    pub lifecycle: ProcessShutdown,
+    memory_index: Arc<AsyncMutex<Option<Arc<SemanticMemoryIndex>>>>,
     plan_model: Arc<dyn LanguageModel>,
     exec_model: Arc<dyn LanguageModel>,
 }
@@ -63,13 +68,41 @@ impl RouterState {
             project_root,
             paths,
             project_config,
-            memory_session_id: "default".into(),
+            memory_session_id: Arc::new(Mutex::new("default".into())),
             session: InteractiveExecutionSession::new(Default::default()),
             model_library,
             plugin_registry,
             runtime_context,
+            lifecycle: ProcessShutdown::default(),
+            memory_index: Arc::new(AsyncMutex::new(None)),
             plan_model,
             exec_model,
+        }
+    }
+
+    pub async fn memory_index(&self, session_id: &str) -> Arc<SemanticMemoryIndex> {
+        let mut guard = self.memory_index.lock().await;
+        let needs_new = guard
+            .as_ref()
+            .is_none_or(|index| index.session_id() != session_id);
+        if needs_new {
+            *guard = Some(Arc::new(SemanticMemoryIndex::new(
+                session_id,
+                self.paths.memory_dir.clone(),
+                OllamaEmbeddingModel::default(),
+                self.lifecycle.clone(),
+            )));
+        }
+        guard.as_ref().expect("memory index initialized").clone()
+    }
+
+    /// Cancel background work, stop execution, and release in-memory vector index state.
+    pub async fn shutdown(&self, reason: &str) {
+        self.lifecycle.shutdown(reason);
+        self.session.stop(reason);
+        let mut guard = self.memory_index.lock().await;
+        if let Some(index) = guard.take() {
+            index.release_memory().await;
         }
     }
 
@@ -102,9 +135,26 @@ impl RouterState {
         self
     }
 
-    pub fn with_memory_session_id(mut self, session_id: impl Into<String>) -> Self {
-        self.memory_session_id = session_id.into();
+    pub fn with_memory_session_id(self, session_id: impl Into<String>) -> Self {
+        *self
+            .memory_session_id
+            .lock()
+            .expect("memory_session_id") = session_id.into();
         self
+    }
+
+    pub fn set_memory_session_id(&self, session_id: impl Into<String>) {
+        *self
+            .memory_session_id
+            .lock()
+            .expect("memory_session_id") = session_id.into();
+    }
+
+    pub fn current_memory_session_id(&self) -> String {
+        self.memory_session_id
+            .lock()
+            .expect("memory_session_id")
+            .clone()
     }
 
     pub fn with_session(mut self, session: Arc<InteractiveExecutionSession>) -> Self {
@@ -222,6 +272,6 @@ fn default_model_name(config: &Value) -> Option<String> {
         .map(str::to_string)
 }
 
-pub fn build_router(state: RouterState) -> axum::Router {
+pub fn build_router(state: Arc<RouterState>) -> axum::Router {
     routes::build_router(state)
 }
