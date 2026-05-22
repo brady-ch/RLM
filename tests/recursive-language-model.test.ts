@@ -36,8 +36,11 @@ import {
   type ModelSelectionRecord,
 } from "../src/application/model-provider.js";
 import { buildBugfixQueue, runWorkflow } from "../src/application/workflow-runner.js";
-import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
-import { startControlServer } from "../src/application/control-server.js";
+import {
+  createInteractiveExecutionSession,
+  type InteractiveExecutionSession,
+} from "../src/application/execution-controller.js";
+import { startControlServer } from "../src/application/control-server/index.js";
 import { ModelLibraryService } from "../src/application/model-library.js";
 import { createUiExecutionRunner } from "../src/application/ui-execution-runner.js";
 import { parseArgs } from "../src/cli/args.js";
@@ -3521,7 +3524,7 @@ test("ui confirm run executes quality loop in the shared session", async () => {
   });
   const server = await startControlServer({
     session,
-    onConfirmRun: (activeSession) => runner.start(activeSession),
+    onConfirmRun: (activeSession: InteractiveExecutionSession) => runner.start(activeSession),
   });
   try {
     const response = await fetch(`${server.url}/api/chat/confirm-run`, { method: "POST" });

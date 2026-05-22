@@ -11,7 +11,11 @@ import {
 } from "../../application/project-config.js";
 import { createUiExecutionRunner } from "../../application/ui-execution-runner.js";
 import { selectAgent } from "../../application/agent-registry.js";
-import { startControlServer, type SessionRuntimeRef } from "../../application/control-server.js";
+import {
+  buildStartControlServerInput,
+  startControlServer,
+  type SessionRuntimeRef,
+} from "../../application/control-server/index.js";
 import { resolveUiDistDir } from "../ui-dist-dir.js";
 import type { RuntimeContext } from "../../application/bootstrap/types.js";
 
@@ -119,17 +123,17 @@ export async function runUiMode(ctx: RuntimeContext, entryPath: string): Promise
     resolveMemory: () => memoryRef.current,
   });
   const uiDistDir = resolveUiDistDir(entryPath, process.env);
-  const server = await startControlServer({
-    session,
-    port: options.uiPort,
-    uiDistDir,
-    modelLibrary,
-    sessionStore,
-    memory: memoryRef.current,
-    sessionRuntime,
-    projectRoot: ctx.cwd,
-    onConfirmRun: (activeSession) => uiRunner.start(activeSession),
-  });
+  const server = await startControlServer(
+    buildStartControlServerInput(ctx, {
+      session,
+      port: options.uiPort,
+      uiDistDir,
+      modelLibrary,
+      memory: memoryRef.current,
+      sessionRuntime,
+      onConfirmRun: (activeSession) => uiRunner.start(activeSession),
+    }),
+  );
   cleanup.track({
     close: () => server.close(),
   });
