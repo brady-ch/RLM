@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.7 Adapter & Plugin Taxonomy (Shipped: 2026-05-22)
+
+**Phases completed:** 9 phases, 9 plans, 29 tasks  
+**Known deferred items at close:** 3 (see STATE.md Deferred Items)
+
+**Key accomplishments:**
+
+- ARCH-02 boundary fixes and `ExtensionHostPort`; composition/interop wiring under `src/runtime/`
+- Application concern grouping; unified plugin manifest schema and builtin migration
+- Canonical concern map, mirrored tests, strict dependency-cruiser enforcement
+- Shared `PluginRegistryService` for CLI and control-server; remote fetch-to-local install
+- UI plugin panel with CLI-aligned vocabulary and restart semantics
+
+**Archive:** `.planning/milestones/v1.7-ROADMAP.md`  
+**Requirements:** `.planning/milestones/v1.7-REQUIREMENTS.md`  
+**Audit:** `.planning/milestones/v1.7-MILESTONE-AUDIT.md`
+
+---
+
 ## v1.6 Architecture Cleanup (Shipped: 2026-05-22)
 
 **Phases completed:** 7 phases, 15 plans, 9 tasks  

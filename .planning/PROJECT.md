@@ -1,24 +1,17 @@
 # Recursive Language Model CLI
 
-## Current Milestone: v1.7 Adapter & Plugin Taxonomy
+## Current Milestone
 
-**Goal:** Establish a concern-first project taxonomy — clearer separation across `src/`, `tests/`, and tooling — plus first-class plugin registration, boundary enforcement, and full plugin manager UX.
-
-**Target features:**
-- Concern taxonomy — group `application/` by domain (execution, graph, memory, plugins); introduce `runtime/` and `plugins/`; mirror layout in `tests/`; encode rules in dependency-cruiser + AGENTS.md
-- Plugin vs adapter boundary — built-in tools as plugins; extension registration contracts clarified
-- Dependency-cruiser enforcement — ratchet ARCH-02 boundary violations to error; fix import direction
-- Runtime/interop split — composition and MCP/skill interop extracted from overloaded application modules
-- First-class plugin taxonomy — tool categories, manifests, capability metadata
-- Full plugin manager UX — CLI + UI panel; local-folder install/enable/list/doctor plus remote fetch-to-local
+**Status:** v1.7 shipped — planning next milestone via `/gsd-new-milestone`
 
 ## Current State
 
-**Latest shipped milestone:** v1.6 — Architecture Cleanup  
-**Current milestone:** v1.7 — Adapter & Plugin Taxonomy  
-**Status:** Defining requirements
+**Latest shipped milestone:** v1.7 — Adapter & Plugin Taxonomy  
+**Status:** Shipped 2026-05-22
 
-v1.6 shipped behavior-preserving structural hardening: ESLint/Prettier/dependency-cruiser baselines with expanded `npm run check`; focused `application/config/` modules behind a stable `project-config` facade; `buildRuntimeContext()` bootstrap with slim `src/index.ts` and `cli/run-modes/*`; adapters grouped under `adapters/tools|persistence|models/`; `domain/recursion/` concern modules (budget, tool rounds, quality loop, execution-graph sync, prompts) with orchestrator retaining flow; control-server HTTP handlers colocated by surface with bootstrap-fed dependencies; subsystem-aligned tests under `tests/domain/recursion/` with shared helpers and refreshed `AGENTS.md`. Milestone audit: 40/40 requirements; `npm run check` green with **359** tests (per `v1.6-MILESTONE-AUDIT.md`).
+v1.7 shipped concern-first taxonomy and full plugin manager UX: ARCH-02 boundary fixes and `ExtensionHostPort`; composition and interop wiring under `src/runtime/`; `application/` grouped by execution/graph/memory/plugins/control-server; unified plugin manifest schema with builtin migration to `src/plugins/builtin/`; canonical concern map in AGENTS.md with mirrored tests and strict dependency-cruiser enforcement; shared `PluginRegistryService` for CLI (`rlm plugin *`) and control-server (`/api/plugins/*`); remote HTTPS/git fetch-to-local install; UI plugin panel with CLI-aligned vocabulary and restart semantics. Milestone audit: 38/38 requirements; `npm run check` green with **471** tests (per `v1.7-MILESTONE-AUDIT.md`).
+
+v1.6 shipped behavior-preserving structural hardening: ESLint/Prettier/dependency-cruiser baselines with expanded `npm run check`; focused `application/config/` modules behind a stable `project-config` facade; `buildRuntimeContext()` bootstrap with slim `src/index.ts` and `cli/run-modes/*`; adapters grouped under `adapters/tools|persistence|models/`; `domain/recursion/` concern modules with orchestrator retaining flow; control-server HTTP handlers colocated by surface with bootstrap-fed dependencies; subsystem-aligned tests under `tests/domain/recursion/` with shared helpers and refreshed `AGENTS.md`. Milestone audit: 40/40 requirements; **359** tests at v1.6 close.
 
 v1.5 shipped graph-primary authoring: model-driven plan-from-node with root-composer default and explicit failure states, protected replan (Replace/Merge/Cancel), planner-assigned expert teams with visible overrides and execution-time allowlist enforcement, a shared GraphExecutor that walks approved topology, lossless `kind: graph` workflow sidecars (playbook and pipeline variants), and UI/CLI/session integration hardening with 205 passing tests.
 
@@ -74,10 +67,18 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Recursive engine concern modules live under `domain/recursion/`; orchestrator retains top-level recursion — v1.6
 - ✓ Control-server routes grouped under `handlers/` with transport-only boundaries — v1.6
 - ✓ Tests mirror subsystem layout with shared helpers; contributor map updated in AGENTS.md — v1.6
+- ✓ ARCH-02 boundary violations fixed; `ExtensionHostPort` decouples plugin registration from application types — v1.7
+- ✓ Composition and interop wiring live under `src/runtime/` with init-order test — v1.7
+- ✓ `application/` grouped by execution, graph, memory, plugins, control-server concern folders — v1.7
+- ✓ Unified plugin manifest schema, PluginLoader discovery, and builtin tools migrated to `plugins/builtin/` — v1.7
+- ✓ Canonical concern map in AGENTS.md; tests mirror layout; dependency-cruiser rules at error severity — v1.7
+- ✓ Local plugin manager CLI with shared `PluginRegistryService` and user catalog at `~/.rlm/plugins/` — v1.7
+- ✓ Remote HTTPS/git fetch-to-local plugin install with zip-slip defenses and explicit doctor `--fix` — v1.7
+- ✓ UI plugin panel aligned with CLI semantics, trust prompts, and restart banner — v1.7
 
 ### Active
 
-_Requirements for v1.7 are being defined — see `.planning/REQUIREMENTS.md` once generated._
+_Requirements for the next milestone will be defined via `/gsd-new-milestone`._
 
 ### Candidate Future-Milestone Themes
 
@@ -95,7 +96,9 @@ _Requirements for v1.7 are being defined — see `.planning/REQUIREMENTS.md` onc
 
 The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI execution surface in `ui/`, and a Tauri shell under `src-tauri/`. The product path remains local-first and observable.
 
-v1.6 reduced hotspot file size and clarified module ownership without changing CLI/UI/session/graph semantics; primary verification remains `npm run check` (typecheck, lint, format check, dependency-cruise baseline, full test run). **359** tests passing at milestone close per audit.
+v1.6 reduced hotspot file size and clarified module ownership without changing CLI/UI/session/graph semantics; primary verification remains `npm run check` (typecheck, lint, format check, strict dependency-cruise, full test run). **471** tests passing at v1.7 milestone close per audit.
+
+v1.7 added first-class plugin taxonomy with strict boundary enforcement, shared registry service across CLI and UI, and remote fetch-to-local install — all behind explicit trust gates and restart semantics.
 
 v1.5 established graph-primary authoring: plan-from-node replaces keyword heuristics and chat-first pre-run flow; expert teams bind at plan time with execution-time allowlist enforcement; approved graphs export as replayable sidecars and execute through a shared GraphExecutor.
 
@@ -122,15 +125,15 @@ v1.5 established graph-primary authoring: plan-from-node replaces keyword heuris
 | Expert team v1 uses shared tools with per-node allowlists | Keeps extension stack unified; specialized tool surfaces deferred until measured failures | ✓ Good — v1.5 |
 | Graph export uses lossless `kind: graph` sidecars with playbook/pipeline variants | Bridges dynamic authoring to replayable workflows without replan-by-default | ✓ Good — v1.5 |
 | v1.6 uses strangler extractions behind stable façades (`project-config`, `RuntimeContext`) | Avoids flag-day breakage while shrinking hotspots (`index.ts`, RLM orchestrator, control server) | ✓ Good — v1.6 |
-| Dependency-cruiser starts at WARN with a ratcheting baseline | Unblocks incremental boundary cleanup (`ARCH-02`) without stalling refactor phases | ⚠️ Revisit — ratchet toward error as violations clear |
+| Dependency-cruiser starts at WARN with a ratcheting baseline | Unblocks incremental boundary cleanup (`ARCH-02`) without stalling refactor phases | ✓ Good — ratcheted to error in v1.7 with empty baseline |
 | Product shell uses guided composer → graph workspace → launcher/resume | First-run should still be "say what I want," while the graph remains the durable executable product surface | — Pending future milestone |
-| v1.7 treats plugins as registration/distribution packages distinct from core adapters | Avoids `adapters/` becoming a mixed grab bag as tools and extensions grow; enables auditable capability taxonomy | — Pending v1.7 |
-| Built-in tools migrate to `plugins/builtin/` taxonomy before external plugin APIs harden | Responsibility extraction precedes directory moves per architecture-boundary-cleanup direction | — Pending v1.7 |
-| Full plugin manager includes local-folder and remote fetch-to-local flows | Users install plugins without marketplace or remote execution; fetched plugins become local after download | — Pending v1.7 |
+| v1.7 treats plugins as registration/distribution packages distinct from core adapters | Avoids `adapters/` becoming a mixed grab bag as tools and extensions grow; enables auditable capability taxonomy | ✓ Good — v1.7 |
+| Built-in tools migrate to `plugins/builtin/` taxonomy before external plugin APIs harden | Responsibility extraction precedes directory moves per architecture-boundary-cleanup direction | ✓ Good — v1.7 |
+| Full plugin manager includes local-folder and remote fetch-to-local flows | Users install plugins without marketplace or remote execution; fetched plugins become local after download | ✓ Good — v1.7 |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-22 — Milestone v1.7 Adapter & Plugin Taxonomy started*
+*Last updated: 2026-05-22 after v1.7 milestone*
