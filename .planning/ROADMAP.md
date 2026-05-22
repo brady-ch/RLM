@@ -84,7 +84,12 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   3. Validation errors retain file/path context and existing error shapes after the split.
   4. Runtime host selection, tier resolution, model override, and starter seeding behavior match pre-split semantics.
   5. Config resolution modules have focused unit tests runnable without full CLI invocation; full suite and `npm run check` stay green.
-**Plans**: TBD
+**Plans**: 3 plans in 3 waves (`37-01-PLAN.md`, `37-02-PLAN.md`, `37-03-PLAN.md`)
+
+Plans:
+- [ ] `37-01-PLAN.md` — Extract types, Zod schema, defaults, YAML merge into `application/config/`
+- [ ] `37-02-PLAN.md` — Extract loader + validation; preserve path-prefixed parse errors
+- [ ] `37-03-PLAN.md` — Extract runtime/host/model resolution + starter seed; barrel façade + unit tests
 
 ### Phase 38: Runtime Bootstrap
 **Goal**: CLI entrypoint is thin; runtime construction is centralized, ordered, and unit-testable.
@@ -156,7 +161,7 @@ Phases execute in numeric order: 36 → 37 → 38 → 39 → 40 → 41 → 42
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 36. Dev Tooling Guardrails | v1.6 | 0/TBD | Not started | - |
-| 37. Config Layer Split | v1.6 | 0/TBD | Not started | - |
+| 37. Config Layer Split | v1.6 | 3/3 | Planned (ready to execute) | - |
 | 38. Runtime Bootstrap | v1.6 | 0/TBD | Not started | - |
 | 39. Adapters & Tools Taxonomy | v1.6 | 0/TBD | Not started | - |
 | 40. Domain Engine Decomposition | v1.6 | 0/TBD | Not started | - |
