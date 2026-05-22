@@ -1,22 +1,27 @@
+mod commands;
+
 use std::path::PathBuf;
 
 use clap::Parser;
-use rlm_core::{start_server, ServerConfig};
+use commands::{ask, plugin, ui, Commands};
 
 #[derive(Parser, Debug)]
 #[command(name = "rlm", about = "Recursive Language Model CLI (Rust runtime)")]
-struct Args {
-    /// Port for the control server (0 = ephemeral)
-    #[arg(long, default_value_t = 0)]
-    port: u16,
-
-    /// Path to built UI assets (ui/dist)
-    #[arg(long)]
-    ui_dist: Option<PathBuf>,
+struct Cli {
+    /// Emit JSON output where supported
+    #[arg(long, global = true)]
+    json: bool,
 
     /// Project root for config resolution
-    #[arg(long, default_value = ".")]
+    #[arg(long, global = true, default_value = ".")]
     project_root: PathBuf,
+
+    /// Explicit project config path
+    #[arg(long, global = true)]
+    config: Option<PathBuf>,
+
+    #[command(subcommand)]
+    command: Option<Commands>,
 }
 
 #[tokio::main]
@@ -25,24 +30,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    let args = Args::parse();
-    let ui_dist = args
-        .ui_dist
-        .or_else(|| std::env::var("RLM_UI_DIST").ok().map(PathBuf::from));
+    let cli = Cli::parse();
 
-    let server = start_server(ServerConfig {
-        port: args.port,
-        ui_dist_dir: ui_dist,
-        project_root: args.project_root,
-        memory_session_id: None,
-        session: None,
-    })
-    .await?;
-
-    eprintln!("RLM UI listening at {}", server.url);
-    eprintln!("Press Ctrl+C to stop.");
-
-    tokio::signal::ctrl_c().await?;
-    server.close().await;
-    Ok(())
+    match cli.command.unwrap_or(Commands::Ui {
+        port: 0,
+        ui_dist: None,
+    }) {
+        Commands::Ui { port, ui_dist } => ui::run(port, ui_dist, cli.project_root).await,
+        Commands::Ask { prompt } => ask::run(prompt, cli.json),
+        Commands::Plugin { sub } => plugin::run(sub, cli.project_root, cli.config, cli.json).await,
+        Commands::PlanNode { .. } => commands::not_implemented("plan-node"),
+        Commands::WorkflowExport => commands::not_implemented("workflow-export"),
+        Commands::WorkflowImport => commands::not_implemented("workflow-import"),
+    }
 }
