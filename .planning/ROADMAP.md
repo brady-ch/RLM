@@ -198,14 +198,14 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 **Goal:** Close v1.8 milestone audit gaps — wire missing Rust control-server routes for session save/reopen and memory preferences, connect session_memory_bridge to handlers, port chat/clarification routes, wire or defer run-state, and backfill VERIFICATION.md for phases 53–56.
 **Requirements**: REG-01, PERS-01, PERS-02, PERS-03, ENGN-02, GRPH-02, VIDX-02, RWRK-01, RWRK-02, RWRK-03, GRPH-01, VIDX-01, VIDX-03
 **Depends on:** Phase 60
-**Plans:** 5 plans in 4 waves
+**Plans:** 5/5 plans complete
 
 Plans:
-- [ ] 60.1-01-PLAN.md — Session memory bridge + FileMemoryStore restore API (wave 1)
-- [ ] 60.1-02-PLAN.md — Session save/reopen/detail + memory preference routes (wave 2)
-- [ ] 60.1-03-PLAN.md — Chat refine routes + clarification abort + confirm-run body fix (wave 2, parallel with 02)
-- [ ] 60.1-04-PLAN.md — Run-state execution wiring or explicit deferral (wave 3)
-- [ ] 60.1-05-PLAN.md — VERIFICATION backfill (53–56) + REQUIREMENTS sync (wave 4)
+- [x] 60.1-01-PLAN.md — Session memory bridge + FileMemoryStore restore API (wave 1)
+- [x] 60.1-02-PLAN.md — Session save/reopen/detail + memory preference routes (wave 2)
+- [x] 60.1-03-PLAN.md — Chat refine routes + clarification abort + confirm-run body fix (wave 2, parallel with 02)
+- [x] 60.1-04-PLAN.md — Run-state execution wiring or explicit deferral (wave 3)
+- [x] 60.1-05-PLAN.md — VERIFICATION backfill (53–56) + REQUIREMENTS sync (wave 4)
 
 ### Phase 43: Boundary Fixes
 **Goal**: Layer import directions are corrected and plugin registration contracts decouple from application types — prerequisite for runtime split and taxonomy moves.
