@@ -120,8 +120,8 @@ export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
         <div className="empty root-empty">
           <b>Start here — plan from this node</b>
           <span>
-            Describe your workflow above, then click Plan children. Graph submit is the default
-            authoring path.
+            Describe your workflow above, then right-click → Plan children. Graph submit is the
+            default authoring path.
           </span>
         </div>
       ) : null}

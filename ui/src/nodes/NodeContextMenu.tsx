@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { ExecutionNode } from "../shared/types";
 import { formatPlanningError, post, runAction } from "../shared/api";
+import { GraphActionModal } from "./GraphActionModal";
 
 export type NodeContextMenuProps = {
   node: ExecutionNode;
@@ -30,6 +31,12 @@ export function NodeContextMenu({
   onNavigateAdvancedSettings,
 }: NodeContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [graphModal, setGraphModal] = useState<
+    | null
+    | { kind: "add-child" }
+    | { kind: "connect-parent" }
+    | { kind: "delete-subtree" }
+  >(null);
   const editable =
     node.status === "planned" || node.status === "ready" || node.status === "awaiting_approval";
   const waiting = node.status === "awaiting_approval";
@@ -87,7 +94,10 @@ export function NodeContextMenu({
     });
   };
 
+  const closeGraphModal = () => setGraphModal(null);
+
   return (
+    <>
     <div
       ref={menuRef}
       className="node-context-menu"
@@ -153,14 +163,7 @@ export function NodeContextMenu({
           type="button"
           role="menuitem"
           disabled={!editable}
-          onClick={() => {
-            const newChildPrompt = window.prompt("New child prompt");
-            if (newChildPrompt?.trim()) {
-              run(() =>
-                post("/api/nodes/add", { parentId: node.id, prompt: newChildPrompt.trim() }),
-              );
-            }
-          }}
+          onClick={() => setGraphModal({ kind: "add-child" })}
         >
           Add child…
         </button>
@@ -168,16 +171,7 @@ export function NodeContextMenu({
           type="button"
           role="menuitem"
           disabled={!editable}
-          onClick={() => {
-            const parentId = window.prompt("Parent node ID");
-            if (parentId?.trim()) {
-              run(() =>
-                post(`/api/nodes/${encodeURIComponent(node.id)}/connect`, {
-                  parentId: parentId.trim(),
-                }),
-              );
-            }
-          }}
+          onClick={() => setGraphModal({ kind: "connect-parent" })}
         >
           Connect parent…
         </button>
@@ -185,11 +179,7 @@ export function NodeContextMenu({
           type="button"
           role="menuitem"
           disabled={!editable}
-          onClick={() => {
-            if (window.confirm(`Delete subtree for ${node.label || node.id}?`)) {
-              run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/delete`, {}));
-            }
-          }}
+          onClick={() => setGraphModal({ kind: "delete-subtree" })}
         >
           Delete subtree
         </button>
@@ -208,5 +198,50 @@ export function NodeContextMenu({
         </button>
       </div>
     </div>
+    <GraphActionModal
+      open={graphModal?.kind === "add-child"}
+      mode="prompt"
+      title="Add child node"
+      inputLabel="New child prompt"
+      inputPlaceholder="Describe the child task"
+      confirmLabel="Add child"
+      onCancel={closeGraphModal}
+      onSubmit={(newChildPrompt) => {
+        closeGraphModal();
+        run(() =>
+          post("/api/nodes/add", { parentId: node.id, prompt: newChildPrompt }),
+        );
+      }}
+    />
+    <GraphActionModal
+      open={graphModal?.kind === "connect-parent"}
+      mode="prompt"
+      title="Connect parent"
+      inputLabel="Parent node ID"
+      inputPlaceholder="node-id"
+      confirmLabel="Connect"
+      onCancel={closeGraphModal}
+      onSubmit={(parentId) => {
+        closeGraphModal();
+        run(() =>
+          post(`/api/nodes/${encodeURIComponent(node.id)}/connect`, {
+            parentId,
+          }),
+        );
+      }}
+    />
+    <GraphActionModal
+      open={graphModal?.kind === "delete-subtree"}
+      mode="confirm"
+      title="Delete subtree"
+      description={`Delete subtree for ${node.label || node.id}? This cannot be undone.`}
+      confirmLabel="Delete"
+      onCancel={closeGraphModal}
+      onSubmit={() => {
+        closeGraphModal();
+        run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/delete`, {}));
+      }}
+    />
+    </>
   );
 }
