@@ -11,7 +11,7 @@ pub use write_file::WorkspaceFileWriteTool;
 use std::path::Path;
 use std::sync::Arc;
 
-use super::extension_host::ExtensionHost;
+use super::extension_host::{register_manifest_skill_loaders, ExtensionHost};
 use super::manifest::{PluginContributes, PluginEngines, PluginManifest};
 
 pub struct BuiltinPluginDefinition {
@@ -101,5 +101,10 @@ pub fn builtin_plugins() -> Vec<BuiltinPluginDefinition> {
 pub fn load_builtins(host: &mut ExtensionHost, workspace_root: &Path) {
     for builtin in builtin_plugins() {
         (builtin.register)(host, workspace_root);
+        let _ = register_manifest_skill_loaders(
+            host,
+            Path::new(builtin.path).parent().unwrap_or(workspace_root),
+            &builtin.manifest.contributes.skill_loaders,
+        );
     }
 }

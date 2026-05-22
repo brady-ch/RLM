@@ -61,7 +61,14 @@ pub fn build_runtime_context(
     load_builtins(&mut extension_host, input.project_root);
     record("plugins", &mut stages);
 
+    let skill = crate::interop::load_skill_interop(
+        input.project_config,
+        input.project_root,
+        &mut extension_host,
+    )?;
     let mcp = crate::interop::load_mcp_interop(input.project_config, &mut extension_host)?;
+    let mut interop_warnings = skill.warnings;
+    interop_warnings.extend(mcp.warnings);
     record("interop", &mut stages);
 
     let tools = extension_host.all_tools();
@@ -75,7 +82,7 @@ pub fn build_runtime_context(
         extension_host,
         tools,
         init_stages: stages,
-        interop_warnings: mcp.warnings,
+        interop_warnings,
         _mcp_clients: mcp.clients,
     })
 }
@@ -132,5 +139,6 @@ mod tests {
         assert!(names.contains("write_file"));
         assert!(names.contains("web_search"));
         assert!(names.contains("web_fetch"));
+        assert!(names.contains("skill"));
     }
 }

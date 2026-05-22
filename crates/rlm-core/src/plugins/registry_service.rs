@@ -13,6 +13,7 @@ use super::paths::{
 use super::remote_fetch::{
     fetch_remote_plugin_to_staging, is_remote_install_source, resolve_plugin_layout,
 };
+use crate::interop::{parse_skill_config, resolve_config_path, validate_skill_search_paths};
 use crate::persistence::LoadedProjectConfig;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -89,6 +90,7 @@ struct InstalledPluginCatalog {
 
 pub struct PluginRegistryService {
     project_root: PathBuf,
+    project_config: Value,
     config_file_path: PathBuf,
     allowlist_path: PathBuf,
     legacy_extensions: Vec<LegacyExtensionEntry>,
@@ -159,6 +161,7 @@ impl PluginRegistryService {
             });
         Self {
             project_root: project_root.clone(),
+            project_config: loaded_config.config.clone(),
             config_file_path,
             allowlist_path,
             legacy_extensions,
@@ -401,6 +404,30 @@ impl PluginRegistryService {
             }
         }
 
+        let skill_config = parse_skill_config(Some(&self.project_config), &self.project_root);
+        for warning in validate_skill_search_paths(&skill_config) {
+            issues.push(PluginDoctorIssue {
+                code: "invalid_skill_search_path".into(),
+                severity: "warn".into(),
+                message: warning,
+                plugin_id: None,
+                path: None,
+            });
+        }
+
+        for catalog_path in [&self.user_catalog_path, &self.project_catalog_path] {
+            let catalog = read_catalog(catalog_path)?;
+            for entry in catalog.plugins {
+                if let Ok(manifest) = self.read_manifest_for_entry(&entry) {
+                    self.collect_skill_loader_issues(&entry.path, &manifest, &mut issues);
+                }
+            }
+        }
+
+        for builtin in builtin_plugins() {
+            self.collect_skill_loader_issues(builtin.path, &builtin.manifest, &mut issues);
+        }
+
         let has_errors = issues.iter().any(|issue| issue.severity == "error");
         Ok(PluginDoctorResult {
             ok: !has_errors,
@@ -539,6 +566,38 @@ impl PluginRegistryService {
             resolve_plugin_layout(plugin_path)?.0
         };
         read_and_validate_plugin_manifest(&root.join("rlm.plugin.json"))
+    }
+
+    fn collect_skill_loader_issues(
+        &self,
+        plugin_path: &str,
+        manifest: &PluginManifest,
+        issues: &mut Vec<PluginDoctorIssue>,
+    ) {
+        if manifest.contributes.skill_loaders.is_empty() {
+            return;
+        }
+        let plugin_root = Path::new(plugin_path);
+        let plugin_root = if plugin_root.is_file() {
+            plugin_root.parent().unwrap_or(plugin_root)
+        } else {
+            plugin_root
+        };
+        for loader_path in &manifest.contributes.skill_loaders {
+            let resolved = resolve_config_path(plugin_root, loader_path);
+            if !resolved.is_dir() {
+                issues.push(PluginDoctorIssue {
+                    code: "invalid_skill_loader_path".into(),
+                    severity: "warn".into(),
+                    message: format!(
+                        "Plugin {} declares skill loader path that is missing or not a directory: {}",
+                        manifest.id, resolved.display()
+                    ),
+                    plugin_id: Some(manifest.id.clone()),
+                    path: Some(resolved.display().to_string()),
+                });
+            }
+        }
     }
 }
 
