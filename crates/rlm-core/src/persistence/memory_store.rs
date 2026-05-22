@@ -213,6 +213,131 @@ impl FileMemoryStore {
         })
     }
 
+    pub fn restore_session_data(
+        &self,
+        session_id: &str,
+        scopes: Vec<MemoryScopeDocument>,
+        episodic: Vec<EpisodicMemoryEntry>,
+        audit: Option<Vec<MemoryAuditRecord>>,
+        packets: Option<Vec<Value>>,
+    ) -> io::Result<()> {
+        for mut scope in scopes {
+            scope.session_id = session_id.to_string();
+            let lifetime = scope.lifetime.clone();
+            self.write_json(
+                &self.scope_path_for_lifetime(session_id, &scope.scope_id, &lifetime),
+                &serde_json::to_value(&scope)?,
+            )?;
+        }
+        let trimmed_episodic: Vec<_> = episodic.into_iter().rev().take(500).rev().collect();
+        self.write_json(
+            &self.episodic_path(session_id),
+            &serde_json::to_value(&trimmed_episodic)?,
+        )?;
+        if let Some(audit_records) = audit {
+            self.write_json(
+                &self.audit_path(session_id),
+                &serde_json::to_value(&audit_records)?,
+            )?;
+        }
+        if let Some(packet_records) = packets {
+            let trimmed: Vec<_> = packet_records.into_iter().rev().take(200).rev().collect();
+            self.write_json(
+                &self.packet_path(session_id),
+                &serde_json::to_value(&trimmed)?,
+            )?;
+        }
+        Ok(())
+    }
+
+    pub fn set_preference(
+        &self,
+        session_id: &str,
+        key: &str,
+        value: &str,
+        lifetime: &str,
+    ) -> io::Result<MemoryScopePatchResult> {
+        let safe_key = sanitize_id(key).map_err(|err| {
+            io::Error::new(io::ErrorKind::InvalidInput, err.to_string())
+        })?;
+        if safe_key.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Preference key cannot be empty.",
+            ));
+        }
+        let existing = self.read_scope(session_id, "project-preferences")?;
+        let current_version = existing.as_ref().map(|doc| doc.version).unwrap_or(0);
+        let mut content = existing
+            .as_ref()
+            .map(|doc| doc.content.clone())
+            .unwrap_or_else(|| json!({}));
+        if let Value::Object(ref mut map) = content {
+            map.insert(safe_key, Value::String(value.to_string()));
+        }
+        let next = MemoryScopeDocument {
+            session_id: session_id.to_string(),
+            scope_id: "project-preferences".into(),
+            lifetime: lifetime.to_string(),
+            version: current_version + 1,
+            content,
+            updated_at: iso_now(),
+        };
+        self.write_json(
+            &self.scope_path_for_lifetime(session_id, "project-preferences", lifetime),
+            &serde_json::to_value(&next)?,
+        )?;
+        Ok(MemoryScopePatchResult {
+            accepted: true,
+            reason: "accepted".into(),
+            next_version: next.version,
+            audit_seq: 0,
+        })
+    }
+
+    pub fn delete_preference(&self, session_id: &str, key: &str) -> io::Result<MemoryScopePatchResult> {
+        let safe_key = sanitize_id(key).map_err(|err| {
+            io::Error::new(io::ErrorKind::InvalidInput, err.to_string())
+        })?;
+        if safe_key.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Preference key cannot be empty.",
+            ));
+        }
+        let existing = self
+            .read_scope(session_id, "project-preferences")?
+            .ok_or_else(|| {
+                io::Error::new(io::ErrorKind::NotFound, "Preference scope not found.")
+            })?;
+        let mut content = existing.content.clone();
+        if let Value::Object(ref mut map) = content {
+            map.remove(&safe_key);
+        }
+        let next = MemoryScopeDocument {
+            session_id: session_id.to_string(),
+            scope_id: "project-preferences".into(),
+            lifetime: existing.lifetime.clone(),
+            version: existing.version + 1,
+            content,
+            updated_at: iso_now(),
+        };
+        self.write_json(
+            &self.scope_path_for_lifetime(
+                session_id,
+                "project-preferences",
+                &existing.lifetime,
+            ),
+            &serde_json::to_value(&next)?,
+        )?;
+        Ok(MemoryScopePatchResult {
+            accepted: true,
+            reason: "accepted".into(),
+            next_version: next.version,
+            audit_seq: 0,
+        })
+    }
+
     fn authorize(&self, request: &MemoryScopePatchRequest) -> Option<String> {
         if !request.allowed_scopes.contains(&request.scope_id) {
             return Some("memory scope ACL denied".into());
@@ -433,5 +558,39 @@ mod tests {
             .unwrap();
         assert!(!conflict.accepted);
         assert_eq!(conflict.reason, "etag/version conflict");
+    }
+
+    #[test]
+    fn restore_session_data_rebinds_scopes_under_new_run_id() {
+        let dir = temp_dir("restore");
+        let store = FileMemoryStore::new(dir);
+        let scope = MemoryScopeDocument {
+            session_id: "run-old".into(),
+            scope_id: "notes".into(),
+            lifetime: "session".into(),
+            version: 1,
+            content: json!({ "text": "hello" }),
+            updated_at: "2026-05-22T00:00:00Z".into(),
+        };
+        store
+            .restore_session_data(
+                "run-new",
+                vec![scope],
+                vec![EpisodicMemoryEntry {
+                    id: "ep-1".into(),
+                    session_id: "run-old".into(),
+                    entry_type: "scope_write".into(),
+                    summary: "saved".into(),
+                    node_id: None,
+                    scope_ids: None,
+                    timestamp: "2026-05-22T00:00:00Z".into(),
+                }],
+                None,
+                None,
+            )
+            .unwrap();
+        let restored = store.read_scope("run-new", "notes").unwrap().expect("scope");
+        assert_eq!(restored.session_id, "run-new");
+        assert_eq!(restored.content["text"], "hello");
     }
 }
