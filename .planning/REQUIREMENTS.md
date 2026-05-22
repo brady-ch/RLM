@@ -34,7 +34,7 @@
 
 ### Packaging
 
-- [ ] **PACK-01**: Linux `.deb` package smoke runs in CI on headless hosts (Docker or `xvfb-run`) without requiring local GTK/dbus.
+- [x] **PACK-01**: Linux `.deb` package smoke runs in CI on headless hosts (Docker or `xvfb-run`) without requiring local GTK/dbus.
 
 ### Rust Architecture
 
@@ -81,7 +81,7 @@
 | PLUG-02 | Phase 65 | Complete |
 | CLI-01 | Phase 66 | Complete |
 | CLI-02 | Phase 66 | Complete |
-| PACK-01 | Phase 67 | Pending |
+| PACK-01 | Phase 67 | Complete |
 | ARCH-01 | Phase 64 | Complete |
 | ARCH-02 | Phase 68 | Pending |
 | ARCH-03 | Phase 68 | Pending |

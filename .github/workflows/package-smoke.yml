@@ -1,3 +1,5 @@
+# Cross-platform staging smoke (dist/release). Linux .deb install validation: deb-smoke.yml
+
 name: package-smoke
 
 on:
