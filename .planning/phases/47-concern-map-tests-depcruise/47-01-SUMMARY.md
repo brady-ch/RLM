@@ -69,7 +69,7 @@ completed: 2026-05-22
 2. **Task 2: Mirror tests/ to src/ concerns** - `aee012f` (refactor)
 3. **Task 3: Depcruise rules for plugins/ and runtime/** - `c01e918` (feat)
 
-**Plan metadata:** `e7cc591` (docs: complete plan)
+**Plan metadata:** `f74af21` (docs: complete plan)
 
 ## Files Created/Modified
 
