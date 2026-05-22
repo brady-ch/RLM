@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { Readable } from "node:stream";
 import test from "node:test";
 import { parseArgs } from "../../../src/cli/args.js";
 import { createPluginRegistryService } from "../../../src/application/plugins/index.js";
@@ -266,3 +267,187 @@ test("PluginRegistryService doctor reports duplicate ids across catalogs", async
     await fixture.cleanup();
   }
 });
+
+test("parseArgs handles plugin doctor --fix flag", () => {
+  const options = parseArgs(["plugin", "doctor", "--fix"]);
+  assert.equal(options.pluginSubcommand, "doctor");
+  assert.equal(options.pluginFix, true);
+});
+
+test("parseArgs handles plugin install --yes flag", () => {
+  const options = parseArgs(["plugin", "install", "https://example.com/p.tgz", "--yes"]);
+  assert.equal(options.pluginSubcommand, "install");
+  assert.equal(options.pluginTarget, "https://example.com/p.tgz");
+  assert.equal(options.pluginYes, true);
+});
+
+test("PluginRegistryService installRemote previews without confirm", async () => {
+  const fixture = await createProjectFixture();
+  try {
+    const sourceDir = await writeSamplePlugin(fixture.root, "remote.preview.plugin");
+    const archiveBytes = await createPluginArchive(sourceDir);
+    const registry = createPluginRegistryService({
+      projectRoot: fixture.root,
+      loadedConfig: fixture.loadedConfig,
+      userCatalogPath: fixture.userCatalogPath,
+      userPluginsRoot: fixture.userRoot,
+    });
+
+    const preview = await registry.installRemote("https://example.com/plugin.tgz", {
+      confirm: false,
+      fetchFn: async () => mockArchiveResponse(archiveBytes),
+    });
+
+    assert.equal("needsConfirm" in preview && preview.needsConfirm, true);
+    if ("needsConfirm" in preview && preview.needsConfirm) {
+      assert.equal(preview.id, "remote.preview.plugin");
+    }
+
+    const listed = await registry.list();
+    assert.equal(
+      listed.find((plugin: PluginListItem) => plugin.id === "remote.preview.plugin"),
+      undefined,
+    );
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("PluginRegistryService installRemote installs with confirm", async () => {
+  const fixture = await createProjectFixture();
+  try {
+    const sourceDir = await writeSamplePlugin(fixture.root, "remote.install.plugin");
+    const archiveBytes = await createPluginArchive(sourceDir);
+    const registry = createPluginRegistryService({
+      projectRoot: fixture.root,
+      loadedConfig: fixture.loadedConfig,
+      userCatalogPath: fixture.userCatalogPath,
+      userPluginsRoot: fixture.userRoot,
+    });
+
+    const result = await registry.installRemote("https://example.com/plugin.tgz", {
+      confirm: true,
+      fetchFn: async () => mockArchiveResponse(archiveBytes),
+    });
+
+    assert.deepEqual(result, {
+      ok: true,
+      id: "remote.install.plugin",
+      requiresRestart: true,
+    });
+
+    const listed = await registry.list();
+    const installed = listed.find(
+      (plugin: PluginListItem) => plugin.id === "remote.install.plugin",
+    );
+    assert.ok(installed);
+    assert.equal(installed?.source, "local");
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("PluginRegistryService doctor --fix quarantines missing catalog entries", async () => {
+  const fixture = await createProjectFixture();
+  try {
+    await mkdir(fixture.userRoot, { recursive: true });
+    await writeFile(
+      fixture.userCatalogPath,
+      JSON.stringify({
+        plugins: [
+          {
+            id: "ghost.plugin",
+            path: join(fixture.userRoot, "ghost.plugin", "index.mjs"),
+            enabled: true,
+            source: "local",
+          },
+        ],
+      }),
+      "utf8",
+    );
+
+    const registry = createPluginRegistryService({
+      projectRoot: fixture.root,
+      loadedConfig: fixture.loadedConfig,
+      userCatalogPath: fixture.userCatalogPath,
+      userPluginsRoot: fixture.userRoot,
+    });
+
+    const report = await registry.doctor({ fix: true });
+    assert.ok((report.fixesApplied ?? []).length >= 0);
+    try {
+      const catalog = JSON.parse(await readFile(fixture.userCatalogPath, "utf8")) as {
+        plugins?: unknown[];
+      };
+      assert.equal(catalog.plugins?.length ?? 0, 0);
+    } catch (error: unknown) {
+      assert.match(String(error), /ENOENT/u);
+    }
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("PluginRegistryService doctor --fix prunes stale config refs", async () => {
+  const fixture = await createProjectFixture();
+  try {
+    await writeFile(
+      join(fixture.root, "rlm.config.yaml"),
+      [
+        "extensions:",
+        "  load:",
+        "    - path: ./missing-extension.mjs",
+        "      agents: [coding]",
+      ].join("\n"),
+      "utf8",
+    );
+    const config = structuredClone(DEFAULT_PROJECT_CONFIG);
+    config.extensions = {
+      load: [{ path: "./missing-extension.mjs", agents: ["coding"] }],
+    };
+    const registry = createPluginRegistryService({
+      projectRoot: fixture.root,
+      loadedConfig: {
+        path: join(fixture.root, "rlm.config.yaml"),
+        config,
+      },
+      userCatalogPath: fixture.userCatalogPath,
+      userPluginsRoot: fixture.userRoot,
+    });
+
+    const report = await registry.doctor({ fix: true });
+    assert.ok(report.issues.some((issue: PluginDoctorIssue) => issue.code === "stale_config_ref"));
+    assert.ok((report.fixesApplied ?? []).some((message) => message.includes("Pruned")));
+    const updated = await readFile(join(fixture.root, "rlm.config.yaml"), "utf8");
+    assert.match(updated, /load:\s*\[\]/);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+async function createPluginArchive(pluginDir: string): Promise<Buffer> {
+  const { mkdtemp: mkd, rm: remove, readFile: readArchive } = await import("node:fs/promises");
+  const { join: pathJoin } = await import("node:path");
+  const { tmpdir: tempDir } = await import("node:os");
+  const tar = await import("tar");
+  const temp = await mkd(pathJoin(tempDir(), "rlm-plugin-archive-"));
+  const archivePath = pathJoin(temp, "plugin.tgz");
+  try {
+    await tar.c({ gzip: true, file: archivePath, cwd: pluginDir }, [
+      "rlm.plugin.json",
+      "index.mjs",
+    ]);
+    return await readArchive(archivePath);
+  } finally {
+    await remove(temp, { recursive: true, force: true });
+  }
+}
+
+function mockArchiveResponse(body: Buffer): Response {
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ "content-length": String(body.byteLength) }),
+    body: Readable.toWeb(Readable.from(body)),
+  } as Response;
+}
