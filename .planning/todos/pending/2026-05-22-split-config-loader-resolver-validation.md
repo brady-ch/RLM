@@ -2,6 +2,7 @@
 created: 2026-05-22T00:00:00.000Z
 title: Split config loader, resolver, and validation responsibilities
 area: architecture
+resolves_phase: 37
 files:
   - src/application/project-config.ts
 ---

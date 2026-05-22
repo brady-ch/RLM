@@ -2,6 +2,7 @@
 created: 2026-05-22T00:00:00.000Z
 title: Extract runtime composition from CLI entrypoint
 area: architecture
+resolves_phase: 38
 files:
   - src/index.ts
   - src/application/runtime-composition.ts
