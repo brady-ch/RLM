@@ -33,8 +33,8 @@
 - [x] **Phase 56: Vector Index + Embeddings** — usearch ANN, Ollama embed, JSON import (1/1 plan) — 2026-05-22
 - [x] **Phase 57: Model Hosts + Model Library** — Ollama adapter, catalog/search/install, HF metadata (1/1 plan) — 2026-05-22
 - [x] **Phase 58: Built-in Plugins + MCP + Registry** — Rust builtins, PluginRegistryService, interop wiring (1/1 plan) — 2026-05-22
-- [ ] **Phase 59: Rust CLI + Parity CI** — `rlm` binary, `RLM_RUNTIME` switch, TS vs Rust fixture gate
-- [ ] **Phase 60: Tauri In-Process + Packaging** — No Node child, Rust-only release bundle, `.deb` smoke
+- [x] **Phase 59: Rust CLI + Parity CI** — `rlm` binary, `RLM_RUNTIME` switch, TS vs Rust fixture gate (1/1 plan) — 2026-05-22
+- [x] **Phase 60: Tauri In-Process + Packaging** — No Node child, Rust-only release bundle (1/1 plan, human UAT pending) — 2026-05-22
 
 <details>
 <summary>✅ v1.7 Adapter & Plugin Taxonomy (Phases 43-51) — SHIPPED 2026-05-22</summary>
@@ -315,8 +315,8 @@ Phases execute in numeric order: 52 → 53 → … → 60
 | 56. Vector Index + Embeddings | v1.8 | 1/1 | Complete | 2026-05-22 |
 | 57. Model Hosts + Model Library | v1.8 | 1/1 | Complete | 2026-05-22 |
 | 58. Built-in Plugins + MCP + Registry | v1.8 | 1/1 | Complete | 2026-05-22 |
-| 59. Rust CLI + Parity CI | v1.8 | 0/TBD | Not started | - |
-| 60. Tauri In-Process + Packaging | v1.8 | 0/TBD | Not started | - |
+| 59. Rust CLI + Parity CI | v1.8 | 1/1 | Complete | 2026-05-22 |
+| 60. Tauri In-Process + Packaging | v1.8 | 1/1 | Complete (UAT pending) | 2026-05-22 |
 | 43. Boundary Fixes | v1.7 | 1/1 | Complete | 2026-05-22 |
 | 44. Runtime & Interop Split | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 45. Application Concern Grouping | v1.7 | 1/1 | Complete   | 2026-05-22 |

@@ -9,17 +9,14 @@ const root = resolve(__dirname, "..", "..");
 const tag = `${process.platform}-${process.arch}`;
 const outRoot = resolve(root, "dist", "release", tag);
 
-const required = [
-  "dist/src/index.js",
-  "ui-dist/index.html",
-  "rlm",
-  "rlm.cmd",
-  "desktop-manifest.json",
-  "ensure-ollama.mjs",
-];
+const rustBinaryName = process.platform === "win32" ? "rlm.exe" : "rlm";
+const required = ["ui-dist/index.html", rustBinaryName, "desktop-manifest.json"];
 
-const nodeRuntime = process.platform === "win32" ? "bin/node.exe" : "bin/node";
-required.push(nodeRuntime);
+if (process.platform === "win32") {
+  required.push("rlm.cmd");
+} else {
+  required.push("rlm");
+}
 
 const missing = required.filter((path) => !existsSync(resolve(outRoot, path)));
 if (missing.length > 0) {
@@ -32,19 +29,16 @@ if (manifest.platform !== process.platform || manifest.arch !== process.arch) {
   console.error("Release smoke failed; manifest platform does not match current build.");
   process.exit(1);
 }
-if (manifest.runtime?.kind !== "bundled-node" || manifest.runtime?.node !== nodeRuntime) {
-  console.error("Release smoke failed; manifest bundled Node runtime metadata is invalid.");
+if (manifest.runtime?.kind !== "rust-binary" || manifest.runtime?.binary !== rustBinaryName) {
+  console.error("Release smoke failed; manifest Rust runtime metadata is invalid.");
   process.exit(1);
 }
-if (manifest.ollama?.check !== `${nodeRuntime} ensure-ollama.mjs`) {
-  console.error("Release smoke failed; manifest Ollama check does not use the bundled Node runtime.");
-  process.exit(1);
-}
-const nodeCheck = spawnSync(resolve(outRoot, nodeRuntime), ["--version"], {
+
+const versionCheck = spawnSync(resolve(outRoot, rustBinaryName), ["--help"], {
   encoding: "utf8",
 });
-if (nodeCheck.status !== 0 || !nodeCheck.stdout.trim().startsWith("v")) {
-  console.error("Release smoke failed; bundled Node runtime did not execute.");
+if (versionCheck.status !== 0) {
+  console.error("Release smoke failed; Rust binary did not execute.");
   process.exit(1);
 }
 

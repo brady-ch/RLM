@@ -9,7 +9,7 @@
 ### Regression Gate
 
 - [ ] **REG-01**: Existing UI workflows (graph authoring, execution, session save/reopen, model library, plugin panel) behave as before when served by the Rust runtime — no intentional semantic drift except documented Rust-mode plugin limitations.
-- [ ] **REG-02**: Combined CI gate stays green: `npm run check` for UI/tooling plus `check:rust` (fmt, clippy, test) for the Rust workspace; parity fixture job compares TS golden responses to Rust before Node removal.
+- [x] **REG-02**: Combined CI gate stays green: `npm run check` for UI/tooling plus `check:rust` (fmt, clippy, test) for the Rust workspace; parity fixture job compares TS golden responses to Rust before Node removal.
 - [x] **REG-03**: On-disk formats under `.rlm/` remain readable across migration — dual-read or lossless import paths for session bundles, memory stores, preferences, run-state, and vector index JSON.
 
 ### Rust Workspace & Control Server
@@ -53,10 +53,10 @@
 
 ### CLI & Packaging
 
-- [ ] **CLI-01**: Rust `rlm` binary replaces Node entry for all run modes: ask, ui (headless server), plan-only, workflow, session/memory flags, and full `rlm plugin` subcommand surface.
-- [ ] **CLI-02**: `RLM_RUNTIME=node|rust` switch supports strangler development; default production desktop uses Rust only after Phase 59.
-- [ ] **PACK-01**: Tauri embeds Rust control server in-process on `127.0.0.1` — no managed Node child process; graceful shutdown on window close.
-- [ ] **PACK-02**: Desktop release bundle contains no bundled Node runtime; ships Rust binary, static UI assets, and documented Ollama readiness check in Rust.
+- [x] **CLI-01**: Rust `rlm` binary replaces Node entry for all run modes: ask, ui (headless server), plan-only, workflow, session/memory flags, and full `rlm plugin` subcommand surface.
+- [x] **CLI-02**: `RLM_RUNTIME=node|rust` switch supports strangler development; default production desktop uses Rust only after Phase 59.
+- [x] **PACK-01**: Tauri embeds Rust control server in-process on `127.0.0.1` — no managed Node child process; graceful shutdown on window close.
+- [x] **PACK-02**: Desktop release bundle contains no bundled Node runtime; ships Rust binary, static UI assets, and documented Ollama readiness check in Rust.
 - [ ] **PACK-03**: Linux `.deb` (and existing packaging scripts) produce installable artifacts passing package smoke with Rust-only runtime layout.
 
 ## Future Requirements
@@ -86,8 +86,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | Phase 60 | Pending |
-| REG-02 | Phase 59 | Pending |
+| REG-01 | Phase 60 | Pending (human UAT) |
+| REG-02 | Phase 59 | Complete |
 | REG-03 | Phase 53 | Complete |
 | RWRK-01 | Phase 52 | Pending |
 | RWRK-02 | Phase 52 | Pending |
@@ -110,11 +110,11 @@
 | PLUG-02 | Phase 58 | Complete |
 | PLUG-03 | Phase 58 | Complete |
 | PLUG-04 | Phase 58 | Complete |
-| CLI-01 | Phase 59 | Pending |
-| CLI-02 | Phase 59 | Pending |
-| PACK-01 | Phase 60 | Pending |
-| PACK-02 | Phase 60 | Pending |
-| PACK-03 | Phase 60 | Pending |
+| CLI-01 | Phase 59 | Complete |
+| CLI-02 | Phase 59 | Complete |
+| PACK-01 | Phase 60 | Complete |
+| PACK-02 | Phase 60 | Complete |
+| PACK-03 | Phase 60 | Pending (human smoke) |
 
 **Coverage:**
 - v1.8 requirements: 28 total

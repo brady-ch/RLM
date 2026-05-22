@@ -1335,6 +1335,7 @@ version = "1.0.0"
 dependencies = [
  "clap",
  "rlm-core",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",

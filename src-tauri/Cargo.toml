@@ -6,11 +6,16 @@ authors = ["Brady"]
 license = "ISC"
 edition = "2021"
 
+[workspace]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+rlm-core = { path = "../crates/rlm-core" }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
 tauri = { version = "2", features = [] }
+tokio = { version = "1.49", features = ["rt-multi-thread", "macros"] }
 
 [features]
 default = ["custom-protocol"]

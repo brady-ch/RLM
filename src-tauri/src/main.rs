@@ -1,29 +1,28 @@
-use std::{
-    io::{BufRead, BufReader},
-    path::PathBuf,
-    process::{Child, Command, Stdio},
-    sync::{Arc, Mutex},
-    thread,
-};
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::sync::Arc;
+use std::time::Duration;
 
+use rlm_core::{start_server, ControlServer, ServerConfig};
 use tauri::{Manager, WindowEvent};
 
-struct ManagedRuntime {
-    child: Mutex<Option<Child>>,
+struct EmbeddedRuntime {
+    rt: tokio::runtime::Runtime,
+    server: std::sync::Mutex<Option<ControlServer>>,
 }
 
-impl ManagedRuntime {
-    fn new(child: Child) -> Self {
+impl EmbeddedRuntime {
+    fn new(rt: tokio::runtime::Runtime, server: ControlServer) -> Self {
         Self {
-            child: Mutex::new(Some(child)),
+            rt,
+            server: std::sync::Mutex::new(Some(server)),
         }
     }
 
     fn stop(&self) {
-        let mut guard = self.child.lock().expect("runtime child mutex poisoned");
-        if let Some(mut child) = guard.take() {
-            let _ = child.kill();
-            let _ = child.wait();
+        let mut guard = self.server.lock().expect("embedded server mutex");
+        if let Some(server) = guard.take() {
+            self.rt.block_on(server.close());
         }
     }
 }
@@ -32,13 +31,24 @@ fn main() {
     tauri::Builder::default()
         .setup(|app| {
             let release_root = resolve_release_root(app)?;
-            ensure_ollama_ready(&release_root)?;
-            let mut child = spawn_rlm_ui(&release_root)?;
-            let stderr = child
-                .stderr
-                .take()
-                .ok_or("failed to capture RLM UI stderr")?;
-            let runtime = Arc::new(ManagedRuntime::new(child));
+            ensure_ollama_ready()?;
+
+            let ui_dist = release_root.join("ui-dist");
+            let ui_dist_dir = ui_dist.is_dir().then_some(ui_dist);
+
+            let rt = tokio::runtime::Runtime::new()?;
+            let server = rt.block_on(start_server(ServerConfig {
+                port: 0,
+                ui_dist_dir,
+                project_root: release_root.clone(),
+                memory_session_id: None,
+                session: None,
+            }))?;
+
+            let url = server.url.clone();
+            eprintln!("RLM UI listening at {url}");
+
+            let runtime = Arc::new(EmbeddedRuntime::new(rt, server));
             let window = app
                 .get_webview_window("main")
                 .ok_or("missing main webview window")?;
@@ -53,19 +63,10 @@ fn main() {
                 }
             });
 
-            let window_for_redirect = window.clone();
-            thread::spawn(move || {
-                for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-                    eprintln!("{line}");
-                    if let Some(url) = line.strip_prefix("RLM UI listening at ") {
-                        let _ = window_for_redirect.eval(format!(
-                            "window.location.replace('{}');",
-                            escape_js_string(url.trim())
-                        ));
-                        break;
-                    }
-                }
-            });
+            let _ = window.eval(format!(
+                "window.location.replace('{}');",
+                escape_js_string(&url)
+            ));
 
             Ok(())
         })
@@ -73,55 +74,55 @@ fn main() {
         .expect("failed to run RLM desktop shell");
 }
 
-fn spawn_rlm_ui(release_root: &PathBuf) -> Result<Child, Box<dyn std::error::Error>> {
-    let mut command = if cfg!(windows) {
-        let mut command = Command::new("cmd");
-        command
-            .arg("/C")
-            .arg(release_root.join("rlm.cmd"))
-            .arg("ui");
-        command
-    } else {
-        let mut command = Command::new(release_root.join("rlm"));
-        command.arg("ui");
-        command
-    };
+fn ensure_ollama_ready() -> Result<(), Box<dyn std::error::Error>> {
+    let base_url =
+        std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://127.0.0.1:11434".to_string());
+    let trimmed = base_url.trim_end_matches('/');
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()?;
 
-    command
-        .current_dir(release_root)
-        .env("RLM_NON_INTERACTIVE", "1")
-        .env("RLM_LAUNCH_MODE", "ui")
-        .env("RLM_DESKTOP_MANAGED", "1")
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped());
-
-    Ok(command.spawn()?)
-}
-
-fn ensure_ollama_ready(release_root: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-    let output = Command::new(node_runtime(release_root))
-        .arg(release_root.join("ensure-ollama.mjs"))
-        .env("RLM_DESKTOP_MANAGED", "1")
-        .output()?;
-
-    if output.status.success() {
-        if !output.stderr.is_empty() {
-            eprint!("{}", String::from_utf8_lossy(&output.stderr));
-        }
+    if client
+        .get(format!("{trimmed}/api/version"))
+        .send()
+        .map(|response| response.status().is_success())
+        .unwrap_or(false)
+    {
+        eprintln!("[rlm desktop] Ollama ready at {base_url}");
         return Ok(());
     }
 
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    Err(format!("Ollama readiness check failed: {}", stderr.trim()).into())
-}
+    if std::env::var("RLM_MANAGE_OLLAMA").ok().as_deref() == Some("1") {
+        let mut child = Command::new("ollama");
+        child
+            .arg("serve")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null());
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            child.process_group(0);
+        }
+        let _ = child.spawn();
 
-fn node_runtime(release_root: &PathBuf) -> PathBuf {
-    if cfg!(windows) {
-        release_root.join("bin").join("node.exe")
-    } else {
-        release_root.join("bin").join("node")
+        for _ in 0..30 {
+            std::thread::sleep(Duration::from_millis(500));
+            if client
+                .get(format!("{trimmed}/api/version"))
+                .send()
+                .map(|response| response.status().is_success())
+                .unwrap_or(false)
+            {
+                eprintln!("[rlm desktop] Ollama started at {base_url}");
+                return Ok(());
+            }
+        }
     }
+
+    Err(format!(
+        "Ollama unavailable at {base_url}. Set RLM_MANAGE_OLLAMA=1 to start 'ollama serve'."
+    )
+    .into())
 }
 
 fn resolve_release_root<R: tauri::Runtime>(
@@ -146,10 +147,8 @@ fn resolve_release_root<R: tauri::Runtime>(
         return Ok(dev_release);
     }
 
-    Err(format!(
-        "RLM release runtime not found for {platform_tag}; run npm run package:build first"
-    )
-    .into())
+    // Dev fallback: repo root when release bundle not staged yet.
+    Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".."))
 }
 
 fn platform_tag() -> String {
