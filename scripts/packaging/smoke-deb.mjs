@@ -40,51 +40,70 @@ if (!debPath || !existsSync(debPath)) {
   process.exit(1);
 }
 
-let installed = false;
-try {
-  const installResult = installDeb(debPath);
-  if (!installResult.ok) {
-    console.error(`Deb smoke failed; dpkg install error:\n${installResult.stderr}`);
-    process.exit(1);
-  }
-  installed = true;
+const exitCode = runDebSmoke(debPath);
+process.exit(exitCode);
 
-  const { cliPath, desktopPath } = findInstalledBinaries(debPath);
-  if (!cliPath) {
-    console.error("Deb smoke failed; could not locate installed CLI binary via dpkg -L");
-    process.exit(1);
-  }
+/**
+ * @param {string} debPath
+ * @returns {number}
+ */
+function runDebSmoke(debPath) {
+  let installed = false;
+  let exitCode = 0;
 
-  const helpCheck = spawnSync(cliPath, ["--help"], { encoding: "utf8" });
-  if (helpCheck.status !== 0) {
-    console.error(`Deb smoke failed; ${cliPath} --help exited ${helpCheck.status}`);
-    process.exit(1);
-  }
-
-  if (desktopPath && !desktopPath.endsWith(".desktop")) {
-    smokeDesktopBinary(desktopPath);
-  } else if (desktopPath?.endsWith(".desktop")) {
-    const execLine = readDesktopExec(desktopPath);
-    if (execLine) {
-      smokeDesktopBinary(execLine.split(/\s+/)[0]);
+  try {
+    const installResult = installDeb(debPath);
+    if (!installResult.ok) {
+      console.error(`Deb smoke failed; dpkg install error:\n${installResult.stderr}`);
+      return 1;
     }
-  }
+    installed = true;
 
-  console.error(`Deb smoke passed for ${debPath}`);
-} finally {
-  if (installed) {
-    uninstallDeb(debPath);
+    const { cliPath, desktopPath } = findInstalledBinaries(debPath);
+    if (!cliPath) {
+      console.error("Deb smoke failed; could not locate installed CLI binary via dpkg -L");
+      return 1;
+    }
+
+    const helpCheck = spawnSync(cliPath, ["--help"], { encoding: "utf8" });
+    if (helpCheck.status !== 0) {
+      console.error(`Deb smoke failed; ${cliPath} --help exited ${helpCheck.status}`);
+      return 1;
+    }
+
+    if (desktopPath && !desktopPath.endsWith(".desktop")) {
+      exitCode = smokeDesktopBinary(desktopPath);
+      if (exitCode !== 0) {
+        return exitCode;
+      }
+    } else if (desktopPath?.endsWith(".desktop")) {
+      const execLine = readDesktopExec(desktopPath);
+      if (execLine) {
+        exitCode = smokeDesktopBinary(execLine.split(/\s+/)[0]);
+        if (exitCode !== 0) {
+          return exitCode;
+        }
+      }
+    }
+
+    console.error(`Deb smoke passed for ${debPath}`);
+    return 0;
+  } finally {
+    if (installed) {
+      uninstallDeb(debPath);
+    }
   }
 }
 
 /**
  * @param {string} binaryPath
+ * @returns {number}
  */
 function smokeDesktopBinary(binaryPath) {
   const xvfb = spawnSync("which", ["xvfb-run"], { encoding: "utf8" });
   if (xvfb.status !== 0 || !xvfb.stdout.trim()) {
     console.error("Deb smoke failed; xvfb-run not found — install xvfb package");
-    process.exit(1);
+    return 1;
   }
 
   const run = spawnSync(
@@ -96,13 +115,15 @@ function smokeDesktopBinary(binaryPath) {
   const combined = `${run.stderr ?? ""}\n${run.stdout ?? ""}`;
   if (/Failed to initialize GTK|Cannot open display/i.test(combined)) {
     console.error(`Deb smoke failed; desktop binary GTK/display error:\n${combined}`);
-    process.exit(1);
+    return 1;
   }
 
   if (run.status !== 0 && run.status !== 124) {
     console.error(`Deb smoke failed; desktop binary exited ${run.status}:\n${combined}`);
-    process.exit(1);
+    return 1;
   }
+
+  return 0;
 }
 
 /**
