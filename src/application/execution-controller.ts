@@ -21,6 +21,7 @@ import type {
   ExpertRuntimeMode,
 } from "../domain/types.js";
 import type { LanguageModelPort } from "../ports/language-model-port.js";
+import type { SavedGraphWorkflowMetadataSection } from "./session-memory-bridge.js";
 import { GraphPlannerError, planChildren, type GraphPlannerContext } from "./graph-planner.js";
 import { EXECUTION_FAILURE_CODES, summarizeRunFromNodes } from "../domain/execution-failure.js";
 import { createClarificationQuestion, createClarificationRecord } from "./runtime-events.js";
@@ -107,6 +108,7 @@ export class InteractiveExecutionSession {
       pendingQuestion: ClarificationQuestion;
     }
     | undefined;
+  private graphWorkflowMetadata: SavedGraphWorkflowMetadataSection = { version: 1 };
 
   constructor(input: { approvalMode?: ApprovalMode; seedRootPrompt?: string | undefined; planModel?: LanguageModelPort | undefined } = {}) {
     this.approvalMode = input.approvalMode ?? "full";
@@ -144,6 +146,22 @@ export class InteractiveExecutionSession {
     this.autoApproveNextRootExecution = false;
     this.abortSnapshot = snapshot.chat?.abortSnapshot;
     this.publish({ type: "execution", status: snapshot.status, message: "session snapshot restored" });
+  }
+
+  getGraphWorkflowMetadata(): SavedGraphWorkflowMetadataSection {
+    return { ...this.graphWorkflowMetadata };
+  }
+
+  setGraphWorkflowMetadata(metadata: SavedGraphWorkflowMetadataSection): void {
+    this.graphWorkflowMetadata = { ...metadata, version: 1 };
+  }
+
+  patchGraphWorkflowMetadata(patch: Partial<SavedGraphWorkflowMetadataSection>): void {
+    this.graphWorkflowMetadata = {
+      ...this.graphWorkflowMetadata,
+      ...patch,
+      version: 1,
+    };
   }
 
   readonly control: ExecutionControl = {

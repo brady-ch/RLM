@@ -32,6 +32,7 @@ export interface SavedSessionPayload {
   memory: unknown;
   preferences: unknown;
   vectorIndex: unknown;
+  graphWorkflowMetadata?: unknown;
 }
 
 export interface SaveSessionRequest {

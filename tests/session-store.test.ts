@@ -80,9 +80,10 @@ test("file session store reports degraded restore when a section is missing", as
         memory: { file: "memory.json", version: 1 },
         preferences: { file: "preferences.json", version: 1 },
         vectorIndex: { file: "vector-index.json", version: 1 },
+        graphWorkflowMetadata: { file: "graph-workflow-metadata.json", version: 1 },
       },
     }), "utf8");
-    for (const file of ["session.json", "run-state.json", "artifacts.json", "preferences.json", "vector-index.json"]) {
+    for (const file of ["session.json", "run-state.json", "artifacts.json", "preferences.json", "vector-index.json", "graph-workflow-metadata.json"]) {
       await writeFile(join(sessionDir, file), JSON.stringify({ version: 1, data: {} }), "utf8");
     }
 

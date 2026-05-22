@@ -21,6 +21,7 @@ const SECTION_FILES = {
   memory: "memory.json",
   preferences: "preferences.json",
   vectorIndex: "vector-index.json",
+  graphWorkflowMetadata: "graph-workflow-metadata.json",
 } as const;
 
 type SectionName = keyof typeof SECTION_FILES;
@@ -73,6 +74,7 @@ export class FileSessionStore implements SessionStorePort {
         memory: { file: SECTION_FILES.memory, version: SECTION_VERSION },
         preferences: { file: SECTION_FILES.preferences, version: SECTION_VERSION },
         vectorIndex: { file: SECTION_FILES.vectorIndex, version: SECTION_VERSION },
+        graphWorkflowMetadata: { file: SECTION_FILES.graphWorkflowMetadata, version: SECTION_VERSION },
       },
     };
 
@@ -82,6 +84,7 @@ export class FileSessionStore implements SessionStorePort {
     await this.writeJson(join(dir, SECTION_FILES.memory), envelope(request.payload.memory));
     await this.writeJson(join(dir, SECTION_FILES.preferences), envelope(request.payload.preferences));
     await this.writeJson(join(dir, SECTION_FILES.vectorIndex), envelope(request.payload.vectorIndex));
+    await this.writeJson(join(dir, SECTION_FILES.graphWorkflowMetadata), envelope(request.payload.graphWorkflowMetadata ?? { version: 1 }));
     await this.writeJson(join(dir, "manifest.json"), manifest);
 
     return this.load(id);
@@ -127,6 +130,7 @@ export class FileSessionStore implements SessionStorePort {
       memory: await this.safeReadSection(manifest, "memory"),
       preferences: await this.safeReadSection(manifest, "preferences"),
       vectorIndex: await this.safeReadSection(manifest, "vectorIndex"),
+      graphWorkflowMetadata: await this.safeReadSection(manifest, "graphWorkflowMetadata"),
     };
     return {
       id: manifest.id,

@@ -1,8 +1,10 @@
 import { execFile } from "node:child_process";
+import { dirname, resolve as pathResolve } from "node:path";
 import { promisify } from "node:util";
 import type { AgentRegistry } from "./agent-registry.js";
 import type { AgentProfile } from "../domain/agents.js";
 import type { ProjectConfig } from "./project-config.js";
+import type { WorkflowQaConfig } from "./project-config.js";
 import type {
   ExecutionControl,
   ExecutionGraphNode,
@@ -20,6 +22,10 @@ import { MemoryManager } from "./memory-manager.js";
 import { estimatePromptDepth, runConfiguredAgent } from "./agent-runner.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
 import type { RuntimeMemory, RuntimeRunState } from "../domain/types.js";
+import { isGraphWorkflowConfig } from "./project-config.js";
+import { resolveDiskGraphWorkflowConfig } from "./graph-workflow-store.js";
+import { runGraphWorkflow } from "./graph-workflow-runner.js";
+import type { GraphWorkflowVariant } from "./graph-workflow-types.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -39,12 +45,41 @@ export interface RunWorkflowInput {
   execution?: ExecutionControl | undefined;
   runState?: RuntimeRunState | undefined;
   memory?: RuntimeMemory | undefined;
+  variant?: GraphWorkflowVariant | undefined;
 }
 
 export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePromptResult> {
-  const workflow = input.projectConfig.workflows[input.workflowId];
+  const projectRoot = input.configPath ? resolveProjectRoot(input.configPath) : process.cwd();
+  let workflow = input.projectConfig.workflows[input.workflowId];
   if (!workflow) {
-    throw new Error(`Unknown workflow "${input.workflowId}". Available workflows: ${Object.keys(input.projectConfig.workflows).join(", ")}`);
+    workflow = await resolveDiskGraphWorkflowConfig(input.workflowId, projectRoot);
+  }
+  if (!workflow) {
+    const configured = Object.keys(input.projectConfig.workflows);
+    const diskHint = ".rlm/workflows/<id>.yaml";
+    throw new Error(
+      `Unknown workflow "${input.workflowId}". Configured: ${configured.join(", ") || "(none)"}. `
+      + `Graph sidecars may be resolved from ${diskHint}.`,
+    );
+  }
+
+  if (isGraphWorkflowConfig(workflow)) {
+    return runGraphWorkflow({
+      workflowId: input.workflowId,
+      graphConfig: workflow,
+      prompt: input.prompt,
+      variant: input.variant,
+      config: input.config,
+      projectConfig: input.projectConfig,
+      configPath: input.configPath,
+      registry: input.registry,
+      memoryManager: input.memoryManager,
+      hostId: input.hostId,
+      createModel: input.createModel,
+      logger: input.logger,
+      runState: input.runState,
+      memory: input.memory,
+    });
   }
 
   const dispatch = selectWorkflowDispatch(workflow, input.prompt);
@@ -277,11 +312,11 @@ export async function runWorkflow(input: RunWorkflowInput): Promise<RecursivePro
 }
 
 function selectWorkflowDispatch(
-  workflow: ProjectConfig["workflows"][string],
+  workflow: Extract<ProjectConfig["workflows"][string], { mode: "ram_queue" }>,
   prompt: string,
 ): {
   agents: string[];
-  qa: ProjectConfig["workflows"][string]["qa"] | undefined;
+  qa: WorkflowQaConfig | undefined;
   tierName: string | undefined;
   estimatedDepth: number | undefined;
 } {
@@ -324,7 +359,7 @@ type WorkflowGraphSlot = {
 
 function buildWorkflowGraphSlots(
   agents: AgentProfile[],
-  qa: ProjectConfig["workflows"][string]["qa"] | undefined,
+  qa: WorkflowQaConfig | undefined,
   initialStatus: ExecutionStatus,
 ): WorkflowGraphSlot[] {
   const slots: WorkflowGraphSlot[] = agents.map((agent) => ({
@@ -662,6 +697,10 @@ function parseCommand(command: string): string[] {
 
 function formatCommandOutput(stdout: string, stderr: string, exitCode: number): string {
   return [`exitCode: ${exitCode}`, `stdout:\n${stdout.trim()}`, `stderr:\n${stderr.trim()}`].join("\n");
+}
+
+function resolveProjectRoot(configPath: string): string {
+  return pathResolve(dirname(configPath), "..");
 }
 
 function preview(value: string, maxLength = 180): string {

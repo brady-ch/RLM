@@ -4,6 +4,15 @@ import type { FileVectorIndex } from "../adapters/file-vector-index.js";
 import type { MemoryStorePort } from "../ports/memory-store-port.js";
 import type { SavedSessionPayload } from "../ports/session-store-port.js";
 import type { InteractiveExecutionSession } from "./execution-controller.js";
+import type { GraphWorkflowSaveVariant, GraphWorkflowVariant } from "./graph-workflow-types.js";
+
+export interface SavedGraphWorkflowMetadataSection {
+  version: 1;
+  linkedWorkflowId?: string | undefined;
+  lastVariant?: GraphWorkflowSaveVariant | GraphWorkflowVariant | undefined;
+  exportedAt?: string | undefined;
+  restoreNote?: string | undefined;
+}
 
 export interface SavedMemorySection {
   version: 2;
@@ -44,6 +53,7 @@ export async function buildSavedSessionPayload(input: {
   memoryStore: MemoryStorePort;
   vectorIndex: FileVectorIndex;
   embedProvider?: string | null;
+  graphWorkflowMetadata?: SavedGraphWorkflowMetadataSection | undefined;
 }): Promise<SavedSessionPayload> {
   const artifactRefs: Array<{ nodeId: string; ref: unknown }> = [];
   for (const node of input.snapshot.graph.nodes) {
@@ -95,6 +105,33 @@ export async function buildSavedSessionPayload(input: {
     memory,
     preferences,
     vectorIndex,
+    graphWorkflowMetadata: input.graphWorkflowMetadata ?? { version: 1 },
+  };
+}
+
+export function restoreGraphWorkflowMetadata(payload: SavedSessionPayload): {
+  metadata: SavedGraphWorkflowMetadataSection;
+  degraded: boolean;
+  note?: string;
+} {
+  const raw = payload.graphWorkflowMetadata as Partial<SavedGraphWorkflowMetadataSection> | null | undefined;
+  if (!raw || raw.version !== 1) {
+    const note = "Session saved before v1.5 graph workflow metadata; workflow link not restored.";
+    return {
+      metadata: { version: 1, restoreNote: note },
+      degraded: true,
+      note,
+    };
+  }
+  return {
+    metadata: {
+      version: 1,
+      linkedWorkflowId: raw.linkedWorkflowId,
+      lastVariant: raw.lastVariant,
+      exportedAt: raw.exportedAt,
+      restoreNote: raw.restoreNote,
+    },
+    degraded: false,
   };
 }
 

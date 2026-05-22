@@ -37,10 +37,13 @@ import * as webSearchExtension from "./extensions/tools/web-search.extension.js"
 import * as workspaceFileWriteExtension from "./extensions/tools/workspace-file-write.extension.js";
 import { CancellationController, createExecutionControl, createInteractiveExecutionSession } from "./application/execution-controller.js";
 import { startControlServer, type SessionRuntimeRef } from "./application/control-server.js";
-import { restoreSessionMemory } from "./application/session-memory-bridge.js";
+import { restoreSessionMemory, restoreGraphWorkflowMetadata } from "./application/session-memory-bridge.js";
+import { exportAndSaveGraphWorkflow, loadGraphWorkflow } from "./application/graph-workflow-store.js";
+import { defaultSaveVariant, importSidecarToGraph } from "./application/graph-workflow-serializer.js";
+import type { GraphWorkflowSaveVariant } from "./application/graph-workflow-types.js";
 import { ModelLibraryService } from "./application/model-library.js";
 import { createUiExecutionRunner } from "./application/ui-execution-runner.js";
-import { helpText, parseArgs } from "./cli/args.js";
+import { helpText, parseArgs, type CliOptions } from "./cli/args.js";
 import {
   formatLaunchModeBanner,
   injectLaunchArgv,
@@ -113,6 +116,57 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (options.command === "workflow-export") {
+    const workflowId = options.workflow?.trim();
+    const sessionId = options.exportSession?.trim();
+    if (!workflowId) {
+      throw new Error("workflow-export requires --workflow <id>.");
+    }
+    if (!sessionId) {
+      throw new Error("workflow-export requires --export-session <id>.");
+    }
+    const saved = await sessionStore.load(sessionId);
+    const sessionGraph = (saved.payload.session as { graph?: import("./domain/types.js").ExecutionGraph }).graph;
+    if (!sessionGraph || sessionGraph.nodes.length === 0) {
+      throw new Error(`Saved session "${sessionId}" has no graph to export.`);
+    }
+    const variant = parseWorkflowExportVariant(options.variant) ?? defaultSaveVariant(sessionGraph);
+    const result = await exportAndSaveGraphWorkflow({
+      workflowId,
+      description: options.exportDescription,
+      variant,
+      graph: sessionGraph,
+      projectRoot: process.cwd(),
+    });
+    console.log(JSON.stringify({
+      workflowId,
+      path: result.path,
+      variant,
+      nodeCount: sessionGraph.nodes.length,
+      updatedAt: result.sidecar.updatedAt,
+    }, null, 2));
+    return;
+  }
+
+  if (options.command === "workflow-import") {
+    const workflowId = (options.importWorkflow ?? options.workflow)?.trim();
+    if (!workflowId) {
+      throw new Error("workflow-import requires --workflow <id> or --import-workflow <id>.");
+    }
+    const sidecar = await loadGraphWorkflow(workflowId, { projectRoot: process.cwd() });
+    const variant = options.variant === "pipeline" ? "pipeline" : "playbook";
+    const imported = importSidecarToGraph(sidecar, variant);
+    console.log(JSON.stringify({
+      workflowId,
+      variant: imported.variant,
+      nodeCount: imported.graph.nodes.length,
+      expertNodes: imported.graph.nodes
+        .filter((node) => node.expertAgentId && node.expertAgentId !== "default")
+        .map((node) => ({ id: node.id, expertAgentId: node.expertAgentId })),
+    }, null, 2));
+    return;
+  }
+
   let loadedConfig = await loadProjectConfig(options.configPath);
   const legacyMonoConfig = resolve(process.cwd(), "rlm.config.yaml");
   if (
@@ -136,6 +190,7 @@ async function main(): Promise<void> {
     data: {
       agent: options.agent ?? "auto",
       workflow: options.workflow,
+      variant: options.variant,
       model: projectConfig.models.default,
       json: options.json,
       trace: options.trace,
@@ -345,6 +400,8 @@ async function main(): Promise<void> {
         runState.capabilityToken = `${runId}:runtime`;
         runtimeMemory = createMemoryForRun(runId);
         session.restoreSnapshot(saved.payload.session as ReturnType<typeof session.snapshot>);
+        const metadataRestore = restoreGraphWorkflowMetadata(saved.payload);
+        session.setGraphWorkflowMetadata(metadataRestore.metadata);
       }
       const sessionRuntime: SessionRuntimeRef = {
         getRunId: () => runId,
@@ -393,6 +450,7 @@ async function main(): Promise<void> {
         sessionStore,
         memory: runtimeMemory,
         sessionRuntime,
+        projectRoot: process.cwd(),
         onConfirmRun: (activeSession) => uiRunner.start(activeSession),
       });
       cleanup.track({
@@ -423,6 +481,7 @@ async function main(): Promise<void> {
         ...runInputBase,
         workflowId: options.workflow,
         hostId: options.host,
+        variant: options.variant,
       })
       : await runConfiguredAgent({
         prompt: runInputBase.prompt,
@@ -452,6 +511,7 @@ async function main(): Promise<void> {
           ...runInputBase,
           workflowId: options.workflow,
           hostId: options.host,
+          variant: options.variant,
           execution: executeControl,
           runState,
           memory: runtimeMemory,
@@ -532,4 +592,16 @@ function parsePreferenceAssignment(value: string): { key: string; value: string 
     throw new Error("--preference-set requires non-empty key and value.");
   }
   return { key, value: preferenceValue };
+}
+
+function parseWorkflowExportVariant(
+  variant: CliOptions["variant"],
+): GraphWorkflowSaveVariant | undefined {
+  if (!variant) {
+    return undefined;
+  }
+  if (variant === "playbook" || variant === "pipeline") {
+    return variant;
+  }
+  return undefined;
 }

@@ -146,11 +146,70 @@ textarea:focus-visible {
   font-weight: 700;
 }
 
+.run-variant-pill {
+  text-transform: capitalize;
+}
+
+.run-variant-controls {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.run-variant-controls input,
+.run-variant-controls select {
+  width: 100%;
+}
+
+.graph-workflow-panel .variant-fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+}
+
+.modal-overlay {
+  align-items: center;
+  background: rgba(18, 24, 20, 0.45);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: var(--space-md);
+  position: fixed;
+  z-index: 30;
+}
+
+.modal-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-sm);
+  max-width: 420px;
+  padding: var(--space-md);
+  width: 100%;
+}
+
+.modal-card h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
 .session-panel {
   border-bottom: 1px solid var(--color-border);
   display: grid;
   gap: var(--space-sm);
   padding-bottom: var(--space-md);
+}
+
+.chat-refine-panel > summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: disclosure-closed;
+}
+
+.chat-refine-panel[open] > summary {
+  list-style: disclosure-open;
 }
 
 .session-list {

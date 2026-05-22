@@ -1,7 +1,7 @@
 import type { ApprovalMode, RecursiveModelConfig } from "../domain/types.js";
 
 export interface CliOptions {
-  command: "ask" | "help" | "ui";
+  command: "ask" | "help" | "ui" | "plan-node" | "workflow-export" | "workflow-import";
   prompt: string;
   config: RecursiveModelConfig;
   configOverrides: Partial<RecursiveModelConfig>;
@@ -22,12 +22,18 @@ export interface CliOptions {
   baseUrl?: string;
   host?: string;
   uiPort?: number;
+  nodeId?: string;
+  replan?: "replace" | "merge" | "cancel";
   sessionList: boolean;
   sessionInspect?: string;
   openSession?: string;
+  exportSession?: string;
+  importWorkflow?: string;
+  exportDescription?: string;
   memoryInspect?: string;
   preferenceSet?: string;
   preferenceDelete?: string;
+  variant?: "playbook" | "pipeline";
 }
 
 const DEFAULT_QUALITY_LOOP_CONFIG = {
@@ -54,8 +60,20 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     return helpOptions(env);
   }
 
-  const command: CliOptions["command"] = commandCandidate === "ui" ? "ui" : "ask";
-  const args = commandCandidate === "ask" || commandCandidate === "ui" ? rest : argv;
+  const command: CliOptions["command"] =
+    commandCandidate === "ui"
+    || commandCandidate === "plan-node"
+    || commandCandidate === "workflow-export"
+    || commandCandidate === "workflow-import"
+      ? commandCandidate
+      : "ask";
+  const args = commandCandidate === "ask"
+    || commandCandidate === "ui"
+    || commandCandidate === "plan-node"
+    || commandCandidate === "workflow-export"
+    || commandCandidate === "workflow-import"
+    ? rest
+    : argv;
 
   const config = { ...DEFAULT_CONFIG };
   const configOverrides: Partial<RecursiveModelConfig> = {};
@@ -76,12 +94,18 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   let baseUrl = env.OLLAMA_HOST;
   let host = env.RLM_HOST;
   let uiPort: number | undefined;
+  let nodeId: string | undefined;
+  let replan: "replace" | "merge" | "cancel" | undefined;
   let sessionList = false;
   let sessionInspect: string | undefined;
   let openSession: string | undefined;
+  let exportSession: string | undefined;
+  let importWorkflow: string | undefined;
+  let exportDescription: string | undefined;
   let memoryInspect: string | undefined;
   let preferenceSet: string | undefined;
   let preferenceDelete: string | undefined;
+  let variant: "playbook" | "pipeline" | undefined;
   const promptParts: string[] = [];
 
   for (let index = 0; index < args.length; index += 1) {
@@ -228,6 +252,16 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
       continue;
     }
 
+    if (arg === "--variant") {
+      const value = readValue(args, index, arg);
+      if (value !== "playbook" && value !== "pipeline") {
+        throw new Error("--variant must be one of: playbook, pipeline.");
+      }
+      variant = value;
+      index += 1;
+      continue;
+    }
+
     if (arg === "--config") {
       configPath = readValue(args, index, arg);
       index += 1;
@@ -249,6 +283,25 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
       index += 1;
       continue;
     }
+    if (arg === "--node-id") {
+      nodeId = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg === "--replan") {
+      const value = readValue(args, index, arg);
+      if (value !== "replace" && value !== "merge" && value !== "cancel") {
+        throw new Error("--replan must be one of: replace, merge, cancel.");
+      }
+      replan = value;
+      index += 1;
+      continue;
+    }
+    if (arg === "--prompt") {
+      promptParts.push(readValue(args, index, arg));
+      index += 1;
+      continue;
+    }
     if (arg === "--session-list") {
       sessionList = true;
       continue;
@@ -260,6 +313,21 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     }
     if (arg === "--open-session") {
       openSession = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg === "--export-session") {
+      exportSession = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg === "--import-workflow") {
+      importWorkflow = readValue(args, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg === "--description") {
+      exportDescription = readValue(args, index, arg);
       index += 1;
       continue;
     }
@@ -290,6 +358,12 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     }
     else if (command === "ui") {
       prompt = DEFAULT_UI_BOOTSTRAP_PROMPT;
+    }
+    else if (command === "plan-node") {
+      prompt = DEFAULT_UI_BOOTSTRAP_PROMPT;
+    }
+    else if (command === "workflow-export" || command === "workflow-import") {
+      prompt = "";
     }
     else {
       throw new Error("Missing prompt. Example: npm run dev -- ask \"Explain recursive prompting\"");
@@ -331,11 +405,26 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   if (uiPort !== undefined) {
     options.uiPort = uiPort;
   }
+  if (nodeId) {
+    options.nodeId = nodeId;
+  }
+  if (replan) {
+    options.replan = replan;
+  }
   if (sessionInspect) {
     options.sessionInspect = sessionInspect;
   }
   if (openSession) {
     options.openSession = openSession;
+  }
+  if (exportSession) {
+    options.exportSession = exportSession;
+  }
+  if (importWorkflow) {
+    options.importWorkflow = importWorkflow;
+  }
+  if (exportDescription) {
+    options.exportDescription = exportDescription;
   }
   if (memoryInspect) {
     options.memoryInspect = memoryInspect;
@@ -345,6 +434,9 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   }
   if (preferenceDelete) {
     options.preferenceDelete = preferenceDelete;
+  }
+  if (variant) {
+    options.variant = variant;
   }
   if (modelOverride) {
     options.modelOverride = modelOverride;
@@ -361,6 +453,9 @@ export function helpText(): string {
     "  rlm \"your prompt\" [--agent coding] [--workflow default] [--json] [--trace]",
     "  rlm ask \"your prompt\" [--depth 2] [--branches 3]",
     "  rlm ui \"your prompt\" [--ui-port 4545]",
+    "  rlm plan-node --node-id root-composer --prompt \"your workflow\"",
+    "  rlm workflow-export --workflow demo --export-session session-1",
+    "  rlm workflow-import --workflow demo [--variant playbook|pipeline]",
     "",
     "Options:",
     "  --depth <n>             Override YAML runtime recursion depth. Default: model-selected",
@@ -374,7 +469,11 @@ export function helpText(): string {
     "                          Enable quality loop mode with a positive max iteration bound",
     "  --model <name>          Override YAML default Ollama model",
     "  --agent <id>            Agent override. Default: auto-route. Available: default, coding, product_designer, research",
-    "  --workflow <id>         Run configured agent workflow. Default workflow id: default",
+    "  --workflow <id>         Run configured or disk-resolved graph workflow sidecar",
+    "  --variant <mode>        Graph workflow variant override: playbook | pipeline",
+    "  --export-session <id>   Saved session id for workflow-export",
+    "  --import-workflow <id>  Workflow id alias for workflow-import (same as --workflow)",
+    "  --description <text>    Optional description for workflow-export",
     "  --config <path>         YAML config path. Default: ./rlm.config.yaml when present",
     "  --base-url <url>        Ollama base URL. Default: OLLAMA_HOST or LangChain default",
     "  --host <id>             Runtime host id. Precedence: RLM_HOST > --host > YAML runtimeHost > first host",
@@ -389,6 +488,9 @@ export function helpText(): string {
     "  --approval-mode <mode> Approval behavior: full | initial-plan | initial-plan-recursive",
     "  --approve              Auto-approve a require-approval run (non-interactive)",
     "  --ui-port <n>          Port for local React Flow UI. Default: available port",
+    "  --node-id <id>         Node id for plan-node. Default: root-composer",
+    "  --replan <choice>      plan-node replan choice: replace | merge | cancel",
+    "  --prompt <text>        Prompt for plan-node root composer",
     "  --session-list         List saved UI sessions and exit",
     "  --session-inspect <id> Inspect saved session restore verification and exit",
     "  --open-session <id>    Open a saved session in UI mode",

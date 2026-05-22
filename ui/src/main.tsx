@@ -15,7 +15,7 @@ import {
   type OnConnect,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { AlertTriangle, Check, Download, FolderOpen, GitBranchPlus, RefreshCw, Scissors, Search, Square, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, Download, FolderOpen, GitBranchPlus, RefreshCw, Scissors, Search, Square, Trash2, Upload, X } from "lucide-react";
 import "./styles.css";
 
 type ExecutionStatus =
@@ -279,6 +279,16 @@ type SavedSessionRecord = SavedSessionSummary & {
   verification: SavedSessionVerification;
 };
 
+type GraphWorkflowSummary = {
+  id: string;
+  path: string;
+  description?: string;
+  updatedAt: string;
+  variants: Array<"playbook" | "pipeline">;
+};
+
+type GraphWorkflowSaveVariant = "playbook" | "pipeline" | "both";
+
 type MemorySnapshot = {
   sessionId: string;
   scopes: Array<{ scopeId: string; lifetime: "session" | "project" | "permanent"; version: number; content: Record<string, unknown>; updatedAt: string }>;
@@ -373,6 +383,10 @@ function App() {
   const [modelSearchResults, setModelSearchResults] = useState<ModelLibraryEntry[]>([]);
   const [savedSessions, setSavedSessions] = useState<SavedSessionSummary[]>([]);
   const [savedSessionDetail, setSavedSessionDetail] = useState<SavedSessionRecord | undefined>();
+  const [graphWorkflows, setGraphWorkflows] = useState<GraphWorkflowSummary[]>([]);
+  const [runVariant, setRunVariant] = useState<"playbook" | "pipeline">("playbook");
+  const [pipelineInput, setPipelineInput] = useState("");
+  const [activeRunVariant, setActiveRunVariant] = useState<"playbook" | "pipeline" | undefined>();
   const [memory, setMemory] = useState<MemorySnapshot | undefined>();
   const selectedNode = snapshot.graph.nodes.find((node) => node.id === selectedNodeId) ?? snapshot.graph.nodes[0];
   const readiness = snapshot.chat?.readiness ?? {
@@ -383,6 +397,7 @@ function App() {
   const pendingMutation = snapshot.chat?.pendingMutation;
   const pendingClarification = snapshot.chat?.pendingClarification;
   const clarificationHistory = snapshot.chat?.clarificationHistory ?? [];
+  const graphHasPlannedNodes = snapshot.graph.nodes.length >= 2;
 
   const refresh = useCallback(async () => {
     const response = await fetch("/api/session");
@@ -409,6 +424,15 @@ function App() {
     setSavedSessions(payload.sessions);
   }, []);
 
+  const refreshGraphWorkflows = useCallback(async () => {
+    const response = await fetch("/api/graph-workflows");
+    if (!response.ok) {
+      return;
+    }
+    const payload = await response.json() as { workflows: GraphWorkflowSummary[] };
+    setGraphWorkflows(payload.workflows);
+  }, []);
+
   const refreshMemory = useCallback(async () => {
     const response = await fetch("/api/memory");
     if (!response.ok) {
@@ -421,6 +445,7 @@ function App() {
     void refresh();
     void refreshModelLibrary();
     void refreshSavedSessions();
+    void refreshGraphWorkflows();
     void refreshMemory();
     const events = new EventSource("/api/events");
     events.addEventListener("snapshot", (event) => {
@@ -433,7 +458,7 @@ function App() {
       void refreshMemory();
     });
     return () => events.close();
-  }, [refresh, refreshMemory, refreshModelLibrary, refreshSavedSessions]);
+  }, [refresh, refreshMemory, refreshModelLibrary, refreshSavedSessions, refreshGraphWorkflows]);
 
   useEffect(() => {
     if (draggingRef.current) {
@@ -561,6 +586,13 @@ function App() {
             <span className={`status ${snapshot.status}`} title={snapshot.runSummary?.message}>
               {uiRunStatusLabels[snapshot.status] ?? snapshot.status}
             </span>
+            {activeRunVariant || snapshot.status === "running"
+              ? (
+                <span className="meta-pill run-variant-pill">
+                  Running {activeRunVariant ?? runVariant}
+                </span>
+              )
+              : null}
             {snapshot.activeNodeId
               ? (() => {
                 const activeNode = snapshot.graph.nodes.find((node) => node.id === snapshot.activeNodeId);
@@ -582,7 +614,13 @@ function App() {
           <button
             className="icon"
             aria-label="Run workflow"
-            onClick={() => runAction(setErrorMessage, () => post("/api/chat/confirm-run", {}), refresh)}
+            onClick={() => runAction(setErrorMessage, async () => {
+              setActiveRunVariant(runVariant);
+              return post("/api/chat/confirm-run", {
+                variant: runVariant,
+                input: runVariant === "pipeline" ? pipelineInput : undefined,
+              });
+            }, refresh)}
           >
             Run workflow
           </button>
@@ -604,6 +642,29 @@ function App() {
           </button>
         </header>
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
+        <GraphWorkflowPanel
+          workflows={graphWorkflows}
+          graphNodeCount={snapshot.graph.nodes.length}
+          runVariant={runVariant}
+          setRunVariant={setRunVariant}
+          pipelineInput={pipelineInput}
+          setPipelineInput={setPipelineInput}
+          refresh={async () => {
+            await refresh();
+            await refreshGraphWorkflows();
+          }}
+          setErrorMessage={setErrorMessage}
+        />
+        <RefineGraphPanel
+          collapsedByDefault={graphHasPlannedNodes}
+          chatMessage={chatMessage}
+          setChatMessage={setChatMessage}
+          pendingMutation={pendingMutation}
+          deleteStrategy={deleteStrategy}
+          setDeleteStrategy={setDeleteStrategy}
+          refresh={refresh}
+          setErrorMessage={setErrorMessage}
+        />
         <SavedSessionPanel
           sessions={savedSessions}
           detail={savedSessionDetail}
@@ -636,57 +697,6 @@ function App() {
             <label>Run control</label>
             <button disabled={runDisabled}>Run disabled until confirmed</button>
             {runDisabled ? <div className="meta-row">{readiness.reason}</div> : <div className="meta-row">Ready to run.</div>}
-          </div>
-          <div>
-            <label>Refine graph (optional)</label>
-            <div className="meta-row">Use chat to preview edits after planning. Graph submit is the default authoring path.</div>
-            <textarea
-              value={chatMessage}
-              onChange={(event) => setChatMessage(event.target.value)}
-              placeholder="edit task-1: refine this prompt"
-            />
-            <div className="actions">
-              <button
-                disabled={chatMessage.trim().length === 0}
-                onClick={() => runAction(setErrorMessage, () => post("/api/chat/message", { message: chatMessage }), refresh)}
-              >
-                Preview mutation
-              </button>
-              <button onClick={() => runAction(setErrorMessage, () => post("/api/chat/cancel", {}), refresh)}>Clear preview</button>
-            </div>
-            {pendingMutation
-              ? (
-                <div className="meta-row">
-                  Pending: {pendingMutation.summary}
-                  {pendingMutation.requiresDeleteChoice && pendingMutation.pendingDeleteChoice
-                    ? (
-                      <div className="actions">
-                        <select value={deleteStrategy} onChange={(event) => setDeleteStrategy(event.target.value as "delete_subtree" | "rewire_dependents")}>
-                          {pendingMutation.pendingDeleteChoice.options.map((option) => (
-                            <option key={option} value={option}>{deleteStrategyLabel(option)}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => runAction(
-                            setErrorMessage,
-                            () => post("/api/chat/apply", { proposalId: pendingMutation.id, deleteStrategy }),
-                            refresh,
-                          )}
-                        >
-                          Apply preview
-                        </button>
-                      </div>
-                    )
-                    : (
-                      <div className="actions">
-                        <button onClick={() => runAction(setErrorMessage, () => post("/api/chat/apply", { proposalId: pendingMutation.id }), refresh)}>
-                          Apply preview
-                        </button>
-                      </div>
-                    )}
-                </div>
-              )
-              : <div className="meta-row">No pending mutation preview.</div>}
           </div>
           <div>
             <label>Clarification timeline</label>
@@ -839,8 +849,8 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
       {data.onlyRoot && node.id === "root-composer"
         ? (
           <div className="empty root-empty">
-            <b>Start with a task</b>
-            <span>Describe the workflow, then draft child nodes.</span>
+            <b>Start here — plan from this node</b>
+            <span>Describe your workflow above, then click Plan children. Graph submit is the default authoring path.</span>
           </div>
         )
         : null}
@@ -931,6 +941,226 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
           ))
         : <Handle className="node-port node-port-output" id="out" type="source" position={Position.Right} />}
     </div>
+  );
+}
+
+function RefineGraphPanel({
+  collapsedByDefault,
+  chatMessage,
+  setChatMessage,
+  pendingMutation,
+  deleteStrategy,
+  setDeleteStrategy,
+  refresh,
+  setErrorMessage,
+}: {
+  collapsedByDefault: boolean;
+  chatMessage: string;
+  setChatMessage: (value: string) => void;
+  pendingMutation: NonNullable<SessionSnapshot["chat"]>["pendingMutation"];
+  deleteStrategy: "delete_subtree" | "rewire_dependents";
+  setDeleteStrategy: (value: "delete_subtree" | "rewire_dependents") => void;
+  refresh: () => Promise<void>;
+  setErrorMessage: (message: string | undefined) => void;
+}) {
+  return (
+    <details className="session-panel chat-refine-panel" open={!collapsedByDefault}>
+      <summary>Refine graph (optional secondary)</summary>
+      <div className="meta-row">Graph node submit is the default authoring path. Use chat only to preview edits after planning.</div>
+      <textarea
+        value={chatMessage}
+        onChange={(event) => setChatMessage(event.target.value)}
+        placeholder="edit task-1: refine this prompt"
+        aria-label="Optional graph refinement chat"
+      />
+      <div className="actions">
+        <button
+          disabled={chatMessage.trim().length === 0}
+          onClick={() => runAction(setErrorMessage, () => post("/api/chat/message", { message: chatMessage }), refresh)}
+        >
+          Preview mutation
+        </button>
+        <button onClick={() => runAction(setErrorMessage, () => post("/api/chat/cancel", {}), refresh)}>Clear preview</button>
+      </div>
+      {pendingMutation
+        ? (
+          <div className="meta-row">
+            Pending: {pendingMutation.summary}
+            {pendingMutation.requiresDeleteChoice && pendingMutation.pendingDeleteChoice
+              ? (
+                <div className="actions">
+                  <select value={deleteStrategy} onChange={(event) => setDeleteStrategy(event.target.value as "delete_subtree" | "rewire_dependents")}>
+                    {pendingMutation.pendingDeleteChoice.options.map((option) => (
+                      <option key={option} value={option}>{deleteStrategyLabel(option)}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => runAction(
+                      setErrorMessage,
+                      () => post("/api/chat/apply", { proposalId: pendingMutation.id, deleteStrategy }),
+                      refresh,
+                    )}
+                  >
+                    Apply preview
+                  </button>
+                </div>
+              )
+              : (
+                <div className="actions">
+                  <button onClick={() => runAction(setErrorMessage, () => post("/api/chat/apply", { proposalId: pendingMutation.id }), refresh)}>
+                    Apply preview
+                  </button>
+                </div>
+              )}
+          </div>
+        )
+        : <div className="meta-row">No pending mutation preview.</div>}
+    </details>
+  );
+}
+
+function GraphWorkflowPanel({
+  workflows,
+  graphNodeCount,
+  runVariant,
+  setRunVariant,
+  pipelineInput,
+  setPipelineInput,
+  refresh,
+  setErrorMessage,
+}: {
+  workflows: GraphWorkflowSummary[];
+  graphNodeCount: number;
+  runVariant: "playbook" | "pipeline";
+  setRunVariant: (variant: "playbook" | "pipeline") => void;
+  pipelineInput: string;
+  setPipelineInput: (value: string) => void;
+  refresh: () => Promise<void>;
+  setErrorMessage: (message: string | undefined) => void;
+}) {
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [workflowName, setWorkflowName] = useState("");
+  const [description, setDescription] = useState("");
+  const [saveVariant, setSaveVariant] = useState<GraphWorkflowSaveVariant>("both");
+  const [saveMessage, setSaveMessage] = useState<string | undefined>();
+
+  return (
+    <section className="session-panel graph-workflow-panel">
+      <div className="panel-heading">
+        <div>
+          <label>Graph workflows</label>
+          <div className="meta-row">Save, import, and run frozen graph sidecars.</div>
+        </div>
+        <div className="actions">
+          <button disabled={graphNodeCount === 0} onClick={() => setSaveOpen(true)}>
+            <Download size={16} aria-hidden />
+            Save as workflow
+          </button>
+          <button onClick={() => runAction(setErrorMessage, async () => refresh(), refresh)}>
+            <RefreshCw size={16} aria-hidden />
+            Refresh
+          </button>
+        </div>
+      </div>
+      <div className="run-variant-controls">
+        <label htmlFor="run-variant">Run as</label>
+        <select id="run-variant" value={runVariant} onChange={(event) => setRunVariant(event.target.value as "playbook" | "pipeline")}>
+          <option value="playbook">Playbook</option>
+          <option value="pipeline">Pipeline</option>
+        </select>
+        {runVariant === "pipeline"
+          ? (
+            <input
+              aria-label="Pipeline task input"
+              placeholder="Task input for {{input}}"
+              value={pipelineInput}
+              onChange={(event) => setPipelineInput(event.target.value)}
+            />
+          )
+          : null}
+      </div>
+      {saveMessage ? <div className="meta-row">{saveMessage}</div> : null}
+      {workflows.length === 0
+        ? (
+          <div className="empty session-empty">
+            <b>No graph workflows</b>
+            <span>Save the current graph as a workflow sidecar under .rlm/workflows/.</span>
+          </div>
+        )
+        : (
+          <div className="session-list">
+            <div className="meta-row">Graph workflows</div>
+            {workflows.map((item) => (
+              <div className="session-row complete" key={item.id}>
+                <div className="session-row-main">
+                  <b>{item.id}</b>
+                  <span>{item.variants.join(", ")} · {new Date(item.updatedAt).toLocaleString()}</span>
+                </div>
+                <button
+                  className="icon"
+                  title="Import workflow"
+                  aria-label={`Import ${item.id}`}
+                  onClick={() => {
+                    if (!window.confirm(`Import workflow "${item.id}"? Current graph will be replaced.`)) {
+                      return;
+                    }
+                    void runAction(setErrorMessage, async () => {
+                      await post("/api/graph-workflows/import", { workflowId: item.id });
+                      setSaveMessage(`Workflow imported: ${item.id} — Edit and re-export from the graph editor.`);
+                    }, refresh);
+                  }}
+                >
+                  <Upload size={16} aria-hidden />
+                  Import workflow
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      {saveOpen
+        ? (
+          <div className="modal-overlay" role="presentation" onClick={() => setSaveOpen(false)}>
+            <div className="modal-card" role="dialog" aria-labelledby="save-graph-workflow-title" onClick={(event) => event.stopPropagation()}>
+              <div className="panel-heading">
+                <h2 id="save-graph-workflow-title">Save graph workflow</h2>
+                <button className="icon" aria-label="Close save dialog" onClick={() => setSaveOpen(false)}>
+                  <X size={16} aria-hidden />
+                </button>
+              </div>
+              <label htmlFor="workflow-name">Workflow name</label>
+              <input id="workflow-name" value={workflowName} onChange={(event) => setWorkflowName(event.target.value)} />
+              <label htmlFor="workflow-description">Description (optional)</label>
+              <textarea id="workflow-description" value={description} onChange={(event) => setDescription(event.target.value)} />
+              <fieldset className="variant-fieldset">
+                <legend>Save as:</legend>
+                <label><input type="radio" name="save-variant" checked={saveVariant === "playbook"} onChange={() => setSaveVariant("playbook")} /> Playbook</label>
+                <div className="meta-row">Replay with literal prompts — no substitution.</div>
+                <label><input type="radio" name="save-variant" checked={saveVariant === "pipeline"} onChange={() => setSaveVariant("pipeline")} /> Pipeline</label>
+                <div className="meta-row">Root prompt uses `{"{{input}}"}` for new tasks each run.</div>
+                <label><input type="radio" name="save-variant" checked={saveVariant === "both"} onChange={() => setSaveVariant("both")} /> Both</label>
+              </fieldset>
+              <div className="actions">
+                <button
+                  disabled={workflowName.trim().length === 0}
+                  onClick={() => runAction(setErrorMessage, async () => {
+                    await post("/api/graph-workflows/export", {
+                      workflowId: workflowName.trim(),
+                      description: description.trim() || undefined,
+                      variant: saveVariant,
+                    });
+                    setSaveMessage(`Workflow saved: ${workflowName.trim()}`);
+                    setSaveOpen(false);
+                  }, refresh)}
+                >
+                  Save
+                </button>
+                <button onClick={() => setSaveOpen(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )
+        : null}
+    </section>
   );
 }
 

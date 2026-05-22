@@ -10,7 +10,19 @@ import type { ApprovalMode, DeleteStrategy } from "../domain/types.js";
 import type { SavedSessionPayload, SessionStorePort } from "../ports/session-store-port.js";
 import type { FileMemoryStore } from "../adapters/file-memory-store.js";
 import type { FileVectorIndex } from "../adapters/file-vector-index.js";
-import { buildSavedSessionPayload, restoreSessionMemory } from "./session-memory-bridge.js";
+import { buildSavedSessionPayload, restoreGraphWorkflowMetadata, restoreSessionMemory } from "./session-memory-bridge.js";
+import {
+  applyPipelineTemplate,
+  buildImportSessionSnapshot,
+  graphHasPipelineTemplate,
+  importSidecarToGraph,
+} from "./graph-workflow-serializer.js";
+import {
+  exportAndSaveGraphWorkflow,
+  listGraphWorkflows,
+  loadGraphWorkflow,
+} from "./graph-workflow-store.js";
+import type { GraphWorkflowSaveVariant } from "./graph-workflow-types.js";
 
 export interface SessionRuntimeRef {
   getRunId: () => string;
@@ -38,9 +50,10 @@ export async function startControlServer(input: {
   sessionStore?: SessionStorePort | undefined;
   sessionRuntime?: SessionRuntimeRef | undefined;
   onConfirmRun?: ((session: InteractiveExecutionSession) => void | Promise<void>) | undefined;
+  projectRoot?: string | undefined;
 }): Promise<ControlServer> {
   const server = createServer((request, response) => {
-    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun, input.modelLibrary, input.sessionStore, input.memory, input.sessionRuntime);
+    void routeRequest(request, response, input.session, input.uiDistDir, input.onConfirmRun, input.modelLibrary, input.sessionStore, input.memory, input.sessionRuntime, input.projectRoot);
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -71,6 +84,7 @@ async function routeRequest(
   sessionStore?: SessionStorePort | undefined,
   memory?: MemoryResolver | undefined,
   sessionRuntime?: SessionRuntimeRef | undefined,
+  projectRoot?: string | undefined,
 ): Promise<void> {
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
   const activeMemory = () => sessionRuntime?.getMemory() ?? memory;
@@ -94,6 +108,54 @@ async function routeRequest(
         return sendJson(response, { error: "Saved sessions are not configured." }, 404);
       }
       return sendJson(response, { sessions: await sessionStore.list() });
+    }
+    if (request.method === "GET" && url.pathname === "/api/graph-workflows") {
+      return sendJson(response, { workflows: await listGraphWorkflows(projectRoot ?? process.cwd()) });
+    }
+    if (request.method === "POST" && url.pathname === "/api/graph-workflows/export") {
+      const body = await readJsonBody(request);
+      const workflowId = String(body["workflowId"] ?? "").trim();
+      if (!workflowId) {
+        return sendJson(response, { error: "workflowId is required." }, 400);
+      }
+      const variant = parseSaveVariant(body["variant"]);
+      if (!variant) {
+        return sendJson(response, { error: "variant must be playbook, pipeline, or both." }, 400);
+      }
+      const description = typeof body["description"] === "string" ? body["description"] : undefined;
+      const saved = await exportAndSaveGraphWorkflow({
+        workflowId,
+        description,
+        variant,
+        graph: session.snapshot().graph,
+        projectRoot: projectRoot ?? process.cwd(),
+      });
+      session.patchGraphWorkflowMetadata({
+        linkedWorkflowId: workflowId,
+        lastVariant: variant,
+        exportedAt: saved.sidecar.updatedAt,
+      });
+      return sendJson(response, saved);
+    }
+    if (request.method === "POST" && url.pathname === "/api/graph-workflows/import") {
+      const body = await readJsonBody(request);
+      const workflowId = String(body["workflowId"] ?? "").trim();
+      if (!workflowId) {
+        return sendJson(response, { error: "workflowId is required." }, 400);
+      }
+      try {
+        const sidecar = await loadGraphWorkflow(workflowId, { projectRoot: projectRoot ?? process.cwd() });
+        const imported = importSidecarToGraph(sidecar, "playbook");
+        session.restoreSnapshot(buildImportSessionSnapshot(imported.graph));
+        session.patchGraphWorkflowMetadata({
+          linkedWorkflowId: workflowId,
+          lastVariant: imported.variant,
+        });
+        return sendJson(response, { ...session.snapshot(), workflowId, importedVariant: imported.variant });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        return sendJson(response, { error: `Import failed: invalid graph workflow file. ${message}` }, 400);
+      }
     }
     if (request.method === "GET" && url.pathname === "/api/memory") {
       const resolvedMemory = activeMemory();
@@ -138,6 +200,7 @@ async function routeRequest(
           memoryStore: sessionRuntime.memoryStore,
           vectorIndex: sessionRuntime.vectorIndex,
           embedProvider: sessionRuntime.embedProvider ?? null,
+          graphWorkflowMetadata: session.getGraphWorkflowMetadata(),
         })
         : legacySavedSessionPayload(snapshot);
       const saved = await sessionStore.save({
@@ -176,7 +239,15 @@ async function routeRequest(
         sessionRuntime.setMemory(sessionRuntime.createMemory(runId));
       }
       session.restoreSnapshot(saved.payload.session as ReturnType<InteractiveExecutionSession["snapshot"]>);
-      return sendJson(response, { ...session.snapshot(), savedSession: saved });
+      const metadataRestore = restoreGraphWorkflowMetadata(saved.payload);
+      session.setGraphWorkflowMetadata(metadataRestore.metadata);
+      return sendJson(response, {
+        ...session.snapshot(),
+        savedSession: saved,
+        graphWorkflowMetadataRestore: metadataRestore.degraded
+          ? { degraded: true, note: metadataRestore.note }
+          : { degraded: false },
+      });
     }
     if (request.method === "GET" && url.pathname === "/api/model-library") {
       if (!modelLibrary) {
@@ -259,14 +330,27 @@ async function routeRequest(
       session.setNodeSamplingOverride(nodeId, body);
       return sendJson(response, session.snapshot());
     }
+    if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/expert$/)) {
+      const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+      const body = await readJsonBody(request);
+      session.setNodeExpertOverride(nodeId, {
+        agentId: typeof body["agentId"] === "string" ? body["agentId"] : undefined,
+        runtime: body["runtime"] === "single-pass" || body["runtime"] === "rlm" ? body["runtime"] : undefined,
+        toolAllowlist: Array.isArray(body["toolAllowlist"]) ? body["toolAllowlist"].map(String) : undefined,
+        purposeTiers: body["purposeTiers"] && typeof body["purposeTiers"] === "object" ? body["purposeTiers"] as Record<string, string> : undefined,
+      });
+      return sendJson(response, session.snapshot());
+    }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/plan$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
-      const result = session.planNode(nodeId);
+      const body = await readJsonBody(request);
+      const result = await session.planNode(nodeId, { replan: parseReplanChoice(body["replan"]) });
       return sendJson(response, { ...session.snapshot(), plan: result });
     }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/breakdown$/)) {
       const nodeId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
-      const result = session.planNode(nodeId);
+      const body = await readJsonBody(request);
+      const result = await session.planNode(nodeId, { replan: parseReplanChoice(body["replan"]) });
       return sendJson(response, { ...session.snapshot(), plan: result });
     }
     if (request.method === "POST" && url.pathname.match(/^\/api\/nodes\/[^/]+\/extend-budget$/)) {
@@ -369,6 +453,15 @@ async function routeRequest(
       return sendJson(response, session.snapshot());
     }
     if (request.method === "POST" && url.pathname === "/api/chat/confirm-run") {
+      const body = await readJsonBody(request);
+      const runVariant = body["variant"] === "pipeline" ? "pipeline" : "playbook";
+      const taskInput = typeof body["input"] === "string" ? body["input"].trim() : "";
+      if (runVariant === "pipeline" && taskInput.length > 0) {
+        const currentGraph = session.snapshot().graph;
+        if (graphHasPipelineTemplate(currentGraph)) {
+          session.restoreSnapshot(buildImportSessionSnapshot(applyPipelineTemplate(currentGraph, { input: taskInput })));
+        }
+      }
       const readiness = session.confirmGraphAndRun();
       if (readiness.state === "ready_to_run" && onConfirmRun && !session.isConfirmedExecutionRunning()) {
         void Promise.resolve(onConfirmRun(session)).catch((error: unknown) => {
@@ -376,7 +469,7 @@ async function routeRequest(
           session.stop(typeof message === "string" ? message : "UI execution failed");
         });
       }
-      return sendJson(response, { ...session.snapshot(), readiness });
+      return sendJson(response, { ...session.snapshot(), readiness, runVariant });
     }
     if (request.method === "POST" && url.pathname === "/api/clarifications/ask") {
       const body = await readJsonBody(request);
@@ -501,6 +594,10 @@ function legacySavedSessionPayload(snapshot: ReturnType<InteractiveExecutionSess
   };
 }
 
+function parseReplanChoice(value: unknown): "replace" | "merge" | "cancel" | undefined {
+  return value === "replace" || value === "merge" || value === "cancel" ? value : undefined;
+}
+
 function streamEvents(response: ServerResponse, session: InteractiveExecutionSession): void {
   response.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -602,6 +699,13 @@ function contentType(filePath: string): string {
 
 function isApprovalMode(value: unknown): value is ApprovalMode {
   return value === "full" || value === "initial-plan" || value === "initial-plan-recursive";
+}
+
+function parseSaveVariant(value: unknown): GraphWorkflowSaveVariant | undefined {
+  if (value === "playbook" || value === "pipeline" || value === "both") {
+    return value;
+  }
+  return undefined;
 }
 
 function toApprovalModeLabel(mode: ApprovalMode): string {

@@ -18,13 +18,13 @@
 
 ### Graph Workflow Export
 
-- [ ] **EXPORT-01**: User can save an approved graph as a lossless `kind: graph` workflow sidecar without converting to legacy agent-list workflows.
-- [ ] **EXPORT-02**: Save dialog offers Playbook, Pipeline, or Both variants for the same workflow id.
-- [ ] **EXPORT-03**: Playbook variant stores literal node prompts; Pipeline variant stores template prompts with `{{input}}` at least at the root.
-- [ ] **EXPORT-04**: User can import a saved graph workflow into the editor and re-export after edits.
-- [ ] **EXPORT-05**: Saved graph workflows run through a frozen graph executor without replan unless the user edits the graph.
-- [ ] **EXPORT-06**: CLI and UI support explicit `--variant playbook|pipeline` override and display which variant ran at start.
-- [ ] **EXPORT-07**: Missing agents, models, template variables, or invalid sidecar schema fail explicitly at run start.
+- [x] **EXPORT-01**: User can save an approved graph as a lossless `kind: graph` workflow sidecar without converting to legacy agent-list workflows.
+- [x] **EXPORT-02**: Save dialog offers Playbook, Pipeline, or Both variants for the same workflow id.
+- [x] **EXPORT-03**: Playbook variant stores literal node prompts; Pipeline variant stores template prompts with `{{input}}` at least at the root.
+- [x] **EXPORT-04**: User can import a saved graph workflow into the editor and re-export after edits.
+- [x] **EXPORT-05**: Saved graph workflows run through a frozen graph executor without replan unless the user edits the graph.
+- [x] **EXPORT-06**: CLI and UI support explicit `--variant playbook|pipeline` override and display which variant ran at start.
+- [x] **EXPORT-07**: Missing agents, models, template variables, or invalid sidecar schema fail explicitly at run start.
 
 ### Expert Team
 
@@ -35,7 +35,7 @@
 - [ ] **TEAM-05**: Expert presets define purpose-to-tier maps in config and execution honors them via purpose routing.
 - [ ] **TEAM-06**: Planner sets `runtime: rlm` on high-complexity nodes at plan time; user can override to single-pass or RLM explicitly.
 - [ ] **TEAM-07**: Node execution binds expert tools, tiers, and runtime mode with explicit trace and UI metadata.
-- [ ] **TEAM-08**: Graph workflow export includes expert assignment, custom overrides, tool allowlist snapshot, tier map snapshot, and runtime mode.
+- [x] **TEAM-08**: Graph workflow export includes expert assignment, custom overrides, tool allowlist snapshot, tier map snapshot, and runtime mode.
 
 ### Graph Execution
 
@@ -45,9 +45,9 @@
 
 ### UI and CLI Surfaces
 
-- [ ] **SURF-01**: CLI supports plan-from-node, replan with protection gate, graph workflow export/import, and frozen graph workflow run with the same semantics as the UI.
-- [ ] **SURF-02**: Global chat-first pre-run authoring is demoted; graph node submit is the default authoring path (chat may remain as secondary refinement if kept).
-- [ ] **SURF-03**: Session save/reopen preserves plan lineage, expert fields, and graph workflow export metadata introduced in v1.5.
+- [x] **SURF-01**: CLI supports plan-from-node, replan with protection gate, graph workflow export/import, and frozen graph workflow run with the same semantics as the UI.
+- [x] **SURF-02**: Global chat-first pre-run authoring is demoted; graph node submit is the default authoring path (chat may remain as secondary refinement if kept).
+- [x] **SURF-03**: Session save/reopen preserves plan lineage, expert fields, and graph workflow export metadata introduced in v1.5.
 
 ## Future Requirements
 
@@ -92,13 +92,13 @@
 | PLAN-05 | Phase 31 | Pending |
 | PLAN-06 | Phase 31 | Pending |
 | PLAN-07 | Phase 30 | Pending |
-| EXPORT-01 | Phase 34 | Pending |
-| EXPORT-02 | Phase 34 | Pending |
-| EXPORT-03 | Phase 34 | Pending |
-| EXPORT-04 | Phase 34 | Pending |
-| EXPORT-05 | Phase 34 | Pending |
-| EXPORT-06 | Phase 34 | Pending |
-| EXPORT-07 | Phase 34 | Pending |
+| EXPORT-01 | Phase 34 | Complete |
+| EXPORT-02 | Phase 34 | Complete |
+| EXPORT-03 | Phase 34 | Complete |
+| EXPORT-04 | Phase 34 | Complete |
+| EXPORT-05 | Phase 34 | Complete |
+| EXPORT-06 | Phase 34 | Complete |
+| EXPORT-07 | Phase 34 | Complete |
 | TEAM-01 | Phase 32 | Pending |
 | TEAM-02 | Phase 32 | Pending |
 | TEAM-03 | Phase 32 | Pending |
@@ -106,13 +106,13 @@
 | TEAM-05 | Phase 32 | Pending |
 | TEAM-06 | Phase 32 | Pending |
 | TEAM-07 | Phase 32 | Pending |
-| TEAM-08 | Phase 34 | Pending |
+| TEAM-08 | Phase 34 | Complete |
 | EXEC-01 | Phase 33 | Complete |
 | EXEC-02 | Phase 33 | Complete |
 | EXEC-03 | Phase 33 | Complete |
-| SURF-01 | Phase 35 | Pending |
-| SURF-02 | Phase 35 | Pending |
-| SURF-03 | Phase 35 | Pending |
+| SURF-01 | Phase 35 | Complete |
+| SURF-02 | Phase 35 | Complete |
+| SURF-03 | Phase 35 | Complete |
 
 **Coverage:**
 - v1.5 requirements: 28 total
