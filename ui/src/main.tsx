@@ -152,6 +152,11 @@ type ExecutionNode = {
   effectiveModel?: string;
   modelOverride?: string;
   modelOverrideSource?: "user" | "none";
+  expertAgentId?: "default" | "coding" | "qa" | "product_designer" | "research";
+  expertAssignmentMode?: "planner" | "custom";
+  expertRuntime?: "single-pass" | "rlm";
+  expertToolAllowlist?: string[];
+  expertPurposeTiers?: Record<string, string>;
   samplingOverride?: SamplingOptions;
   effectiveSampling?: {
     values: SamplingOptions;
@@ -282,6 +287,14 @@ type MemorySnapshot = {
   audit: Array<{ seq: number; scopeId: string; actor: string; accepted: boolean; reason: string; timestamp: string }>;
 };
 
+function truncateFailureMessage(message: string, maxLength = 120): string {
+  const trimmed = message.trim();
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, maxLength - 1)}…`;
+}
+
 /** Mirror `labelForCategory` / status strings in `src/domain/execution-failure.ts` for header copy. */
 const uiRunStatusLabels: Record<ExecutionStatus, string> = {
   planned: "Planned",
@@ -297,18 +310,28 @@ const uiRunStatusLabels: Record<ExecutionStatus, string> = {
 
 type FlowNodeData = {
   execution: ExecutionNode;
+  activeNodeId?: string | undefined;
+  runSummaryMessage?: string | undefined;
+  refresh?: () => Promise<void>;
+  setErrorMessage?: (message: string | undefined) => void;
+  planningNodeId?: string | undefined;
+  setPlanningNodeId?: (nodeId: string | undefined) => void;
+  planningErrorNodeId?: string | undefined;
+  planningErrorMessage?: string | undefined;
+  setPlanningError?: (error: { nodeId: string; message: string } | undefined) => void;
+  onlyRoot?: boolean | undefined;
 };
 
 const nodeTypes = {
   execution: ExecutionNodeCard,
 };
 
-function executionToFlowNode(node: ExecutionNode, index: number): Node<FlowNodeData> {
+function executionToFlowNode(node: ExecutionNode, index: number, data: Omit<FlowNodeData, "execution"> = {}): Node<FlowNodeData> {
   return {
     id: node.id,
     type: "execution",
     position: node.position ?? { x: node.depth * 430, y: index * 245 },
-    data: { execution: node },
+    data: { execution: node, ...data },
   };
 }
 
@@ -340,6 +363,8 @@ function App() {
   const rfInstanceRef = useRef<{ setViewport: (v: { x: number; y: number; zoom: number }) => void } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const [planningNodeId, setPlanningNodeId] = useState<string | undefined>();
+  const [planningError, setPlanningError] = useState<{ nodeId: string; message: string } | undefined>();
   const [chatMessage, setChatMessage] = useState("");
   const [deleteStrategy, setDeleteStrategy] = useState<"delete_subtree" | "rewire_dependents">("delete_subtree");
   const [clarificationAnswer, setClarificationAnswer] = useState("");
@@ -419,9 +444,28 @@ function App() {
       return;
     }
     lastGraphSyncKey.current = key;
-    setNodes(snapshot.graph.nodes.map((node, index) => executionToFlowNode(node, index)));
+    const onlyRoot = snapshot.graph.nodes.length === 1 && snapshot.graph.nodes[0]?.id === "root-composer";
+    setNodes(snapshot.graph.nodes.map((node, index) => executionToFlowNode(node, index, {
+      refresh,
+      setErrorMessage,
+      planningNodeId,
+      setPlanningNodeId,
+      planningErrorNodeId: planningError?.nodeId,
+      planningErrorMessage: planningError?.message,
+      setPlanningError,
+      onlyRoot,
+      activeNodeId: snapshot.activeNodeId,
+      runSummaryMessage: snapshot.runSummary?.message,
+    })));
     setEdges(graphToFlowEdges(snapshot.graph.edges));
-  }, [snapshot]);
+  }, [planningError, planningNodeId, refresh, snapshot]);
+
+  useEffect(() => {
+    if (snapshot.graph.nodes.length === 1 && snapshot.graph.nodes[0]?.id === "root-composer") {
+      setSelectedNodeId("root-composer");
+      rfInstanceRef.current?.setViewport({ x: 260, y: 120, zoom: 1 });
+    }
+  }, [snapshot.graph.nodes]);
 
   useEffect(() => {
     const v = snapshot.graph.viewport;
@@ -513,10 +557,23 @@ function App() {
       </section>
       <aside className="inspector">
         <header>
-          <div className="run-status-block">
+          <div className="run-status-block" aria-live="polite">
             <span className={`status ${snapshot.status}`} title={snapshot.runSummary?.message}>
               {uiRunStatusLabels[snapshot.status] ?? snapshot.status}
             </span>
+            {snapshot.activeNodeId
+              ? (() => {
+                const activeNode = snapshot.graph.nodes.find((node) => node.id === snapshot.activeNodeId);
+                if (!activeNode) {
+                  return null;
+                }
+                return (
+                  <span className="run-active-node">
+                    Running: {activeNode.label} ({activeNode.expertAgentId ?? "default"}, {activeNode.expertRuntime ?? "single-pass"})
+                  </span>
+                );
+              })()
+              : null}
             {snapshot.status === "failed" && snapshot.runSummary?.message
               ? <span className="run-failure-hint">Run stopped: {snapshot.runSummary.message}</span>
               : null}
@@ -571,6 +628,9 @@ function App() {
           refresh={refreshModelLibrary}
           setErrorMessage={setErrorMessage}
         />
+        {selectedNode
+          ? <NodeInspector node={selectedNode} refresh={refresh} setErrorMessage={setErrorMessage} planningError={planningError} />
+          : <p className="empty">Waiting for execution graph.</p>}
         <div className="node-inspector">
           <div>
             <label>Run control</label>
@@ -578,7 +638,8 @@ function App() {
             {runDisabled ? <div className="meta-row">{readiness.reason}</div> : <div className="meta-row">Ready to run.</div>}
           </div>
           <div>
-            <label>Chat mutation</label>
+            <label>Refine graph (optional)</label>
+            <div className="meta-row">Use chat to preview edits after planning. Graph submit is the default authoring path.</div>
             <textarea
               value={chatMessage}
               onChange={(event) => setChatMessage(event.target.value)}
@@ -681,9 +742,6 @@ function App() {
             </div>
           </div>
         </div>
-        {selectedNode
-          ? <NodeInspector node={selectedNode} refresh={refresh} setErrorMessage={setErrorMessage} />
-          : <p className="empty">Waiting for execution graph.</p>}
       </aside>
     </main>
   );
@@ -692,8 +750,66 @@ function App() {
 function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
   const node = data.execution;
   const composer = node.composer;
+  const [prompt, setPrompt] = useState(node.prompt ?? "");
+  const isPlanning = data.planningNodeId === node.id;
+  const isActive = data.activeNodeId === node.id;
+  const blockedByAncestor = node.status === "failed"
+    && (node.approvalReason?.includes("ancestor") ?? false);
+  const nodeFailureReason = node.status === "failed" && node.approvalReason
+    ? truncateFailureMessage(node.approvalReason)
+    : undefined;
+  const planningError = data.planningErrorNodeId === node.id ? data.planningErrorMessage : undefined;
+  const editable = node.status === "planned" || node.status === "ready" || node.status === "awaiting_approval";
+  useEffect(() => {
+    setPrompt(node.prompt ?? "");
+  }, [node.id, node.prompt]);
+
+  const planFromCard = () => {
+    if (!data.setErrorMessage || !data.refresh || !data.setPlanningNodeId) {
+      return;
+    }
+    void (async () => {
+      data.setErrorMessage?.(undefined);
+      data.setPlanningError?.(undefined);
+      data.setPlanningNodeId?.(node.id);
+      try {
+        await post(`/api/nodes/${encodeURIComponent(node.id)}/edit`, { prompt });
+        await post(`/api/nodes/${encodeURIComponent(node.id)}/plan`, {});
+      } catch (error) {
+        const message = formatPlanningError(error instanceof Error ? error.message : String(error));
+        data.setErrorMessage?.(message);
+        data.setPlanningError?.({ nodeId: node.id, message });
+      } finally {
+        data.setPlanningNodeId?.(undefined);
+        await data.refresh?.();
+      }
+    })();
+  };
+  const chooseReplan = (choice: "replace" | "merge" | "cancel") => {
+    if (!data.setErrorMessage || !data.refresh || !data.setPlanningNodeId) {
+      return;
+    }
+    void (async () => {
+      data.setErrorMessage?.(undefined);
+      data.setPlanningError?.(undefined);
+      data.setPlanningNodeId?.(node.id);
+      try {
+        await post(`/api/nodes/${encodeURIComponent(node.id)}/plan`, { replan: choice });
+      } catch (error) {
+        const message = formatPlanningError(error instanceof Error ? error.message : String(error));
+        data.setErrorMessage?.(message);
+        data.setPlanningError?.({ nodeId: node.id, message });
+      } finally {
+        data.setPlanningNodeId?.(undefined);
+        await data.refresh?.();
+      }
+    })();
+  };
   return (
-    <div className={`node-card ${node.status}`}>
+    <div
+      className={`node-card ${node.status} ${node.id === "root-composer" ? "root-composer-focus" : ""} ${isPlanning ? "planning-in-progress" : ""} ${isActive ? "active-execution" : ""} ${blockedByAncestor ? "blocked-by-ancestor" : ""}`}
+      aria-busy={node.status === "running" || isPlanning ? "true" : undefined}
+    >
       {composer && composer.inputs.length > 0
         ? composer.inputs.map((port, i) => (
             <Handle
@@ -709,11 +825,35 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
       <div className="node-header">
         <div>
           <div className="node-type">{composer?.type ?? node.kind}</div>
-          <div className="node-runtime">{composer?.runtime ?? "runtime"} · {node.status}</div>
+          <div className="node-runtime">
+            {node.status === "running" ? "Executing: " : ""}
+            {node.expertRuntime ?? "single-pass"} · {node.expertAgentId ?? "default"} · {node.status}
+          </div>
         </div>
         <span className={`complexity ${composer?.complexity ?? "low"}`}>{composer?.complexity ?? "low"}</span>
       </div>
       <div className="node-title">{node.label}</div>
+      {nodeFailureReason
+        ? <div className="node-failure-reason">{nodeFailureReason}</div>
+        : null}
+      {data.onlyRoot && node.id === "root-composer"
+        ? (
+          <div className="empty root-empty">
+            <b>Start with a task</b>
+            <span>Describe the workflow, then draft child nodes.</span>
+          </div>
+        )
+        : null}
+      {editable
+        ? (
+          <textarea
+            className="node-card-prompt"
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            aria-label={`Prompt for ${node.label || node.id}`}
+          />
+        )
+        : null}
       {node.loop ? <QualityLoopCardSummary loop={node.loop} /> : null}
       {composer
         ? (
@@ -732,12 +872,48 @@ function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
               Budget used {composer.planBudget.usedDepth}/{composer.planBudget.maxDepth} depth · {composer.planBudget.usedNodes}/{composer.planBudget.maxNodes} nodes · left {composer.planBudget.remainingDepth}/{composer.planBudget.remainingNodes}
               {composer.planBudget.exhausted ? <span className="budget-stop">needs approval</span> : null}
             </div>
+            {composer.pendingPlan
+              ? <div className="meta-row">Draft plan: {composer.pendingPlan.summary} · {composer.pendingPlan.childNodeIds.length} nodes</div>
+              : null}
+            {planningError
+              ? <div className="meta-row warning"><AlertTriangle size={14} aria-hidden /> {planningError}</div>
+              : null}
+            {planningError?.includes("replan_requires_choice")
+              ? (
+                <div className="replan-gate" role="alert">
+                  <b>Protected replan</b>
+                  <span>Merge keeps protected edits and replans only replaceable drafts.</span>
+                  <div className="actions">
+                    <button className="danger" onClick={() => chooseReplan("replace")}>Replace subtree</button>
+                    <button onClick={() => chooseReplan("merge")}>Merge</button>
+                    <button onClick={() => chooseReplan("cancel")}>Cancel</button>
+                  </div>
+                </div>
+              )
+              : null}
+            <div className="node-card-footer">
+              <button
+                className="btn-primary-plan"
+                disabled={!editable || prompt.trim().length === 0 || isPlanning}
+                aria-label={`Plan children for ${node.label || node.id}`}
+                onClick={planFromCard}
+              >
+                <GitBranchPlus size={16} aria-hidden />
+                {isPlanning ? "Planning children..." : "Plan children"}
+              </button>
+            </div>
+            {composer.pendingPlan
+              ? <div className="meta-row">Plan ready — {composer.pendingPlan.childNodeIds.length} child nodes drafted. Review on canvas, then approve or run.</div>
+              : null}
           </>
         )
         : null}
       <div className="node-models">
         <div>P: {node.plannedModel ?? "resolved-at-runtime"}</div>
         <div>E: {node.effectiveModel ?? "pending"}</div>
+        <div>Expert: {node.expertAgentId ?? "default"}</div>
+        <div>Runtime: {node.expertRuntime ?? "single-pass"}</div>
+        {node.expertAssignmentMode === "custom" ? <div className="badge">custom</div> : null}
         <div>Mode: {node.approvalMode ?? "full"}</div>
         <div>Approval: {node.approvalSource ?? "none"}</div>
         {node.spawnedAfterInitialApproval ? <div className="badge">spawned branch</div> : null}
@@ -1101,11 +1277,38 @@ function parseOptionalNumber(value: string): number | undefined {
   return trimmed === "" ? undefined : Number(trimmed);
 }
 
+function parseJsonObject(value: string): Record<string, string> {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return {};
+  }
+  const parsed = JSON.parse(trimmed) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Purpose tiers must be a JSON object.");
+  }
+  const normalized: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(parsed)) {
+    if (typeof raw === "string" && raw.trim().length > 0) {
+      normalized[key] = raw.trim();
+    }
+  }
+  return normalized;
+}
+
 function NodeInspector(
-  { node, refresh, setErrorMessage }: { node: ExecutionNode; refresh: () => Promise<void>; setErrorMessage: (message: string | undefined) => void },
+  { node, refresh, setErrorMessage, planningError }: {
+    node: ExecutionNode;
+    refresh: () => Promise<void>;
+    setErrorMessage: (message: string | undefined) => void;
+    planningError?: { nodeId: string; message: string } | undefined;
+  },
 ) {
   const [prompt, setPrompt] = useState(node.prompt ?? node.label);
   const [modelOverride, setModelOverride] = useState(node.modelOverride ?? "");
+  const [expertAgentId, setExpertAgentId] = useState<NonNullable<ExecutionNode["expertAgentId"]>>(node.expertAgentId ?? "default");
+  const [expertRuntime, setExpertRuntime] = useState<NonNullable<ExecutionNode["expertRuntime"]>>(node.expertRuntime ?? "single-pass");
+  const [expertTools, setExpertTools] = useState((node.expertToolAllowlist ?? []).join(", "));
+  const [expertPurposeTiers, setExpertPurposeTiers] = useState(JSON.stringify(node.expertPurposeTiers ?? {}, null, 0));
   const [temperature, setTemperature] = useState(toInputValue(node.samplingOverride?.temperature));
   const [topP, setTopP] = useState(toInputValue(node.samplingOverride?.topP));
   const [maxTokens, setMaxTokens] = useState(toInputValue(node.samplingOverride?.maxTokens));
@@ -1115,20 +1318,27 @@ function NodeInspector(
   useEffect(() => {
     setPrompt(node.prompt ?? node.label);
     setModelOverride(node.modelOverride ?? "");
+    setExpertAgentId(node.expertAgentId ?? "default");
+    setExpertRuntime(node.expertRuntime ?? "single-pass");
+    setExpertTools((node.expertToolAllowlist ?? []).join(", "));
+    setExpertPurposeTiers(JSON.stringify(node.expertPurposeTiers ?? {}, null, 0));
     setTemperature(toInputValue(node.samplingOverride?.temperature));
     setTopP(toInputValue(node.samplingOverride?.topP));
     setMaxTokens(toInputValue(node.samplingOverride?.maxTokens));
-  }, [node.id, node.label, node.prompt, node.samplingOverride?.maxTokens, node.samplingOverride?.temperature, node.samplingOverride?.topP]);
+  }, [node.expertAgentId, node.expertPurposeTiers, node.expertRuntime, node.expertToolAllowlist, node.id, node.label, node.prompt, node.samplingOverride?.maxTokens, node.samplingOverride?.temperature, node.samplingOverride?.topP]);
 
   const editable = node.status === "planned" || node.status === "ready" || node.status === "awaiting_approval";
   const waiting = node.status === "awaiting_approval";
   const composer = node.composer;
 
   return (
-        <div className="node-inspector">
+    <div className="node-inspector">
       <div>
         <label>Node</label>
         <h1>{node.id}</h1>
+        {planningError?.nodeId === node.id
+          ? <p className="error" role="alert">{planningError.message}</p>
+          : null}
       </div>
       {composer
         ? (
@@ -1209,6 +1419,14 @@ function NodeInspector(
         <div className="meta-row">Override Source: {node.modelOverrideSource ?? "none"}</div>
       </div>
       <div>
+        <label>Expert Binding</label>
+        <div className="meta-row">Preset: {node.expertAgentId ?? "default"}</div>
+        <div className="meta-row">Assignment: {node.expertAssignmentMode ?? "planner"}</div>
+        <div className="meta-row">Runtime: {node.expertRuntime ?? "single-pass"}</div>
+        <div className="meta-row">Tools: {(node.expertToolAllowlist ?? []).join(", ") || "agent default"}</div>
+        <div className="meta-row">Purpose tiers: {JSON.stringify(node.expertPurposeTiers ?? {})}</div>
+      </div>
+      <div>
         <label>Sampling</label>
         <SamplingRows sampling={node.effectiveSampling} override={node.samplingOverride} />
       </div>
@@ -1235,6 +1453,49 @@ function NodeInspector(
             onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/model`, { model: modelOverride }), refresh)}
           >
             Set model
+          </button>
+        </div>
+      </div>
+      <div>
+        <label>Expert Override</label>
+        <select
+          value={expertAgentId}
+          disabled={!editable}
+          onChange={(event) => setExpertAgentId(event.target.value as NonNullable<ExecutionNode["expertAgentId"]>)}
+        >
+          {["default", "coding", "qa", "product_designer", "research"].map((agent) => <option key={agent} value={agent}>{agent}</option>)}
+        </select>
+        <select
+          value={expertRuntime}
+          disabled={!editable}
+          onChange={(event) => setExpertRuntime(event.target.value as NonNullable<ExecutionNode["expertRuntime"]>)}
+        >
+          <option value="single-pass">single-pass</option>
+          <option value="rlm">rlm</option>
+        </select>
+        <input
+          value={expertTools}
+          disabled={!editable}
+          onChange={(event) => setExpertTools(event.target.value)}
+          placeholder="shell, write_file"
+        />
+        <input
+          value={expertPurposeTiers}
+          disabled={!editable}
+          onChange={(event) => setExpertPurposeTiers(event.target.value)}
+          placeholder='{"answer":"small"}'
+        />
+        <div className="actions">
+          <button
+            disabled={!editable}
+            onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/expert`, {
+              agentId: expertAgentId,
+              runtime: expertRuntime,
+              toolAllowlist: expertTools.split(",").map((tool) => tool.trim()).filter(Boolean),
+              purposeTiers: parseJsonObject(expertPurposeTiers),
+            }), refresh)}
+          >
+            Set expert
           </button>
         </div>
       </div>
@@ -1281,7 +1542,7 @@ function NodeInspector(
           Save prompt
         </button>
         <button disabled={!editable} onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/plan`, {}), refresh)}>
-          <GitBranchPlus size={16} /> Plan
+          <GitBranchPlus size={16} /> Plan children
         </button>
         <button disabled={!editable} onClick={() => runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/breakdown`, {}), refresh)}>
           <Scissors size={16} /> Break down
@@ -1498,6 +1759,19 @@ async function runAction(
   }
 }
 
+function formatPlanningError(message: string): string {
+  if (message.includes("planning_failed")) {
+    return `Planning failed: ${message}. Check the planner model tier and prompt, then try Plan children again.`;
+  }
+  if (message.includes("invalid_planner_output")) {
+    return `Planner returned invalid output. ${message}. No fallback was applied. Fix configuration or retry.`;
+  }
+  if (message.includes("invalid_prompt")) {
+    return `Planning failed: ${message}. Enter a non-empty prompt before planning.`;
+  }
+  return message;
+}
+
 async function post(path: string, body: Record<string, unknown>) {
   const response = await fetch(path, {
     method: "POST",
@@ -1507,8 +1781,8 @@ async function post(path: string, body: Record<string, unknown>) {
   if (!response.ok) {
     const text = await response.text();
     try {
-      const parsed = JSON.parse(text) as { error?: string; message?: string; details?: string; suggestedFix?: string };
-      const parts = [parsed.error ?? parsed.message, parsed.details, parsed.suggestedFix].filter(Boolean);
+      const parsed = JSON.parse(text) as { code?: string; error?: string; message?: string; details?: string; suggestedFix?: string };
+      const parts = [parsed.code, parsed.error ?? parsed.message, parsed.details, parsed.suggestedFix].filter(Boolean);
       throw new Error(parts.join(" | "));
     } catch {
       throw new Error(text);

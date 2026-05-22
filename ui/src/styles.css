@@ -271,6 +271,22 @@ textarea:focus-visible {
 
 .node-card.running {
   border-color: #2d6cdf;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+}
+
+.node-card.active-execution {
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: 2px;
+}
+
+.node-card.failed .node-failure-reason {
+  color: var(--danger, #dc2626);
+  font-size: 0.85rem;
+  margin-top: 0.35rem;
+}
+
+.node-card.failed.blocked-by-ancestor {
+  opacity: 0.65;
 }
 
 .node-card.completed {
@@ -833,6 +849,67 @@ select {
   font-weight: 700;
   margin: 0;
   padding: var(--space-sm) var(--space-md);
+}
+
+.node-card.root-composer-focus {
+  outline: 2px solid #2d6cdf;
+  outline-offset: 2px;
+}
+
+.node-card.planning-in-progress {
+  border-color: #2d6cdf;
+}
+
+.node-card-prompt {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.node-card-footer {
+  display: flex;
+  margin-top: var(--space-sm);
+}
+
+.node-card-footer .btn-primary-plan {
+  align-items: center;
+  background: #1f3d32;
+  color: #ffffff;
+  display: inline-flex;
+  gap: var(--space-xs);
+  justify-content: center;
+  min-height: 44px;
+  width: 100%;
+}
+
+.meta-row.warning {
+  align-items: center;
+  background: #fff3f0;
+  border: 1px solid #e4b0a8;
+  border-radius: var(--radius-md);
+  color: #8f2f2f;
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.root-empty {
+  margin: var(--space-sm) 0;
+}
+
+.replan-gate {
+  background: #fff8ec;
+  border: 1px solid #e7c27c;
+  border-radius: var(--radius-md);
+  color: #4d3512;
+  display: grid;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+  padding: var(--space-sm);
+}
+
+.replan-gate span {
+  font-size: var(--font-label);
+  line-height: 1.35;
 }
 
 @media (max-width: 800px) {
