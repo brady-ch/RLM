@@ -32,7 +32,7 @@
 - [x] **Phase 66: CLI Full Parity** — All Node run modes and flags in `rlm-cli` — 2026-05-22
 - [ ] **Phase 67: PACK-03 CI Smoke** — Headless `.deb` install smoke in release CI
 - [ ] **Phase 68: Application Layer + Handler Split** — `application/` grouping and split `routes.rs`
-- [ ] **Phase 69: Large File Decomposition** — Split orchestrator, session_graph, registry, config
+- [x] **Phase 69: Large File Decomposition** — Split orchestrator, session_graph, registry, config
 - [ ] **Phase 70: Rust Boundary Enforcement** — AGENTS.md concern map + `check-rust-boundaries`
 - [ ] **Phase 71: Optional Crate Split** — Evaluate and split `rlm-ports`/`rlm-domain` if warranted
 
