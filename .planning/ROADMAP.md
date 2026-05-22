@@ -107,3 +107,13 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 | 12-17 Answer Quality Loops | v1.2 | archived | Complete | 2026-05-20 |
 | 6-11 Interop / plugins | v1.1 | archived | Complete | 2026-05-13 |
 | 1-5 MVP | v1.0 | archived | Complete | 2026-05-08 |
+
+### Phase 1: Close v1.8 tech debt — UI regressions, MCP client, CLI parity, run-state resume
+
+**Goal:** Close v1.8 partial requirements (REG-01, ENGN-02, MDLH-03, PLUG-03, CLI-01, PERS-03): UI regressions + REG-01 UAT, Rust MCP stdio client, Rust CLI ask/workflow, run-state checkpoint resume.
+**Requirements**: REG-01, ENGN-02, MDLH-03, PLUG-03, CLI-01, PERS-03 (from `.planning/milestones/v1.8-MILESTONE-AUDIT.md`)
+**Depends on:** Phase 61 (v1.8 shipped)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 1 to break down)
