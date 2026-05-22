@@ -10,7 +10,7 @@
 
 - [ ] **REG-01**: Existing UI workflows (graph authoring, execution, session save/reopen, model library, plugin panel) behave as before when served by the Rust runtime — no intentional semantic drift except documented Rust-mode plugin limitations.
 - [ ] **REG-02**: Combined CI gate stays green: `npm run check` for UI/tooling plus `check:rust` (fmt, clippy, test) for the Rust workspace; parity fixture job compares TS golden responses to Rust before Node removal.
-- [ ] **REG-03**: On-disk formats under `.rlm/` remain readable across migration — dual-read or lossless import paths for session bundles, memory stores, preferences, run-state, and vector index JSON.
+- [x] **REG-03**: On-disk formats under `.rlm/` remain readable across migration — dual-read or lossless import paths for session bundles, memory stores, preferences, run-state, and vector index JSON.
 
 ### Rust Workspace & Control Server
 
@@ -20,10 +20,10 @@
 
 ### Persistence
 
-- [ ] **PERS-01**: File-based session store supports save/reopen with the same bundle envelope and verification semantics as v1.4/v1.7.
-- [ ] **PERS-02**: Memory scopes, episodic logs, preferences, and ACL filtering behave as today with explicit degraded states when stores are corrupt or missing.
-- [ ] **PERS-03**: Run-state checkpoint/resume and workflow sidecar persistence remain compatible with existing graph workflow formats.
-- [ ] **PERS-04**: Project YAML config loads via Rust with equivalent validation messages and path context as `application/config/`.
+- [x] **PERS-01**: File-based session store supports save/reopen with the same bundle envelope and verification semantics as v1.4/v1.7.
+- [x] **PERS-02**: Memory scopes, episodic logs, preferences, and ACL filtering behave as today with explicit degraded states when stores are corrupt or missing.
+- [x] **PERS-03**: Run-state checkpoint/resume and workflow sidecar persistence remain compatible with existing graph workflow formats.
+- [x] **PERS-04**: Project YAML config loads via Rust with equivalent validation messages and path context as `application/config/`.
 
 ### Recursive Engine & Graph Execution
 
@@ -88,14 +88,14 @@
 |-------------|-------|--------|
 | REG-01 | Phase 60 | Pending |
 | REG-02 | Phase 59 | Pending |
-| REG-03 | Phase 53 | Pending |
+| REG-03 | Phase 53 | Complete |
 | RWRK-01 | Phase 52 | Pending |
 | RWRK-02 | Phase 52 | Pending |
 | RWRK-03 | Phase 52 | Pending |
-| PERS-01 | Phase 53 | Pending |
-| PERS-02 | Phase 53 | Pending |
-| PERS-03 | Phase 53 | Pending |
-| PERS-04 | Phase 53 | Pending |
+| PERS-01 | Phase 53 | Complete |
+| PERS-02 | Phase 53 | Complete |
+| PERS-03 | Phase 53 | Complete |
+| PERS-04 | Phase 53 | Complete |
 | ENGN-01 | Phase 54 | Pending |
 | ENGN-02 | Phase 54 | Pending |
 | GRPH-01 | Phase 55 | Pending |

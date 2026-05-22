@@ -309,7 +309,7 @@ Phases execute in numeric order: 52 → 53 → … → 60
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 52. Rust Workspace + Control Server Strangler | v1.8 | 1/1 | Complete | 2026-05-22 |
-| 53. Persistence Ports | v1.8 | 0/TBD | Not started | - |
+| 53. Persistence Ports | v1.8 | 1/1 | Complete   | 2026-05-22 |
 | 54. Recursive Engine + ExecutionController | v1.8 | 0/TBD | Not started | - |
 | 55. Graph Executor + Node Routes | v1.8 | 0/TBD | Not started | - |
 | 56. Vector Index + Embeddings | v1.8 | 0/TBD | Not started | - |
