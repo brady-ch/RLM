@@ -113,7 +113,11 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 **Goal:** Close v1.8 partial requirements (REG-01, ENGN-02, MDLH-03, PLUG-03, CLI-01, PERS-03): UI regressions + REG-01 UAT, Rust MCP stdio client, Rust CLI ask/workflow, run-state checkpoint resume.
 **Requirements**: REG-01, ENGN-02, MDLH-03, PLUG-03, CLI-01, PERS-03 (from `.planning/milestones/v1.8-MILESTONE-AUDIT.md`)
 **Depends on:** Phase 61 (v1.8 shipped)
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 1 to break down)
+- [ ] 01-01-PLAN.md — UI bundle: pause-auto-approvals, HF download, secondary CSS, graph modals
+- [ ] 01-02-PLAN.md — REG-01 human UAT checklist on Rust-served UI
+- [ ] 01-03-PLAN.md — MCP stdio client Rust port and runtime wiring
+- [ ] 01-04-PLAN.md — Rust CLI ask execution (workflow staged)
+- [ ] 01-05-PLAN.md — Run-state checkpoint/cursor extension + gap doc
