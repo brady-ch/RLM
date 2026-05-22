@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use rlm_core::domain::run_state_persistence::RunStatePersistence;

@@ -8,15 +8,15 @@
 
 ### Regression Gate
 
-- [ ] **REG-01**: Existing UI workflows (graph authoring, execution, session save/reopen, model library, plugin panel) behave as before when served by the Rust runtime — no intentional semantic drift except documented Rust-mode plugin limitations.
+- [x] **REG-01**: Existing UI workflows (graph authoring, execution, session save/reopen, model library, plugin panel) behave as before when served by the Rust runtime — no intentional semantic drift except documented Rust-mode plugin limitations.
 - [x] **REG-02**: Combined CI gate stays green: `npm run check` for UI/tooling plus `check:rust` (fmt, clippy, test) for the Rust workspace; parity fixture job compares TS golden responses to Rust before Node removal.
 - [x] **REG-03**: On-disk formats under `.rlm/` remain readable across migration — dual-read or lossless import paths for session bundles, memory stores, preferences, run-state, and vector index JSON.
 
 ### Rust Workspace & Control Server
 
-- [ ] **RWRK-01**: Cargo workspace at repo root with `rlm-core` library crate and `rlm-cli` binary; dependency direction mirrors v1.7 concern map (`ports` traits → domain → adapters → application → runtime → control-server).
-- [ ] **RWRK-02**: Axum control server on loopback preserves existing REST route surface and `/api/events` SSE contract; golden JSON/SSE fixtures gate handler parity.
-- [ ] **RWRK-03**: Static UI assets served from Rust control server (or Tauri asset path) with same base URL contract the React app expects today.
+- [x] **RWRK-01**: Cargo workspace at repo root with `rlm-core` library crate and `rlm-cli` binary; dependency direction mirrors v1.7 concern map (`ports` traits → domain → adapters → application → runtime → control-server).
+- [x] **RWRK-02**: Axum control server on loopback preserves existing REST route surface and `/api/events` SSE contract; golden JSON/SSE fixtures gate handler parity.
+- [x] **RWRK-03**: Static UI assets served from Rust control server (or Tauri asset path) with same base URL contract the React app expects today.
 
 ### Persistence
 
@@ -29,14 +29,14 @@
 
 - [x] **ENGN-01**: `RecursiveLanguageModel` port in Rust preserves depth limits, budget guards, quality loop phases, tool rounds, and cancellation/stop semantics from the TypeScript orchestrator.
 - [x] **ENGN-02**: ExecutionController exposes the same approval, clarification, and stale-mutation handling as the current control-server session authority.
-- [ ] **GRPH-01**: GraphExecutor walks approved topology with bind-time expert resolution, descendant blocking on failure, and single-pass/RLM enforcement matching v1.5 behavior.
-- [ ] **GRPH-02**: All `/api/nodes/*`, `/api/graph/*`, and workflow export/import routes required by the UI and CLI are implemented in Rust with matching status codes and error vocabulary.
+- [x] **GRPH-01**: GraphExecutor walks approved topology with bind-time expert resolution, descendant blocking on failure, and single-pass/RLM enforcement matching v1.5 behavior.
+- [x] **GRPH-02**: All `/api/nodes/*`, `/api/graph/*`, and workflow export/import routes required by the UI and CLI are implemented in Rust with matching status codes and error vocabulary.
 
 ### Vector Index & Embeddings
 
-- [ ] **VIDX-01**: Rust ANN index (usearch primary, documented fallback) replaces JSON linear scan with scope-filtered top-k retrieval and visible degraded/empty states.
-- [ ] **VIDX-02**: Existing `vector-index.json` records import lazily on first open without data loss; session save/reopen merges vector metadata losslessly.
-- [ ] **VIDX-03**: Embeddings use Ollama HTTP by default during migration; embedding host unavailability surfaces explicit degraded state in UI/CLI.
+- [x] **VIDX-01**: Rust ANN index (usearch primary, documented fallback) replaces JSON linear scan with scope-filtered top-k retrieval and visible degraded/empty states.
+- [x] **VIDX-02**: Existing `vector-index.json` records import lazily on first open without data loss; session save/reopen merges vector metadata losslessly.
+- [x] **VIDX-03**: Embeddings use Ollama HTTP by default during migration; embedding host unavailability surfaces explicit degraded state in UI/CLI.
 
 ### Model Hosts & Library
 
@@ -57,7 +57,7 @@
 - [x] **CLI-02**: `RLM_RUNTIME=node|rust` switch supports strangler development; default production desktop uses Rust only after Phase 59.
 - [x] **PACK-01**: Tauri embeds Rust control server in-process on `127.0.0.1` — no managed Node child process; graceful shutdown on window close.
 - [x] **PACK-02**: Desktop release bundle contains no bundled Node runtime; ships Rust binary, static UI assets, and documented Ollama readiness check in Rust.
-- [ ] **PACK-03**: Linux `.deb` (and existing packaging scripts) produce installable artifacts passing package smoke with Rust-only runtime layout.
+- [x] **PACK-03**: Linux `.deb` (and existing packaging scripts) produce installable artifacts passing package smoke with Rust-only runtime layout.
 
 ## Future Requirements
 
@@ -86,23 +86,23 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | Phase 60 | Pending (human UAT) |
+| REG-01 | Phase 60 | Complete |
 | REG-02 | Phase 59 | Complete |
 | REG-03 | Phase 53 | Complete |
-| RWRK-01 | Phase 52 | Pending |
-| RWRK-02 | Phase 52 | Pending |
-| RWRK-03 | Phase 52 | Pending |
+| RWRK-01 | Phase 52 | Complete |
+| RWRK-02 | Phase 52 | Complete |
+| RWRK-03 | Phase 52 | Complete |
 | PERS-01 | Phase 53 | Complete |
 | PERS-02 | Phase 53 | Complete |
 | PERS-03 | Phase 53 | Complete |
 | PERS-04 | Phase 53 | Complete |
 | ENGN-01 | Phase 54 | Complete |
 | ENGN-02 | Phase 54 | Complete |
-| GRPH-01 | Phase 55 | Pending |
-| GRPH-02 | Phase 55 | Pending |
-| VIDX-01 | Phase 56 | Pending |
-| VIDX-02 | Phase 56 | Pending |
-| VIDX-03 | Phase 56 | Pending |
+| GRPH-01 | Phase 55 | Complete |
+| GRPH-02 | Phase 55 | Complete |
+| VIDX-01 | Phase 56 | Complete |
+| VIDX-02 | Phase 56 | Complete |
+| VIDX-03 | Phase 56 | Complete |
 | MDLH-01 | Phase 57 | Complete |
 | MDLH-02 | Phase 57 | Complete |
 | MDLH-03 | Phase 57 | Complete |
@@ -114,7 +114,7 @@
 | CLI-02 | Phase 59 | Complete |
 | PACK-01 | Phase 60 | Complete |
 | PACK-02 | Phase 60 | Complete |
-| PACK-03 | Phase 60 | Pending (human smoke) |
+| PACK-03 | Phase 60 | Complete |
 
 **Coverage:**
 - v1.8 requirements: 28 total
