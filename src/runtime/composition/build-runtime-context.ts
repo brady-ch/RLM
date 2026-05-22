@@ -14,10 +14,7 @@ import { createAgentRegistry } from "../../application/agent-registry.js";
 import { ResourceCleanup } from "../../application/resource-cleanup.js";
 import { createStderrRuntimeLogger } from "../../cli/runtime-logger.js";
 import { installShutdownHandlers } from "../../cli/shutdown.js";
-import * as guardedShellExtension from "../../extensions/tools/guarded-shell.extension.js";
-import * as webFetchExtension from "../../extensions/tools/web-fetch.extension.js";
-import * as webSearchExtension from "../../extensions/tools/web-search.extension.js";
-import * as workspaceFileWriteExtension from "../../extensions/tools/workspace-file-write.extension.js";
+import { PluginLoader } from "../../plugins/plugin-loader.js";
 import type { ExecutionEvent } from "../../domain/types.js";
 import type { LanguageModelPort } from "../../ports/language-model-port.js";
 import { dirname, isAbsolute, join, resolve } from "node:path";
@@ -100,6 +97,7 @@ export async function buildRuntimeContext(
   });
 
   const extensionHost = new ExtensionHost();
+  const pluginLoader = new PluginLoader();
   const runtimeEventsStore = new InMemoryEventStore();
   const runId = `run-${Date.now()}`;
   const runtimeEvents = new McpSkillRuntime(
@@ -120,39 +118,28 @@ export async function buildRuntimeContext(
     ]),
   );
 
-  extensionHost.loadBuiltins([
-    {
-      path: "src/extensions/tools/guarded-shell.extension.ts",
-      register: guardedShellExtension.register,
-    },
-    {
-      path: "src/extensions/tools/workspace-file-write.extension.ts",
-      register: workspaceFileWriteExtension.register,
-    },
-    { path: "src/extensions/tools/web-search.extension.ts", register: webSearchExtension.register },
-    { path: "src/extensions/tools/web-fetch.extension.ts", register: webFetchExtension.register },
-  ]);
-
   const configFilePath = input.loadedConfig.path ?? join(cwd, "rlm.config.yaml");
   const configuredExtensions = input.projectConfig.extensions?.load ?? [];
-  if (configuredExtensions.length > 0) {
-    const configuredAllowlist = input.projectConfig.extensions?.allowlist;
-    const extensionOptions: {
-      configFilePath: string;
-      allowlistPath?: string;
-      interactive: boolean;
-    } = {
-      configFilePath,
-      interactive: process.stdin.isTTY && process.stdout.isTTY,
-    };
-    if (configuredAllowlist) {
-      extensionOptions.allowlistPath = isAbsolute(configuredAllowlist)
-        ? configuredAllowlist
-        : resolve(dirname(configFilePath), configuredAllowlist);
-    }
-
-    await extensionHost.loadExternal(configuredExtensions, extensionOptions);
+  const configuredAllowlist = input.projectConfig.extensions?.allowlist;
+  const pluginLoadOptions: {
+    cwd: string;
+    configFilePath: string;
+    legacyExtensions: typeof configuredExtensions;
+    allowlistPath?: string;
+    interactive: boolean;
+  } = {
+    cwd,
+    configFilePath,
+    legacyExtensions: configuredExtensions,
+    interactive: process.stdin.isTTY && process.stdout.isTTY,
+  };
+  if (configuredAllowlist) {
+    pluginLoadOptions.allowlistPath = isAbsolute(configuredAllowlist)
+      ? configuredAllowlist
+      : resolve(dirname(configFilePath), configuredAllowlist);
   }
+
+  await pluginLoader.loadInto(extensionHost, pluginLoadOptions);
 
   recordStage("plugins");
 

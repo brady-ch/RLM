@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolve, relative } from "node:path";
 import { z } from "zod";
-import type { ToolExecutionResult, ToolPort } from "../../ports/tool-port.js";
+import type { ToolExecutionResult, ToolPort } from "../../../ports/tool-port.js";
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_ALLOWED_COMMANDS = new Set(["pwd", "ls", "rg", "sed", "cat"]);

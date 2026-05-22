@@ -1,7 +1,7 @@
 import { mkdir, writeFile, appendFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import { z } from "zod";
-import type { ToolExecutionResult, ToolPort } from "../../ports/tool-port.js";
+import type { ToolExecutionResult, ToolPort } from "../../../ports/tool-port.js";
 
 const writeFileSchema = z.object({
   path: z.string().describe("Relative file path to write inside the open workspace directory."),

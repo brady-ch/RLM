@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { analyzeHtmlContent } from "./content-tree.js";
-import type { ToolExecutionResult, ToolPort } from "../../ports/tool-port.js";
+import type { ToolExecutionResult, ToolPort } from "../../../ports/tool-port.js";
 
 const webFetchSchema = z.object({
   url: z.string().url().describe("HTTP or HTTPS URL to fetch and analyze."),

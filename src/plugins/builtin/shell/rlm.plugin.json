@@ -1,0 +1,12 @@
+{
+  "id": "rlm.builtin.shell",
+  "name": "Guarded Shell",
+  "version": "1.0.0",
+  "category": "shell",
+  "contributes": {
+    "tools": ["shell"]
+  },
+  "engines": {
+    "rlm": ">=1.0.0"
+  }
+}
