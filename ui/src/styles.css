@@ -1024,3 +1024,147 @@ select {
     border-top: 1px solid var(--color-border);
   }
 }
+
+.workflow-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.workflow-topbar {
+  align-items: center;
+  background: var(--color-card);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  min-height: 48px;
+  padding: var(--space-sm) var(--space-md);
+}
+
+.workflow-main {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.workflow-main:has(.run-panel) {
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+.workflow-error {
+  margin: 0 var(--space-md);
+}
+
+.run-panel {
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  overflow-y: auto;
+  padding: var(--space-md);
+}
+
+.run-panel-header h2 {
+  font-size: var(--font-label);
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.node-card-selected {
+  box-shadow: 0 0 0 2px rgba(45, 108, 223, 0.35);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.node-context-hint {
+  color: #5a6b60;
+  font-size: var(--font-meta);
+  margin: var(--space-xs) 0 0;
+}
+
+.node-context-menu {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(22, 32, 26, 0.12);
+  display: grid;
+  gap: var(--space-xs);
+  min-width: 200px;
+  padding: var(--space-sm);
+}
+
+.node-context-menu-section {
+  display: grid;
+  gap: 2px;
+}
+
+.node-context-menu-label {
+  color: #5a6b60;
+  font-size: var(--font-meta);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.node-context-menu button {
+  background: transparent;
+  color: var(--color-primary);
+  justify-content: flex-start;
+  min-height: 32px;
+}
+
+.node-context-menu button:disabled {
+  opacity: 0.45;
+}
+
+.advanced-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.advanced-header {
+  background: var(--color-card);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-md);
+}
+
+.advanced-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.advanced-tabs button.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.advanced-content {
+  background: var(--color-bg);
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg);
+}
+
+.advanced-settings-view {
+  display: grid;
+  gap: var(--space-md);
+}
+
+@media (max-width: 800px) {
+  .workflow-main:has(.run-panel) {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .run-panel {
+    border-left: 0;
+    border-top: 1px solid var(--color-border);
+    max-height: 45vh;
+  }
+}

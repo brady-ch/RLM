@@ -426,4 +426,6 @@ export type FlowNodeData = {
   planningErrorMessage?: string | undefined;
   setPlanningError?: (error: { nodeId: string; message: string } | undefined) => void;
   onlyRoot?: boolean | undefined;
+  isSelected?: boolean | undefined;
+  onNavigateAdvancedSettings?: () => void;
 };
