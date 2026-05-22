@@ -8,8 +8,8 @@
 
 ### Regression Gate
 
-- [ ] **REG-01**: All existing tests pass after each extraction phase; no intentional behavior changes to CLI flags, config semantics, control-server API, or graph/session/memory flows unless explicitly required by plugin manager UX.
-- [ ] **REG-02**: `npm run check` remains the CI gate and stays green throughout the milestone.
+- [x] **REG-01**: All existing tests pass after each extraction phase; no intentional behavior changes to CLI flags, config semantics, control-server API, or graph/session/memory flows unless explicitly required by plugin manager UX.
+- [x] **REG-02**: `npm run check` remains the CI gate and stays green throughout the milestone.
 
 ### Concern Taxonomy (src + project)
 
@@ -22,8 +22,8 @@
 
 ### Runtime & Boundary Fixes
 
-- [ ] **RUNT-01**: Fix three ARCH-02 baseline violations — `domain/agents.ts` import direction, `ports/extension-port.ts` coupling to application, and `content-tree` policy colocated with its owning concern (not orphaned in application root).
-- [ ] **RUNT-02**: Introduce `ExtensionHostPort` (or equivalent) in `ports/` so plugin registration contracts do not import application types.
+- [x] **RUNT-01**: Fix three ARCH-02 baseline violations — `domain/agents.ts` import direction, `ports/extension-port.ts` coupling to application, and `content-tree` policy colocated with its owning concern (not orphaned in application root).
+- [x] **RUNT-02**: Introduce `ExtensionHostPort` (or equivalent) in `ports/` so plugin registration contracts do not import application types.
 - [x] **RUNT-03**: Move `buildRuntimeContext`, `ExtensionHost`, and tool/model factory wiring to `src/runtime/composition/`; bootstrap becomes a thin re-export facade.
 - [x] **RUNT-04**: Move MCP/skill interop wiring to `src/runtime/interop/` with preserved init order: plugins → interop → tools resolver → agent registry → models.
 - [x] **RUNT-05**: Composition init-order test verifies bootstrap sequence without full CLI or control-server spawn.
@@ -105,16 +105,16 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | Phase 43 | Pending |
-| REG-02 | Phase 43 | Pending |
+| REG-01 | Phase 43 | Complete |
+| REG-02 | Phase 43 | Complete |
 | TAXN-01 | Phase 47 | Complete |
 | TAXN-02 | Phase 45 | Complete |
 | TAXN-03 | Phase 44 | Complete |
 | TAXN-04 | Phase 46 | Complete |
 | TAXN-05 | Phase 47 | Complete |
 | TAXN-06 | Phase 47 | Complete |
-| RUNT-01 | Phase 43 | Pending |
-| RUNT-02 | Phase 43 | Pending |
+| RUNT-01 | Phase 43 | Complete |
+| RUNT-02 | Phase 43 | Complete |
 | RUNT-03 | Phase 44 | Complete |
 | RUNT-04 | Phase 44 | Complete |
 | RUNT-05 | Phase 44 | Complete |
