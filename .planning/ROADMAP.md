@@ -27,7 +27,7 @@
 
 - [x] **Phase 62: UI Regression Fixes** — Restore pause-auto-approvals, HF download wiring, sign REG-01 UAT — 2026-05-22
 - [x] **Phase 63: Quality Loop Parity** — Port full TS quality loop to Rust with golden tests — 2026-05-22
-- [ ] **Phase 64: Resume Consumer + Run-State Port** — Cross-session resume loader, ARCH-01 boundary fix
+- [x] **Phase 64: Resume Consumer + Run-State Port** — Cross-session resume loader, ARCH-01 boundary fix — 2026-05-22
 - [ ] **Phase 65: Skill Interop** — Port skill runtime and register `skill` tool in Rust
 - [ ] **Phase 66: CLI Full Parity** — All Node run modes and flags in `rlm-cli`
 - [ ] **Phase 67: PACK-03 CI Smoke** — Headless `.deb` install smoke in release CI
@@ -165,7 +165,7 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 |-------|-----------|----------------|--------|-----------|
 | 62. UI Regression Fixes | v1.9 | 1/1 | Complete | 2026-05-22 |
 | 63. Quality Loop Parity | v1.9 | 1/1 | Complete   | 2026-05-22 |
-| 64. Resume Consumer + Run-State Port | v1.9 | 0/? | Not started | — |
+| 64. Resume Consumer + Run-State Port | v1.9 | 1/1 | Complete   | 2026-05-22 |
 | 65. Skill Interop | v1.9 | 0/? | Not started | — |
 | 66. CLI Full Parity | v1.9 | 0/? | Not started | — |
 | 67. PACK-03 CI Smoke | v1.9 | 0/? | Not started | — |

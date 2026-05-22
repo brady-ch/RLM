@@ -18,9 +18,9 @@
 
 ### Persistence & Resume
 
-- [ ] **PERS-01**: Cross-session resume consumer reads `resumeCursor` + `nodeStatuses` on graph entry and skips completed nodes after process restart.
-- [ ] **PERS-02**: Control-server resume path requires explicit user confirmation; TS `RunStatePersistence` writes the same cursor shape for dual-runtime parity.
-- [ ] **PERS-03**: Integration test proves partial run → restart → resume → complete without re-executing finished nodes.
+- [x] **PERS-01**: Cross-session resume consumer reads `resumeCursor` + `nodeStatuses` on graph entry and skips completed nodes after process restart.
+- [x] **PERS-02**: Control-server resume path requires explicit user confirmation; TS `RunStatePersistence` writes the same cursor shape for dual-runtime parity.
+- [x] **PERS-03**: Integration test proves partial run → restart → resume → complete without re-executing finished nodes.
 
 ### Plugins & Interop
 
@@ -38,7 +38,7 @@
 
 ### Rust Architecture
 
-- [ ] **ARCH-01**: Domain layer has no imports from `persistence/`, `adapters/`, or `control_server/` — run-state uses `RunStateStorePort` trait.
+- [x] **ARCH-01**: Domain layer has no imports from `persistence/`, `adapters/`, or `control_server/` — run-state uses `RunStateStorePort` trait.
 - [ ] **ARCH-02**: `application/` module groups execution, graph, memory, config, and bootstrap facades; composition wiring extracted from transport/CLI entrypoints.
 - [ ] **ARCH-03**: Control server handlers split from monolithic `routes.rs` into concern modules; router file is transport-only wiring.
 - [ ] **ARCH-04**: Large modules decomposed (`recursive_language_model`, `session_graph`, `registry_service`, `persistence/config`) with behavior-preserving tests green after each split.
@@ -74,15 +74,15 @@
 | REG-02 | All phases | Complete |
 | ENGN-01 | Phase 63 | Complete |
 | ENGN-02 | Phase 63 | Complete |
-| PERS-01 | Phase 64 | Pending |
-| PERS-02 | Phase 64 | Pending |
-| PERS-03 | Phase 64 | Pending |
+| PERS-01 | Phase 64 | Complete |
+| PERS-02 | Phase 64 | Complete |
+| PERS-03 | Phase 64 | Complete |
 | PLUG-01 | Phase 65 | Pending |
 | PLUG-02 | Phase 65 | Pending |
 | CLI-01 | Phase 66 | Pending |
 | CLI-02 | Phase 66 | Pending |
 | PACK-01 | Phase 67 | Pending |
-| ARCH-01 | Phase 64 | Pending |
+| ARCH-01 | Phase 64 | Complete |
 | ARCH-02 | Phase 68 | Pending |
 | ARCH-03 | Phase 68 | Pending |
 | ARCH-04 | Phase 69 | Pending |
