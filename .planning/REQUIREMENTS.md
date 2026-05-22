@@ -55,10 +55,10 @@
 
 ### Control-Server Boundary
 
-- [ ] **CTRL-01**: HTTP route handlers group into `application/control-server/handlers/` by surface (session, graph, workflows, model-library, static UI).
-- [ ] **CTRL-02**: Control server remains transport-only; session/graph authority stays in existing application services (`InteractiveExecutionSession`, execution-controller).
-- [ ] **CTRL-03**: `startControlServer` receives composed runtime dependencies (`SessionRuntimeRef`, stores, resolvers) from bootstrap, not constructed inside route handlers.
-- [ ] **CTRL-04**: Endpoint paths, request/response JSON shapes, and error vocabulary unchanged from pre-refactor behavior.
+- [x] **CTRL-01**: HTTP route handlers group into `application/control-server/handlers/` by surface (session, graph, workflows, model-library, static UI).
+- [x] **CTRL-02**: Control server remains transport-only; session/graph authority stays in existing application services (`InteractiveExecutionSession`, execution-controller).
+- [x] **CTRL-03**: `startControlServer` receives composed runtime dependencies (`SessionRuntimeRef`, stores, resolvers) from bootstrap, not constructed inside route handlers.
+- [x] **CTRL-04**: Endpoint paths, request/response JSON shapes, and error vocabulary unchanged from pre-refactor behavior.
 
 ### Test Structure
 

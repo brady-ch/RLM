@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Architecture Cleanup
 status: executing
-stopped_at: Phase 39 complete — ADPT-01..06 verified (`39-VERIFICATION.md`), `npm run check` green (211 tests)
-last_updated: "2026-05-22T23:59:00.000Z"
-last_activity: 2026-05-22 -- Phase 39 execution complete
+stopped_at: Phase 41 complete — CTRL-01..04 verified (`41-VERIFICATION.md`), `npm run check` green (211 tests)
+last_updated: "2026-05-22T16:45:00.000Z"
+last_activity: 2026-05-22 -- Phase 41 execution complete
 progress:
   total_phases: 7
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
-  percent: 57
+  completed_phases: 5
+  total_plans: 9
+  completed_plans: 9
+  percent: 71
 ---
 
 # Project State
@@ -21,18 +21,20 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 40 — Domain Engine Decomposition
+**Current focus:** Phase 42 — Test Restructure & Docs _(or Phase 40 engine decomposition parallel track)_
 
 ## Current Position
 
-Phase: 40 of 42 (Domain Engine Decomposition) — next  
-Plan: Not started  
-Status: Ready to plan  
-Last activity: 2026-05-22 -- Phase 39 execution complete  
+Phase: 41 of 42 (Control-Server Boundary) — **complete** (`41-01-SUMMARY.md`)  
+Phase: Next — Phase 42 (recommended) **or** Phase 40 spike + execution  
+Status: Ready for Phase 42 / Phase 40 plan kickoff  
+Last activity: 2026-05-22 -- Phase 41 control-server boundary shipped  
 
-Progress: Phase 36–39 done (`npm run check` gate green; 211 tests after Phase 39)
+Progress: Phase 36–39, **41** done (`npm run check` gate green; **211 tests** after Phase 41)
 
 ## Recently Completed
+
+- **Phase 41: Control-Server Boundary** — `application/control-server/` handlers by surface (`session`, `graph`, `workflows`, `model-library`, `static-ui`), `buildStartControlServerInput` merges `RuntimeContext` into UI wiring; CTRL-01..04 verified (`41-VERIFICATION.md`); regression slice green for `npm run check` / 211 tests (2026-05-22).
 
 - **Phase 39: Adapters & Tools Taxonomy** — `adapters/tools|persistence|models/`, `adapters/index.ts` barrel, `bootstrap/adapters.ts`, extension shims aligned; ADPT-01..06 verified; `39-VERIFICATION.md`; REG gate green for Phase 39 slice (2026-05-22).
 
@@ -70,10 +72,11 @@ Items acknowledged and deferred at milestone close on 2026-05-22:
 
 ## Session Continuity
 
-Last session: 2026-05-22T23:59:00.000Z  
-Stopped at: Phase 39 complete — verification passed (`39-VERIFICATION.md`)  
+Last session: 2026-05-22T16:45:00.000Z  
+Stopped at: Phase 41 complete (`41-01-SUMMARY.md`, `41-VERIFICATION.md`)  
 Resume file: None
 
 ## Operator Next Steps
 
-- `/gsd-plan-phase 40` or spike on RLM state threading (per roadmap flag) before Phase 40 execution.
+- `/gsd-plan-phase 42` (tests + docs) **or** continue Phase 40 engine decomposition spike per roadmap flag.
+

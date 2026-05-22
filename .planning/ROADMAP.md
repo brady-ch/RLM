@@ -29,7 +29,7 @@ v1.6 is a behavior-preserving architecture cleanup: land dev-tooling guardrails,
 - [x] **Phase 38: Runtime Bootstrap** — `RuntimeContext`, `buildRuntimeContext()`, slim `index.ts`, and `cli/run-modes/*` (2026-05-22).
 - [x] **Phase 39: Adapters & Tools Taxonomy** — Group tools, persistence, and model adapters by concern with aligned extension shims.
 - [ ] **Phase 40: Domain Engine Decomposition** — `domain/recursion/` concern modules with orchestrator retaining flow.
-- [ ] **Phase 41: Control-Server Boundary** — Handler modules with bootstrap-injected dependencies and transport-only routes.
+- [x] **Phase 41: Control-Server Boundary** — Handler modules with bootstrap-injected dependencies and transport-only routes (2026-05-22).
 - [ ] **Phase 42: Test Restructure & Docs** — Subsystem-aligned tests, shared helpers, and updated AGENTS.md contributor map.
 
 <details>
@@ -146,7 +146,10 @@ Plans:
   3. `startControlServer` receives composed runtime dependencies from bootstrap, not constructed inside route handlers.
   4. Endpoint paths, request/response JSON shapes, and error vocabulary are unchanged from pre-refactor behavior.
   5. Full suite and `npm run check` stay green with no API or UI contract drift.
-**Plans**: TBD
+**Plans**: `41-01-PLAN.md` — shipped 2026-05-22
+
+Plans:
+- [x] `41-01-PLAN.md` — surface handlers package, dispatcher, bootstrap `buildStartControlServerInput`
 
 ### Phase 42: Test Restructure & Docs
 **Goal**: Tests mirror subsystem boundaries and contributors can locate change points from updated documentation.
@@ -172,7 +175,7 @@ Phases execute in numeric order: 36 → 37 → 38 → 39 → 40 → 41 → 42
 | 38. Runtime Bootstrap | v1.6 | 2/2 | Complete | 2026-05-22 |
 | 39. Adapters & Tools Taxonomy | v1.6 | 1/1 | Complete | 2026-05-22 |
 | 40. Domain Engine Decomposition | v1.6 | 0/TBD | Not started | - |
-| 41. Control-Server Boundary | v1.6 | 0/TBD | Not started | - |
+| 41. Control-Server Boundary | v1.6 | 1/1 | Complete | 2026-05-22 |
 | 42. Test Restructure & Docs | v1.6 | 0/TBD | Not started | - |
 | 30-35 Dynamic Graph Authoring | v1.5 | 18/18 | Complete | 2026-05-22 |
 | 25-29, 29.1 Session Memory | v1.4 | 6/6 | Complete | 2026-05-21 |
