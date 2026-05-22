@@ -3,14 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Architecture Cleanup
 status: executing
-last_updated: "2026-05-22T18:30:00.000Z"
-last_activity: 2026-05-22
+stopped_at: Phase 36 executed (36-01 / 36-02) — verification passed
+last_updated: "2026-05-22T14:53:13.284Z"
+last_activity: 2026-05-22 -- Phase 37 planning complete
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 14
+  total_plans: 5
   completed_plans: 2
-  percent: 14
+  percent: 40
 ---
 
 # Project State
@@ -26,8 +27,8 @@ See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 Phase: 37 of 42 (Config Layer Split)
 Plan: Not started
-Status: Ready to plan — Phase 36 complete
-Last activity: 2026-05-22 — Phase 36 tooling guardrails landed (ESLint, Prettier, depcruise, `npm run check`)
+Status: Ready to execute
+Last activity: 2026-05-22 -- Phase 37 planning complete
 
 Progress: Phase 36 done (2 plans); starting Phase 37 next (about 14% through v1.6 phases 36–42)
 
