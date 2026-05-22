@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Architecture Cleanup
 status: executing
-stopped_at: Phase 38 complete — BOOT-01..06 verified (`38-VERIFICATION.md`), `npm run check` green (211 tests)
-last_updated: "2026-05-22T22:30:00.000Z"
-last_activity: 2026-05-22 -- Phase 38 execution complete
+stopped_at: Phase 39 complete — ADPT-01..06 verified (`39-VERIFICATION.md`), `npm run check` green (211 tests)
+last_updated: "2026-05-22T23:59:00.000Z"
+last_activity: 2026-05-22 -- Phase 39 execution complete
 progress:
   total_phases: 7
-  completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
-  percent: 43
+  completed_phases: 4
+  total_plans: 8
+  completed_plans: 8
+  percent: 57
 ---
 
 # Project State
@@ -21,18 +21,20 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 39 — Adapters & Tools Taxonomy
+**Current focus:** Phase 40 — Domain Engine Decomposition
 
 ## Current Position
 
-Phase: 39 of 42 (Adapters & Tools Taxonomy) — next  
+Phase: 40 of 42 (Domain Engine Decomposition) — next  
 Plan: Not started  
 Status: Ready to plan  
-Last activity: 2026-05-22 -- Phase 38 execution complete  
+Last activity: 2026-05-22 -- Phase 39 execution complete  
 
-Progress: Phase 36–38 done (`npm run check` gate green; 211 tests after Phase 38)
+Progress: Phase 36–39 done (`npm run check` gate green; 211 tests after Phase 39)
 
 ## Recently Completed
+
+- **Phase 39: Adapters & Tools Taxonomy** — `adapters/tools|persistence|models/`, `adapters/index.ts` barrel, `bootstrap/adapters.ts`, extension shims aligned; ADPT-01..06 verified; `39-VERIFICATION.md`; REG gate green for Phase 39 slice (2026-05-22).
 
 - **Phase 38: Runtime Bootstrap** — `application/bootstrap/` with `RuntimeContext` + `buildRuntimeContext()`, slim `src/index.ts`, `cli/run-modes/*` dispatch; bootstrap unit test; BOOT-01..06 verified; REG gate green for Phase 38 (`38-VERIFICATION.md`; 2026-05-22).
 
@@ -68,10 +70,10 @@ Items acknowledged and deferred at milestone close on 2026-05-22:
 
 ## Session Continuity
 
-Last session: 2026-05-22T22:30:00.000Z  
-Stopped at: Phase 38 complete — verification passed (`38-VERIFICATION.md`)  
+Last session: 2026-05-22T23:59:00.000Z  
+Stopped at: Phase 39 complete — verification passed (`39-VERIFICATION.md`)  
 Resume file: None
 
 ## Operator Next Steps
 
-- `/gsd-plan-phase 39` or `/gsd-discuss-phase 39` for Adapters & Tools Taxonomy
+- `/gsd-plan-phase 40` or spike on RLM state threading (per roadmap flag) before Phase 40 execution.

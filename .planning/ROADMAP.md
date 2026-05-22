@@ -27,7 +27,7 @@ v1.6 is a behavior-preserving architecture cleanup: land dev-tooling guardrails,
 - [x] **Phase 36: Dev Tooling Guardrails** — ESLint, Prettier, dependency-cruiser baselines and expanded `npm run check`.
 - [x] **Phase 37: Config Layer Split** — Focused `application/config/` modules with barrel facade and unit tests (2026-05-22).
 - [x] **Phase 38: Runtime Bootstrap** — `RuntimeContext`, `buildRuntimeContext()`, slim `index.ts`, and `cli/run-modes/*` (2026-05-22).
-- [ ] **Phase 39: Adapters & Tools Taxonomy** — Group tools, persistence, and model adapters by concern with aligned extension shims.
+- [x] **Phase 39: Adapters & Tools Taxonomy** — Group tools, persistence, and model adapters by concern with aligned extension shims.
 - [ ] **Phase 40: Domain Engine Decomposition** — `domain/recursion/` concern modules with orchestrator retaining flow.
 - [ ] **Phase 41: Control-Server Boundary** — Handler modules with bootstrap-injected dependencies and transport-only routes.
 - [ ] **Phase 42: Test Restructure & Docs** — Subsystem-aligned tests, shared helpers, and updated AGENTS.md contributor map.
@@ -117,7 +117,10 @@ Plans:
   3. Extension registration shims in `src/extensions/tools/` align with adapter locations with no duplicate tool implementations.
   4. Ports remain the public contract; import updates route through composition/bootstrap without growing scattered application→adapter coupling.
   5. CLI, UI, session, graph, and memory flows behave identically; full suite and `npm run check` stay green.
-**Plans**: TBD
+**Plans**: `39-01-PLAN.md` — shipped 2026-05-22
+
+Plans:
+- [x] `39-01-PLAN.md` — taxonomy move, `adapters/index.ts` barrel, bootstrap adapter re-exports, extension shim paths
 
 ### Phase 40: Domain Engine Decomposition
 **Goal**: The recursive engine splits into locatable concern modules while the orchestrator retains top-level recursion flow.
@@ -167,7 +170,7 @@ Phases execute in numeric order: 36 → 37 → 38 → 39 → 40 → 41 → 42
 | 36. Dev Tooling Guardrails | v1.6 | 2/2 | Complete | 2026-05-22 |
 | 37. Config Layer Split | v1.6 | 3/3 | Complete | 2026-05-22 |
 | 38. Runtime Bootstrap | v1.6 | 2/2 | Complete | 2026-05-22 |
-| 39. Adapters & Tools Taxonomy | v1.6 | 0/TBD | Not started | - |
+| 39. Adapters & Tools Taxonomy | v1.6 | 1/1 | Complete | 2026-05-22 |
 | 40. Domain Engine Decomposition | v1.6 | 0/TBD | Not started | - |
 | 41. Control-Server Boundary | v1.6 | 0/TBD | Not started | - |
 | 42. Test Restructure & Docs | v1.6 | 0/TBD | Not started | - |

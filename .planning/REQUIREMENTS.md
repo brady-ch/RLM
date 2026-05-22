@@ -38,12 +38,12 @@
 
 ### Adapters & Tools
 
-- [ ] **ADPT-01**: Tool adapters (`guarded-shell`, `web-search`, `web-fetch`, `workspace-file-write`) group under `adapters/tools/` by concern rather than a flat `adapters/` directory.
-- [ ] **ADPT-02**: Persistence adapters (`file-session-store`, `file-memory-store`, `file-run-state-store`, `file-vector-index`) group under `adapters/persistence/`.
-- [ ] **ADPT-03**: Model host adapters (`ollama-language-model`, `http-language-model`, `ollama-embedding-model`) group under `adapters/models/`.
-- [ ] **ADPT-04**: Shared adapter utilities (e.g. `search-query`) colocate with their owning concern module, not as orphaned flat files.
-- [ ] **ADPT-05**: Extension registration shims in `src/extensions/tools/` align with adapter module locations; no duplicate tool implementations.
-- [ ] **ADPT-06**: Ports remain the public contract; adapter moves preserve `ToolPort` and store interfaces with import updates routed through composition/bootstrap, not scattered application→adapter coupling growth.
+- [x] **ADPT-01**: Tool adapters (`guarded-shell`, `web-search`, `web-fetch`, `workspace-file-write`) group under `adapters/tools/` by concern rather than a flat `adapters/` directory.
+- [x] **ADPT-02**: Persistence adapters (`file-session-store`, `file-memory-store`, `file-run-state-store`, `file-vector-index`) group under `adapters/persistence/`.
+- [x] **ADPT-03**: Model host adapters (`ollama-language-model`, `http-language-model`, `ollama-embedding-model`) group under `adapters/models/`.
+- [x] **ADPT-04**: Shared adapter utilities (e.g. `search-query`) colocate with their owning concern module, not as orphaned flat files.
+- [x] **ADPT-05**: Extension registration shims in `src/extensions/tools/` align with adapter module locations; no duplicate tool implementations.
+- [x] **ADPT-06**: Ports remain the public contract; adapter moves preserve `ToolPort` and store interfaces with import updates routed through composition/bootstrap, not scattered application→adapter coupling growth.
 
 ### Domain Engine
 
@@ -104,8 +104,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | 36-42 (cross-cutting gate in every phase) | Pending — Phases 36–38 gates green (`npm run check`); milestone-wide sign-off remains open through Phase 42 |
-| REG-02 | 36-42 (cross-cutting gate in every phase) | Pending — Phases 36–38 gates green; milestone-wide sign-off remains open through Phase 42 |
+| REG-01 | 36-42 (cross-cutting gate in every phase) | Pending — Phases 36–39 gates green (`npm run check`); milestone-wide sign-off remains open through Phase 42 |
+| REG-02 | 36-42 (cross-cutting gate in every phase) | Pending — Phases 36–39 gates green; milestone-wide sign-off remains open through Phase 42 |
 | TOOL-01 | Phase 36 | Complete |
 | TOOL-02 | Phase 36 | Complete |
 | TOOL-03 | Phase 36 | Complete |
@@ -122,12 +122,12 @@
 | BOOT-04 | Phase 38 | Complete |
 | BOOT-05 | Phase 38 | Complete |
 | BOOT-06 | Phase 38 | Complete |
-| ADPT-01 | Phase 39 | Pending |
-| ADPT-02 | Phase 39 | Pending |
-| ADPT-03 | Phase 39 | Pending |
-| ADPT-04 | Phase 39 | Pending |
-| ADPT-05 | Phase 39 | Pending |
-| ADPT-06 | Phase 39 | Pending |
+| ADPT-01 | Phase 39 | Complete |
+| ADPT-02 | Phase 39 | Complete |
+| ADPT-03 | Phase 39 | Complete |
+| ADPT-04 | Phase 39 | Complete |
+| ADPT-05 | Phase 39 | Complete |
+| ADPT-06 | Phase 39 | Complete |
 | RLM-01 | Phase 40 | Pending |
 | RLM-02 | Phase 40 | Pending |
 | RLM-03 | Phase 40 | Pending |
