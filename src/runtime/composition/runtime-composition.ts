@@ -1,11 +1,11 @@
 import { constants } from "node:fs";
 import { access } from "node:fs/promises";
 import type { ExtensionHost } from "./extension-host.js";
-import type { ModelRuntimeSelection } from "./model-provider.js";
-import type { ProjectConfig } from "./project-config.js";
-import { HttpLanguageModelAdapter, OllamaLanguageModelAdapter } from "../adapters/index.js";
-import type { LanguageModelPort } from "../ports/language-model-port.js";
-import type { ToolPort } from "../ports/tool-port.js";
+import type { ModelRuntimeSelection } from "../../application/model-provider.js";
+import type { ProjectConfig } from "../../application/project-config.js";
+import { HttpLanguageModelAdapter, OllamaLanguageModelAdapter } from "../../adapters/index.js";
+import type { LanguageModelPort } from "../../ports/language-model-port.js";
+import type { ToolPort } from "../../ports/tool-port.js";
 
 type ClosableLanguageModel = LanguageModelPort & { close(): Promise<void> };
 

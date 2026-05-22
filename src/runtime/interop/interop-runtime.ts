@@ -2,9 +2,9 @@ import { access, readFile, readdir } from "node:fs/promises";
 import { constants } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import type { McpServerConfig } from "./project-config.js";
+import type { McpServerConfig } from "../../application/project-config.js";
 import type { McpSkillRuntime, SkillCandidate } from "./mcp-skill-runtime.js";
-import type { ToolExecutionResult, ToolPort } from "../ports/tool-port.js";
+import type { ToolExecutionResult, ToolPort } from "../../ports/tool-port.js";
 
 export function createSkillTool(runtime: McpSkillRuntime): ToolPort {
   return {

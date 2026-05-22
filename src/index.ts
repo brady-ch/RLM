@@ -10,7 +10,7 @@ import {
   resolveRuntimeConfig,
   seedProjectRlmStarter,
 } from "./application/project-config.js";
-import { readablePath } from "./application/runtime-composition.js";
+import { readablePath } from "./runtime/composition/runtime-composition.js";
 import { helpText, parseArgs } from "./cli/args.js";
 import {
   formatLaunchModeBanner,

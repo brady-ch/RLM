@@ -1,11 +1,15 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import type { InteropConfig, McpServerConfig, SkillPathPolicyConfig } from "./project-config.js";
+import type {
+  InteropConfig,
+  McpServerConfig,
+  SkillPathPolicyConfig,
+} from "../../application/project-config.js";
 import {
   createRuntimeEvent,
   type RuntimeEvent,
   type RuntimeEventSeverity,
-} from "./runtime-events.js";
+} from "../../application/runtime-events.js";
 
 export interface SequenceAllocator {
   nextSeq(runId: string): Promise<number>;
