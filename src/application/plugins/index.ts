@@ -26,6 +26,11 @@ export type { ExtensionRegistryEntry } from "../../ports/extension-port.js";
 export { PluginRegistryService, createPluginRegistryService } from "./plugin-registry-service.js";
 export type {
   PluginDoctorIssue,
+  PluginDoctorOptions,
+  PluginDoctorResult,
+  PluginInstallRemoteOptions,
+  PluginInstallRemotePreview,
+  PluginInstallRemoteResult,
   PluginListItem,
   PluginListSource,
   PluginMutationResult,

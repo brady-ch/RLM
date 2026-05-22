@@ -1,6 +1,17 @@
 import { createHash } from "node:crypto";
-import { access, cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import {
+  access,
+  cp,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { BUILTIN_PLUGINS } from "../../plugins/builtin/index.js";
 import {
   mergeConfiguredPluginEntries,
@@ -18,6 +29,10 @@ import {
   getUserPluginCatalogPath,
   getUserPluginsRoot,
 } from "../../plugins/paths.js";
+import {
+  fetchRemotePluginToStaging,
+  isRemoteInstallSource,
+} from "../../plugins/remote-fetch/index.js";
 
 export type PluginListSource = "builtin" | "local" | "configured";
 
@@ -40,8 +55,39 @@ export type PluginMutationResult = {
   requiresRestart: true;
 };
 
+export type PluginInstallRemotePreview = {
+  ok: false;
+  needsConfirm: true;
+  id: string;
+  source: string;
+  manifest: ReturnType<typeof parsePluginManifest>;
+};
+
+export type PluginInstallRemoteResult = PluginMutationResult | PluginInstallRemotePreview;
+
+export type PluginInstallRemoteOptions = {
+  confirm?: boolean | undefined;
+  fetchFn?: typeof fetch | undefined;
+};
+
+export type PluginDoctorOptions = {
+  fix?: boolean | undefined;
+};
+
+export type PluginDoctorResult = {
+  ok: boolean;
+  issues: PluginDoctorIssue[];
+  fixesApplied?: string[] | undefined;
+};
+
 export type PluginDoctorIssue = {
-  code: "missing_path" | "invalid_manifest" | "duplicate_id" | "stale_config_ref" | "id_mismatch";
+  code:
+    | "missing_path"
+    | "invalid_manifest"
+    | "duplicate_id"
+    | "stale_config_ref"
+    | "id_mismatch"
+    | "quarantined";
   severity: "error" | "warning";
   message: string;
   pluginId?: string | undefined;
@@ -147,34 +193,52 @@ export class PluginRegistryService {
     return items.sort((left, right) => left.id.localeCompare(right.id));
   }
 
+  async install(
+    sourceInput: string,
+    options: PluginInstallRemoteOptions = {},
+  ): Promise<PluginInstallRemoteResult> {
+    if (isRemoteInstallSource(sourceInput)) {
+      return this.installRemote(sourceInput, options);
+    }
+
+    return this.installLocal(sourceInput);
+  }
+
   async installLocal(sourcePathInput: string): Promise<PluginMutationResult> {
     const sourcePath = resolve(this.projectRoot, sourcePathInput);
     await assertPathExists(sourcePath, "Plugin source path not found");
-
     const { root, entryPath } = await resolvePluginLayout(sourcePath);
-    const manifestPath = join(root, "rlm.plugin.json");
-    const manifest = await readAndValidatePluginManifest(manifestPath);
-    const installDir = join(this.userPluginsRoot, manifest.id);
-    const installedEntryPath = join(installDir, basename(entryPath));
+    return this.installFromRoot(root, entryPath, "local");
+  }
 
-    await rm(installDir, { recursive: true, force: true });
-    await mkdir(dirname(installDir), { recursive: true });
-    await cp(root, installDir, { recursive: true, force: true });
+  async installRemote(
+    sourceInput: string,
+    options: PluginInstallRemoteOptions = {},
+  ): Promise<PluginInstallRemoteResult> {
+    const source = sourceInput.trim();
+    const { stagingDir, cleanup } = await fetchRemotePluginToStaging(source, {
+      ...(options.fetchFn ? { fetchFn: options.fetchFn } : {}),
+    });
 
-    await this.preApproveTrustGate(installedEntryPath);
+    try {
+      const { root, entryPath } = await resolvePluginLayout(stagingDir);
+      const manifest = await readAndValidatePluginManifest(join(root, "rlm.plugin.json"));
 
-    const catalog = await readCatalog(this.userCatalogPath);
-    const nextEntry: InstalledPluginCatalogEntry = {
-      id: manifest.id,
-      path: installedEntryPath,
-      enabled: true,
-      source: "local",
-    };
-    const plugins = (catalog.plugins ?? []).filter((entry) => entry.id !== manifest.id);
-    plugins.push(nextEntry);
-    await writeCatalog(this.userCatalogPath, { plugins });
+      if (!options.confirm) {
+        return {
+          ok: false,
+          needsConfirm: true,
+          id: manifest.id,
+          source,
+          manifest,
+        };
+      }
 
-    return { ok: true, id: manifest.id, requiresRestart: true };
+      const result = await this.installFromRoot(root, entryPath, "remote");
+      return result;
+    } finally {
+      await cleanup();
+    }
   }
 
   async enable(pluginId: string): Promise<PluginMutationResult> {
@@ -221,12 +285,15 @@ export class PluginRegistryService {
     return { ok: true, id: pluginId, requiresRestart: true };
   }
 
-  async doctor(): Promise<{ ok: boolean; issues: PluginDoctorIssue[] }> {
+  async doctor(options: PluginDoctorOptions = {}): Promise<PluginDoctorResult> {
     const issues: PluginDoctorIssue[] = [];
+    const fixesApplied: string[] = [];
     const ids = new Map<string, string>();
 
     for (const catalogPath of [this.userCatalogPath, this.projectCatalogPath]) {
       const catalog = await readCatalog(catalogPath);
+      const nextEntries: InstalledPluginCatalogEntry[] = [];
+
       for (const entry of catalog.plugins ?? []) {
         if (ids.has(entry.id)) {
           issues.push({
@@ -235,9 +302,17 @@ export class PluginRegistryService {
             message: `Duplicate plugin id ${entry.id} in catalogs`,
             pluginId: entry.id,
           });
+          if (options.fix && catalogPath === this.projectCatalogPath) {
+            fixesApplied.push(
+              `Removed duplicate catalog entry for ${entry.id} from project catalog`,
+            );
+            continue;
+          }
         } else {
           ids.set(entry.id, catalogPath);
         }
+
+        let keepEntry = true;
 
         if (!(await pathExists(entry.path))) {
           issues.push({
@@ -247,33 +322,57 @@ export class PluginRegistryService {
             pluginId: entry.id,
             path: entry.path,
           });
-          continue;
-        }
-
-        try {
-          const manifest = await this.readManifestForEntry(entry);
-          if (manifest.id !== entry.id) {
+          keepEntry = !options.fix;
+          if (options.fix) {
+            await this.quarantineInstallDir(entry, fixesApplied);
+          }
+        } else {
+          try {
+            const manifest = await this.readManifestForEntry(entry);
+            if (manifest.id !== entry.id) {
+              issues.push({
+                code: "id_mismatch",
+                severity: "error",
+                message: `Catalog id ${entry.id} does not match manifest id ${manifest.id}`,
+                pluginId: entry.id,
+                path: entry.path,
+              });
+              keepEntry = !options.fix;
+              if (options.fix) {
+                await this.quarantineInstallDir(entry, fixesApplied);
+              }
+            }
+          } catch (error: unknown) {
             issues.push({
-              code: "id_mismatch",
+              code: "invalid_manifest",
               severity: "error",
-              message: `Catalog id ${entry.id} does not match manifest id ${manifest.id}`,
+              message: error instanceof Error ? error.message : String(error),
               pluginId: entry.id,
               path: entry.path,
             });
+            keepEntry = !options.fix;
+            if (options.fix) {
+              await this.quarantineInstallDir(entry, fixesApplied);
+            }
           }
-        } catch (error: unknown) {
-          issues.push({
-            code: "invalid_manifest",
-            severity: "error",
-            message: error instanceof Error ? error.message : String(error),
-            pluginId: entry.id,
-            path: entry.path,
-          });
+        }
+
+        if (keepEntry) {
+          nextEntries.push(entry);
+        }
+      }
+
+      if (options.fix) {
+        if (nextEntries.length === 0) {
+          await rm(catalogPath, { force: true });
+        } else {
+          await writeCatalog(catalogPath, { plugins: nextEntries });
         }
       }
     }
 
     const configured = normalizeLegacyExtensionEntries(this.legacyExtensions, this.configFilePath);
+    const stalePaths = new Set<string>();
     for (const entry of configured) {
       if (!(await pathExists(entry.path))) {
         issues.push({
@@ -283,11 +382,23 @@ export class PluginRegistryService {
           pluginId: entry.id,
           path: entry.path,
         });
+        stalePaths.add(entry.path);
+      }
+    }
+
+    if (options.fix && stalePaths.size > 0) {
+      const pruned = await this.pruneStaleConfigRefs(stalePaths);
+      if (pruned > 0) {
+        fixesApplied.push(`Pruned ${pruned} stale extension reference(s) from config`);
       }
     }
 
     const hasErrors = issues.some((issue) => issue.severity === "error");
-    return { ok: !hasErrors, issues };
+    const result: PluginDoctorResult = { ok: !hasErrors, issues };
+    if (fixesApplied.length > 0) {
+      result.fixesApplied = fixesApplied;
+    }
+    return result;
   }
 
   async inspect(
@@ -364,7 +475,89 @@ export class PluginRegistryService {
   }
 
   private async removeStaleConfigRefs(_pluginId: string): Promise<void> {
-    // Catalog is the source of truth for installed plugins; doctor reports stale YAML refs.
+    // Catalog is the source of truth for installed plugins; doctor --fix prunes stale YAML refs.
+  }
+
+  private async installFromRoot(
+    root: string,
+    entryPath: string,
+    source: "local" | "remote",
+  ): Promise<PluginMutationResult> {
+    const manifestPath = join(root, "rlm.plugin.json");
+    const manifest = await readAndValidatePluginManifest(manifestPath);
+    const installDir = join(this.userPluginsRoot, manifest.id);
+    const installedEntryPath = join(installDir, basename(entryPath));
+
+    await rm(installDir, { recursive: true, force: true });
+    await mkdir(dirname(installDir), { recursive: true });
+    await cp(root, installDir, { recursive: true, force: true });
+
+    await this.preApproveTrustGate(installedEntryPath);
+
+    const catalog = await readCatalog(this.userCatalogPath);
+    const nextEntry: InstalledPluginCatalogEntry = {
+      id: manifest.id,
+      path: installedEntryPath,
+      enabled: true,
+      source,
+    };
+    const plugins = (catalog.plugins ?? []).filter((entry) => entry.id !== manifest.id);
+    plugins.push(nextEntry);
+    await writeCatalog(this.userCatalogPath, { plugins });
+
+    return { ok: true, id: manifest.id, requiresRestart: true };
+  }
+
+  private async quarantineInstallDir(
+    entry: InstalledPluginCatalogEntry,
+    fixesApplied: string[],
+  ): Promise<void> {
+    const installDir = join(this.userPluginsRoot, entry.id);
+    if (!(await pathExists(installDir))) {
+      return;
+    }
+
+    const quarantineRoot = join(this.userPluginsRoot, ".quarantine");
+    await mkdir(quarantineRoot, { recursive: true });
+    const quarantineDir = join(quarantineRoot, `${Date.now()}-${entry.id}`);
+    await rename(installDir, quarantineDir);
+    fixesApplied.push(`Quarantined ${entry.id} to ${quarantineDir}`);
+  }
+
+  private async pruneStaleConfigRefs(stalePaths: Set<string>): Promise<number> {
+    if (!(await pathExists(this.configFilePath))) {
+      return 0;
+    }
+
+    const raw = await readFile(this.configFilePath, "utf8");
+    const parsed = parseYaml(raw);
+    if (!isPlainRecord(parsed) || !isPlainRecord(parsed.extensions)) {
+      return 0;
+    }
+
+    const load = parsed.extensions.load;
+    if (!Array.isArray(load)) {
+      return 0;
+    }
+
+    const configDir = dirname(this.configFilePath);
+    const kept = load.filter((entry) => {
+      if (!isPlainRecord(entry) || typeof entry.path !== "string") {
+        return true;
+      }
+
+      const absPath = isAbsolute(entry.path) ? entry.path : resolve(configDir, entry.path);
+      return !stalePaths.has(absPath);
+    });
+
+    const pruned = load.length - kept.length;
+    if (pruned === 0) {
+      return 0;
+    }
+
+    parsed.extensions.load = kept;
+    await writeFile(this.configFilePath, stringifyYaml(parsed), "utf8");
+    return pruned;
   }
 
   private toListItem(
@@ -513,6 +706,10 @@ async function assertPathExists(path: string, message: string): Promise<void> {
 
 function isEnoent(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function createPluginRegistryService(
