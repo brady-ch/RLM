@@ -3,15 +3,15 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { FileMemoryStore, FileSessionStore } from "../src/adapters/index.js";
-import { buildRuntimeContext } from "../src/application/bootstrap/index.js";
+import { FileMemoryStore, FileSessionStore } from "../../../src/adapters/index.js";
+import { buildRuntimeContext } from "../../../src/application/bootstrap/index.js";
 import {
   DEFAULT_PROJECT_CONFIG,
   applyModelOverride,
   resolveRuntimeConfig,
-} from "../src/application/project-config.js";
-import { parseArgs } from "../src/cli/args.js";
-import { COMPOSITION_INIT_ORDER } from "../src/runtime/composition/init-order.js";
+} from "../../../src/application/project-config.js";
+import { parseArgs } from "../../../src/cli/args.js";
+import { COMPOSITION_INIT_ORDER } from "../../../src/runtime/composition/init-order.js";
 
 test("buildRuntimeContext records composition init order without CLI or control-server", async () => {
   const root = mkdtempSync(join(tmpdir(), "rlm-init-order-"));

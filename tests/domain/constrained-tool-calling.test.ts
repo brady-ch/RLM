@@ -1,14 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { InMemoryTrace } from "../src/adapters/index.js";
-import { RecursiveLanguageModel } from "../src/domain/recursive-language-model.js";
+import { InMemoryTrace } from "../../src/adapters/index.js";
+import { RecursiveLanguageModel } from "../../src/domain/recursive-language-model.js";
 import type {
   LanguageModelCompleteOptions,
   LanguageModelMessage,
   LanguageModelPort,
   LanguageModelResponse,
-} from "../src/ports/language-model-port.js";
-import type { ToolExecutionResult, ToolPort } from "../src/ports/tool-port.js";
+} from "../../src/ports/language-model-port.js";
+import type { ToolExecutionResult, ToolPort } from "../../src/ports/tool-port.js";
 
 class EchoTool implements ToolPort {
   readonly name = "echo";

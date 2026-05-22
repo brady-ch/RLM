@@ -3,9 +3,9 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
-import { ExtensionHost } from "../src/runtime/composition/extension-host.js";
-import type { ExtensionHostPort } from "../src/ports/extension-host-port.js";
-import type { ToolExecutionResult, ToolPort } from "../src/ports/tool-port.js";
+import { ExtensionHost } from "../../../src/runtime/composition/extension-host.js";
+import type { ExtensionHostPort } from "../../../src/ports/extension-host-port.js";
+import type { ToolExecutionResult, ToolPort } from "../../../src/ports/tool-port.js";
 
 class SyntheticTool implements ToolPort {
   readonly description = "Synthetic test tool.";

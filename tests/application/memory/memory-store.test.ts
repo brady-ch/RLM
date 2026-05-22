@@ -3,10 +3,10 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { FileMemoryStore, FileVectorIndex } from "../src/adapters/index.js";
-import { MemoryResolver } from "../src/application/memory-resolver.js";
-import { SemanticMemoryIndex } from "../src/application/semantic-memory-index.js";
-import type { EmbeddingPort } from "../src/ports/embedding-port.js";
+import { FileMemoryStore, FileVectorIndex } from "../../../src/adapters/index.js";
+import { MemoryResolver } from "../../../src/application/memory-resolver.js";
+import { SemanticMemoryIndex } from "../../../src/application/semantic-memory-index.js";
+import type { EmbeddingPort } from "../../../src/ports/embedding-port.js";
 
 class KeywordEmbedding implements EmbeddingPort {
   async embed(input: string): Promise<number[]> {

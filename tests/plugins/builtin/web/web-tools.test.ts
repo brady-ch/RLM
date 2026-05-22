@@ -8,7 +8,7 @@ import {
   parseUddgLines,
   stripFluffWords,
   stripHtmlTags,
-} from "../src/adapters/index.js";
+} from "../../../../src/adapters/index.js";
 
 test("search query builder applies search operators", () => {
   const query = buildSearchQuery({

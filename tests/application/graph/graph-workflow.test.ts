@@ -3,26 +3,26 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { createAgentRegistry } from "../src/application/agent-registry.js";
+import { createAgentRegistry } from "../../../src/application/agent-registry.js";
 import {
   applyPipelineTemplate,
   exportSessionGraphToSidecar,
   importSidecarToGraph,
   parseGraphWorkflowSidecar,
   rootPromptSuitableForPipeline,
-} from "../src/application/graph-workflow-serializer.js";
+} from "../../../src/application/graph-workflow-serializer.js";
 import {
   exportAndSaveGraphWorkflow,
   listGraphWorkflows,
   loadGraphWorkflow,
-} from "../src/application/graph-workflow-store.js";
+} from "../../../src/application/graph-workflow-store.js";
 import {
   GraphWorkflowRunError,
   resolveGraphWorkflowVariant,
   validateGraphForRun,
-} from "../src/application/graph-workflow-runner.js";
-import { loadProjectConfig } from "../src/application/project-config.js";
-import type { ExecutionGraph, ExecutionGraphNode } from "../src/domain/types.js";
+} from "../../../src/application/graph-workflow-runner.js";
+import { loadProjectConfig } from "../../../src/application/project-config.js";
+import type { ExecutionGraph, ExecutionGraphNode } from "../../../src/domain/types.js";
 import { parse as parseYaml } from "yaml";
 
 function makeNode(

@@ -6,8 +6,8 @@ import {
   resolveModelTier,
   resolveRuntimeConfig,
   resolveRuntimeHostSelection,
-} from "../src/application/project-config.js";
-import type { ProjectConfig } from "../src/application/project-config.js";
+} from "../../../src/application/project-config.js";
+import type { ProjectConfig } from "../../../src/application/project-config.js";
 
 function cloneDefaults(): ProjectConfig {
   return structuredClone(DEFAULT_PROJECT_CONFIG);

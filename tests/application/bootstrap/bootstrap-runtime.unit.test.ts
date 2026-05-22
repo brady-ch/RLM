@@ -3,14 +3,14 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { FileMemoryStore, FileSessionStore } from "../src/adapters/index.js";
-import { buildRuntimeContext } from "../src/application/bootstrap/index.js";
+import { FileMemoryStore, FileSessionStore } from "../../../src/adapters/index.js";
+import { buildRuntimeContext } from "../../../src/application/bootstrap/index.js";
 import {
   DEFAULT_PROJECT_CONFIG,
   applyModelOverride,
   resolveRuntimeConfig,
-} from "../src/application/project-config.js";
-import { parseArgs } from "../src/cli/args.js";
+} from "../../../src/application/project-config.js";
+import { parseArgs } from "../../../src/cli/args.js";
 
 test("buildRuntimeContext registers default+coding profiles and skill interop helper", async () => {
   const root = mkdtempSync(join(tmpdir(), "rlm-boot-"));

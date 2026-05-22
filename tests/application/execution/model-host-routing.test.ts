@@ -1,9 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveRuntimeHostSelection } from "../src/application/project-config.js";
-import { PurposeRoutingLanguageModel } from "../src/application/model-provider.js";
-import type { AgentConfig, ProjectConfig } from "../src/application/project-config.js";
-import type { LanguageModelPort, LanguageModelResponse } from "../src/ports/language-model-port.js";
+import { resolveRuntimeHostSelection } from "../../../src/application/project-config.js";
+import { PurposeRoutingLanguageModel } from "../../../src/application/model-provider.js";
+import type { AgentConfig, ProjectConfig } from "../../../src/application/project-config.js";
+import type {
+  LanguageModelPort,
+  LanguageModelResponse,
+} from "../../../src/ports/language-model-port.js";
 
 class StubModel implements LanguageModelPort {
   async complete(): Promise<LanguageModelResponse> {

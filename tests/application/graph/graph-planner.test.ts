@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { loadProjectConfig } from "../src/application/project-config.js";
-import { GraphPlannerError, planChildren } from "../src/application/graph-planner.js";
+import { loadProjectConfig } from "../../../src/application/project-config.js";
+import { GraphPlannerError, planChildren } from "../../../src/application/graph-planner.js";
 import type {
   LanguageModelCompleteOptions,
   LanguageModelMessage,
   LanguageModelPort,
   LanguageModelResponse,
-} from "../src/ports/language-model-port.js";
+} from "../../../src/ports/language-model-port.js";
 
 class CapturePlanModel implements LanguageModelPort {
   readonly calls: Array<{

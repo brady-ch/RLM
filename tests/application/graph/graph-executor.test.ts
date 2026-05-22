@@ -1,23 +1,26 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createAgentRegistry, resolveAgent } from "../src/application/agent-registry.js";
-import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
+import { createAgentRegistry, resolveAgent } from "../../../src/application/agent-registry.js";
+import { createInteractiveExecutionSession } from "../../../src/application/execution-controller.js";
 import {
   buildExecutionPrompt,
   executeGraph,
   GraphExecutorError,
   topologicalExecutionOrder,
-} from "../src/application/graph-executor.js";
-import { MemoryManager } from "../src/application/memory-manager.js";
-import { loadProjectConfig, resolveRuntimeConfig } from "../src/application/project-config.js";
-import type { ExecutionGraph, ExecutionGraphNode } from "../src/domain/types.js";
+} from "../../../src/application/graph-executor.js";
+import { MemoryManager } from "../../../src/application/memory-manager.js";
+import {
+  loadProjectConfig,
+  resolveRuntimeConfig,
+} from "../../../src/application/project-config.js";
+import type { ExecutionGraph, ExecutionGraphNode } from "../../../src/domain/types.js";
 import type {
   LanguageModelCompleteOptions,
   LanguageModelMessage,
   LanguageModelPort,
   LanguageModelResponse,
-} from "../src/ports/language-model-port.js";
-import type { ToolPort } from "../src/ports/tool-port.js";
+} from "../../../src/ports/language-model-port.js";
+import type { ToolPort } from "../../../src/ports/tool-port.js";
 
 class CountingModel implements LanguageModelPort {
   completeCount = 0;

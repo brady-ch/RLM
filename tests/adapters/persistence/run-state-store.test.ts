@@ -3,8 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
-import { FileRunStateStore } from "../src/adapters/index.js";
-import { createMutationAuditEvent } from "../src/application/runtime-events.js";
+import { FileRunStateStore } from "../../../src/adapters/index.js";
+import { createMutationAuditEvent } from "../../../src/application/runtime-events.js";
 
 test("file run-state store enforces token + etag and records accepted/rejected mutations", async () => {
   const dir = await mkdtemp(join(tmpdir(), "rlm-runstate-"));

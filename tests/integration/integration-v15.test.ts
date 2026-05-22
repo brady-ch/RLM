@@ -3,27 +3,27 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { FileMemoryStore, FileSessionStore, FileVectorIndex } from "../src/adapters/index.js";
-import { createInteractiveExecutionSession } from "../src/application/execution-controller.js";
+import { FileMemoryStore, FileSessionStore, FileVectorIndex } from "../../src/adapters/index.js";
+import { createInteractiveExecutionSession } from "../../src/application/execution-controller.js";
 import {
   exportAndSaveGraphWorkflow,
   resolveDiskGraphWorkflowConfig,
-} from "../src/application/graph-workflow-store.js";
+} from "../../src/application/graph-workflow-store.js";
 import {
   exportSessionGraphToSidecar,
   importSidecarToGraph,
-} from "../src/application/graph-workflow-serializer.js";
-import { loadProjectConfig } from "../src/application/project-config.js";
-import { runWorkflow } from "../src/application/workflow-runner.js";
+} from "../../src/application/graph-workflow-serializer.js";
+import { loadProjectConfig } from "../../src/application/project-config.js";
+import { runWorkflow } from "../../src/application/workflow-runner.js";
 import {
   buildSavedSessionPayload,
   restoreGraphWorkflowMetadata,
   restoreSessionMemory,
-} from "../src/application/session-memory-bridge.js";
-import { MemoryManager } from "../src/application/memory-manager.js";
-import { createAgentRegistry } from "../src/application/agent-registry.js";
-import type { ExecutionGraphNode } from "../src/domain/types.js";
-import type { LanguageModelPort } from "../src/ports/language-model-port.js";
+} from "../../src/application/session-memory-bridge.js";
+import { MemoryManager } from "../../src/application/memory-manager.js";
+import { createAgentRegistry } from "../../src/application/agent-registry.js";
+import type { ExecutionGraphNode } from "../../src/domain/types.js";
+import type { LanguageModelPort } from "../../src/ports/language-model-port.js";
 
 const genericPlanChildren = [
   { label: "Step one", prompt: "Do step one", type: "AI", complexity: "medium" },

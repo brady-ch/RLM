@@ -10,8 +10,8 @@ import {
   FileEventExportSink,
   InMemoryEventStore,
   McpSkillRuntime,
-} from "../src/runtime/interop/mcp-skill-runtime.js";
-import { createMcpTools, createSkillTool } from "../src/runtime/interop/interop-runtime.js";
+} from "../../../src/runtime/interop/mcp-skill-runtime.js";
+import { createMcpTools, createSkillTool } from "../../../src/runtime/interop/interop-runtime.js";
 
 test("skill resolution uses search-path order and lenient parse warnings", async () => {
   const store = new InMemoryEventStore();

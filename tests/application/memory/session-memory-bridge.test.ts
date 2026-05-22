@@ -8,13 +8,13 @@ import {
   FileSessionStore,
   FileVectorIndex,
   type VectorIndexRecord,
-} from "../src/adapters/index.js";
+} from "../../../src/adapters/index.js";
 import {
   buildSavedSessionPayload,
   readRunIdFromPayload,
   restoreSessionMemory,
-} from "../src/application/session-memory-bridge.js";
-import { SemanticMemoryIndex } from "../src/application/semantic-memory-index.js";
+} from "../../../src/application/session-memory-bridge.js";
+import { SemanticMemoryIndex } from "../../../src/application/semantic-memory-index.js";
 
 class StubEmbeddings {
   async embed(text: string): Promise<number[]> {

@@ -7,8 +7,8 @@ import {
   loadProjectConfig,
   resolveRuntimeConfig,
   seedProjectRlmStarter,
-} from "../src/application/project-config.js";
-import { resolveLaunchMode } from "../src/cli/first-run.js";
+} from "../../../src/application/project-config.js";
+import { resolveLaunchMode } from "../../../src/cli/first-run.js";
 
 test("layered config lets project agent override global agent with same id", async () => {
   const prevHome = process.env.HOME;
