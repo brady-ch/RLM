@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Architecture Cleanup
-status: ready_to_plan
-last_updated: "2026-05-22T16:00:00.000Z"
+status: executing
+last_updated: "2026-05-22T18:30:00.000Z"
 last_activity: 2026-05-22
 progress:
   total_phases: 7
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 14
+  completed_plans: 2
+  percent: 14
 ---
 
 # Project State
@@ -20,18 +20,20 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 36 — Dev Tooling Guardrails
+**Current focus:** Phase 37 — Config Layer Split
 
 ## Current Position
 
-Phase: 36 of 42 (Dev Tooling Guardrails)
+Phase: 37 of 42 (Config Layer Split)
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-22 — v1.6 roadmap created (Phases 36-42)
+Status: Ready to plan — Phase 36 complete
+Last activity: 2026-05-22 — Phase 36 tooling guardrails landed (ESLint, Prettier, depcruise, `npm run check`)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: Phase 36 done (2 plans); starting Phase 37 next (about 14% through v1.6 phases 36–42)
 
 ## Recently Completed
+
+- **Phase 36: Dev Tooling Guardrails** — ESLint 10 + typescript-eslint flat config (src/tests/ui), Prettier 3, dependency-cruiser WARN rules + baseline (`dependency-cruiser-baseline.json`), `npm run check` chains all gates; `36-VERIFICATION.md` status passed; 205 tests green (2026-05-22).
 
 - v1.5 Dynamic Graph Authoring shipped on 2026-05-22 (Phases 30-35, 18 plans, 205 tests).
 - v1.6 requirements defined on 2026-05-22 (40 requirements across 9 categories).
@@ -63,10 +65,10 @@ Items acknowledged and deferred at milestone close on 2026-05-22:
 
 ## Session Continuity
 
-Last session: 2026-05-22T16:00:00.000Z  
-Stopped at: v1.6 roadmap created  
+Last session: 2026-05-22T18:30:00.000Z  
+Stopped at: Phase 36 executed (36-01 / 36-02) — verification passed  
 Resume file: None
 
 ## Operator Next Steps
 
-- `/gsd-discuss-phase 36` or `/gsd-plan-phase 36` to begin Phase 36
+- `/gsd-discuss-phase 37` or `/gsd-plan-phase 37` to begin Phase 37 (Config Layer Split)

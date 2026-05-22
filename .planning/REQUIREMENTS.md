@@ -8,15 +8,15 @@
 
 ### Regression Gate
 
-- [ ] **REG-01**: All existing tests pass after each extraction phase; no intentional behavior changes to CLI flags, config semantics, control-server API, or graph/session/memory flows.
-- [ ] **REG-02**: `npm run check` (typecheck + test, extended with lint/depcruise when tooling lands) remains the CI gate and stays green throughout the milestone.
+- [x] **REG-01**: All existing tests pass after each extraction phase; no intentional behavior changes to CLI flags, config semantics, control-server API, or graph/session/memory flows.
+- [x] **REG-02**: `npm run check` (typecheck + test, extended with lint/depcruise when tooling lands) remains the CI gate and stays green throughout the milestone.
 
 ### Dev Tooling
 
-- [ ] **TOOL-01**: ESLint 10 flat config with typescript-eslint covers `src/` and `ui/src/` with a minimal baseline rule set aligned to existing style.
-- [ ] **TOOL-02**: Prettier 3 formats TypeScript sources; eslint-config-prettier prevents rule conflicts; format-only changes land in a separate commit from logic refactors.
-- [ ] **TOOL-03**: dependency-cruiser enforces AGENTS.md layer rules (`domain→ports`, no `ports→application`, etc.) with warn-severity baseline that ratchets to error as violations are fixed.
-- [ ] **TOOL-04**: `npm run check` expands to include lint and dependency-cruiser validation once baselines are triaged.
+- [x] **TOOL-01**: ESLint 10 flat config with typescript-eslint covers `src/` and `ui/src/` with a minimal baseline rule set aligned to existing style.
+- [x] **TOOL-02**: Prettier 3 formats TypeScript sources; eslint-config-prettier prevents rule conflicts; format-only changes land in a separate commit from logic refactors.
+- [x] **TOOL-03**: dependency-cruiser enforces AGENTS.md layer rules (`domain→ports`, no `ports→application`, etc.) with warn-severity baseline that ratchets to error as violations are fixed.
+- [x] **TOOL-04**: `npm run check` expands to include lint and dependency-cruiser validation once baselines are triaged.
 
 ### Config Layer
 
@@ -104,12 +104,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | 36-42 (cross-cutting gate in every phase) | Pending |
-| REG-02 | 36-42 (cross-cutting gate in every phase) | Pending |
-| TOOL-01 | Phase 36 | Pending |
-| TOOL-02 | Phase 36 | Pending |
-| TOOL-03 | Phase 36 | Pending |
-| TOOL-04 | Phase 36 | Pending |
+| REG-01 | 36-42 (cross-cutting gate in every phase) | Met (Phase 36 gate verified) |
+| REG-02 | 36-42 (cross-cutting gate in every phase) | Met (Phase 36 gate verified) |
+| TOOL-01 | Phase 36 | Complete |
+| TOOL-02 | Phase 36 | Complete |
+| TOOL-03 | Phase 36 | Complete |
+| TOOL-04 | Phase 36 | Complete |
 | CONF-01 | Phase 37 | Pending |
 | CONF-02 | Phase 37 | Pending |
 | CONF-03 | Phase 37 | Pending |

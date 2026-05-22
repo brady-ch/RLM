@@ -24,7 +24,7 @@ v1.6 is a behavior-preserving architecture cleanup: land dev-tooling guardrails,
 
 **Milestone Goal:** Reduce structural debt across CLI composition, config loading, core engine, tests, tooling, and UI boundaries while preserving existing behavior.
 
-- [ ] **Phase 36: Dev Tooling Guardrails** — ESLint, Prettier, dependency-cruiser baselines and expanded `npm run check`.
+- [x] **Phase 36: Dev Tooling Guardrails** — ESLint, Prettier, dependency-cruiser baselines and expanded `npm run check`.
 - [ ] **Phase 37: Config Layer Split** — Focused `application/config/` modules with barrel facade and unit tests.
 - [ ] **Phase 38: Runtime Bootstrap** — `RuntimeContext`, `buildRuntimeContext()`, slim `index.ts`, and `cli/run-modes/*`.
 - [ ] **Phase 39: Adapters & Tools Taxonomy** — Group tools, persistence, and model adapters by concern with aligned extension shims.
@@ -70,9 +70,9 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   1. `npm run lint` passes on `src/` and `ui/src/` with ESLint 10 flat config and a minimal typescript-eslint baseline aligned to existing style.
   2. Prettier 3 formats TypeScript sources; eslint-config-prettier prevents rule conflicts; format-only changes are isolated from logic refactors.
   3. dependency-cruiser enforces AGENTS.md layer rules at warn severity with a triaged baseline for known violations.
-  4. `npm run check` runs typecheck, lint, dependency-cruiser, and test once baselines are green.
+  4. `npm run check` runs typecheck, lint, Prettier `--check`, dependency-cruiser (with baseline), and test once baselines are green.
   5. All existing tests pass with no intentional behavior changes to CLI flags, config semantics, control-server API, or graph/session/memory flows.
-**Plans**: TBD
+**Plans**: 36-01 (`36-01-PLAN.md`), 36-02 (`36-02-PLAN.md`) — shipped 2026-05-22
 
 ### Phase 37: Config Layer Split
 **Goal**: Config loading, validation, and resolution live in focused, unit-testable modules with a stable public facade.
