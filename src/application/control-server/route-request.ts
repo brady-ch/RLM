@@ -4,6 +4,7 @@ import type { ControlServerDeps } from "./control-server-deps.js";
 import * as graphHandlers from "./handlers/graph.js";
 import * as workflowsHandlers from "./handlers/workflows.js";
 import * as modelLibraryHandlers from "./handlers/model-library.js";
+import * as pluginsHandlers from "./handlers/plugins.js";
 import * as sessionHandlers from "./handlers/session.js";
 import { serveUiAsset } from "./handlers/static-ui.js";
 import { sendJson } from "./http-utils.js";
@@ -33,6 +34,7 @@ export async function dispatchRouteRequest(
       sessionHandlers.tryMemoryRoutes,
       sessionHandlers.trySavedSessionsDetail,
       modelLibraryHandlers.tryModelLibraryRoutes,
+      pluginsHandlers.tryPluginRoutes,
       graphHandlers.tryGraphLayoutViewport,
       sessionHandlers.tryEventsStream,
       graphHandlers.tryNodeRoutes,

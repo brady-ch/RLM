@@ -20,6 +20,7 @@ export async function startControlServer(input: StartControlServerInput): Promis
     sessionRuntime: input.sessionRuntime,
     projectRoot: input.projectRoot,
     onConfirmRun: input.onConfirmRun,
+    pluginRegistry: input.pluginRegistry,
   };
 
   const server = createServer((request: IncomingMessage, response: ServerResponse) => {

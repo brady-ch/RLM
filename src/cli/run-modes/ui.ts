@@ -16,6 +16,7 @@ import {
   startControlServer,
   type SessionRuntimeRef,
 } from "../../application/control-server/index.js";
+import { createPluginRegistryService } from "../../application/plugins/index.js";
 import { resolveUiDistDir } from "../ui-dist-dir.js";
 import type { RuntimeContext } from "../../application/bootstrap/types.js";
 
@@ -123,6 +124,10 @@ export async function runUiMode(ctx: RuntimeContext, entryPath: string): Promise
     resolveMemory: () => memoryRef.current,
   });
   const uiDistDir = resolveUiDistDir(entryPath, process.env);
+  const pluginRegistry = createPluginRegistryService({
+    projectRoot: ctx.cwd,
+    loadedConfig,
+  });
   const server = await startControlServer(
     buildStartControlServerInput(ctx, {
       session,
@@ -131,6 +136,7 @@ export async function runUiMode(ctx: RuntimeContext, entryPath: string): Promise
       modelLibrary,
       memory: memoryRef.current,
       sessionRuntime,
+      pluginRegistry,
       onConfirmRun: (activeSession) => uiRunner.start(activeSession),
     }),
   );

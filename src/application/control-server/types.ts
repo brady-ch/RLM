@@ -1,3 +1,4 @@
+import type { PluginRegistryService } from "../plugins/plugin-registry-service.js";
 import type { InteractiveExecutionSession } from "../execution-controller.js";
 import type { ModelLibraryService } from "../model-library.js";
 import type { MemoryResolver } from "../memory-resolver.js";
@@ -31,4 +32,5 @@ export type StartControlServerInput = {
   sessionRuntime?: SessionRuntimeRef | undefined;
   onConfirmRun?: ((session: InteractiveExecutionSession) => void | Promise<void>) | undefined;
   projectRoot?: string | undefined;
+  pluginRegistry?: PluginRegistryService | undefined;
 };
