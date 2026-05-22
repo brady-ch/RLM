@@ -2,6 +2,7 @@ import { loadProjectConfig } from "../../application/project-config.js";
 import {
   createPluginRegistryService,
   type PluginDoctorIssue,
+  type PluginInstallRemotePreview,
   type PluginListItem,
 } from "../../application/plugins/index.js";
 import type { CliOptions } from "../args.js";
@@ -21,7 +22,7 @@ export async function handlePluginCommands(options: CliOptions): Promise<boolean
         await runList(registry, options.json);
         return true;
       case "install":
-        await runInstall(registry, options.pluginTarget, options.json);
+        await runInstall(registry, options.pluginTarget, options.json, options.pluginYes === true);
         return true;
       case "enable":
         await runMutation(registry, "enable", options.pluginTarget, options.json);
@@ -33,7 +34,7 @@ export async function handlePluginCommands(options: CliOptions): Promise<boolean
         await runMutation(registry, "uninstall", options.pluginTarget, options.json);
         return true;
       case "doctor":
-        await runDoctor(registry, options.json);
+        await runDoctor(registry, options.json, options.pluginFix === true);
         return true;
       case "inspect":
         await runInspect(registry, options.pluginTarget, options.json);
@@ -80,12 +81,19 @@ async function runInstall(
   registry: ReturnType<typeof createPluginRegistryService>,
   target: string | undefined,
   json: boolean,
+  yes: boolean,
 ): Promise<void> {
   if (!target) {
-    throw new Error("Missing plugin path. Example: rlm plugin install ./my-plugin");
+    throw new Error("Missing plugin source. Example: rlm plugin install ./my-plugin");
   }
 
-  const result = await registry.installLocal(target);
+  const result = await registry.install(target, { confirm: yes });
+  if (result.ok === false && "needsConfirm" in result) {
+    emitInstallPreview(result, json);
+    process.exitCode = 1;
+    return;
+  }
+
   emitMutation(result, json, `Installed plugin ${result.id}. Restart RLM to load it.`);
 }
 
@@ -116,15 +124,19 @@ async function runMutation(
 async function runDoctor(
   registry: ReturnType<typeof createPluginRegistryService>,
   json: boolean,
+  fix: boolean,
 ): Promise<void> {
-  const report = await registry.doctor();
+  const report = await registry.doctor({ fix });
   if (json) {
     console.log(JSON.stringify(report, null, 2));
-  } else if (report.ok) {
+  } else if (report.ok && (!report.fixesApplied || report.fixesApplied.length === 0)) {
     console.log("Plugin doctor: no issues found.");
   } else {
     for (const issue of report.issues) {
       console.log(formatDoctorIssue(issue));
+    }
+    for (const fixMessage of report.fixesApplied ?? []) {
+      console.log(`FIX: ${fixMessage}`);
     }
   }
 
@@ -169,6 +181,18 @@ async function runValidate(
   }
 
   console.log(`Valid manifest for ${manifest.id}@${manifest.version}`);
+}
+
+function emitInstallPreview(result: PluginInstallRemotePreview, json: boolean): void {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`Remote plugin ready to install: ${result.id}@${result.manifest.version}`);
+  console.log(`Source: ${result.source}`);
+  console.log(`Category: ${result.manifest.category}`);
+  console.log("Re-run with --yes to confirm installation.");
 }
 
 function emitMutation(

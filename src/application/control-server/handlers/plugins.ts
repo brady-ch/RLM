@@ -24,6 +24,11 @@ export async function tryPluginRoutes(
     return true;
   }
 
+  if (request.method === "POST" && url.pathname === "/api/plugins/doctor/fix") {
+    sendJson(response, await pluginRegistry.doctor({ fix: true }));
+    return true;
+  }
+
   const inspectMatch = url.pathname.match(/^\/api\/plugins\/([^/]+)\/inspect$/u);
   if (request.method === "GET" && inspectMatch?.[1]) {
     sendJson(response, await pluginRegistry.inspect(decodeURIComponent(inspectMatch[1])));
@@ -32,12 +37,13 @@ export async function tryPluginRoutes(
 
   if (request.method === "POST" && url.pathname === "/api/plugins/install") {
     const body = await readJsonBody(request);
-    const path = String(body["path"] ?? "");
+    const path = String(body["path"] ?? body["source"] ?? body["url"] ?? "");
+    const confirm = body["confirm"] === true || body["yes"] === true;
     if (!path) {
-      sendJson(response, { error: "Missing path." }, 400);
+      sendJson(response, { error: "Missing path or url." }, 400);
       return true;
     }
-    sendJson(response, await pluginRegistry.installLocal(path));
+    sendJson(response, await pluginRegistry.install(path, { confirm }));
     return true;
   }
 

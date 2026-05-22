@@ -13,6 +13,8 @@ export interface CliOptions {
     | "validate"
     | undefined;
   pluginTarget?: string | undefined;
+  pluginFix?: boolean | undefined;
+  pluginYes?: boolean | undefined;
   prompt: string;
   config: RecursiveModelConfig;
   configOverrides: Partial<RecursiveModelConfig>;
@@ -552,6 +554,8 @@ function parsePluginArgs(args: string[], env: NodeJS.ProcessEnv): CliOptions {
 
   let json = false;
   let configPath: string | undefined;
+  let pluginFix = false;
+  let pluginYes = false;
   const positional: string[] = [];
 
   for (let index = 0; index < rest.length; index += 1) {
@@ -561,6 +565,14 @@ function parsePluginArgs(args: string[], env: NodeJS.ProcessEnv): CliOptions {
     }
     if (arg === "--json") {
       json = true;
+      continue;
+    }
+    if (arg === "--fix") {
+      pluginFix = true;
+      continue;
+    }
+    if (arg === "--yes" || arg === "-y") {
+      pluginYes = true;
       continue;
     }
     if (arg === "--config") {
@@ -594,6 +606,12 @@ function parsePluginArgs(args: string[], env: NodeJS.ProcessEnv): CliOptions {
   };
   if (configPath) {
     options.configPath = configPath;
+  }
+  if (pluginFix) {
+    options.pluginFix = true;
+  }
+  if (pluginYes) {
+    options.pluginYes = true;
   }
   if (positional[0]) {
     options.pluginTarget = positional[0];
