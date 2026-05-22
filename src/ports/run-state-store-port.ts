@@ -6,6 +6,12 @@ export interface RunStateNodeStatus {
   updatedAt: string;
 }
 
+export interface ResumeCursor {
+  activeNodeId: string;
+  completedNodeIds: string[];
+  variant: string;
+}
+
 export interface RunStateSnapshot {
   runId: string;
   version: number;
@@ -13,7 +19,7 @@ export interface RunStateSnapshot {
   nodeStatuses: RunStateNodeStatus[];
   artifactRefs: Record<string, string>;
   checkpoints: Record<string, unknown>[];
-  resumeCursor?: string | undefined;
+  resumeCursor?: ResumeCursor | undefined;
   mutationLog: RunStateMutationRecord[];
 }
 
