@@ -10,6 +10,9 @@ use crate::adapters::OllamaLanguageModel;
 use crate::execution::InteractiveExecutionSession;
 use crate::model_library::ModelLibraryService;
 use crate::persistence::{load_project_config, LoadedProjectConfig, ProjectPaths};
+use crate::plugins::{
+    build_runtime_context, BuildRuntimeContextInput, PluginRegistryService, RuntimeContext,
+};
 use crate::ports::{LanguageModel, QueueModel};
 
 #[derive(Clone)]
@@ -21,6 +24,8 @@ pub struct RouterState {
     pub memory_session_id: String,
     pub session: Arc<InteractiveExecutionSession>,
     pub model_library: Option<Arc<ModelLibraryService>>,
+    pub plugin_registry: Option<Arc<PluginRegistryService>>,
+    pub runtime_context: Option<RuntimeContext>,
     plan_model: Arc<dyn LanguageModel>,
     exec_model: Arc<dyn LanguageModel>,
 }
@@ -40,6 +45,19 @@ impl RouterState {
                 ))
             })
         });
+        let (plugin_registry, runtime_context) = project_config
+            .as_ref()
+            .and_then(|loaded| {
+                loaded.path.as_ref()?;
+                let registry = Arc::new(PluginRegistryService::new(project_root.clone(), loaded));
+                let runtime = build_runtime_context(BuildRuntimeContextInput {
+                    project_root: &project_root,
+                    project_config: Some(&loaded.config),
+                    on_init_stage: None,
+                });
+                Some((Some(registry), Some(runtime)))
+            })
+            .unwrap_or((None, None));
         Self {
             ui_dist_dir: None,
             project_root,
@@ -48,6 +66,8 @@ impl RouterState {
             memory_session_id: "default".into(),
             session: InteractiveExecutionSession::new(Default::default()),
             model_library,
+            plugin_registry,
+            runtime_context,
             plan_model,
             exec_model,
         }
@@ -105,6 +125,23 @@ impl RouterState {
     pub fn with_model_library(mut self, model_library: Option<Arc<ModelLibraryService>>) -> Self {
         self.model_library = model_library;
         self
+    }
+
+    pub fn with_plugin_registry(mut self, registry: Option<Arc<PluginRegistryService>>) -> Self {
+        self.plugin_registry = registry;
+        self
+    }
+
+    pub fn with_runtime_context(mut self, runtime: Option<RuntimeContext>) -> Self {
+        self.runtime_context = runtime;
+        self
+    }
+
+    pub fn runtime_tools(&self) -> Vec<std::sync::Arc<dyn crate::ports::Tool>> {
+        self.runtime_context
+            .as_ref()
+            .map(|ctx| ctx.tools.clone())
+            .unwrap_or_default()
     }
 }
 

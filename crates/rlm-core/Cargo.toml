@@ -25,8 +25,14 @@ async-trait = "0.1"
 uuid = { version = "1", features = ["v4"] }
 usearch.workspace = true
 reqwest.workspace = true
+sha2 = "0.10"
+flate2 = "1.1"
+tar = "0.4"
+tempfile = "3"
 
 [dev-dependencies]
 futures = "0.3"
 reqwest = { workspace = true, features = ["stream"] }
+serde_yaml = { workspace = true }
+tempfile = "3"
 tokio = { workspace = true, features = ["full", "test-util"] }

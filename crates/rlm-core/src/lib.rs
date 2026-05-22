@@ -4,18 +4,23 @@ pub mod domain;
 pub mod execution;
 pub mod graph;
 pub mod memory;
+pub mod model_library;
 pub mod persistence;
+pub mod plugins;
 pub mod ports;
 pub mod server;
 
+pub use adapters::OllamaLanguageModel;
 pub use control_server::state;
 pub use domain::RecursiveLanguageModel;
 pub use execution::InteractiveExecutionSession;
 pub use memory::{SemanticMemoryIndex, VectorIndexStatus};
+pub use model_library::ModelLibraryService;
 pub use persistence::{
     load_project_config, AnnVectorIndex, FileMemoryStore, FileRunStateStore, FileSessionStore,
     FileVectorIndex, LoadedProjectConfig, MemoryInspectionSnapshot, ProjectPaths,
     VectorIndexRecord,
 };
-pub use ports::{InMemoryTrace, QueueModel};
+pub use plugins::{build_runtime_context, PluginRegistryService, RuntimeContext};
+pub use ports::{InMemoryTrace, LanguageModelCompleteOptions, QueueModel};
 pub use server::{start_server, ControlServer, ServerConfig};

@@ -9,7 +9,8 @@ use crate::domain::types::{
 use crate::domain::RecursiveLanguageModel;
 use crate::execution::agent_registry::{filter_agent_tools, resolve_agent};
 use crate::execution::{InteractiveExecutionSession, SessionExecutionControl};
-use crate::ports::LanguageModel;
+use crate::plugins::resolve_tools_for_agent;
+use crate::ports::{LanguageModel, LanguageModelCompleteOptions};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GraphExecutorErrorCode {
@@ -38,6 +39,7 @@ pub struct GraphExecutorInput {
     pub runtime_config: RecursiveModelConfig,
     pub project_config: Option<serde_json::Value>,
     pub create_model: Arc<dyn Fn() -> Arc<dyn LanguageModel> + Send + Sync>,
+    pub runtime: Option<crate::plugins::RuntimeContext>,
 }
 
 pub fn topological_execution_order(
@@ -318,8 +320,7 @@ pub async fn execute_graph(
                                 content: prompt,
                             },
                         ],
-                        Some("answer"),
-                        false,
+                        LanguageModelCompleteOptions::simple(Some("answer"), false),
                     )
                     .await;
                 Ok(())
@@ -327,7 +328,18 @@ pub async fn execute_graph(
             ExpertRuntimeMode::Rlm => {
                 let model = (input.create_model)();
                 let trace = Arc::new(crate::ports::InMemoryTrace::new());
-                let engine = RecursiveLanguageModel::new(model, trace, vec![]);
+                let tools = input
+                    .runtime
+                    .as_ref()
+                    .map(|runtime| {
+                        resolve_tools_for_agent(
+                            runtime,
+                            &filtered,
+                            node.expert_tool_allowlist.as_deref(),
+                        )
+                    })
+                    .unwrap_or_default();
+                let engine = RecursiveLanguageModel::new(model, trace, tools);
                 engine
                     .run(
                         &prompt,
@@ -441,6 +453,7 @@ mod tests {
                 },
                 project_config: None,
                 create_model,
+                runtime: None,
             },
         )
         .await

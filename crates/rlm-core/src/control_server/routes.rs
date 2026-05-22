@@ -58,7 +58,22 @@ pub fn build_router(state: RouterState) -> Router {
         .route("/api/graph-workflows/import", post(graph_workflows_import))
         .route("/api/memory", get(memory))
         .route("/api/model-library", get(model_library))
+        .route("/api/model-library/search", get(model_library_search))
+        .route("/api/model-library/install", post(model_library_install))
+        .route("/api/model-library/download", post(model_library_download))
+        .route(
+            "/api/model-library/select-tier",
+            post(model_library_select_tier),
+        )
         .route("/api/plugins", get(plugins_list))
+        .route("/api/plugins/doctor", get(plugins_doctor))
+        .route("/api/plugins/doctor/fix", post(plugins_doctor_fix))
+        .route("/api/plugins/install", post(plugins_install))
+        .route("/api/plugins/enable", post(plugins_enable))
+        .route("/api/plugins/disable", post(plugins_disable))
+        .route("/api/plugins/uninstall", post(plugins_uninstall))
+        .route("/api/plugins/validate", post(plugins_validate))
+        .route("/api/plugins/{plugin_id}/inspect", get(plugins_inspect))
         .route("/api/events", get(events))
         .route("/api/nodes/add", post(nodes_add))
         .route("/api/nodes/{node_id}/edit", post(nodes_edit))
@@ -544,6 +559,7 @@ fn spawn_graph_execution(state: &RouterState) {
         runtime_config,
         project_config,
         create_model: Arc::new(move || Arc::clone(&exec_model) as Arc<dyn LanguageModel>),
+        runtime: state.runtime_context.clone(),
     };
     tokio::spawn(async move {
         if let Err(err) = execute_graph(session.clone(), input).await {
@@ -723,15 +739,335 @@ async fn memory(
     }
 }
 
-async fn model_library(State(_): State<RouterState>) -> impl IntoResponse {
-    (
-        StatusCode::NOT_FOUND,
-        Json(super::state::model_library_unconfigured()),
-    )
+async fn model_library(State(state): State<RouterState>) -> impl IntoResponse {
+    let Some(library) = state.model_library.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(super::state::model_library_unconfigured()),
+        )
+            .into_response();
+    };
+    Json(library.snapshot().await).into_response()
 }
 
-async fn plugins_list(State(_): State<RouterState>) -> Json<Value> {
-    Json(super::state::plugins_list_empty())
+async fn model_library_search(
+    State(state): State<RouterState>,
+    axum::extract::Query(query): axum::extract::Query<ModelLibrarySearchQuery>,
+) -> impl IntoResponse {
+    let Some(library) = state.model_library.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(super::state::model_library_unconfigured()),
+        )
+            .into_response();
+    };
+    match library
+        .search_huggingface(query.q.as_deref().unwrap_or(""))
+        .await
+    {
+        Ok(result) => Json(serde_json::to_value(result).unwrap_or(json!({}))).into_response(),
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": err })),
+        )
+            .into_response(),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct ModelLibrarySearchQuery {
+    q: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ModelLibraryInstallBody {
+    model: Option<String>,
+}
+
+async fn model_library_install(
+    State(state): State<RouterState>,
+    Json(body): Json<ModelLibraryInstallBody>,
+) -> impl IntoResponse {
+    let Some(library) = state.model_library.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(super::state::model_library_unconfigured()),
+        )
+            .into_response();
+    };
+    match library
+        .start_install(body.model.as_deref().unwrap_or(""))
+        .await
+    {
+        Ok(job) => {
+            let library_snapshot = library.snapshot().await;
+            Json(json!({ "job": job, "library": library_snapshot })).into_response()
+        }
+        Err(err) => (StatusCode::BAD_REQUEST, Json(json!({ "error": err }))).into_response(),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct ModelLibraryDownloadBody {
+    model: Option<String>,
+    file: Option<String>,
+}
+
+async fn model_library_download(
+    State(state): State<RouterState>,
+    Json(body): Json<ModelLibraryDownloadBody>,
+) -> impl IntoResponse {
+    let Some(library) = state.model_library.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(super::state::model_library_unconfigured()),
+        )
+            .into_response();
+    };
+    let repo_id = body.model.as_deref().unwrap_or("");
+    match library
+        .download_hf_model(repo_id, body.file.as_deref())
+        .await
+    {
+        Ok(record) => {
+            let library_snapshot = library.snapshot().await;
+            Json(json!({ "record": record, "library": library_snapshot })).into_response()
+        }
+        Err(err) => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": err.to_string() })),
+        )
+            .into_response(),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct ModelLibrarySelectTierBody {
+    tier: Option<String>,
+    model: Option<String>,
+}
+
+async fn model_library_select_tier(
+    State(state): State<RouterState>,
+    Json(body): Json<ModelLibrarySelectTierBody>,
+) -> impl IntoResponse {
+    let Some(library) = state.model_library.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(super::state::model_library_unconfigured()),
+        )
+            .into_response();
+    };
+    match library
+        .select_tier(
+            body.tier.as_deref().unwrap_or(""),
+            body.model.as_deref().unwrap_or(""),
+        )
+        .await
+    {
+        Ok(tiers) => {
+            let library_snapshot = library.snapshot().await;
+            Json(json!({ "tiers": tiers, "library": library_snapshot })).into_response()
+        }
+        Err(err) => (StatusCode::BAD_REQUEST, Json(json!({ "error": err }))).into_response(),
+    }
+}
+
+async fn plugins_list(State(state): State<RouterState>) -> impl IntoResponse {
+    let Some(registry) = state.plugin_registry.as_ref() else {
+        return Json(super::state::plugins_list_empty()).into_response();
+    };
+    match registry.list().await {
+        Ok(plugins) => Json(json!({ "plugins": plugins })).into_response(),
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": err })),
+        )
+            .into_response(),
+    }
+}
+
+async fn plugins_doctor(State(state): State<RouterState>) -> impl IntoResponse {
+    let Some(registry) = state.plugin_registry.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Plugin registry is not configured." })),
+        )
+            .into_response();
+    };
+    match registry.doctor(false).await {
+        Ok(result) => Json(serde_json::to_value(result).unwrap_or(json!({}))).into_response(),
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": err })),
+        )
+            .into_response(),
+    }
+}
+
+async fn plugins_doctor_fix(State(state): State<RouterState>) -> impl IntoResponse {
+    let Some(registry) = state.plugin_registry.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Plugin registry is not configured." })),
+        )
+            .into_response();
+    };
+    match registry.doctor(true).await {
+        Ok(result) => Json(serde_json::to_value(result).unwrap_or(json!({}))).into_response(),
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": err })),
+        )
+            .into_response(),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PluginInstallBody {
+    path: Option<String>,
+    source: Option<String>,
+    url: Option<String>,
+    confirm: Option<bool>,
+    yes: Option<bool>,
+}
+
+async fn plugins_install(
+    State(state): State<RouterState>,
+    Json(body): Json<PluginInstallBody>,
+) -> impl IntoResponse {
+    let Some(registry) = state.plugin_registry.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Plugin registry is not configured." })),
+        )
+            .into_response();
+    };
+    let path = body.path.or(body.source).or(body.url).unwrap_or_default();
+    if path.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Missing path or url." })),
+        )
+            .into_response();
+    }
+    let confirm = body.confirm.unwrap_or(false) || body.yes.unwrap_or(false);
+    match registry.install(&path, confirm).await {
+        Ok(result) => Json(result).into_response(),
+        Err(err) => (StatusCode::BAD_REQUEST, Json(json!({ "error": err }))).into_response(),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PluginIdBody {
+    id: Option<String>,
+}
+
+async fn plugins_enable(
+    State(state): State<RouterState>,
+    Json(body): Json<PluginIdBody>,
+) -> impl IntoResponse {
+    plugin_id_mutation(state, body.id, |registry, id| async move {
+        registry.enable(&id).await
+    })
+    .await
+}
+
+async fn plugins_disable(
+    State(state): State<RouterState>,
+    Json(body): Json<PluginIdBody>,
+) -> impl IntoResponse {
+    plugin_id_mutation(state, body.id, |registry, id| async move {
+        registry.disable(&id).await
+    })
+    .await
+}
+
+async fn plugins_uninstall(
+    State(state): State<RouterState>,
+    Json(body): Json<PluginIdBody>,
+) -> impl IntoResponse {
+    plugin_id_mutation(state, body.id, |registry, id| async move {
+        registry.uninstall(&id).await
+    })
+    .await
+}
+
+async fn plugin_id_mutation<F, Fut>(
+    state: RouterState,
+    id: Option<String>,
+    action: F,
+) -> axum::response::Response
+where
+    F: FnOnce(std::sync::Arc<crate::plugins::PluginRegistryService>, String) -> Fut,
+    Fut: std::future::Future<Output = Result<crate::plugins::PluginMutationResult, String>>,
+{
+    let Some(registry) = state.plugin_registry.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Plugin registry is not configured." })),
+        )
+            .into_response();
+    };
+    let id = id.unwrap_or_default();
+    if id.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Missing id." })),
+        )
+            .into_response();
+    }
+    match action(Arc::clone(registry), id).await {
+        Ok(result) => Json(serde_json::to_value(result).unwrap_or(json!({}))).into_response(),
+        Err(err) => (StatusCode::BAD_REQUEST, Json(json!({ "error": err }))).into_response(),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PluginValidateBody {
+    path: Option<String>,
+}
+
+async fn plugins_validate(
+    State(state): State<RouterState>,
+    Json(body): Json<PluginValidateBody>,
+) -> impl IntoResponse {
+    let Some(registry) = state.plugin_registry.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Plugin registry is not configured." })),
+        )
+            .into_response();
+    };
+    let path = body.path.unwrap_or_default();
+    if path.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Missing path." })),
+        )
+            .into_response();
+    }
+    match registry.validate_path(&path).await {
+        Ok(manifest) => Json(json!({ "ok": true, "manifest": manifest })).into_response(),
+        Err(err) => (StatusCode::BAD_REQUEST, Json(json!({ "error": err }))).into_response(),
+    }
+}
+
+async fn plugins_inspect(
+    State(state): State<RouterState>,
+    Path(plugin_id): Path<String>,
+) -> impl IntoResponse {
+    let Some(registry) = state.plugin_registry.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Plugin registry is not configured." })),
+        )
+            .into_response();
+    };
+    match registry.inspect(&plugin_id).await {
+        Ok(result) => Json(result).into_response(),
+        Err(err) => (StatusCode::NOT_FOUND, Json(json!({ "error": err }))).into_response(),
+    }
 }
 
 async fn events(

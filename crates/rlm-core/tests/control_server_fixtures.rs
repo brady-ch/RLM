@@ -26,10 +26,11 @@ async fn get_json(base: &str, path: &str) -> (reqwest::StatusCode, Value) {
 
 #[tokio::test]
 async fn control_server_matches_golden_fixtures() {
+    let temp = tempfile::tempdir().expect("tempdir");
     let server = start_server(ServerConfig {
         port: 0,
         ui_dist_dir: None,
-        project_root: PathBuf::from("."),
+        project_root: temp.path().to_path_buf(),
         memory_session_id: None,
         session: None,
     })

@@ -7,7 +7,9 @@ use crate::domain::recursion::{
     parse_clarification_request, preview, to_model_purpose,
 };
 use crate::domain::types::{ChatMessage, ExecutionStatusUpdateDetail, TaskNode, ToolCallRequest};
-use crate::ports::{LanguageModel, Tool};
+use crate::ports::{
+    LanguageModel, LanguageModelCompleteOptions, LanguageModelToolDefinition, Tool,
+};
 
 #[async_trait]
 pub trait ModelCompletionHost: Send + Sync {
@@ -54,12 +56,30 @@ pub async fn run_completion_with_tool_rounds(
     for round in 0..=max_tool_rounds_from_limit(tool_round_limit as i32) {
         host.consume_model_call();
         let purpose = to_model_purpose(kind);
+        let tools = if allow_tools {
+            host.tools_for_task(task)
+        } else {
+            Vec::new()
+        };
+        let tools_enabled = allow_tools && !tools.is_empty();
+        let tool_definitions = tools
+            .iter()
+            .map(|tool| LanguageModelToolDefinition {
+                name: tool.name().to_string(),
+                description: format!("Execute the {} tool", tool.name()),
+                schema: serde_json::json!({"type": "object", "properties": {}}),
+            })
+            .collect();
         let response = host
             .model()
             .complete(
                 &host.with_agent_system_prompt(conversation.clone()),
-                purpose,
-                allow_tools && !host.tools_for_task(task).is_empty(),
+                LanguageModelCompleteOptions {
+                    purpose,
+                    tools_enabled,
+                    tools: tool_definitions,
+                    constrained_tool_calling: tools_enabled,
+                },
             )
             .await;
 

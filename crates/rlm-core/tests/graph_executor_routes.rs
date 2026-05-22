@@ -159,6 +159,7 @@ async fn execute_graph_blocks_child_when_parent_fails() {
             },
             project_config: None,
             create_model,
+            runtime: None,
         },
     )
     .await

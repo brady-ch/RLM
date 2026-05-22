@@ -2,13 +2,38 @@ use async_trait::async_trait;
 
 use crate::domain::types::{ChatMessage, LanguageModelResponse, ToolCallRequest};
 
+#[derive(Debug, Clone, Default)]
+pub struct LanguageModelToolDefinition {
+    pub name: String,
+    pub description: String,
+    pub schema: serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
+pub struct LanguageModelCompleteOptions<'a> {
+    pub purpose: Option<&'a str>,
+    pub tools_enabled: bool,
+    pub tools: Vec<LanguageModelToolDefinition>,
+    pub constrained_tool_calling: bool,
+}
+
+impl<'a> LanguageModelCompleteOptions<'a> {
+    pub fn simple(purpose: Option<&'a str>, tools_enabled: bool) -> Self {
+        Self {
+            purpose,
+            tools_enabled,
+            tools: Vec::new(),
+            constrained_tool_calling: false,
+        }
+    }
+}
+
 #[async_trait]
 pub trait LanguageModel: Send + Sync {
     async fn complete(
         &self,
         messages: &[ChatMessage],
-        purpose: Option<&str>,
-        tools_enabled: bool,
+        options: LanguageModelCompleteOptions<'_>,
     ) -> LanguageModelResponse;
 }
 
@@ -39,8 +64,7 @@ impl LanguageModel for QueueModel {
     async fn complete(
         &self,
         _messages: &[ChatMessage],
-        _purpose: Option<&str>,
-        _tools_enabled: bool,
+        _options: LanguageModelCompleteOptions<'_>,
     ) -> LanguageModelResponse {
         let mut queue = self.responses.lock().await;
         queue.pop().unwrap_or(LanguageModelResponse {
@@ -73,11 +97,10 @@ impl LanguageModel for ToolRoundModel {
     async fn complete(
         &self,
         _messages: &[ChatMessage],
-        _purpose: Option<&str>,
-        tools_enabled: bool,
+        options: LanguageModelCompleteOptions<'_>,
     ) -> LanguageModelResponse {
         let mut called = self.called.lock().await;
-        if tools_enabled && !*called {
+        if options.tools_enabled && !*called {
             *called = true;
             LanguageModelResponse {
                 content: String::new(),

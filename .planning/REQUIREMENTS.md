@@ -46,10 +46,10 @@
 
 ### Plugins & Tools
 
-- [ ] **PLUG-01**: Built-in shell, file-write, web-search, and web-fetch tools register through Rust `ExtensionHostPort` with the same trust and guard semantics as v1.7 builtins.
-- [ ] **PLUG-02**: Plugin manifest validation, discovery order (builtins → configured → catalog), and `PluginRegistryService` parity for list/install/enable/disable/uninstall/doctor/inspect/validate.
-- [ ] **PLUG-03**: MCP/skill interop wiring ports to Rust with preserved init order: plugins → interop → tools resolver → agent registry → models.
-- [ ] **PLUG-04**: Remote plugin fetch (HTTPS/git) security defenses from v1.7 (zip-slip, size limits, confirm gate, doctor `--fix`) are reimplemented in Rust before cutover.
+- [x] **PLUG-01**: Built-in shell, file-write, web-search, and web-fetch tools register through Rust `ExtensionHostPort` with the same trust and guard semantics as v1.7 builtins.
+- [x] **PLUG-02**: Plugin manifest validation, discovery order (builtins → configured → catalog), and `PluginRegistryService` parity for list/install/enable/disable/uninstall/doctor/inspect/validate.
+- [x] **PLUG-03**: MCP/skill interop wiring ports to Rust with preserved init order: plugins → interop → tools resolver → agent registry → models.
+- [x] **PLUG-04**: Remote plugin fetch (HTTPS/git) security defenses from v1.7 (zip-slip, size limits, confirm gate, doctor `--fix`) are reimplemented in Rust before cutover.
 
 ### CLI & Packaging
 
@@ -106,10 +106,10 @@
 | MDLH-01 | Phase 57 | Complete |
 | MDLH-02 | Phase 57 | Complete |
 | MDLH-03 | Phase 57 | Complete |
-| PLUG-01 | Phase 58 | Pending |
-| PLUG-02 | Phase 58 | Pending |
-| PLUG-03 | Phase 58 | Pending |
-| PLUG-04 | Phase 58 | Pending |
+| PLUG-01 | Phase 58 | Complete |
+| PLUG-02 | Phase 58 | Complete |
+| PLUG-03 | Phase 58 | Complete |
+| PLUG-04 | Phase 58 | Complete |
 | CLI-01 | Phase 59 | Pending |
 | CLI-02 | Phase 59 | Pending |
 | PACK-01 | Phase 60 | Pending |

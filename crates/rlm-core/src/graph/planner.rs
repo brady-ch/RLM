@@ -4,7 +4,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::domain::types::ExpertRuntimeMode;
-use crate::ports::LanguageModel;
+use crate::ports::{LanguageModel, LanguageModelCompleteOptions};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct PlannedChildSpec {
@@ -64,8 +64,7 @@ pub async fn plan_children(
                     content: user,
                 },
             ],
-            Some("plan"),
-            false,
+            LanguageModelCompleteOptions::simple(Some("plan"), false),
         )
         .await;
 
