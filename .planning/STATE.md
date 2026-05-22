@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Architecture Cleanup
-status: planning
-last_updated: "2026-05-22T14:32:49.034Z"
+status: ready_to_plan
+last_updated: "2026-05-22T16:00:00.000Z"
 last_activity: 2026-05-22
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,33 +20,31 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Planning next milestone (`/gsd-new-milestone`)
+**Current focus:** Phase 36 — Dev Tooling Guardrails
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-05-22 — Milestone v1.6 started
+Phase: 36 of 42 (Dev Tooling Guardrails)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-22 — v1.6 roadmap created (Phases 36-42)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Recently Completed
 
 - v1.5 Dynamic Graph Authoring shipped on 2026-05-22 (Phases 30-35, 18 plans, 205 tests).
-- Phase 35 Integration Hardening completed on 2026-05-22.
-- Phase 34 Graph Workflow Export/Import completed on 2026-05-22.
-- Phase 33 Graph Execution Loop completed on 2026-05-22.
-- Phase 32 Expert Team Binding completed on 2026-05-22.
-- Phase 31 Protected Replan UX completed on 2026-05-22.
-- Phase 30 Plan-from-Node Foundation completed on 2026-05-22.
-- v1.4 Session Memory shipped on 2026-05-21 after milestone audit passed.
+- v1.6 requirements defined on 2026-05-22 (40 requirements across 9 categories).
 
 ## Pending Todos
 
 - 3 pending todos in `.planning/todos/pending/` (acknowledged at v1.5 close)
+- v1.5 deferred refactor todos (`extract-runtime-composition`, `split-config-loader`) now scoped in v1.6 Phases 37-38
 
 ## Blockers/Concerns
 
-- None.
+- RLM quality-loop state threading needs plan-phase spike before Phase 40 execution (flagged in roadmap).
+- Bootstrap cleanup order must be verified during Phase 38 planning against current `index.ts` contract.
 
 ## Deferred Items
 
@@ -55,9 +53,8 @@ Items acknowledged and deferred at milestone close on 2026-05-22:
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
 | verification | Phase 33: 33-VERIFICATION.md human_needed | Deferred — live UI visual verification | v1.5 closeout |
-| todo | 2026-05-14-create-next-milestone-roadmap.md | Superseded by `/gsd-new-milestone` | v1.5 closeout |
-| todo | 2026-05-22-extract-runtime-composition-from-cli-entrypoint.md | Future refactor candidate | v1.5 closeout |
-| todo | 2026-05-22-split-config-loader-resolver-validation.md | Future refactor candidate | v1.5 closeout |
+| architecture | ARCH-01 deep split of execution-controller.ts | Deferred to post-v1.6 | v1.6 requirements |
+| architecture | ARCH-02 full depcruise error severity | Ratchet incrementally during v1.6 | v1.6 requirements |
 | Launcher/plugins | Developer launcher and local-folder plugin manager | Future milestone candidate | v1.2 roadmap |
 | Local models | Hugging Face GGUF browser/installer and llama.cpp compatibility states | Future milestone candidate | v1.2 roadmap |
 | Release hardening | Signed/reproducible single executable artifacts and platform release checks | Future milestone candidate | v1.2 closeout |
@@ -66,10 +63,10 @@ Items acknowledged and deferred at milestone close on 2026-05-22:
 
 ## Session Continuity
 
-Last session: 2026-05-22T14:20:00.000Z  
-Stopped at: Milestone v1.5 complete  
+Last session: 2026-05-22T16:00:00.000Z  
+Stopped at: v1.6 roadmap created  
 Resume file: None
 
 ## Operator Next Steps
 
-- `/gsd-new-milestone` to start the next milestone cycle
+- `/gsd-discuss-phase 36` or `/gsd-plan-phase 36` to begin Phase 36

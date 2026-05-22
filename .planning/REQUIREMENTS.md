@@ -104,7 +104,46 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (filled by roadmap) | | |
+| REG-01 | 36-42 (cross-cutting gate in every phase) | Pending |
+| REG-02 | 36-42 (cross-cutting gate in every phase) | Pending |
+| TOOL-01 | Phase 36 | Pending |
+| TOOL-02 | Phase 36 | Pending |
+| TOOL-03 | Phase 36 | Pending |
+| TOOL-04 | Phase 36 | Pending |
+| CONF-01 | Phase 37 | Pending |
+| CONF-02 | Phase 37 | Pending |
+| CONF-03 | Phase 37 | Pending |
+| CONF-04 | Phase 37 | Pending |
+| CONF-05 | Phase 37 | Pending |
+| CONF-06 | Phase 37 | Pending |
+| BOOT-01 | Phase 38 | Pending |
+| BOOT-02 | Phase 38 | Pending |
+| BOOT-03 | Phase 38 | Pending |
+| BOOT-04 | Phase 38 | Pending |
+| BOOT-05 | Phase 38 | Pending |
+| BOOT-06 | Phase 38 | Pending |
+| ADPT-01 | Phase 39 | Pending |
+| ADPT-02 | Phase 39 | Pending |
+| ADPT-03 | Phase 39 | Pending |
+| ADPT-04 | Phase 39 | Pending |
+| ADPT-05 | Phase 39 | Pending |
+| ADPT-06 | Phase 39 | Pending |
+| RLM-01 | Phase 40 | Pending |
+| RLM-02 | Phase 40 | Pending |
+| RLM-03 | Phase 40 | Pending |
+| RLM-04 | Phase 40 | Pending |
+| RLM-05 | Phase 40 | Pending |
+| CTRL-01 | Phase 41 | Pending |
+| CTRL-02 | Phase 41 | Pending |
+| CTRL-03 | Phase 41 | Pending |
+| CTRL-04 | Phase 41 | Pending |
+| TEST-01 | Phase 42 | Pending |
+| TEST-02 | Phase 42 | Pending |
+| TEST-03 | Phase 42 | Pending |
+| TEST-04 | Phase 42 | Pending |
+| TEST-05 | Phase 42 | Pending |
+| DOC-01 | Phase 42 | Pending |
+| DOC-02 | Phase 42 | Pending |
 
 ---
-*Last updated: 2026-05-22 — milestone v1.6 requirements defined*
+*Last updated: 2026-05-22 — v1.6 roadmap traceability mapped (40/40 requirements)*
