@@ -69,9 +69,10 @@ completed: 2026-05-22
 
 ## Task Commits
 
-1. **Task 1–3:** Tooling, configs, and scripts — recorded in repo `chore(36-tooling)` commit hash after push.
-2. **Formatting:** Dedicated `style(36-tooling)` commit applying Prettier only.
+1. **Tooling (plans 36-01 core + 36-02 cruiser & check aggregation)** — `becec86`
+2. **Prettier formatting only (`style(36-tooling)`)** — `b5e8086`
 
+Planning artifacts (this file, 36-02 summary, VERIFICATION, ROADMAP, STATE, REQUIREMENTS) ship in **`b95f432`**.
 ## Deviations from Plan
 
 ### Auto-fixed Issues

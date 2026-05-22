@@ -64,7 +64,7 @@ completed: 2026-05-22
 
 ## Task Commits
 
-Bundled into `chore(36-tooling)` with Plan 01 package/config changes plus `style(36-tooling)` for formatter output.
+Bundled tooling in **`becec86`** with Plan 01; Prettier mass format in **`b5e8086`**; planning metadata in **`b95f432`** (see 36-01-SUMMARY).
 
 ## Deviations from Plan
 
