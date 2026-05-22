@@ -165,6 +165,10 @@ export function selectedAgentMetadata(agent: AgentProfile, source: SelectedAgent
   };
 }
 
+export function resolveAgent(registry: AgentRegistry, id: string): AgentProfile {
+  return findAgentOrThrow(registry, id);
+}
+
 function findAgentOrThrow(registry: AgentRegistry, id: string): AgentProfile {
   const profile = registry.profiles.find((agent) => agent.id === id);
   if (!profile) {

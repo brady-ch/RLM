@@ -18,7 +18,10 @@ import type {
   ExecutionStatus,
   QualityLoopManualDecision,
   NodeApprovalDecision,
+  ExpertRuntimeMode,
 } from "../domain/types.js";
+import type { LanguageModelPort } from "../ports/language-model-port.js";
+import { GraphPlannerError, planChildren, type GraphPlannerContext } from "./graph-planner.js";
 import { EXECUTION_FAILURE_CODES, summarizeRunFromNodes } from "../domain/execution-failure.js";
 import { createClarificationQuestion, createClarificationRecord } from "./runtime-events.js";
 
@@ -48,6 +51,8 @@ type PendingApproval = {
 type PendingMutation =
   | { kind: "edit"; nodeId: string; prompt: string }
   | { kind: "delete"; nodeId: string; strategy?: DeleteStrategy };
+
+export type ReplanChoice = "replace" | "merge" | "cancel";
 
 class MutationError extends Error implements GraphMutationError {
   constructor(
@@ -94,6 +99,8 @@ export class InteractiveExecutionSession {
   private readonly qualityLoopDecisions = new Map<string, QualityLoopManualDecision>();
   private runLifecycle: "idle" | "running" = "idle";
   private autoApproveNextRootExecution = false;
+  private readonly planModel: LanguageModelPort | undefined;
+  private plannedNodeSequence = 0;
   private abortSnapshot:
     | {
       graph: ExecutionGraph;
@@ -101,8 +108,9 @@ export class InteractiveExecutionSession {
     }
     | undefined;
 
-  constructor(input: { approvalMode?: ApprovalMode; seedRootPrompt?: string | undefined } = {}) {
+  constructor(input: { approvalMode?: ApprovalMode; seedRootPrompt?: string | undefined; planModel?: LanguageModelPort | undefined } = {}) {
     this.approvalMode = input.approvalMode ?? "full";
+    this.planModel = input.planModel;
     if (input.seedRootPrompt) {
       this.seedRootComposer(input.seedRootPrompt);
     }
@@ -292,6 +300,8 @@ export class InteractiveExecutionSession {
 
     node.prompt = normalized;
     node.label = preview(normalized, 80);
+    node.composer = withComposerDefaults(node);
+    node.composer.protectedReasons = addProtectedReason(node.composer.protectedReasons, "manual_prompt_edit");
     this.invalidateQualityLoopMetadata(node, "node prompt edited; quality loop metadata invalidated");
     this.publish({ type: "execution", status: node.status, nodeId, message: "node prompt edited" });
   }
@@ -304,6 +314,8 @@ export class InteractiveExecutionSession {
     }
     node.modelOverride = normalized;
     node.modelOverrideSource = "user";
+    node.composer = withComposerDefaults(node);
+    node.composer.protectedReasons = addProtectedReason(node.composer.protectedReasons, "user_model_override");
     this.invalidateQualityLoopMetadata(node, "node model override set; quality loop metadata invalidated");
     this.publish({ type: "execution", status: node.status, nodeId, message: "node model override set" });
   }
@@ -316,13 +328,72 @@ export class InteractiveExecutionSession {
     this.publish({ type: "execution", status: node.status, nodeId, message: "node sampling override set" });
   }
 
-  planNode(nodeId: string): { plannedNodeIds: string[]; budget: ComposerPlanBudget; exhausted: boolean } {
+  setNodeExpertOverride(nodeId: string, input: {
+    agentId?: string | undefined;
+    runtime?: ExpertRuntimeMode | undefined;
+    toolAllowlist?: string[] | undefined;
+    purposeTiers?: Record<string, string> | undefined;
+  }): void {
+    const node = this.requireEditableNode(nodeId);
+    if (input.agentId !== undefined) {
+      const normalized = input.agentId.trim();
+      if (!isKnownExpertAgent(normalized)) {
+        throw new MutationError("invalid_expert", `Unknown expert preset "${input.agentId}".`, [nodeId], undefined, "Choose default, coding, qa, product_designer, or research.");
+      }
+      node.expertAgentId = normalized;
+    }
+    if (input.runtime !== undefined) {
+      if (input.runtime !== "single-pass" && input.runtime !== "rlm") {
+        throw new MutationError("invalid_runtime", "Runtime mode must be single-pass or rlm.", [nodeId], undefined, "Choose single-pass or rlm.");
+      }
+      node.expertRuntime = input.runtime;
+    }
+    if (input.toolAllowlist !== undefined) {
+      node.expertToolAllowlist = input.toolAllowlist.map((tool) => tool.trim()).filter(Boolean);
+    }
+    if (input.purposeTiers !== undefined) {
+      node.expertPurposeTiers = input.purposeTiers;
+    }
+    node.expertAssignmentMode = "custom";
+    node.composer = withComposerDefaults(node);
+    node.composer.protectedReasons = addProtectedReason(node.composer.protectedReasons, "expert_override");
+    this.publish({ type: "execution", status: node.status, nodeId, message: "node expert override set" });
+  }
+
+  async planNode(nodeId: string, input: { replan?: ReplanChoice | undefined } = {}): Promise<{ plannedNodeIds: string[]; budget: ComposerPlanBudget; exhausted: boolean }> {
     const node = this.requireEditableNode(nodeId);
     this.ensureNodePosition(node);
     node.composer = withComposerDefaults(node);
+    const normalizedPrompt = (node.prompt ?? node.label).trim();
+    if (!normalizedPrompt) {
+      throw new MutationError("invalid_prompt", "Node prompt cannot be empty.", [nodeId], undefined, "Enter a non-empty prompt before planning.");
+    }
+    if (!this.planModel) {
+      throw new MutationError("planning_failed", "Graph planner model is not configured.", [nodeId], undefined, "Configure a plan purpose model tier.");
+    }
     const budgetRoot = this.findBudgetRoot(node);
     budgetRoot.composer = withComposerDefaults(budgetRoot);
     const budget = budgetRoot.composer.planBudget;
+    const protectedDescendants = this.protectedDescendants(node.id);
+    if (protectedDescendants.length > 0 && !input.replan) {
+      throw new MutationError(
+        "replan_requires_choice",
+        "Replan requires Replace subtree, Merge, or Cancel because protected descendants exist.",
+        [nodeId, ...protectedDescendants.map((descendant) => descendant.id)],
+        `protected=${protectedDescendants.map((descendant) => descendant.id).join(",")}`,
+        "Choose replace, merge, or cancel before replanning.",
+      );
+    }
+    if (input.replan === "cancel") {
+      return { plannedNodeIds: [], budget, exhausted: budget.exhausted };
+    }
+    if (input.replan === "replace") {
+      this.removeAllDescendants(node.id);
+    } else if (input.replan === "merge") {
+      this.removePristinePlannedDescendants(node.id);
+    } else {
+      this.removePristinePlannedDescendants(node.id);
+    }
     const usedNodes = this.collectDescendants(budgetRoot.id).length;
     const remainingNodes = Math.max(0, budget.maxNodes - usedNodes);
     const remainingDepth = Math.max(0, budget.maxDepth - node.depth);
@@ -342,12 +413,21 @@ export class InteractiveExecutionSession {
       return { plannedNodeIds: [], budget: exhausted, exhausted: true };
     }
 
-    const childSpecs = plannedChildrenFor(node).slice(0, remainingNodes);
+    const context = this.createPlannerContext(node, budgetRoot, remainingNodes, normalizedPrompt, input.replan === "merge" ? protectedDescendants : []);
+    let childSpecs;
+    try {
+      childSpecs = (await planChildren(this.planModel, context)).children.slice(0, remainingNodes);
+    } catch (error: unknown) {
+      if (error instanceof GraphPlannerError) {
+        throw new MutationError(error.code, error.message, [nodeId], error.details, suggestedPlannerFix(error.code));
+      }
+      throw error;
+    }
     const created: string[] = [];
     const baseX = (node.position?.x ?? node.depth * 430) + 430;
     const baseY = node.position?.y ?? 0;
     for (const spec of childSpecs) {
-      const id = `plan-${this.nodes.size + 1}`;
+      const id = this.nextPlannedNodeId();
       const child: ExecutionGraphNode = {
         id,
         parentId: node.id,
@@ -365,7 +445,13 @@ export class InteractiveExecutionSession {
           complexity: spec.complexity,
           budget: childBudgetFromRoot(budget, node.depth + 1, usedNodes + created.length + 1),
           parentNodeId: node.id,
+          plannedBy: "model",
         }),
+        expertAgentId: spec.agentId ?? "default",
+        expertAssignmentMode: "planner",
+        expertRuntime: spec.runtime ?? (spec.complexity === "high" ? "rlm" : "single-pass"),
+        expertToolAllowlist: spec.toolAllowlist,
+        expertPurposeTiers: spec.purposeTiers,
       };
       this.registerNode(child);
       created.push(id);
@@ -467,6 +553,7 @@ export class InteractiveExecutionSession {
         complexity: estimateComplexity(normalized),
         budget: defaultPlanBudget(parentDepth + 1),
         parentNodeId: input.parentId,
+        plannedBy: "user",
       }),
       editableFields: ["prompt"],
       depth: parentDepth + 1,
@@ -732,6 +819,11 @@ export class InteractiveExecutionSession {
       modelOverride: node.modelOverride,
       samplingOverride: node.samplingOverride,
       contextPolicy: node.composer?.contextPolicy,
+      expertAgentId: node.expertAgentId,
+      expertAssignmentMode: node.expertAssignmentMode,
+      expertRuntime: node.expertRuntime,
+      expertToolAllowlist: node.expertToolAllowlist,
+      expertPurposeTiers: node.expertPurposeTiers,
       approvalSource: "manual",
       approvalReason: node.approvalReason,
     });
@@ -999,7 +1091,19 @@ export class InteractiveExecutionSession {
   private registerNode(input: ExecutionGraphNode): void {
     const existing = this.nodes.get(input.id);
     if (existing) {
-      const merged: ExecutionGraphNode = { ...existing, ...input, composer: input.composer ?? existing.composer };
+      const merged: ExecutionGraphNode = {
+        ...existing,
+        ...input,
+        composer: input.composer ?? existing.composer,
+        modelOverride: input.modelOverride ?? existing.modelOverride,
+        modelOverrideSource: input.modelOverrideSource ?? existing.modelOverrideSource,
+        samplingOverride: input.samplingOverride ?? existing.samplingOverride,
+        expertAgentId: input.expertAgentId ?? existing.expertAgentId,
+        expertAssignmentMode: input.expertAssignmentMode ?? existing.expertAssignmentMode,
+        expertRuntime: input.expertRuntime ?? existing.expertRuntime,
+        expertToolAllowlist: input.expertToolAllowlist ?? existing.expertToolAllowlist,
+        expertPurposeTiers: input.expertPurposeTiers ?? existing.expertPurposeTiers,
+      };
       this.nodes.set(input.id, merged);
       this.ensureNodePosition(merged);
       return;
@@ -1018,6 +1122,11 @@ export class InteractiveExecutionSession {
       }),
       plannedModel: input.plannedModel ?? "resolved-at-runtime",
       modelOverrideSource: input.modelOverrideSource ?? "none",
+      expertAgentId: input.expertAgentId,
+      expertAssignmentMode: input.expertAssignmentMode,
+      expertRuntime: input.expertRuntime,
+      expertToolAllowlist: input.expertToolAllowlist,
+      expertPurposeTiers: input.expertPurposeTiers,
       editableFields: input.editableFields ?? ["prompt"],
       approvalMode: input.approvalMode ?? this.approvalMode,
       approvalSource: input.approvalSource ?? "none",
@@ -1044,6 +1153,9 @@ export class InteractiveExecutionSession {
     }
     if (status === "completed" || status === "skipped" || status === "failed" || status === "cancelled") {
       node.completedAt = new Date().toISOString();
+    }
+    if (detail?.message && (status === "failed" || status === "skipped")) {
+      node.approvalReason = detail.message;
     }
     const event: ExecutionEvent = {
       type: "execution",
@@ -1104,6 +1216,11 @@ export class InteractiveExecutionSession {
         modelOverride: node.modelOverride,
         samplingOverride: node.samplingOverride,
         contextPolicy: node.composer?.contextPolicy,
+        expertAgentId: node.expertAgentId,
+        expertAssignmentMode: node.expertAssignmentMode,
+        expertRuntime: node.expertRuntime,
+        expertToolAllowlist: node.expertToolAllowlist,
+        expertPurposeTiers: node.expertPurposeTiers,
         approvalSource: "auto",
         approvalReason: node.approvalReason,
       });
@@ -1273,6 +1390,89 @@ export class InteractiveExecutionSession {
     return current;
   }
 
+  private createPlannerContext(
+    node: ExecutionGraphNode,
+    budgetRoot: ExecutionGraphNode,
+    maxChildren: number,
+    nodePrompt: string,
+    protectedDescendants: ExecutionGraphNode[] = [],
+  ): GraphPlannerContext {
+    const ancestors: GraphPlannerContext["ancestors"] = [];
+    let cursor = node.parentId ? this.nodes.get(node.parentId) : undefined;
+    while (cursor) {
+      ancestors.unshift({
+        id: cursor.id,
+        label: cursor.label,
+        prompt: cursor.prompt ?? cursor.label,
+      });
+      if (cursor.id === budgetRoot.id) {
+        break;
+      }
+      cursor = cursor.parentId ? this.nodes.get(cursor.parentId) : undefined;
+    }
+    return {
+      nodeId: node.id,
+      nodeLabel: node.label,
+      nodePrompt,
+      ancestors,
+      protectedDescendants: protectedDescendants.map((descendant) => ({
+        id: descendant.id,
+        label: descendant.label,
+        prompt: descendant.prompt ?? descendant.label,
+      })),
+      maxChildren,
+    };
+  }
+
+  private removePristinePlannedDescendants(nodeId: string): void {
+    const directChildren = [...this.nodes.values()].filter((node) => node.parentId === nodeId);
+    for (const child of directChildren) {
+      if (
+        child.status === "planned"
+        && child.composer?.plannedBy === "model"
+        && child.modelOverrideSource !== "user"
+      ) {
+        this.deleteNodeWithStrategy(child.id, "delete_subtree");
+      }
+    }
+  }
+
+  private removeAllDescendants(nodeId: string): void {
+    const directChildren = [...this.nodes.values()].filter((node) => node.parentId === nodeId);
+    for (const child of directChildren) {
+      this.deleteNodeWithStrategy(child.id, "delete_subtree");
+    }
+  }
+
+  private protectedDescendants(nodeId: string): ExecutionGraphNode[] {
+    return this.collectDescendants(nodeId)
+      .filter((id) => id !== nodeId)
+      .map((id) => this.nodes.get(id))
+      .filter((node): node is ExecutionGraphNode => Boolean(node))
+      .filter((node) => this.protectedReasons(node).length > 0);
+  }
+
+  private protectedReasons(node: ExecutionGraphNode): string[] {
+    const reasons = new Set<string>(node.composer?.protectedReasons ?? []);
+    if (node.composer?.plannedBy === "user") {
+      reasons.add("manual_child");
+    }
+    if (node.modelOverrideSource === "user") {
+      reasons.add("user_model_override");
+    }
+    if (node.expertAssignmentMode === "custom") {
+      reasons.add("expert_override");
+    }
+    return [...reasons];
+  }
+
+  private nextPlannedNodeId(): string {
+    do {
+      this.plannedNodeSequence += 1;
+    } while (this.nodes.has(`plan-${this.plannedNodeSequence}`));
+    return `plan-${this.plannedNodeSequence}`;
+  }
+
   private updateDepthsFrom(nodeId: string, depth: number): void {
     const node = this.nodes.get(nodeId);
     if (!node) {
@@ -1422,7 +1622,7 @@ export class InteractiveExecutionSession {
   }
 }
 
-export function createInteractiveExecutionSession(input: { approvalMode?: ApprovalMode; seedRootPrompt?: string | undefined } = {}): InteractiveExecutionSession {
+export function createInteractiveExecutionSession(input: { approvalMode?: ApprovalMode; seedRootPrompt?: string | undefined; planModel?: LanguageModelPort | undefined } = {}): InteractiveExecutionSession {
   return new InteractiveExecutionSession(input);
 }
 
@@ -1449,7 +1649,9 @@ function createComposer(input: {
   prompt: string;
   complexity: ComposerComplexity;
   budget: ComposerPlanBudget;
-  parentNodeId?: string | undefined;
+    parentNodeId?: string | undefined;
+    plannedBy?: "model" | "user" | undefined;
+    protectedReasons?: string[] | undefined;
 }): NonNullable<ExecutionGraphNode["composer"]> {
   const ports = portsForType(input.type);
   return {
@@ -1465,6 +1667,8 @@ function createComposer(input: {
     complexity: input.complexity,
     recommendedAction: input.complexity === "high" ? "break_down" : "plan",
     planBudget: input.budget,
+    plannedBy: input.plannedBy,
+    protectedReasons: input.protectedReasons,
   };
 }
 
@@ -1650,26 +1854,17 @@ function normalizeSamplingOverride(input: Record<string, unknown>): NonNullable<
   return sampling;
 }
 
-function plannedChildrenFor(node: ExecutionGraphNode): Array<{
-  label: string;
-  prompt: string;
-  type: ComposerNodeType;
-  complexity: ComposerComplexity;
-}> {
-  const prompt = node.prompt ?? node.label;
-  const lower = prompt.toLowerCase();
-  if (lower.includes("book") || lower.includes("audio") || lower.includes("speech")) {
-    return [
-      { label: "Parse book into segments", prompt: "Parse the source book into ordered chapter and segment artifact refs.", type: "Splitter", complexity: "medium" },
-      { label: "Interpret speakers", prompt: "Infer speaker attribution and update a persistent speaker bible from bounded text segments.", type: "AI", complexity: "high" },
-      { label: "Generate TTS clips", prompt: "Generate consistent per-speaker audio clips from segment refs and voice profiles.", type: "TTS", complexity: "high" },
-      { label: "Validate continuity", prompt: "Validate speaker and audio continuity across generated clips.", type: "Validator", complexity: "medium" },
-      { label: "Splice final audio", prompt: "Splice ordered audio artifact refs into the final audiobook file.", type: "Code", complexity: "medium" },
-    ];
+function suggestedPlannerFix(code: GraphPlannerError["code"]): string {
+  if (code === "planning_failed") {
+    return "Check the planner model tier and prompt, then try Plan children again.";
   }
-  return [
-    { label: "Plan implementation slice", prompt: `Create the smallest safe implementation slice for: ${prompt}`, type: "AI", complexity: "medium" },
-    { label: "Execute code changes", prompt: `Apply code or configuration changes for: ${prompt}`, type: "Code", complexity: "medium" },
-    { label: "Validate results", prompt: `Validate the completed work for: ${prompt}`, type: "Validator", complexity: "low" },
-  ];
+  return "Fix configuration or retry. No fallback was applied.";
+}
+
+function addProtectedReason(existing: string[] | undefined, reason: string): string[] {
+  return [...new Set([...(existing ?? []), reason])];
+}
+
+function isKnownExpertAgent(value: string): value is "default" | "coding" | "qa" | "product_designer" | "research" {
+  return value === "default" || value === "coding" || value === "qa" || value === "product_designer" || value === "research";
 }

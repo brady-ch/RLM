@@ -1,6 +1,7 @@
 import type { AgentProfile } from "../domain/agents.js";
 import type { ModelSelectionTrace, RecursiveModelConfig, RecursivePromptResult } from "../domain/types.js";
 import type { LanguageModelPort } from "../ports/language-model-port.js";
+import type { ToolPort } from "../ports/tool-port.js";
 import { InMemoryTrace } from "../adapters/in-memory-trace.js";
 import { runRecursivePrompt } from "./run-recursive-prompt.js";
 import type { ProjectConfig } from "./project-config.js";
@@ -9,6 +10,7 @@ import { estimateAgentRamMb, PurposeRoutingLanguageModel } from "./model-provide
 import type { ModelRuntimeSelection } from "./model-provider.js";
 import { selectedAgentMetadata } from "./agent-registry.js";
 import type { RuntimeLogger } from "../ports/runtime-logger-port.js";
+import type { LanguageModelPurpose } from "../ports/language-model-port.js";
 import type { ExecutionControl, RuntimeMemory, RuntimeRunState } from "../domain/types.js";
 import { resolveRuntimeHostSelection } from "./project-config.js";
 
@@ -27,6 +29,39 @@ export interface RunConfiguredAgentInput {
   execution?: ExecutionControl | undefined;
   runState?: RuntimeRunState | undefined;
   memory?: RuntimeMemory | undefined;
+  nodeBinding?: {
+    toolAllowlist?: string[] | undefined;
+    purposeTiers?: Partial<Record<LanguageModelPurpose, string>> | undefined;
+  } | undefined;
+}
+
+class NodeBindingLanguageModel implements LanguageModelPort {
+  constructor(
+    private readonly inner: PurposeRoutingLanguageModel,
+    private readonly purposeTiers?: Partial<Record<LanguageModelPurpose, string>> | undefined,
+  ) {}
+
+  async complete(
+    messages: Parameters<LanguageModelPort["complete"]>[0],
+    options: Parameters<LanguageModelPort["complete"]>[1] = {},
+  ) {
+    const tier = options.purpose && !options.overrideModel && !options.overrideModelSelection
+      ? this.purposeTiers?.[options.purpose]?.trim()
+      : undefined;
+    return this.inner.complete(messages, {
+      ...options,
+      overrideModel: tier ? undefined : options.overrideModel,
+      overrideModelSelection: tier ?? options.overrideModelSelection,
+    });
+  }
+}
+
+function filterAgentTools(agent: AgentProfile, allowlist?: string[]): ToolPort[] {
+  if (!allowlist || allowlist.length === 0) {
+    return agent.tools;
+  }
+  const allowed = new Set(allowlist.map((tool) => tool.trim()).filter(Boolean));
+  return agent.tools.filter((tool) => allowed.has(tool.name));
 }
 
 export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promise<RecursivePromptResult> {
@@ -57,7 +92,7 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
   const modelSelections: ModelSelectionTrace[] = [];
 
   try {
-    const model = new PurposeRoutingLanguageModel({
+    const baseModel = new PurposeRoutingLanguageModel({
       config: input.projectConfig,
       agent: input.agent.config,
       hostSelection: resolveRuntimeHostSelection(input.projectConfig, {
@@ -79,13 +114,16 @@ export async function runConfiguredAgent(input: RunConfiguredAgentInput): Promis
         });
       },
     });
+    const model = input.nodeBinding?.purposeTiers
+      ? new NodeBindingLanguageModel(baseModel, input.nodeBinding.purposeTiers)
+      : baseModel;
     const trace = new InMemoryTrace();
     const result = await runRecursivePrompt({
       prompt: input.prompt,
       config: input.config,
       model,
       trace,
-      tools: input.agent.tools,
+      tools: filterAgentTools(input.agent, input.nodeBinding?.toolAllowlist),
       agent: selectedAgentMetadata(input.agent, input.agentSource),
       logger: input.logger,
       execution: input.execution,
