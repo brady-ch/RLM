@@ -1,8 +1,7 @@
 ---
 created: 2026-05-14T07:55:16.642Z
 title: Create next milestone roadmap
-area: planning
-files:
+resolves_phase: 43
   - .planning/REQUIREMENTS.md
   - .planning/ROADMAP.md
   - .planning/STATE.md
