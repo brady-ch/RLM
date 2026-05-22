@@ -1,0 +1,57 @@
+# Phase 67 / PACK-01 — Linux .deb build + install smoke on headless ubuntu-latest.
+# Staging-only cross-platform smoke remains in package-smoke.yml.
+
+name: deb-smoke
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  deb-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux build and smoke dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libssl-dev \
+            pkg-config \
+            xvfb \
+            libdbus-1-dev \
+            libudev-dev \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - run: npm ci
+
+      - name: Build Tauri .deb
+        run: npm run tauri:build
+
+      - name: Deb install smoke
+        run: npm run package:smoke:deb
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-smoke-artifact
+          path: src-tauri/target/release/bundle/deb/*.deb
+          retention-days: 7
