@@ -1,0 +1,28 @@
+:root {
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-pill: 999px;
+
+  --font-body: 16px;
+  --font-label: 12px;
+  --font-heading: 22px;
+  --font-meta: 11px;
+
+  --color-bg: #eef2ef;
+  --color-surface: #f8faf8;
+  --color-card: #fbfcfd;
+  --color-accent: #2d6cdf;
+  --color-primary: #1f3d32;
+  --color-danger: #923b34;
+  --color-border: #d9e0db;
+
+  color: #16201a;
+  background: var(--color-bg);
+  font-family: "Aptos", "Segoe UI", sans-serif;
+}
