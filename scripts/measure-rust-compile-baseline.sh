@@ -14,11 +14,10 @@ git_sha="$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")"
 rustc_version="$(rustc --version 2>/dev/null || echo "rustc unavailable")"
 
 time_build() {
-  local label="$1"
-  shift
+  shift # discard label
   local start end elapsed
   start="$(date +%s)"
-  "$@"
+  "$@" >&2
   end="$(date +%s)"
   elapsed=$((end - start))
   echo "$elapsed"

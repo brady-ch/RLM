@@ -18,17 +18,17 @@ Even when Phase 70 lands, pre-planning and post-Phase-69 probe metrics indicate 
 
 ## Metrics
 
-Baseline script is ready (`scripts/measure-rust-compile-baseline.sh`). Authoritative `71-BASELINE.md` will be captured during Plan 03 defer closure (or re-run after Phase 70).
+Authoritative baseline captured in [`71-BASELINE.md`](./71-BASELINE.md) (2026-05-22):
 
-Pre-planning probe (2026-05-22, post-Phase-69 context):
+| Measurement | Wall seconds | Split threshold |
+|-------------|-------------:|-----------------|
+| Clean build | 7 | N/A |
+| Incremental domain | 2 | >30s sustained |
+| Incremental ports | 1 | >30s sustained |
+| Incremental application | 1 | >30s sustained |
+| Test iteration (lib) | 8 | >120–180s |
 
-| Measurement | Wall seconds |
-|-------------|-------------:|
-| Clean build | ~7.5 |
-| Incremental domain | ~1.1 |
-| Incremental ports | (expected similar, <5s) |
-| Incremental application | (expected similar, <5s) |
-| Test iteration | (expected <<120s) |
+> Phase 70 (A5 boundary script) still pending — re-run baseline after Phase 70 for final authoritative record.
 
 ## Trigger Evaluation
 
@@ -36,8 +36,8 @@ Seed conditions from `.planning/seeds/rust-crate-split.md`:
 
 | Trigger | Threshold | Status | Evidence |
 |---------|-----------|--------|----------|
-| Full `rlm-core` test suite routinely >2–3 min | >120–180s wall | **FAIL** (no split trigger) | Pre-probe and expected post-69 metrics <<120s |
-| Single-crate rebuild fan-out blocks unrelated module work | Incremental edits >30s sustained | **FAIL** (no split trigger) | Domain incremental ~1.1s; no fan-out evidence |
+| Full `rlm-core` test suite routinely >2–3 min | >120–180s wall | **FAIL** (no split trigger) | Lib tests: 8s (71-BASELINE.md) |
+| Single-crate rebuild fan-out blocks unrelated module work | Incremental edits >30s sustained | **FAIL** (no split trigger) | Domain 2s, ports 1s, application 1s |
 | Prerequisites A1–A5 complete | Phase 64 + 70 green | **PARTIAL** | Phase 69 ✅; Phase 70 ❌ (A5 boundary script pending) |
 
 ## Recommendation
