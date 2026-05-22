@@ -40,9 +40,9 @@
 
 ### Model Hosts & Library
 
-- [ ] **MDLH-01**: Ollama HTTP adapter implements `LanguageModelPort` including streaming completions and tool-calling policy flags used by the recursive engine.
-- [ ] **MDLH-02**: Model library routes (curated catalog, search, install progress, tier selection) preserve v1.3/v1.7 semantics against Ollama as default host.
-- [ ] **MDLH-03**: Hugging Face search and artifact metadata work without Python; download path validates manifests/artifacts before catalog write.
+- [x] **MDLH-01**: Ollama HTTP adapter implements `LanguageModelPort` including streaming completions and tool-calling policy flags used by the recursive engine.
+- [x] **MDLH-02**: Model library routes (curated catalog, search, install progress, tier selection) preserve v1.3/v1.7 semantics against Ollama as default host.
+- [x] **MDLH-03**: Hugging Face search and artifact metadata work without Python; download path validates manifests/artifacts before catalog write.
 
 ### Plugins & Tools
 
@@ -103,9 +103,9 @@
 | VIDX-01 | Phase 56 | Pending |
 | VIDX-02 | Phase 56 | Pending |
 | VIDX-03 | Phase 56 | Pending |
-| MDLH-01 | Phase 57 | Pending |
-| MDLH-02 | Phase 57 | Pending |
-| MDLH-03 | Phase 57 | Pending |
+| MDLH-01 | Phase 57 | Complete |
+| MDLH-02 | Phase 57 | Complete |
+| MDLH-03 | Phase 57 | Complete |
 | PLUG-01 | Phase 58 | Pending |
 | PLUG-02 | Phase 58 | Pending |
 | PLUG-03 | Phase 58 | Pending |

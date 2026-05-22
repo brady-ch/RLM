@@ -4,10 +4,11 @@ pub mod state;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use axum::Router;
+use serde_json::Value;
 
-use crate::domain::types::RecursiveModelConfig;
+use crate::adapters::OllamaLanguageModel;
 use crate::execution::InteractiveExecutionSession;
+use crate::model_library::ModelLibraryService;
 use crate::persistence::{load_project_config, LoadedProjectConfig, ProjectPaths};
 use crate::ports::{LanguageModel, QueueModel};
 
@@ -19,6 +20,7 @@ pub struct RouterState {
     pub project_config: Option<LoadedProjectConfig>,
     pub memory_session_id: String,
     pub session: Arc<InteractiveExecutionSession>,
+    pub model_library: Option<Arc<ModelLibraryService>>,
     plan_model: Arc<dyn LanguageModel>,
     exec_model: Arc<dyn LanguageModel>,
 }
@@ -27,10 +29,17 @@ impl RouterState {
     pub fn new(project_root: PathBuf) -> Self {
         let paths = ProjectPaths::from_root(project_root.clone());
         let project_config = load_project_config(&project_root, None).ok();
-        let plan_model = Arc::new(QueueModel::new([
-            r#"{"children":[{"label":"Step","prompt":"Child task","type":"AI","complexity":"low","agentId":"default","runtime":"single-pass"}]}"#,
-        ])) as Arc<dyn LanguageModel>;
-        let exec_model = Arc::new(QueueModel::new(["done"])) as Arc<dyn LanguageModel>;
+        let (plan_model, exec_model) = resolve_language_models(project_config.as_ref());
+        let model_library = project_config.as_ref().and_then(|loaded| {
+            loaded.path.as_ref()?;
+            resolve_ollama_host(&loaded.config).map(|_| {
+                Arc::new(ModelLibraryService::new(
+                    project_root.clone(),
+                    loaded.config.clone(),
+                    resolve_ollama_base_url(&loaded.config),
+                ))
+            })
+        });
         Self {
             ui_dist_dir: None,
             project_root,
@@ -38,6 +47,7 @@ impl RouterState {
             project_config,
             memory_session_id: "default".into(),
             session: InteractiveExecutionSession::new(Default::default()),
+            model_library,
             plan_model,
             exec_model,
         }
@@ -51,12 +61,12 @@ impl RouterState {
         Arc::clone(&self.exec_model)
     }
 
-    pub fn runtime_config(&self) -> RecursiveModelConfig {
+    pub fn runtime_config(&self) -> crate::domain::types::RecursiveModelConfig {
         self.project_config
             .as_ref()
             .and_then(|loaded| loaded.config.get("runtime"))
             .and_then(|rt| serde_json::from_value(rt.clone()).ok())
-            .unwrap_or(RecursiveModelConfig {
+            .unwrap_or(crate::domain::types::RecursiveModelConfig {
                 max_depth: Some(2),
                 max_dynamic_depth: 2,
                 max_branches: 4,
@@ -91,8 +101,90 @@ impl RouterState {
         self.exec_model = model;
         self
     }
+
+    pub fn with_model_library(mut self, model_library: Option<Arc<ModelLibraryService>>) -> Self {
+        self.model_library = model_library;
+        self
+    }
 }
 
-pub fn build_router(state: RouterState) -> Router {
+fn resolve_language_models(
+    project_config: Option<&LoadedProjectConfig>,
+) -> (Arc<dyn LanguageModel>, Arc<dyn LanguageModel>) {
+    let Some(loaded) = project_config else {
+        return default_queue_models();
+    };
+    let Some((base_url, allow_unconstrained)) = resolve_ollama_host(&loaded.config) else {
+        return default_queue_models();
+    };
+    let plan_name = tier_model_name(&loaded.config, "medium")
+        .or_else(|| default_model_name(&loaded.config))
+        .unwrap_or_else(|| "granite4.1:3b".to_string());
+    let exec_name = default_model_name(&loaded.config).unwrap_or_else(|| plan_name.clone());
+    (
+        Arc::new(OllamaLanguageModel::new(
+            Some(&base_url),
+            Some(&plan_name),
+            allow_unconstrained,
+        )) as Arc<dyn LanguageModel>,
+        Arc::new(OllamaLanguageModel::new(
+            Some(&base_url),
+            Some(&exec_name),
+            allow_unconstrained,
+        )) as Arc<dyn LanguageModel>,
+    )
+}
+
+fn default_queue_models() -> (Arc<dyn LanguageModel>, Arc<dyn LanguageModel>) {
+    (
+        Arc::new(QueueModel::new([
+            r#"{"children":[{"label":"Step","prompt":"Child task","type":"AI","complexity":"low","agentId":"default","runtime":"single-pass"}]}"#,
+        ])) as Arc<dyn LanguageModel>,
+        Arc::new(QueueModel::new(["done"])) as Arc<dyn LanguageModel>,
+    )
+}
+
+fn resolve_ollama_host(config: &Value) -> Option<(String, bool)> {
+    let host_id = config.get("runtimeHost").and_then(Value::as_str)?;
+    let host = config.get("hosts")?.get(host_id)?;
+    if host.get("kind").and_then(Value::as_str) != Some("ollama") {
+        return None;
+    }
+    let base_url = host
+        .get("baseUrl")
+        .and_then(Value::as_str)
+        .unwrap_or("http://127.0.0.1:11434")
+        .to_string();
+    let allow_unconstrained = host
+        .get("allowUnconstrainedToolCalls")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    Some((base_url, allow_unconstrained))
+}
+
+pub fn resolve_ollama_base_url(config: &Value) -> String {
+    resolve_ollama_host(config)
+        .map(|(base, _)| base)
+        .unwrap_or_else(|| "http://127.0.0.1:11434".to_string())
+}
+
+fn tier_model_name(config: &Value, tier: &str) -> Option<String> {
+    config
+        .pointer("/models/tiers")
+        .and_then(|tiers| tiers.get(tier))
+        .and_then(|doc| doc.get("name"))
+        .and_then(Value::as_str)
+        .map(str::to_string)
+}
+
+fn default_model_name(config: &Value) -> Option<String> {
+    config
+        .get("models")
+        .and_then(|models| models.get("default"))
+        .and_then(Value::as_str)
+        .map(str::to_string)
+}
+
+pub fn build_router(state: RouterState) -> axum::Router {
     routes::build_router(state)
 }
