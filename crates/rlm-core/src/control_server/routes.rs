@@ -1,19 +1,19 @@
-use axum::response::sse::{Event, KeepAlive};
+use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::{
     extract::{Query, State},
     http::StatusCode,
-    response::{Html, IntoResponse, Json, Sse},
+    response::{Html, IntoResponse, Json},
     routing::get,
     Router,
 };
 use futures::stream::{self, StreamExt};
 use serde::Deserialize;
 use serde_json::json;
+use tokio_stream::wrappers::BroadcastStream;
 use tower_http::services::ServeDir;
 
 use crate::persistence::{FileMemoryStore, FileSessionStore};
 
-use super::state;
 use super::RouterState;
 
 #[derive(Debug, Deserialize)]
@@ -43,24 +43,24 @@ pub fn build_router(state: RouterState) -> Router {
     api.merge(ui).with_state(state)
 }
 
-async fn session(State(_): State<RouterState>) -> Json<serde_json::Value> {
-    Json(state::idle_session_snapshot())
+async fn session(State(state): State<RouterState>) -> Json<serde_json::Value> {
+    Json(serde_json::to_value(state.session.snapshot()).expect("session snapshot"))
 }
 
-async fn run_mode(State(_): State<RouterState>) -> Json<serde_json::Value> {
-    Json(state::idle_run_mode())
+async fn run_mode(State(state): State<RouterState>) -> Json<serde_json::Value> {
+    Json(serde_json::to_value(state.session.run_mode_snapshot()).expect("run mode snapshot"))
 }
 
-async fn graph(State(_): State<RouterState>) -> Json<serde_json::Value> {
-    let snap = state::idle_session_snapshot();
-    Json(snap.get("graph").cloned().unwrap_or(serde_json::json!({})))
+async fn graph(State(state): State<RouterState>) -> Json<serde_json::Value> {
+    let snap = state.session.snapshot();
+    Json(serde_json::to_value(snap.graph).expect("graph snapshot"))
 }
 
 async fn saved_sessions(State(state): State<RouterState>) -> impl IntoResponse {
     if !state.paths.sessions_configured() {
         return (
             StatusCode::NOT_FOUND,
-            Json(state::saved_sessions_unconfigured()),
+            Json(super::state::saved_sessions_unconfigured()),
         )
             .into_response();
     }
@@ -77,7 +77,7 @@ async fn saved_sessions(State(state): State<RouterState>) -> impl IntoResponse {
 }
 
 async fn graph_workflows(State(_): State<RouterState>) -> Json<serde_json::Value> {
-    Json(state::graph_workflows_empty())
+    Json(super::state::graph_workflows_empty())
 }
 
 async fn memory(
@@ -85,7 +85,11 @@ async fn memory(
     Query(query): Query<MemoryQuery>,
 ) -> impl IntoResponse {
     if !state.paths.memory_configured() {
-        return (StatusCode::NOT_FOUND, Json(state::memory_unconfigured())).into_response();
+        return (
+            StatusCode::NOT_FOUND,
+            Json(super::state::memory_unconfigured()),
+        )
+            .into_response();
     }
 
     let session_id = query
@@ -112,22 +116,32 @@ async fn memory(
 async fn model_library(State(_): State<RouterState>) -> impl IntoResponse {
     (
         StatusCode::NOT_FOUND,
-        Json(state::model_library_unconfigured()),
+        Json(super::state::model_library_unconfigured()),
     )
 }
 
 async fn plugins_list(State(_): State<RouterState>) -> Json<serde_json::Value> {
-    Json(state::plugins_list_empty())
+    Json(super::state::plugins_list_empty())
 }
 
 async fn events(
-    State(_): State<RouterState>,
+    State(state): State<RouterState>,
 ) -> Sse<impl StreamExt<Item = Result<Event, std::convert::Infallible>>> {
-    let snapshot = state::idle_session_snapshot();
+    let snapshot = state.session.snapshot();
     let initial = Event::default()
         .event("snapshot")
-        .data(snapshot.to_string());
-    let stream = stream::once(async move { Ok(initial) }).chain(futures::stream::pending());
+        .data(serde_json::to_string(&snapshot).unwrap_or_else(|_| "{}".into()));
+
+    let rx = state.session.subscribe();
+    let execution_stream = BroadcastStream::new(rx).filter_map(|result| {
+        futures::future::ready(result.ok().map(|event| {
+            Ok(Event::default()
+                .event("execution")
+                .data(serde_json::to_string(&event).unwrap_or_else(|_| "{}".into())))
+        }))
+    });
+
+    let stream = stream::once(async move { Ok(initial) }).chain(execution_stream);
     Sse::new(stream).keep_alive(KeepAlive::default())
 }
 

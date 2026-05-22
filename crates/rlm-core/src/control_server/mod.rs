@@ -2,9 +2,11 @@ pub mod routes;
 pub mod state;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use axum::Router;
 
+use crate::execution::InteractiveExecutionSession;
 use crate::persistence::{load_project_config, LoadedProjectConfig, ProjectPaths};
 
 #[derive(Clone)]
@@ -13,8 +15,8 @@ pub struct RouterState {
     pub project_root: PathBuf,
     pub paths: ProjectPaths,
     pub project_config: Option<LoadedProjectConfig>,
-    /// Active memory session id for `/api/memory` inspection when memory is configured.
     pub memory_session_id: String,
+    pub session: Arc<InteractiveExecutionSession>,
 }
 
 impl RouterState {
@@ -27,6 +29,7 @@ impl RouterState {
             paths,
             project_config,
             memory_session_id: "default".into(),
+            session: InteractiveExecutionSession::new(Default::default()),
         }
     }
 
@@ -37,6 +40,11 @@ impl RouterState {
 
     pub fn with_memory_session_id(mut self, session_id: impl Into<String>) -> Self {
         self.memory_session_id = session_id.into();
+        self
+    }
+
+    pub fn with_session(mut self, session: Arc<InteractiveExecutionSession>) -> Self {
+        self.session = session;
         self
     }
 }
