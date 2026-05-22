@@ -78,7 +78,7 @@ None blocking phase goals.
 
 ## Task Commits
 
-1. **Integration hardening implementation** — pending commit
+1. **Integration hardening implementation** — `312b733` (feat)
 
 ## Self-Check: PASSED
 
