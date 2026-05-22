@@ -1,10 +1,11 @@
-# Stack Research — v1.6 Architecture Cleanup
+# Technology Stack — v1.7 Adapter & Plugin Taxonomy
 
-**Domain:** Behavior-preserving refactor guardrails for a TypeScript/Node layered CLI + React UI monorepo  
+**Project:** Recursive Language Model CLI  
+**Domain:** Local-first plugin taxonomy, runtime/interop split, boundary enforcement  
 **Researched:** 2026-05-22  
-**Confidence:** HIGH for lint/format/boundary tooling choices; MEDIUM for phased boundary rule strictness (existing violations must be burned down incrementally)
+**Confidence:** HIGH for boundary tooling and manifest validation (repo-verified); MEDIUM for remote-fetch transport (standard Node patterns, no RLM implementation yet)
 
-**Scope:** Stack additions/changes **only** for v1.6 architecture cleanup — lint/format guardrails, test restructuring support, module boundary enforcement. Existing TypeScript 6, Node ESM CLI, React/Vite UI, Tauri shell, Ollama adapter, LangChain orchestration, and 205 passing `node:test` tests are **not** re-researched.
+**Scope:** Stack additions/changes **only** for v1.7 — plugin manifests, local-folder install, remote fetch-to-local, runtime/interop module split, dependency-cruiser error ratchet. Existing TypeScript 6, Node ESM CLI, React 19/Vite 7 UI, Tauri shell, Zod/YAML config, `ExtensionHost`, `buildRuntimeContext()`, and dependency-cruiser 17 WARN baseline are **not** re-researched.
 
 ---
 
@@ -12,148 +13,203 @@
 
 ### Core Technologies
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| **ESLint** | `^10.4.0` | Static analysis and refactor guardrails | De facto standard for TS repos; flat config (`eslint.config.js`) is current ESLint default and works with ESM `"type": "module"` projects |
-| **typescript-eslint** | `^8.59.4` | TypeScript-aware ESLint rules | Official TS lint stack; supports ESLint 9/10 and TypeScript `<6.1.0` (matches repo `typescript@^6.0.3`); `projectService: true` avoids brittle per-file `tsconfig` wiring during file moves |
-| **@eslint/js** | `^10.0.1` | ESLint recommended baseline | Flat-config entry point paired with ESLint 10 |
-| **Prettier** | `^3.8.3` | Deterministic formatting | Separates style from semantics; reduces noisy diffs during large file splits; pairs cleanly with `eslint-config-prettier` |
-| **eslint-config-prettier** | `^10.1.8` | Disable ESLint rules that fight Prettier | Prevents double-fix loops between ESLint stylistic rules and Prettier |
-| **dependency-cruiser** | `^17.4.0` | Module boundary + cycle enforcement | Purpose-built for layered architecture rules (`forbidden`/`allowed` by path); validates `src/` and `ui/src/` separately; outputs CI-friendly violations; can visualize dependency graphs during taxonomy pass |
-| **globals** | `^17.6.0` | Flat-config environment globals | Supplies `node` and `browser` globals for split ESLint blocks (CLI vs UI) |
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| **Zod** | `^4.4.3` (existing) | `rlm.plugin.json` manifest parse + doctor validation | Already the project config schema stack (`application/config/schema.ts`); one validation dialect for YAML project config and JSON plugin manifests; surfaces actionable errors for CLI/UI doctor |
+| **yaml** | `^2.8.4` (existing) | Optional human-authored manifest variant | Same parser as `rlm.config.yaml`; use only if UX needs editable manifests — JSON remains canonical on disk after install |
+| **tar** | `^7.5.15` | Extract remote `.tar.gz` / `.tgz` into `~/.rlm/plugins/<id>/` | npm-maintained (`isaacs/node-tar`); battle-tested in npm CLI; supports stream extract with entry filters for path-traversal defense; covers GitHub/GitLab archive URLs and release assets without a git binary |
+| **semver** | `^7.8.1` | Manifest `version` + `engines.rlm` compatibility checks | De facto Node semver implementation; doctor can compare installed plugin vs running RLM version and fail with explicit range errors |
+| **dependency-cruiser** | `^17.4.0` (existing) | ARCH-02 error ratchet + new `plugins/` / `runtime/` rules | Already in `npm run check`; only **3** baseline violations remain — ratchet `severity: "error"` and burn down baseline rather than adding a second boundary tool |
+| **Node built-in `fetch`** | Node `>=20` (existing) | Download remote plugin archives | No `node-fetch`/`axios`; repo already targets Node 20+; fetch is streaming-friendly with `Readable.fromWeb` into `tar.x` |
+| **Node built-in `fs/promises`** | Node `>=20` (existing) | Local-folder copy, install layout, registry index | `fs.cp({ recursive: true })` for folder install; `mkdir`/`writeFile` for `~/.rlm/plugins/registry.json` (or equivalent index) |
 
 ### Supporting Libraries
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| **c8** | `^11.0.0` | V8 coverage for `node:test` | Optional during refactor waves to confirm extracted modules remain exercised; not required for CI gate in v1.6 |
-| **tsx** | `^4.21.0` (existing) | Run TypeScript tests without pre-build | Dev-only `test:watch` / targeted subsystem runs while splitting files; keep CI on compiled `dist/tests/**/*.test.js` |
-| **Node built-in `node:test`** | Node `>=20` (repo on v20.18.2) | Test runner | **Keep** — 15 test files / 205 tests already on `node:test`; no migration benefit for a refactor-only milestone |
+| **Node `child_process.spawn`** | built-in | Optional `git clone --depth 1` for repo URLs | When user supplies a git remote and `git` is on PATH; secondary to fetch+tar; no `simple-git` dependency |
+| **Node `crypto.createHash`** | built-in (existing in `ExtensionHost`) | Allowlist keys, manifest integrity optional | Reuse existing SHA-256 allowlist pattern from `extension-host.ts`; optional checksum field in manifest later |
+| **Node `pathToFileURL` + dynamic `import()`** | built-in (existing) | Load plugin entry after install | Same mechanism as `ExtensionHost.loadExternal`; plugin manager only changes *where* paths come from |
+| **tsx** | `^4.21.0` (existing, dev) | Dev iteration on plugin loader/doctor | Keep CI on compiled `dist/`; no runtime dependency |
 
-### Development Tools
+### Runtime / Interop Split (no new packages)
 
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| **`eslint.config.js`** (root) | Unified lint entry | Two `files` blocks: `src/**`, `tests/**` with `globals.node`; `ui/src/**` with `globals.browser` and `ui/tsconfig.json` via `projectService` |
-| **`.prettierrc` + `.prettierignore`** | Format policy | Ignore `dist/`, `node_modules/`, Tauri `target/`, release staging dirs; single width (match existing 2-space TS style) |
-| **`.dependency-cruiser.cjs`** | Boundary rules | Use `.cjs` extension so config loads reliably in an ESM package; encode AGENTS.md layer rules with phased severities |
-| **`npm run check` expansion** | Quality gate | Evolve from `typecheck && test` to `typecheck && lint && depcruise && test` once baseline violations are triaged |
+| Move target | Source today | Purpose |
+|-------------|--------------|---------|
+| `src/runtime/composition/` | `runtime-composition.ts`, parts of `bootstrap/` | Tool/model factory wiring consumed by `buildRuntimeContext()` |
+| `src/runtime/interop/` | `interop-runtime.ts`, `mcp-skill-runtime.ts` | MCP stdio clients, skill discovery, interop tool factories |
+| `src/plugins/builtin/` | `src/adapters/tools/*` + `src/extensions/tools/*` shims | Built-in tool plugins with `register.ts` per capability area |
+| `src/plugins/external/` | New: loader, manifest, registry, doctor | External/local-folder + fetched plugin lifecycle |
+
+This is a **module move**, not a framework adoption. Keep `ExtensionHost` as the registration surface; bootstrap imports move from `../application/*` to `../runtime/*` and `../plugins/*`.
+
+### dependency-cruiser Ratchet (config change, not a new package)
+
+**Current state (verified):** `.dependency-cruiser.js` uses `severity: "warn"` on 8 ARCH rules; `dependency-cruiser-baseline.json` lists **3** known violations:
+
+- `src/adapters/tools/web-fetch-tool.ts` → `application/content-tree.ts`
+- `src/domain/agents.ts` → `application/project-config.ts` (type-only)
+- `src/ports/extension-port.ts` → `application/extension-host.ts` (type-only)
+
+**v1.7 target:**
+
+1. Fix the three violations (extract shared types to `ports/` or thin `src/types/`; move `content-tree` helper to domain/ports).
+2. Change all `forbidden` rules from `"warn"` → `"error"`.
+3. Add rules for new directories:
+
+| Rule | From | To (forbidden) | Rationale |
+|------|------|----------------|-----------|
+| `no-plugins-to-application` | `^src/plugins/` | `^src/application/` | Plugins register through host ports, not orchestration |
+| `no-plugins-to-cli` | `^src/plugins/` | `^src/cli/` | CLI dispatches commands; plugins don't import CLI |
+| `no-runtime-to-cli` | `^src/runtime/` | `^src/cli/` | Composition/interop stays below CLI |
+| `no-runtime-to-adapters` (optional) | `^src/runtime/` | `^src/adapters/` | Runtime composes via ports + bootstrap adapter boundary |
+| `no-builtin-plugin-to-external-loader` | `^src/plugins/builtin/` | `^src/plugins/external/` | Built-ins don't depend on external install machinery |
+
+4. Regenerate baseline with `npx depcruise-baseline src`; **goal is empty baseline** — keep `--ignore-known` only as a short-lived bridge if a phase lands mid-ratchet.
+5. `depcruise:ci` stays: `dependency-cruise src --config .dependency-cruiser.js --ignore-known dependency-cruiser-baseline.json` until baseline is deleted.
+
+**Confidence:** HIGH — [dependency-cruiser rules reference](https://github.com/sverweij/dependency-cruiser/blob/main/doc/rules-reference.md) documents `severity: "error"` for CI fail; `--ignore-known` downgrades baseline entries to `ignore` ([CLI docs](https://github.com/sverweij/dependency-cruiser/blob/main/doc/cli.md)).
+
+### Plugin Manager UX (no new UI stack)
+
+| Surface | Stack | Notes |
+|---------|-------|-------|
+| Control server handlers | Node `http` (existing) | Add `handlers/plugins.ts` — list/install/enable/disable/doctor/fetch |
+| UI panels | React 19 + existing fetch to control-server | No TanStack Query / Zustand unless state complexity proves it; match existing session/graph handler patterns |
+| CLI commands | Existing `cli/args.ts` dispatch | `rlm plugin list|install|enable|disable|doctor|fetch` mirroring HTTP API |
 
 ---
 
 ## Installation
 
 ```bash
-# Lint + format core
-npm install -D eslint@^10.4.0 @eslint/js@^10.0.1 typescript-eslint@^8.59.4 \
-  eslint-config-prettier@^10.1.8 prettier@^3.8.3 globals@^17.6.0
+# New runtime dependencies (v1.7)
+npm install tar@^7.5.15 semver@^7.8.1
 
-# Module boundary enforcement
-npm install -D dependency-cruiser@^17.4.0
-
-# Optional — coverage while splitting modules
-npm install -D c8@^11.0.0
+# Already installed — extend usage, do not reinstall
+# zod@^4.4.3 yaml@^2.8.4 dependency-cruiser@^17.4.0 (dev)
 ```
 
-Suggested `package.json` script additions (integration, not new packages):
+No changes to UI `package.json` (UI shares root `node_modules` via Vite root config).
+
+Suggested script additions:
 
 ```json
 {
   "scripts": {
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --check .",
-    "format:write": "prettier --write .",
-    "depcruise": "depcruise src ui/src --config .dependency-cruiser.cjs",
-    "test": "npm run build && node --test --test-concurrency=4 dist/tests/**/*.test.js",
-    "test:coverage": "npm run build && c8 node --test --test-concurrency=4 dist/tests/**/*.test.js",
-    "check": "npm run typecheck && npm run lint && npm run depcruise && npm test"
+    "depcruise:baseline": "depcruise-baseline src --config .dependency-cruiser.js --output-to dependency-cruiser-baseline.json",
+    "depcruise:strict": "dependency-cruise src --config .dependency-cruiser.js",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run depcruise:strict && npm test"
   }
 }
 ```
 
-Replace the current `"lint": "npm run typecheck"` alias — typecheck stays explicit via `typecheck` script.
+Switch `check` to `depcruise:strict` (no `--ignore-known`) once baseline is empty.
 
 ---
 
-## Integration Points
+## Integration with Bootstrap & Extension Host
 
-### ESLint + TypeScript 6 (root `tsconfig.json`)
-
-- Root `tsconfig.json` already enables `strict`, `verbatimModuleSyntax`, `isolatedModules`, `noUncheckedIndexedAccess`.
-- Use `typescript-eslint` **`recommended`** preset initially; add **`recommendedTypeChecked`** rules selectively (`consistent-type-imports`, `no-floating-promises`, `await-thenable`) after baseline lint passes.
-- **`projectService: true`** with `tsconfigRootDir: import.meta.dirname` — simpler than maintaining `tsconfig.eslint.json` while files move between `src/application/config/`, `src/runtime/composition/`, etc.
-- **`tests/**`**: allow dev-only patterns (`test.only` ban via rule override if desired); tests may import across layers for integration coverage — do **not** apply production boundary ESLint rules to tests (boundary enforcement belongs in dependency-cruiser with a `pathNot: ^tests` exception).
-
-### ESLint + UI (`ui/tsconfig.json`)
-
-- Separate flat-config block for `ui/src/**/*.{ts,tsx}` with `globals.browser`.
-- `ui/` is excluded from root `tsconfig.json` but included in Prettier; ESLint block should reference UI TS context (either extend `ui/tsconfig.json` via parser options or a dedicated `files` + `languageOptions.parserOptions.projectService` scoped to UI paths).
-- Do **not** lint generated Vite/Tauri output (`ui/dist`, `src-tauri/target`).
-
-### Prettier
-
-- Run on `src/`, `tests/`, `ui/src/`, `scripts/`, root config files.
-- Keep ESLint non-stylistic; Prettier owns quotes, trailing commas, line width.
-- First landing: `format:write` once, commit separately from logic refactors to keep reviews readable.
-
-### dependency-cruiser — layer rules aligned with AGENTS.md
-
-Target rules (encode in `.dependency-cruiser.cjs`):
-
-| Rule | From | To (forbidden) | Rationale |
-|------|------|----------------|-----------|
-| `domain-no-upper-layers` | `^src/domain/` | `^src/application/`, `^src/adapters/`, `^src/cli/` | Domain policy stays pure; today violated by `src/domain/agents.ts` → `application/project-config` |
-| `ports-no-application` | `^src/ports/` | `^src/application/`, `^src/adapters/`, `^src/cli/` | Ports define contracts only; today violated by `ports/extension-port.ts` → `application/extension-host` |
-| `ports-no-domain-types` | `^src/ports/` | `^src/domain/` | Prefer moving shared DTOs to `ports/` or a thin `src/types/` module during refactor |
-| `adapters-no-application` | `^src/adapters/` | `^src/application/`, `^src/cli/` | Adapters implement ports; orchestration stays upstream |
-| `cli-no-adapters` | `^src/cli/` | `^src/adapters/` | CLI composes through application/runtime composition root, not concrete adapters |
-| `no-circular` | (any) | circular deps | Critical during file splits |
-| `tests-free-import` | `^tests/` | (none extra) | Tests intentionally cross layers for integration |
-
-**Phased enforcement:** start new rules at `severity: "warn"` (or `--ignore-known`) for known violations; ratchet to `error` as extraction phases land (matches two-pass strategy in `.planning/notes/architecture-boundary-cleanup-direction.md`).
-
-**UI boundary:** add `forbidden` rule preventing `ui/src/**` from importing `src/**` directly — UI should talk to control-server HTTP/API only (verify current imports during phase planning).
-
-Run: `npx depcruise-fmt --init` once for baseline config, then replace presets with project-specific layer rules above.
-
-### Test restructuring (no new test framework)
-
-**Do not migrate to Vitest/Jest.** The repo uses Node's built-in runner (`import test from "node:test"`), documented in `docs/TESTING.md`, with compile-then-run via `tsc`.
-
-Recommended folder taxonomy (mirrors refactor targets):
+### Current flow (preserve semantics)
 
 ```text
-tests/
-  domain/           # recursive-language-model, agents, types
-  application/      # project-config, execution-controller, graph-*, workflows
-  adapters/         # file stores, tools, model hosts
-  cli/              # args, render
-  integration/      # cross-subsystem (today's integration-v15.test.ts)
-  helpers/          # QueueModel, shared fakes (extract from mega-files)
+buildRuntimeContext()
+  → ExtensionHost.loadBuiltins([{ path, register }, …])
+  → ExtensionHost.loadExternal(config.extensions.load, { allowlistPath, interactive })
+  → createMcpTools / createSkillTool → extensionHost.tools.register
+  → createToolsResolver({ extensionHost, interopTools })
 ```
 
-Mechanical support:
+### v1.7 flow (same contracts, new discovery)
 
-1. Update glob: `dist/tests/**/*.test.js` (recursive — verified on Node 20).
-2. Keep `--test-name-pattern` for targeted runs (already used extensively in milestone verification docs).
-3. Extract shared fakes (`QueueModel`, temp config builders) into `tests/helpers/` — no library required.
-4. Optional `test:file` script: `node --test dist/tests/$npm_config_file` for subsystem focus.
+```text
+buildRuntimeContext()
+  → PluginRegistry.discover({ builtin: src/plugins/builtin, user: ~/.rlm/plugins, project: .rlm/plugins })
+  → for each enabled plugin: validateManifest(zod) → doctor checks → allowlist gate
+  → ExtensionHost.loadBuiltins(builtinRegisters)   // static imports for shipped built-ins
+  → ExtensionHost.loadExternal(enabledExternal)    // dynamic import from installed paths
+  → runtime/interop factories (from src/runtime/interop/)
+  → createToolsResolver (from src/runtime/composition/)
+```
 
-**Vitest note:** milestone prompt referenced Vitest, but `package.json` and all 15 test files use `node:test` only. Treat Vitest as out of scope unless a future milestone explicitly opts into migration.
+**Integration points:**
+
+| Component | Change | Library |
+|-----------|--------|---------|
+| `ExtensionHost` | Keep `loadBuiltins` / `loadExternal` / allowlist; add optional manifest metadata on registry entries | Node built-ins only |
+| `extension-port.ts` | Replace `ExtensionHost` type import with port-facing `ExtensionRegistrar` interface to fix ARCH-02 violation | TypeScript only |
+| `bootstrap/build-runtime-context.ts` | Import from `runtime/composition` + `runtime/interop`; delegate plugin discovery to `plugins/external/plugin-loader.ts` | — |
+| `config/schema.ts` | Extend `extensions.load[]` or add `plugins:` block referencing installed ids | Zod |
+| Installed layout | `~/.rlm/plugins/<plugin-id>/rlm.plugin.json` + entry module | fs + semver |
+
+### Manifest shape (Zod, not a new schema stack)
+
+Canonical file: **`rlm.plugin.json`** at plugin root.
+
+```json
+{
+  "id": "acme.web-tools",
+  "name": "ACME Web Tools",
+  "version": "1.0.0",
+  "engines": { "rlm": "^1.7.0" },
+  "entry": "./register.js",
+  "capabilities": {
+    "tools": ["web_search", "web_fetch"],
+    "categories": ["web"]
+  },
+  "permissions": {
+    "network": true,
+    "filesystem": "workspace"
+  }
+}
+```
+
+Validate with Zod in `plugins/external/plugin-manifest.ts`; doctor runs semver against `package.json` version.
+
+### Remote fetch-to-local (transport)
+
+**Primary path — fetch + tar (no git required):**
+
+```typescript
+// Pseudocode — implementation detail for executor, not new deps
+const res = await fetch(archiveUrl, { redirect: "follow" });
+await pipeline(
+  Readable.fromWeb(res.body),
+  tar.x({
+    cwd: targetDir,
+    strip: 1,
+    filter: (path) => !path.includes(".."), // path traversal guard
+  }),
+);
+```
+
+Support URL patterns: GitHub `codeload.github.com/.../tar.gz/refs/tags/vX`, GitLab archive, direct `.tar.gz` / `.tgz` release assets.
+
+**Secondary path — git spawn (optional, no library):**
+
+```typescript
+spawn("git", ["clone", "--depth", "1", repoUrl, targetDir], { stdio: "inherit" });
+```
+
+Use when URL is a git remote and `git --version` succeeds; otherwise surface explicit error — no silent fallback.
+
+After fetch: **same** manifest validation, permission review, allowlist approval, and enablement as local-folder install. No code execution during fetch/extract beyond writing files.
 
 ---
 
 ## Alternatives Considered
 
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| **dependency-cruiser** | **eslint-plugin-boundaries** (`^6.0.2`) | If team wants boundary violations inline in ESLint IDE diagnostics only — weaker at repo-wide graphs and CI reporting |
-| **dependency-cruiser** | **eslint-plugin-import-x** (`^4.16.2`) | Supplement for `import/no-cycle` in editor; redundant if dependency-cruiser `no-circular` is enabled |
-| **Prettier + ESLint** | **Biome** (single tool) | Greenfield repos; here it would replace two established ecosystems and fight existing TS/Vite/Tauri conventions mid-refactor |
-| **node:test** (keep) | **Vitest** | If you need Vite-native UI component unit tests with jsdom/happy-dom — not required for backend refactor; large migration cost |
-| **c8** (optional) | **`node --experimental-test-coverage`** | Built-in but still experimental and less documented; c8 is the pragmatic choice if coverage is needed |
-| **Manual `npm run check`** | **lint-staged + Husky** | Post-v1.6 polish once lint/depcruise baselines are clean; adds git-hook friction during active refactor |
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| **tar** | **tar-stream** / **modern-tar** | `tar` is npm's own extractor; better documented for sync directory extract + filter; `modern-tar` is newer/zero-dep but adds unfamiliar API surface for minimal gain |
+| **fetch + tar** | **simple-git** `^3.36.0` | Adds dependency *and* requires git on PATH for all installs; conflicts with seed intent to support archive URLs without git |
+| **fetch + tar** | **degit** `^3.0.0` | Thin wrapper around git clone; same git requirement; less control over extract security |
+| **Zod manifest** | **JSON Schema + ajv** | Second validation dialect; project already standardized on Zod for config |
+| **semver** | Manual regex | Error-prone for pre-release/build metadata |
+| **dependency-cruiser error ratchet** | **eslint-plugin-boundaries** | Duplicate boundary logic; cruiser already wired in CI with baseline |
+| **fs.cp local install** | **ncp** / **fs-extra** | Unnecessary; Node 20 `fs.cp` is sufficient |
+| **Control-server REST** | **tRPC** / **Hono** | New HTTP framework for one handler group; existing `node:http` router pattern suffices |
+| **Plugin hot reload** | **chokidar** | Out of v1.7 scope; enable/disable is restart-level |
 
 ---
 
@@ -161,66 +217,40 @@ Mechanical support:
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| **Vitest / Jest** | 205 tests on `node:test`; migration churn steals refactor budget | Keep `node:test`; reorganize files/directories |
-| **Biome as ESLint+Prettier replacement** | Different config model; doubles tooling during transition | ESLint 10 flat config + Prettier 3 |
-| **Both dependency-cruiser and eslint-plugin-boundaries** | Duplicate boundary logic, divergent rules | dependency-cruiser only for architecture layers |
-| **Nx / Turborepo** | Massive workflow change for a single-package repo | npm scripts + dependency-cruiser |
-| **TypeScript project references (now)** | Root cause is file responsibility size, not build graph partitioning | Split modules first; revisit if compile times become painful |
-| **@stylistic/eslint-plugin** | Overlaps Prettier; creates fix conflicts | Prettier for format; ESLint for correctness |
-| **Strict boundary `error` on day one** | Known violations (`domain→application`, `ports→application`, `application→adapters`) exist today | Phased warn → error per refactor phase |
-| **LangGraph / new orchestration libs** | v1.6 is cleanup, not new runtime behavior | Existing domain/application modules |
-
----
-
-## Stack Patterns by Variant
-
-**If landing lint/format first (recommended Wave 0):**
-
-- Add ESLint + Prettier with permissive rules (`recommended` only, no type-checked rules yet).
-- Run one formatting commit; fix auto-fixable ESLint issues.
-- Keep `check` = typecheck + test until lint baseline is green.
-
-**If enforcing boundaries before file moves:**
-
-- Add dependency-cruiser with `warn` severity + `--ignore-known` output committed as baseline.
-- Ratchet individual rules to `error` as each extraction phase merges.
-
-**If splitting `recursive-language-model.test.ts` (~4k lines):**
-
-- Create `tests/domain/recursive-language-model/` with multiple `*.test.ts` files grouped by concern (quality loop, interactive session, CLI render, graph mutations).
-- Extract shared fakes to `tests/helpers/` first — reduces copy/paste without new dependencies.
-- Run targeted `node --test --test-name-pattern='quality loop'` commands already documented in v1.2 milestone artifacts.
-
-**If touching UI composition (`ui/` + `control-server`):**
-
-- Add ESLint browser block + dependency-cruiser rule blocking `ui/src → src/` imports.
-- Keep UI tests integration-style through control-server (matches current pattern in mega test file).
+| **Plugin marketplace SDK** (OpenVSX, npm registry UI) | PROJECT.md and seeds explicitly exclude marketplace | Local folder + explicit URL fetch-to-local |
+| **Remote execution / URL import()** | Security and observability conflict; seed forbids executing code during fetch | Download → extract → validate → user approve → local dynamic import |
+| **VM2 / isolated-vm sandbox** | Heavy, maintenance burden; false sense of security for native tools | Existing allowlist + interactive approval + permission metadata in manifest |
+| **Webpack/Rollup plugin bundler** | Plugins ship as ESM with `export function register(host)` — same as today's third-party extensions | Document entry module convention; TypeScript plugin authors compile themselves |
+| **npm/pnpm as installer** | Pulls full package manager graph; conflicts with deterministic `~/.rlm/plugins/` layout | tar extract or folder copy |
+| **axios / node-fetch** | Redundant on Node 20+ | Built-in `fetch` |
+| **LangChain tool plugins** | v1.7 is taxonomy/distribution, not new orchestration | Existing `ToolPort` + `ExtensionHost` |
+| **MCP server for plugin management** | Overkill for local registry CRUD | Control-server HTTP handlers |
+| **Vitest/Jest for plugin tests** | Repo uses `node:test` | Extend `tests/plugins/` with existing runner |
+| **Strict depcruise error before fixing 3 violations** | CI goes red without value | Fix violations, then ratchet (matches v1.6 ARCH-02 deferral) |
+| **New UI state library** | Plugin list is moderate complexity | React state + control-server fetch, consistent with graph/session handlers |
 
 ---
 
 ## Version Compatibility
 
-| Package A | Compatible With | Notes |
-|-----------|-----------------|-------|
-| `typescript-eslint@^8.59.4` | `eslint@^8.57 \|\| ^9 \|\| ^10` | Peer dependency verified 2026-05-22 |
-| `typescript-eslint@^8.59.4` | `typescript@>=4.8.4 <6.1.0` | Matches repo `typescript@^6.0.3` |
-| `eslint-config-prettier@^10.1.8` | `eslint@>=7`, `prettier@>=3` | Flat config: import and spread last in `eslint.config.js` |
-| `dependency-cruiser@^17.4.0` | Node `>=18` | Auto-detects `.dependency-cruiser.cjs`; pass `--config` explicitly in npm script for clarity |
-| `c8@^11.0.0` | `node:test` via `c8 node --test ...` | Works with compiled JS in `dist/tests/` |
-| `@vitejs/plugin-react@^5.1.2` | `vite@^7.2.7` | Unchanged; ESLint UI block is independent of Vite version |
+| Package | Compatible With | Notes |
+|---------|-----------------|-------|
+| `tar@^7.5.15` | Node `>=18` | Repo on Node 20+; use `filter`/`strip` options for safe extract |
+| `semver@^7.8.1` | Node `>=10` | Use `semver.satisfies(runningVersion, manifest.engines.rlm)` |
+| `zod@^4.4.3` | TypeScript 6 | Shared with config schema |
+| `dependency-cruiser@^17.4.0` | Node `>=18` | `--ignore-known` + empty baseline = strict CI |
+| Dynamic `import()` of plugins | `"type": "module"` package | Plugins must ship ESM `.js` or `.mjs` entry; document in manifest |
 
 ---
 
 ## Sources
 
-- `/typescript-eslint/typescript-eslint` (Context7) — flat config, `projectService`, ESLint 10 peer range — **HIGH**
-- `/eslint/eslint` (Context7) — flat config `eslint.config.js` ESM pattern — **HIGH**
-- `/sverweij/dependency-cruiser` (Context7) — layered `forbidden` rules, CLI validation — **HIGH**
-- [dependency-cruiser rules tutorial](https://github.com/sverweij/dependency-cruiser/blob/main/doc/rules-tutorial.md) — path-based layer enforcement — **HIGH**
-- Repo `package.json`, `tsconfig.json`, `ui/tsconfig.json`, `docs/TESTING.md`, `AGENTS.md` — current baseline — **HIGH**
-- npm registry (`npm view`, 2026-05-22) — version numbers — **HIGH**
-- `.planning/notes/architecture-boundary-cleanup-direction.md` — two-pass extraction before taxonomy — **HIGH**
+- Repo: `package.json`, `.dependency-cruiser.js`, `dependency-cruiser-baseline.json`, `src/application/extension-host.ts`, `src/application/bootstrap/build-runtime-context.ts`, `.planning/notes/architecture-boundary-cleanup-direction.md`, `.planning/seeds/first-class-plugin-taxonomy-for-future-tools.md`, `.planning/seeds/remote-plugin-fetch-to-local-folder.md` — **HIGH**
+- npm registry (`npm view tar semver dependency-cruiser`, 2026-05-22) — **HIGH**
+- [dependency-cruiser CLI](https://github.com/sverweij/dependency-cruiser/blob/main/doc/cli.md) — `--ignore-known`, `depcruise-baseline` — **HIGH**
+- [dependency-cruiser rules reference](https://github.com/sverweij/dependency-cruiser/blob/main/doc/rules-reference.md) — `severity: "error"` — **HIGH**
+- [node-tar](https://github.com/isaacs/node-tar) — extract API — **MEDIUM** (README fetch empty; version verified via npm)
 
 ---
-*Stack research for: v1.6 Architecture Cleanup (lint/format guardrails, test restructuring, module boundaries)*  
+*Stack research for: v1.7 Adapter & Plugin Taxonomy — plugin manifests, plugin manager UX, runtime/interop split, dependency-cruiser boundary enforcement*  
 *Researched: 2026-05-22*
