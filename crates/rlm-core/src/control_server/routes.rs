@@ -16,8 +16,9 @@ use crate::memory::{
     build_saved_session_payload, restore_graph_workflow_metadata, restore_session_memory,
 };
 use crate::graph::{
-    build_import_session_snapshot, execute_graph, export_and_save_graph_workflow,
-    import_sidecar_to_graph, list_graph_workflows, load_graph_workflow, GraphExecutorInput,
+    apply_pipeline_template, build_import_session_snapshot, execute_graph, export_and_save_graph_workflow,
+    graph_has_pipeline_template, import_sidecar_to_graph, list_graph_workflows, load_graph_workflow,
+    GraphExecutorInput,
 };
 use crate::ports::LanguageModel;
 
@@ -103,9 +104,13 @@ pub fn build_router(state: Arc<RouterState>) -> Router {
         )
         .route("/api/nodes/{node_id}/connect", post(nodes_connect))
         .route("/api/nodes/{node_id}/delete", post(nodes_delete))
+        .route("/api/chat/message", post(chat_message))
+        .route("/api/chat/apply", post(chat_apply))
+        .route("/api/chat/cancel", post(chat_cancel))
         .route("/api/chat/confirm-run", post(chat_confirm_run))
         .route("/api/stop", post(stop_run))
         .route("/api/clarifications/answer", post(clarifications_answer))
+        .route("/api/clarifications/abort", post(clarifications_abort))
         .route(
             "/api/pause-future-auto-approvals",
             post(pause_auto_approvals),
@@ -417,14 +422,105 @@ async fn nodes_delete(
     )))
 }
 
-async fn chat_confirm_run(State(state): State<Arc<RouterState>>) -> Json<Value> {
+#[derive(Debug, Deserialize)]
+struct ChatMessageBody {
+    message: Option<String>,
+}
+
+async fn chat_message(
+    State(state): State<Arc<RouterState>>,
+    Json(body): Json<ChatMessageBody>,
+) -> Result<Json<Value>, ApiError> {
+    let message = body.message.as_deref().unwrap_or("");
+    let proposal = state
+        .session
+        .preview_mutation_from_chat(message)
+        .map_err(ApiError::from_mutation)?;
+    Ok(Json(snapshot_with_extra(
+        &state.session,
+        json!({ "proposal": proposal }),
+    )))
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatApplyBody {
+    #[serde(rename = "proposalId")]
+    proposal_id: Option<String>,
+    #[serde(rename = "deleteStrategy")]
+    delete_strategy: Option<String>,
+}
+
+async fn chat_apply(
+    State(state): State<Arc<RouterState>>,
+    Json(body): Json<ChatApplyBody>,
+) -> Result<Json<Value>, ApiError> {
+    let strategy = match body.delete_strategy.as_deref() {
+        Some("rewire_dependents") => Some(DeleteStrategy::RewireDependents),
+        Some("delete_subtree") => Some(DeleteStrategy::DeleteSubtree),
+        _ => None,
+    };
+    let applied = state
+        .session
+        .apply_pending_mutation(body.proposal_id.as_deref(), strategy)
+        .map_err(ApiError::from_mutation)?;
+    Ok(Json(snapshot_with_extra(
+        &state.session,
+        json!({ "applied": applied }),
+    )))
+}
+
+async fn chat_cancel(State(state): State<Arc<RouterState>>) -> Json<Value> {
+    state.session.clear_pending_mutation();
+    Json(json!(state.session.snapshot()))
+}
+
+#[derive(Debug, Deserialize)]
+struct ClarificationAbortBody {
+    #[serde(rename = "questionId")]
+    question_id: Option<String>,
+}
+
+async fn clarifications_abort(
+    State(state): State<Arc<RouterState>>,
+    Json(body): Json<ClarificationAbortBody>,
+) -> Result<Json<Value>, ApiError> {
+    let question_id = body.question_id.as_deref().unwrap_or("");
+    state
+        .session
+        .abort_run_from_clarification(question_id)
+        .map_err(ApiError::from_mutation)?;
+    Ok(Json(json!(state.session.snapshot())))
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatConfirmRunBody {
+    variant: Option<String>,
+    input: Option<String>,
+}
+
+async fn chat_confirm_run(
+    State(state): State<Arc<RouterState>>,
+    Json(body): Json<ChatConfirmRunBody>,
+) -> Json<Value> {
+    let variant = body.variant.as_deref().unwrap_or("playbook");
+    let input = body.input.as_deref().unwrap_or("").trim();
+    if variant == "pipeline" && !input.is_empty() {
+        let graph = state.session.snapshot().graph;
+        if graph_has_pipeline_template(&graph) {
+            if let Ok(updated) = apply_pipeline_template(graph, input) {
+                state
+                    .session
+                    .restore_snapshot(build_import_session_snapshot(updated));
+            }
+        }
+    }
     let readiness = state.session.confirm_graph_and_run();
     if readiness.state == "ready_to_run" && !state.session.is_confirmed_execution_running() {
         spawn_graph_execution(&state);
     }
     Json(snapshot_with_extra(
         &state.session,
-        json!({ "readiness": readiness, "runVariant": "playbook" }),
+        json!({ "readiness": readiness, "runVariant": variant }),
     ))
 }
 

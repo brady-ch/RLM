@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::domain::types::{ExecutionGraph, ExecutionStatus, SessionSnapshot};
+use crate::domain::types::{ExecutionGraph, ExecutionGraphNode, ExecutionStatus, SessionSnapshot};
 
 pub const GRAPH_WORKFLOW_SCHEMA_VERSION: i32 = 1;
 
@@ -229,4 +229,54 @@ fn iso_now() -> String {
     time::OffsetDateTime::now_utc()
         .format(&time::format_description::well_known::Rfc3339)
         .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
+}
+
+pub fn find_graph_root_node(graph: &ExecutionGraph) -> Option<&ExecutionGraphNode> {
+    let roots: Vec<_> = graph.nodes.iter().filter(|node| node.parent_id.is_none()).collect();
+    roots
+        .iter()
+        .find(|node| node.id == "root-composer")
+        .copied()
+        .or_else(|| roots.first().copied())
+}
+
+pub fn graph_has_pipeline_template(graph: &ExecutionGraph) -> bool {
+    let Some(root) = find_graph_root_node(graph) else {
+        return false;
+    };
+    let prompt = root.prompt.as_deref().unwrap_or(&root.label);
+    prompt.contains("{{input}}")
+}
+
+pub fn apply_pipeline_template(graph: ExecutionGraph, input: &str) -> Result<ExecutionGraph, String> {
+    let Some(root_id) = find_graph_root_node(&graph).map(|node| node.id.clone()) else {
+        return Err("Graph has no root node.".into());
+    };
+    let mut nodes = graph.nodes;
+    for node in &mut nodes {
+        if node.id != root_id {
+            continue;
+        }
+        let base_prompt = node.prompt.clone().unwrap_or_else(|| node.label.clone());
+        let prompt = base_prompt.replace("{{input}}", input);
+        node.prompt = Some(prompt.clone());
+        node.label = node.label.replace("{{input}}", input);
+        if let Some(composer) = node.composer.as_mut() {
+            if let Some(obj) = composer.as_object_mut() {
+                let composer_prompt = obj
+                    .get("prompt")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or(&base_prompt);
+                obj.insert(
+                    "prompt".into(),
+                    Value::String(composer_prompt.replace("{{input}}", input)),
+                );
+            }
+        }
+    }
+    Ok(ExecutionGraph {
+        nodes,
+        edges: graph.edges,
+        viewport: graph.viewport,
+    })
 }

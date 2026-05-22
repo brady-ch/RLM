@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::domain::recursive_language_model::ExecutionControl;
 use crate::domain::types::{
     approval_mode_label, ApprovalMode, ChatReadiness, ChatSnapshot, ClarificationQuestion,
-    ClarificationRecord, ExecutionEvent, ExecutionGraph, ExecutionGraphEdge, ExecutionGraphNode,
+    ClarificationRecord, DeleteStrategy, ExecutionEvent, ExecutionGraph, ExecutionGraphEdge, ExecutionGraphNode,
     ExecutionStatus, ExecutionStatusUpdateDetail, GraphViewport, GraphWorkflowMetadata,
     NodeApprovalDecision, NodeApprovalStatus, RunModeSnapshot, RunSummary, SessionSnapshot,
 };
@@ -16,6 +16,22 @@ use crate::domain::types::{
 use super::cancellation::CancellationController;
 
 type ApprovalWaiter = oneshot::Sender<NodeApprovalDecision>;
+
+#[derive(Debug, Clone)]
+pub(crate) enum PendingMutationKind {
+    Edit { node_id: String, prompt: String },
+    Delete {
+        node_id: String,
+        strategy: Option<DeleteStrategy>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct PendingChatMutation {
+    pub id: String,
+    pub mutation: PendingMutationKind,
+    pub proposal: serde_json::Value,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RunLifecycle {
@@ -42,9 +58,11 @@ pub struct InteractiveExecutionSession {
     run_lifecycle: Mutex<RunLifecycle>,
     pub(crate) graph_workflow_metadata: Mutex<Option<GraphWorkflowMetadata>>,
     cancellation: CancellationController,
-    pending_clarification: Mutex<Option<ClarificationQuestion>>,
+    pub(crate) pending_clarification: Mutex<Option<ClarificationQuestion>>,
     clarification_history: Mutex<Vec<ClarificationRecord>>,
     clarification_waiter: Mutex<Option<(String, oneshot::Sender<String>)>>,
+    pub(crate) pending_mutation: Mutex<Option<PendingChatMutation>>,
+    pub(crate) mutation_version: Mutex<u32>,
     event_tx: broadcast::Sender<ExecutionEvent>,
 }
 
@@ -68,6 +86,8 @@ impl InteractiveExecutionSession {
             pending_clarification: Mutex::new(None),
             clarification_history: Mutex::new(Vec::new()),
             clarification_waiter: Mutex::new(None),
+            pending_mutation: Mutex::new(None),
+            mutation_version: Mutex::new(0),
             event_tx,
         })
     }
@@ -105,13 +125,13 @@ impl InteractiveExecutionSession {
                 )
             });
 
-        let status = if !terminal {
+        let status = if self.cancellation.is_cancelled() {
+            ExecutionStatus::Cancelled
+        } else if !terminal {
             active_node
                 .as_ref()
                 .and_then(|id| self.nodes.lock().expect("nodes").get(id).map(|n| n.status))
                 .unwrap_or(ExecutionStatus::Planned)
-        } else if self.cancellation.is_cancelled() {
-            ExecutionStatus::Cancelled
         } else if nodes.iter().any(|n| n.status == ExecutionStatus::Failed) {
             ExecutionStatus::Failed
         } else {
@@ -149,7 +169,12 @@ impl InteractiveExecutionSession {
             run_summary,
             chat: ChatSnapshot {
                 readiness: ChatReadiness::LegacyEmpty("empty".into()),
-                pending_mutation: None,
+                pending_mutation: self
+                    .pending_mutation
+                    .lock()
+                    .expect("pending_mutation")
+                    .as_ref()
+                    .map(|pending| pending.proposal.clone()),
                 pending_clarification: self.pending_clarification.lock().expect("clarify").clone(),
                 clarification_history: self.clarification_history.lock().expect("history").clone(),
             },
@@ -184,6 +209,10 @@ impl InteractiveExecutionSession {
 
     pub fn register_node_for_test(&self, node: ExecutionGraphNode) {
         self.register_node_internal(node);
+    }
+
+    pub fn register_pending_clarification_for_test(&self, question: ClarificationQuestion) {
+        *self.pending_clarification.lock().expect("clarify") = Some(question);
     }
 
     pub(crate) fn register_node_internal(&self, node: ExecutionGraphNode) {
