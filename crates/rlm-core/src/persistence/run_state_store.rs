@@ -7,40 +7,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::util::write_json_atomic;
+use crate::ports::RunStateStorePort;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RunStateNodeStatus {
-    pub node_id: String,
-    pub status: String,
-    pub updated_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RunStateMutationRecord {
-    pub seq: u64,
-    pub actor: String,
-    pub path: String,
-    pub action: String,
-    pub accepted: bool,
-    pub reason: String,
-    pub timestamp: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RunStateSnapshot {
-    pub run_id: String,
-    pub version: u32,
-    pub metadata: Value,
-    pub node_statuses: Vec<RunStateNodeStatus>,
-    pub artifact_refs: Value,
-    pub checkpoints: Value,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub resume_cursor: Option<Value>,
-    pub mutation_log: Vec<RunStateMutationRecord>,
-}
+pub use crate::ports::{
+    RunStateMutationRecord, RunStateMutationRequest, RunStateMutationResult, RunStateNodeStatus,
+    RunStateSnapshot,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,26 +28,6 @@ struct PersistedRunState {
     mutation_log: Vec<RunStateMutationRecord>,
     acl_prefixes: Vec<String>,
     capability_tokens: HashMap<String, Vec<String>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RunStateMutationRequest {
-    pub actor: String,
-    pub path: String,
-    pub action: String,
-    pub value: Value,
-    pub expected_version: u32,
-    pub capability_token: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RunStateMutationResult {
-    pub accepted: bool,
-    pub reason: String,
-    pub next_version: u32,
-    pub seq: u64,
 }
 
 pub struct FileRunStateStore {
@@ -419,6 +371,32 @@ fn iso_now() -> String {
     time::OffsetDateTime::now_utc()
         .format(&time::format_description::well_known::Rfc3339)
         .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
+}
+
+impl RunStateStorePort for FileRunStateStore {
+    fn get_snapshot(&self, run_id: &str) -> io::Result<Option<RunStateSnapshot>> {
+        FileRunStateStore::get_snapshot(self, run_id)
+    }
+
+    fn create_run(
+        &self,
+        run_id: &str,
+        seed_metadata: Option<Value>,
+    ) -> io::Result<RunStateSnapshot> {
+        FileRunStateStore::create_run(self, run_id, seed_metadata)
+    }
+
+    fn mutate(
+        &self,
+        run_id: &str,
+        request: RunStateMutationRequest,
+    ) -> io::Result<RunStateMutationResult> {
+        FileRunStateStore::mutate(self, run_id, request)
+    }
+
+    fn register_capability_token(&self, run_id: &str, actor: &str, token: &str) -> io::Result<()> {
+        FileRunStateStore::register_capability_token(self, run_id, actor, token)
+    }
 }
 
 #[cfg(test)]

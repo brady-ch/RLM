@@ -1,21 +1,27 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use serde_json::json;
 
 use super::run_state_types::ResumeCursor;
-use crate::persistence::run_state_store::{
-    FileRunStateStore, RunStateMutationRequest, RunStateSnapshot,
-};
+use crate::ports::{RunStateMutationRequest, RunStateSnapshot, RunStateStorePort};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoadedResumeState {
+    pub completed_node_ids: Vec<String>,
+    pub active_node_id: Option<String>,
+    pub variant: Option<String>,
+}
 
 pub struct RunStatePersistence {
     run_id: String,
-    store: Arc<FileRunStateStore>,
+    store: Arc<dyn RunStateStorePort>,
     actor: String,
     capability_token: String,
 }
 
 impl RunStatePersistence {
-    pub fn new(run_id: impl Into<String>, store: Arc<FileRunStateStore>) -> Self {
+    pub fn new(run_id: impl Into<String>, store: Arc<dyn RunStateStorePort>) -> Self {
         let run_id = run_id.into();
         Self {
             capability_token: format!("cap-{run_id}"),
@@ -27,6 +33,17 @@ impl RunStatePersistence {
 
     pub fn run_id(&self) -> &str {
         &self.run_id
+    }
+
+    pub fn get_snapshot(&self) -> std::io::Result<Option<RunStateSnapshot>> {
+        self.store.get_snapshot(&self.run_id)
+    }
+
+    pub fn load_resume_state(&self) -> std::io::Result<Option<LoadedResumeState>> {
+        let Some(snapshot) = self.get_snapshot()? else {
+            return Ok(None);
+        };
+        Ok(Some(parse_loaded_resume_state(&snapshot)))
     }
 
     pub fn initialize(&self, prompt: &str, agent_id: &str) -> std::io::Result<RunStateSnapshot> {
@@ -109,10 +126,38 @@ impl RunStatePersistence {
     }
 }
 
+pub fn parse_loaded_resume_state(snapshot: &RunStateSnapshot) -> LoadedResumeState {
+    let mut completed = HashSet::new();
+    for entry in &snapshot.node_statuses {
+        if entry.status == "completed" {
+            completed.insert(entry.node_id.clone());
+        }
+    }
+    if let Some(cursor_value) = snapshot.resume_cursor.as_ref() {
+        if let Ok(cursor) = serde_json::from_value::<ResumeCursor>(cursor_value.clone()) {
+            for node_id in cursor.completed_node_ids {
+                completed.insert(node_id);
+            }
+            return LoadedResumeState {
+                completed_node_ids: completed.into_iter().collect(),
+                active_node_id: Some(cursor.active_node_id),
+                variant: Some(cursor.variant),
+            };
+        }
+    }
+    LoadedResumeState {
+        completed_node_ids: completed.into_iter().collect(),
+        active_node_id: None,
+        variant: None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
+
+    use crate::persistence::FileRunStateStore;
 
     fn temp_dir(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("rlm-run-state-{name}-{}", std::process::id()));
@@ -124,7 +169,7 @@ mod tests {
     #[test]
     fn run_state_persistence_seeds_snapshot_and_mutates_node_status() {
         let dir = temp_dir("persist");
-        let store = Arc::new(FileRunStateStore::new(dir));
+        let store: Arc<dyn RunStateStorePort> = Arc::new(FileRunStateStore::new(dir));
         let persistence = RunStatePersistence::new("run-test", Arc::clone(&store));
         persistence
             .initialize("hello", "default")
@@ -150,7 +195,7 @@ mod tests {
     #[test]
     fn persist_resume_cursor_writes_cursor_path() {
         let dir = temp_dir("cursor");
-        let store = Arc::new(FileRunStateStore::new(dir));
+        let store: Arc<dyn RunStateStorePort> = Arc::new(FileRunStateStore::new(dir));
         let persistence = RunStatePersistence::new("run-cursor", Arc::clone(&store));
         persistence
             .initialize("hello", "default")
@@ -172,5 +217,34 @@ mod tests {
             cursor.get("activeNodeId").and_then(|value| value.as_str()),
             Some("node-1")
         );
+    }
+
+    #[test]
+    fn load_resume_state_merges_node_statuses_and_cursor() {
+        let dir = temp_dir("load");
+        let store: Arc<dyn RunStateStorePort> = Arc::new(FileRunStateStore::new(dir));
+        let persistence = RunStatePersistence::new("run-load", Arc::clone(&store));
+        persistence
+            .initialize("hello", "default")
+            .expect("initialize");
+        persistence
+            .persist_node_status("root", "completed")
+            .expect("persist root");
+        persistence
+            .persist_resume_cursor(&super::super::run_state_types::ResumeCursor {
+                active_node_id: "child".into(),
+                completed_node_ids: vec!["root".into(), "child".into()],
+                variant: "playbook".into(),
+            })
+            .expect("persist cursor");
+
+        let loaded = persistence
+            .load_resume_state()
+            .expect("load")
+            .expect("state");
+        assert!(loaded.completed_node_ids.contains(&"root".to_string()));
+        assert!(loaded.completed_node_ids.contains(&"child".to_string()));
+        assert_eq!(loaded.active_node_id.as_deref(), Some("child"));
+        assert_eq!(loaded.variant.as_deref(), Some("playbook"));
     }
 }
