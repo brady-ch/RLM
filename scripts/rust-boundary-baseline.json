@@ -1,0 +1,32 @@
+[
+  {
+    "rule": "no-plugins-to-application",
+    "from": "crates/rlm-core/src/plugins/runtime.rs",
+    "import": "use crate::application::execution::agent_registry::{filter_agent_tools, AgentProfile};"
+  },
+  {
+    "rule": "no-plugins-to-persistence",
+    "from": "crates/rlm-core/src/plugins/registry/service.rs",
+    "import": "use crate::persistence::LoadedProjectConfig;"
+  },
+  {
+    "rule": "no-plugins-to-domain",
+    "from": "crates/rlm-core/src/plugins/builtin/shell.rs",
+    "import": "use crate::domain::types::ToolExecutionResult;"
+  },
+  {
+    "rule": "no-plugins-to-domain",
+    "from": "crates/rlm-core/src/plugins/builtin/web_fetch.rs",
+    "import": "use crate::domain::types::ToolExecutionResult;"
+  },
+  {
+    "rule": "no-plugins-to-domain",
+    "from": "crates/rlm-core/src/plugins/builtin/web_search.rs",
+    "import": "use crate::domain::types::ToolExecutionResult;"
+  },
+  {
+    "rule": "no-plugins-to-domain",
+    "from": "crates/rlm-core/src/plugins/builtin/write_file.rs",
+    "import": "use crate::domain::types::ToolExecutionResult;"
+  }
+]
