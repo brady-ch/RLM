@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.6
-milestone_name: Architecture Cleanup
-status: Awaiting next milestone
-stopped_at: Milestone v1.6 archived; roadmap reset for next cycle
-last_updated: "2026-05-22T16:05:00.000Z"
-last_activity: 2026-05-22 — Milestone v1.6 completed and archived
+milestone: v1.7
+milestone_name: Adapter & Plugin Taxonomy
+status: planning
+last_updated: "2026-05-22T16:13:50.100Z"
+last_activity: 2026-05-22
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,9 +24,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-22 after v1.6 ship)
 
 ## Current Position
 
-Phase: Milestone **v1.6** complete (Phases 36–42)  
-Plan: —  
-Status: Awaiting next milestone
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-22 — Milestone v1.7 started
 
 ## Recently Completed
 

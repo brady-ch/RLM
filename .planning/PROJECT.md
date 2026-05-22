@@ -1,10 +1,21 @@
 # Recursive Language Model CLI
 
+## Current Milestone: v1.7 Adapter & Plugin Taxonomy
+
+**Goal:** Solidify plugin vs adapter boundaries, enforce layer rules, split runtime/interop concerns, and deliver a first-class plugin taxonomy with full plugin manager UX.
+
+**Target features:**
+- Plugin vs adapter boundary — built-in tools live under a plugin taxonomy; extension registration contracts clarified
+- Dependency-cruiser enforcement — ratchet ARCH-02 boundary violations to error; fix import direction
+- Runtime/interop split — composition and MCP/skill interop extracted from overloaded application/adapters modules
+- First-class plugin taxonomy — tool categories, manifests, capability metadata
+- Full plugin manager UX — local-folder install/enable/list/doctor plus remote fetch-to-local-folder
+
 ## Current State
 
 **Latest shipped milestone:** v1.6 — Architecture Cleanup  
-**Current milestone:** _Next version TBD — start with `/gsd-new-milestone`_  
-**Status:** Planning next milestone cycle
+**Current milestone:** v1.7 — Adapter & Plugin Taxonomy  
+**Status:** Defining requirements
 
 v1.6 shipped behavior-preserving structural hardening: ESLint/Prettier/dependency-cruiser baselines with expanded `npm run check`; focused `application/config/` modules behind a stable `project-config` facade; `buildRuntimeContext()` bootstrap with slim `src/index.ts` and `cli/run-modes/*`; adapters grouped under `adapters/tools|persistence|models/`; `domain/recursion/` concern modules (budget, tool rounds, quality loop, execution-graph sync, prompts) with orchestrator retaining flow; control-server HTTP handlers colocated by surface with bootstrap-fed dependencies; subsystem-aligned tests under `tests/domain/recursion/` with shared helpers and refreshed `AGENTS.md`. Milestone audit: 40/40 requirements; `npm run check` green with **359** tests (per `v1.6-MILESTONE-AUDIT.md`).
 
@@ -65,7 +76,7 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-_Requirements for the next milestone are not captured yet — run `/gsd-new-milestone`._
+_Requirements for v1.7 are being defined — see `.planning/REQUIREMENTS.md` once generated._
 
 ### Candidate Future-Milestone Themes
 
@@ -111,11 +122,14 @@ v1.5 established graph-primary authoring: plan-from-node replaces keyword heuris
 | Graph export uses lossless `kind: graph` sidecars with playbook/pipeline variants | Bridges dynamic authoring to replayable workflows without replan-by-default | ✓ Good — v1.5 |
 | v1.6 uses strangler extractions behind stable façades (`project-config`, `RuntimeContext`) | Avoids flag-day breakage while shrinking hotspots (`index.ts`, RLM orchestrator, control server) | ✓ Good — v1.6 |
 | Dependency-cruiser starts at WARN with a ratcheting baseline | Unblocks incremental boundary cleanup (`ARCH-02`) without stalling refactor phases | ⚠️ Revisit — ratchet toward error as violations clear |
-| Product shell uses guided composer → graph workspace → launcher/resume | First-run should still be "say what I want," while the graph remains the durable executable product surface | — Pending next milestone |
+| Product shell uses guided composer → graph workspace → launcher/resume | First-run should still be "say what I want," while the graph remains the durable executable product surface | — Pending future milestone |
+| v1.7 treats plugins as registration/distribution packages distinct from core adapters | Avoids `adapters/` becoming a mixed grab bag as tools and extensions grow; enables auditable capability taxonomy | — Pending v1.7 |
+| Built-in tools migrate to `plugins/builtin/` taxonomy before external plugin APIs harden | Responsibility extraction precedes directory moves per architecture-boundary-cleanup direction | — Pending v1.7 |
+| Full plugin manager includes local-folder and remote fetch-to-local flows | Users install plugins without marketplace or remote execution; fetched plugins become local after download | — Pending v1.7 |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-22 after v1.6 Architecture Cleanup milestone ship*
+*Last updated: 2026-05-22 — Milestone v1.7 Adapter & Plugin Taxonomy started*
