@@ -1,5 +1,18 @@
 # Milestones
 
+## v1.9 Rust Runtime Hardening (Planning: 2026-05-22)
+
+**Phases planned:** 10 (62–71)  
+**Status:** Requirements and roadmap defined; Phase 62 next
+
+**Goal:** Close v1.8 functional debt (UI regressions, quality loop, resume, skills, CLI, PACK-03), then harden Rust architecture (application layer, handler split, decomposition, boundaries, optional crate split).
+
+**Requirements:** `.planning/REQUIREMENTS.md`  
+**Roadmap:** `.planning/ROADMAP.md`  
+**Planning note:** `.planning/notes/rust-architecture-improvement-plan.md`
+
+---
+
 ## v1.8 Rust Runtime Migration (Shipped: 2026-05-22)
 
 **Phases completed:** 12 phases (1, 52–61), 23 plans  

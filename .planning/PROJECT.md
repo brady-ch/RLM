@@ -3,8 +3,8 @@
 ## Current State
 
 **Latest shipped milestone:** v1.8 — Rust Runtime Migration (2026-05-22; Phase 1 tech-debt closure 2026-05-22)  
-**Next milestone:** Planning via `/gsd-new-milestone`  
-**Audit status:** tech_debt — Phase 1 closure 6/6 areas; documented deferrals in STATE.md
+**Current milestone:** v1.9 — Rust Runtime Hardening (planning complete; Phase 62 next)  
+**Audit status:** v1.8 closed as tech_debt; v1.9 addresses documented deferrals and Rust structural cleanup
 
 v1.8 shipped a Rust-only runtime (`rlm-core`, `rlm-cli`) embedded in Tauri with no bundled Node. The Axum control server preserves the existing HTTP/SSE contract; persistence, recursive engine, graph executor, vector index, model library, plugins, and CLI parity CI all run in Rust. Phase 60.1 closed session/memory route gaps; Phase 61 rewrote the UI shell to a canvas-first AppShell (GraphCanvas, slim Run panel, Advanced hub). **471+** TypeScript tests and **67+** Rust integration tests green; ~15k LOC Rust workspace.
 
@@ -92,11 +92,18 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-_Requirements for the next milestone will be defined via `/gsd-new-milestone`._
+See `.planning/REQUIREMENTS.md` for full v1.9 traceability.
+
+- [ ] **REG-01**: Close Phase 61 UI regressions and sign REG-01 human UAT
+- [ ] **ENGN-01**: Full Rust quality loop parity with TypeScript orchestrator
+- [ ] **PERS-01–03**: Cross-session resume consumer with dual-runtime cursor parity
+- [ ] **PLUG-01–02**: Skill interop depth in Rust runtime
+- [ ] **CLI-01–02**: Full Rust CLI parity (all Node run modes)
+- [ ] **PACK-01**: Headless `.deb` CI smoke (PACK-03 closure)
+- [ ] **ARCH-01–06**: Rust application layer, handler split, decomposition, boundary enforcement, optional crate split
 
 ### Candidate Future-Milestone Themes
 
-- Close v1.8 tech debt: REG-01 human UAT sign-off, HF download UI wiring, pause-auto-approvals control, full CLI execution in Rust, MCP interop bridge, run-state checkpoint resume.
 - Product shell convergence: guided composer for first-run/new-workflow, graph workspace as primary surface, project/session launcher.
 - Managed llama.cpp runtime (supervised process, GPU backends).
 - Multi-runner adapters beyond Ollama (vLLM, cloud APIs).
@@ -144,9 +151,17 @@ Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` 
 | Canvas-first UI shell (Phase 61) preserves HTTP/SSE contract | Frontend restructure only; Rust backend unchanged | ✓ Good — v1.8 (REG-01 human UAT pending) |
 | Fine-tuning / LoRA explicitly out of scope | Compute and ecosystem cost | — Deferred |
 
+## Current Milestone: v1.9 Rust Runtime Hardening
+
+**Goal:** Close all v1.8 functional debt, then apply v1.6/v1.7 structural patterns to the Rust workspace so `rlm-core` matches the concern map enforced in TypeScript.
+
+**Target features:**
+- Wave 1: UI regression fixes, quality loop parity, resume consumer, skill interop, full CLI, PACK-03 CI
+- Wave 2: Application layer, handler split, file decomposition, Rust boundary enforcement, optional crate split
+
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-22 after v1.8 Rust Runtime Migration milestone*
+*Last updated: 2026-05-22 after milestone v1.9 initialization*

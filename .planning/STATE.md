@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.8
-milestone_name: Rust Runtime Migration
-status: awaiting_next_milestone
-last_updated: "2026-05-22T22:00:00.000Z"
+milestone: v1.9
+milestone_name: Rust Runtime Hardening
+status: planning
+last_updated: "2026-05-22T21:44:30.285Z"
 last_activity: 2026-05-22
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,12 +24,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 ## Current Position
 
-Phase: Milestone v1.8 complete (Phase 1 tech-debt closure archived)
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-05-22 — Phase 1 archived to milestones/v1.8-phases/
-
-Progress: [██████████] 100%
+Status: Defining requirements
+Last activity: 2026-05-22 — Milestone v1.9 started
 
 ## Performance Metrics
 
