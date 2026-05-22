@@ -17,6 +17,7 @@ import {
 } from "./application/mcp-skill-runtime.js";
 import { MemoryManager } from "./application/memory-manager.js";
 import { MemoryResolver } from "./application/memory-resolver.js";
+import { PurposeRoutingLanguageModel } from "./application/model-provider.js";
 import { SemanticMemoryIndex } from "./application/semantic-memory-index.js";
 import { createMcpTools, createSkillTool } from "./application/interop-runtime.js";
 import {
@@ -297,8 +298,37 @@ async function main(): Promise<void> {
     trackCleanup: (model) => cleanup.track(model),
   });
   try {
+    const defaultAgent = selectAgent(registry, options.prompt, options.agent);
+    const createPurposeRoutingModel = (): PurposeRoutingLanguageModel => new PurposeRoutingLanguageModel({
+      config: projectConfig,
+      agent: defaultAgent.config,
+      hostSelection: resolveRuntimeHostSelection(projectConfig, {
+        cliHostId: options.host,
+        env: process.env,
+      }),
+      createModel,
+      logger,
+    });
+
+    if (options.command === "plan-node") {
+      const session = createInteractiveExecutionSession({
+        seedRootPrompt: options.prompt,
+        planModel: createPurposeRoutingModel(),
+      });
+      try {
+        const plan = await session.planNode(options.nodeId ?? "root-composer", { replan: options.replan });
+        const graph = session.snapshot().graph;
+        console.log(JSON.stringify({ plannedNodeIds: plan.plannedNodeIds, budget: plan.budget, graphNodeCount: graph.nodes.length }, null, 2));
+      } catch (error: unknown) {
+        const mutationError = session.toMutationError(error);
+        console.error(JSON.stringify(mutationError ?? { error: error instanceof Error ? error.message : String(error) }, null, 2));
+        process.exitCode = 1;
+      }
+      return;
+    }
+
     if (options.command === "ui") {
-      const session = createInteractiveExecutionSession({ seedRootPrompt: options.prompt });
+      const session = createInteractiveExecutionSession({ seedRootPrompt: options.prompt, planModel: createPurposeRoutingModel() });
       if (options.openSession) {
         const saved = await sessionStore.load(options.openSession);
         if (saved.verification.status !== "complete") {
@@ -345,7 +375,7 @@ async function main(): Promise<void> {
         projectConfig,
         runtimeConfig,
         configPath: loadedConfig.path,
-        selectAgent: (prompt) => selectAgent(registry, prompt, options.agent),
+        registry,
         agentSource: options.agent ? "override" : "auto",
         memoryManager,
         hostId: options.host,

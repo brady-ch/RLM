@@ -33,6 +33,7 @@ import { FileRunStateStore } from "../src/adapters/file-run-state-store.js";
 import { FileSessionStore } from "../src/adapters/file-session-store.js";
 import { FileMemoryStore } from "../src/adapters/file-memory-store.js";
 import { MemoryResolver } from "../src/application/memory-resolver.js";
+import type { PlannedChildSpec } from "../src/application/graph-planner.js";
 
 type QueueResponse = string | LanguageModelResponse | Error;
 
@@ -91,6 +92,51 @@ class ThrowingModel implements LanguageModelPort {
     throw new Error(this.message);
   }
 }
+
+function createMockPlanModel(specs: PlannedChildSpec[] | "invalid" | "throw"): LanguageModelPort {
+  return {
+    async complete(messages: LanguageModelMessage[], options: LanguageModelCompleteOptions = {}): Promise<LanguageModelResponse> {
+      if (specs === "throw") {
+        throw new Error("planner unavailable");
+      }
+      if (specs === "invalid") {
+        return { content: "{not json}", toolCalls: [] };
+      }
+      return {
+        content: JSON.stringify({ children: specs }),
+        toolCalls: [],
+        model: "mock-planner",
+      };
+    },
+  };
+}
+
+const audiobookPlanChildren: PlannedChildSpec[] = [
+  { label: "Parse book into segments", prompt: "Parse the source book into ordered chapter and segment artifact refs.", type: "Splitter", complexity: "medium" },
+  { label: "Interpret speakers", prompt: "Infer speaker attribution and update a persistent speaker bible from bounded text segments.", type: "AI", complexity: "high" },
+  { label: "Generate TTS clips", prompt: "Generate consistent per-speaker audio clips from segment refs and voice profiles.", type: "TTS", complexity: "high" },
+  { label: "Validate continuity", prompt: "Validate speaker and audio continuity across generated clips.", type: "Validator", complexity: "medium" },
+  { label: "Splice final audio", prompt: "Splice ordered audio artifact refs into the final audiobook file.", type: "Code", complexity: "medium" },
+];
+
+const genericPlanChildren: PlannedChildSpec[] = [
+  { label: "Plan implementation slice", prompt: "Create the smallest safe implementation slice.", type: "AI", complexity: "medium" },
+  { label: "Execute code changes", prompt: "Apply code or configuration changes.", type: "Code", complexity: "medium" },
+  { label: "Validate results", prompt: "Validate the completed work.", type: "Validator", complexity: "low" },
+];
+
+const expertPlanChildren: PlannedChildSpec[] = [
+  {
+    label: "Implement feature",
+    prompt: "Implement the feature.",
+    type: "Code",
+    complexity: "high",
+    agentId: "coding",
+    runtime: "rlm",
+    toolAllowlist: ["shell", "write_file"],
+    purposeTiers: { answer: "medium", synthesize: "large" },
+  },
+];
 
 class CaptureLogger implements RuntimeLogger {
   readonly events: RuntimeLogEvent[] = [];
@@ -1758,6 +1804,15 @@ test("parses ui command and ui port", () => {
   assert.equal(options.uiPort, 4545);
 });
 
+test("parses plan-node command and node id", () => {
+  const options = parseArgs(["plan-node", "--node-id", "root-composer", "--replan", "merge", "--prompt", "build a graph"], {});
+
+  assert.equal(options.command, "plan-node");
+  assert.equal(options.nodeId, "root-composer");
+  assert.equal(options.replan, "merge");
+  assert.equal(options.prompt, "build a graph");
+});
+
 test("interactive session seeds a typed root composer for first-run UI", () => {
   const session = createInteractiveExecutionSession({
     seedRootPrompt: "Create an audiobook workflow for an entire book",
@@ -1771,12 +1826,13 @@ test("interactive session seeds a typed root composer for first-run UI", () => {
   assert.ok(root.composer?.contextPolicy.limits.length);
 });
 
-test("node-local plan creates pending typed child graph without execution", () => {
+test("node-local plan creates pending typed child graph without execution", async () => {
   const session = createInteractiveExecutionSession({
     seedRootPrompt: "Create a full book audiobook workflow with speaker interpretation and TTS audio artifacts",
+    planModel: createMockPlanModel(audiobookPlanChildren),
   });
 
-  const result = session.planNode("root-composer");
+  const result = await session.planNode("root-composer");
   const snapshot = session.snapshot();
   const children = snapshot.graph.nodes.filter((node) => node.parentId === "root-composer");
 
@@ -1790,8 +1846,8 @@ test("node-local plan creates pending typed child graph without execution", () =
   assert.match(snapshot.chat.readiness.reason, /Pending planned child graph/);
 });
 
-test("plan budget exhaustion pauses expansion until explicit extension", () => {
-  const session = createInteractiveExecutionSession({ seedRootPrompt: "simple task" });
+test("plan budget exhaustion pauses expansion until explicit extension", async () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "simple task", planModel: createMockPlanModel(genericPlanChildren) });
   const root = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
   assert.ok(root?.composer);
   root.composer.planBudget = {
@@ -1802,7 +1858,7 @@ test("plan budget exhaustion pauses expansion until explicit extension", () => {
     remainingNodes: 0,
   };
 
-  const result = session.planNode("root-composer");
+  const result = await session.planNode("root-composer");
   assert.equal(result.exhausted, true);
   let updated = session.snapshot().graph.nodes.find((node) => node.id === "root-composer");
   assert.equal(updated?.status, "awaiting_approval");
@@ -1814,19 +1870,20 @@ test("plan budget exhaustion pauses expansion until explicit extension", () => {
   assert.ok((updated?.composer?.planBudget.remainingNodes ?? 0) > 0);
 });
 
-test("recursive planning shares root budget across high-complexity branches", () => {
+test("recursive planning shares root budget across high-complexity branches", async () => {
   const session = createInteractiveExecutionSession({
     seedRootPrompt: "Create a full book audiobook workflow with speaker interpretation and TTS audio artifacts",
+    planModel: createMockPlanModel(audiobookPlanChildren),
   });
 
-  session.planNode("root-composer");
+  await session.planNode("root-composer");
   const highComplexityChildren = session.snapshot().graph.nodes
     .filter((node) => node.parentId === "root-composer" && node.composer?.complexity === "high")
     .map((node) => node.id);
   assert.ok(highComplexityChildren.length >= 2);
 
   for (const nodeId of highComplexityChildren) {
-    session.planNode(nodeId);
+    await session.planNode(nodeId);
   }
 
   let snapshot = session.snapshot();
@@ -1835,10 +1892,234 @@ test("recursive planning shares root budget across high-complexity branches", ()
   assert.equal(root?.composer?.planBudget.remainingNodes, 0);
   assert.equal(root?.composer?.planBudget.exhausted, true);
 
-  const exhausted = session.planNode(highComplexityChildren[0]!);
-  assert.equal(exhausted.exhausted, true);
+  const refreshed = await session.planNode(highComplexityChildren[0]!);
+  assert.equal(refreshed.exhausted, false);
   snapshot = session.snapshot();
   assert.ok(snapshot.graph.nodes.length <= 12);
+});
+
+test("parent replan removes pristine model-planned children", async () => {
+  let calls = 0;
+  const model: LanguageModelPort = {
+    async complete(): Promise<LanguageModelResponse> {
+      calls += 1;
+      return {
+        content: JSON.stringify({ children: calls === 1 ? genericPlanChildren : [
+          { label: "Replacement", prompt: "Replacement prompt", type: "AI", complexity: "low" },
+        ] }),
+        toolCalls: [],
+      };
+    },
+  };
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: model });
+
+  const first = await session.planNode("root-composer");
+  const firstIds = new Set(first.plannedNodeIds);
+  const second = await session.planNode("root-composer");
+  const snapshot = session.snapshot();
+
+  assert.equal(second.plannedNodeIds.length, 1);
+  assert.ok(first.plannedNodeIds.every((id) => !snapshot.graph.nodes.some((node) => node.id === id)));
+  assert.ok(snapshot.graph.nodes.some((node) => node.id === second.plannedNodeIds[0]));
+  assert.ok([...firstIds].every((id) => id !== second.plannedNodeIds[0]));
+});
+
+test("manual child survives parent replan", async () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(genericPlanChildren) });
+  const manual = session.addNode({ parentId: "root-composer", prompt: "Manual child" });
+
+  await session.planNode("root-composer", { replan: "merge" });
+  await session.planNode("root-composer", { replan: "merge" });
+
+  assert.ok(session.snapshot().graph.nodes.some((node) => node.id === manual.id));
+});
+
+test("child node plan includes ancestor context", async () => {
+  const captured: string[] = [];
+  const model: LanguageModelPort = {
+    async complete(messages: LanguageModelMessage[]): Promise<LanguageModelResponse> {
+      captured.push(messages.map((message) => message.content).join("\n"));
+      return {
+        content: JSON.stringify({ children: [{ label: "Child", prompt: "Child prompt", type: "AI", complexity: "low" }] }),
+        toolCalls: [],
+      };
+    },
+  };
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Root ancestor prompt", planModel: model });
+
+  const rootPlan = await session.planNode("root-composer");
+  await session.planNode(rootPlan.plannedNodeIds[0]!);
+
+  assert.match(captured.at(-1) ?? "", /Root ancestor prompt/);
+});
+
+test("invalid planner output surfaces MutationError", async () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel("invalid") });
+
+  await assert.rejects(
+    () => session.planNode("root-composer"),
+    (error: unknown) => session.toMutationError(error)?.code === "invalid_planner_output",
+  );
+});
+
+test("planner assigns expert preset and runtime metadata", async () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(expertPlanChildren) });
+
+  const result = await session.planNode("root-composer");
+  const child = session.snapshot().graph.nodes.find((node) => node.id === result.plannedNodeIds[0]);
+
+  assert.equal(child?.expertAgentId, "coding");
+  assert.equal(child?.expertAssignmentMode, "planner");
+  assert.equal(child?.expertRuntime, "rlm");
+  assert.deepEqual(child?.expertToolAllowlist, ["shell", "write_file"]);
+  assert.equal(child?.expertPurposeTiers?.answer, "medium");
+});
+
+test("expert override marks node custom and protected for replan", async () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(genericPlanChildren) });
+  const result = await session.planNode("root-composer");
+  const childId = result.plannedNodeIds[0]!;
+
+  session.setNodeExpertOverride(childId, {
+    agentId: "research",
+    runtime: "single-pass",
+    toolAllowlist: ["web_search"],
+    purposeTiers: { answer: "small" },
+  });
+
+  const child = session.snapshot().graph.nodes.find((node) => node.id === childId);
+  assert.equal(child?.expertAgentId, "research");
+  assert.equal(child?.expertAssignmentMode, "custom");
+  await assert.rejects(
+    () => session.planNode("root-composer"),
+    (error: unknown) => session.toMutationError(error)?.code === "replan_requires_choice",
+  );
+});
+
+test("expert binding filters tools and routes purpose tier during execution", async () => {
+  const trace = new InMemoryTrace();
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Use expert binding" });
+  const calls: Array<{ model: string; purpose: string | undefined; tools: string[]; overrideModelSelection: string | undefined }> = [];
+  const routedModel = new PurposeRoutingLanguageModel({
+    config: {
+      models: {
+        default: "small-model",
+        tiers: {
+          small: { name: "small-model", estimatedRamMb: 512 },
+          medium: { name: "medium-model", estimatedRamMb: 1024 },
+        },
+      },
+      memory: {
+        maxRamMb: 4096,
+        reserveSystemRamMb: 0,
+        waitForCapacity: false,
+        capacityCheckIntervalMs: 1,
+      },
+      runtime: config,
+      agents: {},
+      workflows: {},
+    },
+    agent: {
+      tools: [],
+      models: {
+        depth: "small",
+        classify: "small",
+        decompose: "small",
+        answer: "small",
+        summarize: "small",
+        synthesize: "small",
+      },
+    },
+    createModel: (modelName) => ({
+      complete: async (_messages, options = {}) => {
+        calls.push({
+          model: modelName,
+          purpose: options.purpose,
+          tools: (options.tools ?? []).map((tool) => tool.name),
+          overrideModelSelection: options.overrideModelSelection,
+        });
+        return { content: "expert answer", toolCalls: [], model: modelName };
+      },
+    }),
+  });
+  const otherTool: ToolPort = {
+    name: "other",
+    description: "Other tool.",
+    schema: {},
+    execute: async () => ({ status: "success", output: "other" }),
+  };
+
+  const run = new RecursiveLanguageModel(routedModel, trace, [new EchoTool(), otherTool]).run({
+    prompt: "Use expert binding",
+    config: { ...config, maxDepth: 0 },
+    execution: session.control,
+  });
+  await session.waitForNodeStatus("task-1", "awaiting_approval");
+  session.setNodeExpertOverride("task-1", {
+    agentId: "coding",
+    runtime: "single-pass",
+    toolAllowlist: ["echo"],
+    purposeTiers: { answer: "medium" },
+  });
+  session.approveNode("task-1");
+  const result = await run;
+
+  assert.equal(result.answer, "expert answer");
+  assert.equal(calls[0]?.model, "medium-model");
+  assert.equal(calls[0]?.overrideModelSelection, "medium");
+  assert.deepEqual(calls[0]?.tools, ["echo"]);
+});
+
+test("protected descendant requires explicit replan choice", async () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(genericPlanChildren) });
+  session.addNode({ parentId: "root-composer", prompt: "Manual protected child" });
+
+  await assert.rejects(
+    () => session.planNode("root-composer"),
+    (error: unknown) => session.toMutationError(error)?.code === "replan_requires_choice",
+  );
+});
+
+test("replace replan removes protected descendants", async () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(genericPlanChildren) });
+  const manual = session.addNode({ parentId: "root-composer", prompt: "Manual protected child" });
+
+  const result = await session.planNode("root-composer", { replan: "replace" });
+  const snapshot = session.snapshot();
+
+  assert.ok(result.plannedNodeIds.length > 0);
+  assert.ok(!snapshot.graph.nodes.some((node) => node.id === manual.id));
+});
+
+test("merge replan preserves protected descendants", async () => {
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: createMockPlanModel(genericPlanChildren) });
+  const manual = session.addNode({ parentId: "root-composer", prompt: "Manual protected child" });
+
+  const result = await session.planNode("root-composer", { replan: "merge" });
+  const snapshot = session.snapshot();
+
+  assert.ok(result.plannedNodeIds.length > 0);
+  assert.ok(snapshot.graph.nodes.some((node) => node.id === manual.id));
+});
+
+test("cancel replan leaves graph unchanged and skips planner call", async () => {
+  let calls = 0;
+  const model: LanguageModelPort = {
+    async complete(): Promise<LanguageModelResponse> {
+      calls += 1;
+      return { content: JSON.stringify({ children: genericPlanChildren }), toolCalls: [] };
+    },
+  };
+  const session = createInteractiveExecutionSession({ seedRootPrompt: "Plan this", planModel: model });
+  const manual = session.addNode({ parentId: "root-composer", prompt: "Manual protected child" });
+  const before = session.snapshot().graph.nodes.map((node) => node.id).join(",");
+
+  const result = await session.planNode("root-composer", { replan: "cancel" });
+
+  assert.deepEqual(result.plannedNodeIds, []);
+  assert.equal(session.snapshot().graph.nodes.map((node) => node.id).join(","), before);
+  assert.ok(session.snapshot().graph.nodes.some((node) => node.id === manual.id));
+  assert.equal(calls, 0);
 });
 
 test("interactive connect rejects cycles and replaces old incoming edge on reparent", () => {
@@ -1886,6 +2167,7 @@ test("session graph persists layout, viewport, and typed edge handles", () => {
 test("control server exposes plan and budget endpoints with explicit exhaustion gate", async () => {
   const session = createInteractiveExecutionSession({
     seedRootPrompt: "Create a full book audiobook workflow with TTS audio artifacts",
+    planModel: createMockPlanModel(audiobookPlanChildren),
   });
   const server = await startControlServer({ session });
   try {
@@ -2519,6 +2801,10 @@ test("quality loop control api records loop scoped accept and stop decisions", a
 
 test("ui confirm run executes quality loop in the shared session", async () => {
   const session = createInteractiveExecutionSession({ seedRootPrompt: "Improve this answer" });
+  session.setNodeExpertOverride("root-composer", {
+    agentId: "default",
+    runtime: "rlm",
+  });
   const queue = new QueueModel([
     { content: "draft answer", toolCalls: [], model: "draft-model" },
     { content: structuredCritique, toolCalls: [], model: "critique-model" },
@@ -2556,6 +2842,10 @@ test("ui confirm run executes quality loop in the shared session", async () => {
         tools: [] as string[],
         models: agentModels,
       },
+      coding: {
+        tools: [] as string[],
+        models: agentModels,
+      },
     },
     workflows: {},
   };
@@ -2567,6 +2857,7 @@ test("ui confirm run executes quality loop in the shared session", async () => {
     routingHints: [],
     config: projectConfig.agents.default,
   };
+  const loadedConfig = await loadProjectConfig("rlm.config.yaml");
   const runner = createUiExecutionRunner({
     projectConfig,
     runtimeConfig: {
@@ -2577,6 +2868,11 @@ test("ui confirm run executes quality loop in the shared session", async () => {
         budgetBehavior: "stop_before_partial_iteration",
       },
     },
+    registry: createAgentRegistry({
+      defaultTools: [],
+      researchTools: [],
+      agentConfigs: loadedConfig.config.agents,
+    }),
     selectAgent: () => defaultAgent,
     agentSource: "auto",
     memoryManager: new MemoryManager({ config: projectConfig.memory }),
