@@ -34,7 +34,7 @@
 - [x] **Phase 57: Model Hosts + Model Library** — Ollama adapter, catalog/search/install, HF metadata (1/1 plan) — 2026-05-22
 - [x] **Phase 58: Built-in Plugins + MCP + Registry** — Rust builtins, PluginRegistryService, interop wiring (1/1 plan) — 2026-05-22
 - [x] **Phase 59: Rust CLI + Parity CI** — `rlm` binary, `RLM_RUNTIME` switch, TS vs Rust fixture gate (1/1 plan) — 2026-05-22
-- [x] **Phase 60: Tauri In-Process + Packaging** — No Node child, Rust-only release bundle (1/1 plan, human UAT pending) — 2026-05-22
+- [x] **Phase 60: Tauri In-Process + Packaging** — No Node child, Rust-only release bundle (1/1 plan, UAT complete) — 2026-05-22
 
 <details>
 <summary>✅ v1.7 Adapter & Plugin Taxonomy (Phases 43-51) — SHIPPED 2026-05-22</summary>
@@ -193,6 +193,20 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 60.1: Close v1.8 milestone gaps — session routes, memory preferences, run-state wiring, verification backfill (INSERTED)
+
+**Goal:** Close v1.8 milestone audit gaps — wire missing Rust control-server routes for session save/reopen and memory preferences, connect session_memory_bridge to handlers, port chat/clarification routes, wire or defer run-state, and backfill VERIFICATION.md for phases 53–56.
+**Requirements**: REG-01, PERS-01, PERS-02, PERS-03, ENGN-02, GRPH-02, VIDX-02, RWRK-01, RWRK-02, RWRK-03, GRPH-01, VIDX-01, VIDX-03
+**Depends on:** Phase 60
+**Plans:** 5 plans
+
+Plans:
+- [ ] 60.1-01-PLAN.md — Session memory bridge + FileMemoryStore restore API
+- [ ] 60.1-02-PLAN.md — Session save/reopen/detail + memory preference routes
+- [ ] 60.1-03-PLAN.md — Chat refine routes + clarification abort + confirm-run body fix
+- [ ] 60.1-04-PLAN.md — Run-state execution wiring or explicit deferral
+- [ ] 60.1-05-PLAN.md — VERIFICATION backfill (53–56) + REQUIREMENTS sync
+
 ### Phase 43: Boundary Fixes
 **Goal**: Layer import directions are corrected and plugin registration contracts decouple from application types — prerequisite for runtime split and taxonomy moves.
 **Depends on**: Phase 42 (v1.6 complete)
@@ -333,3 +347,14 @@ Phases execute in numeric order: 52 → 53 → … → 60
 | 12-17 Answer Quality Loops | v1.2 | archived | Complete | 2026-05-20 |
 | 6-11 Interop / plugins | v1.1 | archived | Complete | 2026-05-13 |
 | 1-5 MVP | v1.0 | archived | Complete | 2026-05-08 |
+
+### Phase 61: UI Shell Rewrite
+
+**Goal:** Replace the monolithic scrollable sidebar with a node-centric workflow shell (canvas + top bar + optional node dock) and a full-screen Advanced hub (Models, Plugins, Sessions, Memory, Settings) — frontend restructure only, same HTTP/SSE contract.
+
+**Requirements**: TBD (derive from `.planning/notes/ui-shell-architecture.md`)
+**Depends on:** Phase 60
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 61 to break down)
