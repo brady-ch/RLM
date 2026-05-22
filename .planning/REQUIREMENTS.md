@@ -16,7 +16,7 @@
 - [ ] **TAXN-01**: Publish a canonical concern map in `AGENTS.md` covering `src/` top-level areas (`cli`, `application`, `domain`, `ports`, `runtime`, `plugins`, `adapters`) and how `tests/`, `ui/`, and `scripts/` relate to each concern.
 - [x] **TAXN-02**: `src/application/` groups modules by concern — at minimum `execution/`, `graph/`, `memory/`, `plugins/` (manager), and `control-server/` — with flat root files reduced to facades or moved behind concern folders.
 - [x] **TAXN-03**: `src/runtime/` owns composition and interop wiring (`composition/`, `interop/`); `application/` no longer hosts `extension-host`, `runtime-composition`, `interop-runtime`, or `mcp-skill-runtime` after extraction.
-- [ ] **TAXN-04**: `src/plugins/` owns registration/distribution packages; `src/adapters/` retains infrastructure port implementations only (persistence, model hosts, tracing) — no new tool implementations land in `adapters/tools/` after migration.
+- [x] **TAXN-04**: `src/plugins/` owns registration/distribution packages; `src/adapters/` retains infrastructure port implementations only (persistence, model hosts, tracing) — no new tool implementations land in `adapters/tools/` after migration.
 - [ ] **TAXN-05**: `tests/` layout mirrors the stabilized `src/` concern map (e.g. `tests/runtime/`, `tests/plugins/`, `tests/application/graph/`) with shared helpers remaining in `tests/helpers/`.
 - [ ] **TAXN-06**: dependency-cruiser rules encode the concern taxonomy (forbidden arcs for `plugins→application`, `runtime→cli`, `domain→application`, etc.) and are documented alongside `AGENTS.md`.
 
@@ -30,12 +30,12 @@
 
 ### Plugin Taxonomy
 
-- [ ] **PLUG-01**: `rlm.plugin.json` manifest schema (id, name, version, category, contributes, `engines.rlm`) validated with Zod **before** any plugin `import()`.
-- [ ] **PLUG-02**: Category taxonomy covers at least `shell`, `files`, `web`, and `interop`; extensible for future categories without breaking list/doctor output.
-- [ ] **PLUG-03**: Built-in tools migrate from `src/extensions/tools/` to `src/plugins/builtin/` with manifest + `register(host)` using the same contract as external plugins.
-- [ ] **PLUG-04**: `PluginLoader` replaces hardcoded `loadBuiltins([...])` with unified discovery: builtins → configured entries → installed catalog.
-- [ ] **PLUG-05**: Legacy `extensions.load` YAML entries continue working via a compatibility shim normalized to plugin manifest shape for at least one release.
-- [ ] **PLUG-06**: Contributor guidance documents where new tools, adapters, plugins, and runtime wiring belong after taxonomy moves.
+- [x] **PLUG-01**: `rlm.plugin.json` manifest schema (id, name, version, category, contributes, `engines.rlm`) validated with Zod **before** any plugin `import()`.
+- [x] **PLUG-02**: Category taxonomy covers at least `shell`, `files`, `web`, and `interop`; extensible for future categories without breaking list/doctor output.
+- [x] **PLUG-03**: Built-in tools migrate from `src/extensions/tools/` to `src/plugins/builtin/` with manifest + `register(host)` using the same contract as external plugins.
+- [x] **PLUG-04**: `PluginLoader` replaces hardcoded `loadBuiltins([...])` with unified discovery: builtins → configured entries → installed catalog.
+- [x] **PLUG-05**: Legacy `extensions.load` YAML entries continue working via a compatibility shim normalized to plugin manifest shape for at least one release.
+- [x] **PLUG-06**: Contributor guidance documents where new tools, adapters, plugins, and runtime wiring belong after taxonomy moves.
 
 ### Dependency-Cruiser Enforcement
 
@@ -110,7 +110,7 @@
 | TAXN-01 | Phase 47 | Pending |
 | TAXN-02 | Phase 45 | Complete |
 | TAXN-03 | Phase 44 | Complete |
-| TAXN-04 | Phase 46 | Pending |
+| TAXN-04 | Phase 46 | Complete |
 | TAXN-05 | Phase 47 | Pending |
 | TAXN-06 | Phase 47 | Pending |
 | RUNT-01 | Phase 43 | Pending |
@@ -118,12 +118,12 @@
 | RUNT-03 | Phase 44 | Complete |
 | RUNT-04 | Phase 44 | Complete |
 | RUNT-05 | Phase 44 | Complete |
-| PLUG-01 | Phase 46 | Pending |
-| PLUG-02 | Phase 46 | Pending |
-| PLUG-03 | Phase 46 | Pending |
-| PLUG-04 | Phase 46 | Pending |
-| PLUG-05 | Phase 46 | Pending |
-| PLUG-06 | Phase 46 | Pending |
+| PLUG-01 | Phase 46 | Complete |
+| PLUG-02 | Phase 46 | Complete |
+| PLUG-03 | Phase 46 | Complete |
+| PLUG-04 | Phase 46 | Complete |
+| PLUG-05 | Phase 46 | Complete |
+| PLUG-06 | Phase 46 | Complete |
 | DEPS-01 | Phase 48 | Pending |
 | DEPS-02 | Phase 47 | Pending |
 | DEPS-03 | Phase 48 | Pending |

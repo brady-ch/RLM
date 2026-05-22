@@ -26,7 +26,7 @@
 - [x] **Phase 43: Boundary Fixes** — Fix three ARCH-02 violations; introduce ExtensionHostPort; establish regression gate (1/1 plan) — 2026-05-22
 - [x] **Phase 44: Runtime & Interop Split** — Move composition and MCP/skill interop to `src/runtime/` with init-order test (1/1 plan) — 2026-05-22
 - [x] **Phase 45: Application Concern Grouping** — Group `application/` by execution, graph, memory, plugins, control-server (1/1 plan) — 2026-05-22
-- [ ] **Phase 46: Plugin Taxonomy & Builtin Migration** — Manifest schema, PluginLoader, builtin migration, legacy YAML compat
+- [x] **Phase 46: Plugin Taxonomy & Builtin Migration** — Manifest schema, PluginLoader, builtin migration, legacy YAML compat (1/1 plan) — 2026-05-22
 - [ ] **Phase 47: Concern Map, Tests Mirror & Depcruise Rules** — AGENTS.md taxonomy, mirrored tests, new path rules
 - [ ] **Phase 48: Dependency-Cruiser Ratchet** — Empty baseline, warn→error severity, strict `npm run check`
 - [ ] **Phase 49: Local Plugin Manager** — CLI commands, shared registry service, catalog under `~/.rlm/plugins/`
@@ -118,7 +118,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   5. Legacy `extensions.load` YAML entries continue working via compatibility shim for at least one release
   6. `src/adapters/` retains infrastructure port implementations only; no new tool implementations land in `adapters/tools/`
   7. AGENTS.md documents where new tools, adapters, plugins, and runtime wiring belong after taxonomy moves
-**Plans**: TBD
+**Plans**: 1/1 complete
 
 ### Phase 47: Concern Map, Tests Mirror & Depcruise Rules
 **Goal**: Canonical concern map is published, tests mirror stabilized layout, and dependency-cruiser rules encode the taxonomy before ratchet.
@@ -189,7 +189,7 @@ Phases execute in numeric order: 43 → 44 → … → 51
 | 43. Boundary Fixes | v1.7 | 1/1 | Complete | 2026-05-22 |
 | 44. Runtime & Interop Split | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 45. Application Concern Grouping | v1.7 | 1/1 | Complete   | 2026-05-22 |
-| 46. Plugin Taxonomy & Builtin Migration | v1.7 | 0/TBD | Not started | - |
+| 46. Plugin Taxonomy & Builtin Migration | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 47. Concern Map, Tests Mirror & Depcruise Rules | v1.7 | 0/TBD | Not started | - |
 | 48. Dependency-Cruiser Ratchet | v1.7 | 0/TBD | Not started | - |
 | 49. Local Plugin Manager | v1.7 | 0/TBD | Not started | - |

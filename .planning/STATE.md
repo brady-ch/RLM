@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Adapter & Plugin Taxonomy
 status: executing
-stopped_at: Completed 45-01-PLAN.md
+stopped_at: Completed 46-01-PLAN.md
 last_updated: "2026-05-22"
-last_activity: 2026-05-22 — Phase 45 complete (application concern grouping, 360 tests green)
+last_activity: 2026-05-22 — Phase 46 complete (plugin taxonomy, 365 tests green)
 progress:
   total_phases: 9
-  completed_phases: 3
-  total_plans: 3
-  completed_plans: 3
-  percent: 33
+  completed_phases: 4
+  total_plans: 4
+  completed_plans: 4
+  percent: 44
 ---
 
 # Project State
@@ -21,25 +21,26 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone v1.7 — Phase 46 Plugin Taxonomy & Builtin Migration.
+**Current focus:** Milestone v1.7 — Phase 47 Concern Map, Tests Mirror & Depcruise Rules.
 
 ## Current Position
 
-Phase: 46 of 51 (Plugin Taxonomy & Builtin Migration)
+Phase: 47 of 51 (Concern Map, Tests Mirror & Depcruise Rules)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-22 — Phase 45 complete (application concern grouping, 360 tests green)
+Last activity: 2026-05-22 — Phase 46 complete (plugin taxonomy & builtin migration, 365 tests green)
 
-Progress: [███░░░░░░░] 33%
+Progress: [████░░░░░░] 44%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v1.7): 3
+- Total plans completed (v1.7): 4
 - Phase 43: 1 plan, 359 tests green
 - Phase 44: 1 plan, 360 tests green
 - Phase 45: 1 plan, 360 tests green
+- Phase 46: 1 plan, 365 tests green
 
 **By Phase:**
 
@@ -48,7 +49,8 @@ Progress: [███░░░░░░░] 33%
 | 43 | 1 | 1 | 1 |
 | 44 | 1 | 1 | 1 |
 | 45 | 1 | 1 | 1 |
-| 46-51 | 0 | TBD | — |
+| 46 | 1 | 1 | 1 |
+| 47-51 | 0 | TBD | — |
 
 ## Accumulated Context
 
@@ -67,10 +69,14 @@ Phase 44 completed: Composition and interop wiring in `src/runtime/`; bootstrap 
 
 Phase 45 completed: Application modules grouped into execution/, graph/, memory/, plugins/ concern folders; root facade re-exports preserve import paths.
 
+Phase 46 completed: Plugin manifest schema, PluginLoader unified discovery, built-in tools migrated to `src/plugins/builtin/`; legacy `extensions.load` compat shim; AGENTS.md taxonomy.
+
 - Optional onInitStage recorder on buildRuntimeContext for init-order testing
 - Runtime composition under `src/runtime/composition/`; interop under `src/runtime/interop/`
 - Root facade re-exports at application/ for backward-compatible imports
 - plugins/ concern established with ExtensionRegistryEntry facade (Phase 46 expands to manager)
+- Tool implementations under plugins/builtin/; adapters barrel re-exports during strangler migration
+- Legacy extensions.load synthesizes interop-category manifests when no rlm.plugin.json on disk
 
 ### Pending Todos
 
@@ -91,9 +97,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-05-22
-Stopped at: Completed 45-01-PLAN.md
+Stopped at: Completed 46-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
 
-Proceed with Phase 46 Plugin Taxonomy & Builtin Migration.
+Proceed with Phase 47 Concern Map, Tests Mirror & Depcruise Rules.
