@@ -27,8 +27,8 @@
 
 ### Recursive Engine & Graph Execution
 
-- [ ] **ENGN-01**: `RecursiveLanguageModel` port in Rust preserves depth limits, budget guards, quality loop phases, tool rounds, and cancellation/stop semantics from the TypeScript orchestrator.
-- [ ] **ENGN-02**: ExecutionController exposes the same approval, clarification, and stale-mutation handling as the current control-server session authority.
+- [x] **ENGN-01**: `RecursiveLanguageModel` port in Rust preserves depth limits, budget guards, quality loop phases, tool rounds, and cancellation/stop semantics from the TypeScript orchestrator.
+- [x] **ENGN-02**: ExecutionController exposes the same approval, clarification, and stale-mutation handling as the current control-server session authority.
 - [ ] **GRPH-01**: GraphExecutor walks approved topology with bind-time expert resolution, descendant blocking on failure, and single-pass/RLM enforcement matching v1.5 behavior.
 - [ ] **GRPH-02**: All `/api/nodes/*`, `/api/graph/*`, and workflow export/import routes required by the UI and CLI are implemented in Rust with matching status codes and error vocabulary.
 
@@ -96,8 +96,8 @@
 | PERS-02 | Phase 53 | Complete |
 | PERS-03 | Phase 53 | Complete |
 | PERS-04 | Phase 53 | Complete |
-| ENGN-01 | Phase 54 | Pending |
-| ENGN-02 | Phase 54 | Pending |
+| ENGN-01 | Phase 54 | Complete |
+| ENGN-02 | Phase 54 | Complete |
 | GRPH-01 | Phase 55 | Pending |
 | GRPH-02 | Phase 55 | Pending |
 | VIDX-01 | Phase 56 | Pending |

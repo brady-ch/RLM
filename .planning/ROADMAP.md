@@ -28,7 +28,7 @@
 
 - [x] **Phase 52: Rust Workspace + Control Server Strangler** — Cargo workspace, Axum router, static UI, golden HTTP/SSE fixtures (1/1 plan) — 2026-05-22
 - [ ] **Phase 53: Persistence Ports** — File stores, config YAML, dual-read `.rlm/` formats
-- [ ] **Phase 54: Recursive Engine + ExecutionController** — RLM orchestrator and session authority in Rust
+- [x] **Phase 54: Recursive Engine + ExecutionController** — RLM orchestrator and session authority in Rust
 - [ ] **Phase 55: Graph Executor + Node Routes** — DAG walker, node/graph mutations, workflow sidecars
 - [ ] **Phase 56: Vector Index + Embeddings** — usearch ANN, Ollama embed, JSON import
 - [ ] **Phase 57: Model Hosts + Model Library** — Ollama adapter, catalog/search/install, HF metadata
@@ -123,7 +123,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   2. User at approval or clarification checkpoints sees the same stale/duplicate mutation handling and authoritative session control as today
   3. User can stop or cancel running execution and receives immediate feedback in SSE and CLI without silent hang
   4. Execution events stream to `/api/events` with vocabulary matching existing UI execution states
-**Plans**: TBD
+**Plans**: 1/1 complete (see `.planning/phases/54-recursive-engine-execution-controller/54-01-SUMMARY.md`)
 
 ### Phase 55: Graph Executor + Node Routes
 **Goal**: Full graph execution and all node/graph API mutations required by the UI and CLI work through Rust.
