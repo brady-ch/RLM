@@ -72,6 +72,24 @@ textarea:focus-visible {
   justify-content: center;
 }
 
+.secondary {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--color-card);
+}
+
+.btn-run-primary {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+  min-width: auto;
+  padding: 0 var(--space-md);
+}
+
 .danger {
   background: var(--color-danger);
 }

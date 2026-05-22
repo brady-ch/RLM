@@ -34,7 +34,7 @@ export function TopBar({
         <span className={`status ${snapshot.status}`} title={snapshot.runSummary?.message}>
           {uiRunStatusLabels[snapshot.status] ?? snapshot.status}
         </span>
-        {activeRunVariant || snapshot.status === "running" ? (
+        {snapshot.status === "running" ? (
           <span className="meta-pill run-variant-pill">Running {activeRunVariant ?? runVariant}</span>
         ) : null}
         {activeNode ? (
@@ -48,8 +48,27 @@ export function TopBar({
         ) : null}
       </div>
       <span className="meta-pill">{approvalModeLabel(snapshot.approvalMode)}</span>
+      {snapshot.status === "running" &&
+      snapshot.approvalMode === "initial-plan-recursive" ? (
+        <button
+          type="button"
+          className="secondary"
+          disabled={snapshot.autoApprovalPaused}
+          aria-label="Pause future auto-approvals"
+          onClick={() =>
+            runAction(
+              setErrorMessage,
+              () => post("/api/pause-future-auto-approvals"),
+              refresh,
+            )
+          }
+        >
+          Pause future auto-approvals
+        </button>
+      ) : null}
       <button
-        className="icon"
+        type="button"
+        className="btn-run-primary"
         aria-label="Run workflow"
         onClick={() =>
           runAction(
