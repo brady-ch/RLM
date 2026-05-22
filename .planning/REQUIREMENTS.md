@@ -8,8 +8,8 @@
 
 ### Regression Gate
 
-- [x] **REG-01**: All existing tests pass after each extraction phase; no intentional behavior changes to CLI flags, config semantics, control-server API, or graph/session/memory flows.
-- [x] **REG-02**: `npm run check` (typecheck + test, extended with lint/depcruise when tooling lands) remains the CI gate and stays green throughout the milestone.
+- [ ] **REG-01**: All existing tests pass after each extraction phase; no intentional behavior changes to CLI flags, config semantics, control-server API, or graph/session/memory flows.
+- [ ] **REG-02**: `npm run check` (typecheck + test, extended with lint/depcruise when tooling lands) remains the CI gate and stays green throughout the milestone.
 
 ### Dev Tooling
 
@@ -104,8 +104,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | 36-42 (cross-cutting gate in every phase) | Met (Phase 36 gate verified) |
-| REG-02 | 36-42 (cross-cutting gate in every phase) | Met (Phase 36 gate verified) |
+| REG-01 | 36-42 (cross-cutting gate in every phase) | Pending (Phase 36 gate green 2026-05-22) |
+| REG-02 | 36-42 (cross-cutting gate in every phase) | Pending (Phase 36 gate green 2026-05-22) |
 | TOOL-01 | Phase 36 | Complete |
 | TOOL-02 | Phase 36 | Complete |
 | TOOL-03 | Phase 36 | Complete |
