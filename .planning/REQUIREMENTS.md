@@ -43,7 +43,7 @@
 - [x] **ARCH-03**: Control server handlers split from monolithic `routes.rs` into concern modules; router file is transport-only wiring.
 - [x] **ARCH-04**: Large modules decomposed (`recursive_language_model`, `session_graph`, `registry_service`, `persistence/config`) with behavior-preserving tests green after each split.
 - [ ] **ARCH-05**: Rust concern map documented in `AGENTS.md`; `check-rust-boundaries` script wired into `npm run check:rust`.
-- [ ] **ARCH-06**: Optional workspace crate split (`rlm-ports`, `rlm-domain`) evaluated and implemented only if compile iteration remains painful after A1–A4; public API unchanged.
+- [x] **ARCH-06**: Optional workspace crate split (`rlm-ports`, `rlm-domain`) evaluated and implemented only if compile iteration remains painful after A1–A4; public API unchanged. **Evaluated defer** — see [71-SUMMARY.md](.planning/phases/71-optional-crate-split/71-SUMMARY.md).
 
 ## Future Requirements
 
@@ -87,7 +87,7 @@
 | ARCH-03 | Phase 68 | Complete |
 | ARCH-04 | Phase 69 | Complete |
 | ARCH-05 | Phase 70 | Pending |
-| ARCH-06 | Phase 71 | Pending |
+| ARCH-06 | Phase 71 | Complete (evaluated defer) |
 
 **Coverage:**
 - v1.9 requirements: 18 total
