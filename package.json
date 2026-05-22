@@ -29,6 +29,8 @@
     "tauri:build": "tauri build",
     "package:build": "node scripts/packaging/build-release.mjs",
     "package:smoke": "npm run package:build && node scripts/packaging/smoke-release.mjs",
+    "package:smoke:deb": "node scripts/packaging/smoke-deb.mjs",
+    "test:packaging": "node --test scripts/packaging/deb-smoke-lib.test.mjs",
     "start": "node dist/src/index.js",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run depcruise:strict && npm test",
     "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace",
