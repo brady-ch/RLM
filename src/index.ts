@@ -22,6 +22,7 @@ import {
 import { runAskWorkflowOrApprove } from "./cli/run-modes/agent-workflow.js";
 import { runPlanNodeMode } from "./cli/run-modes/plan-node.js";
 import { handleSessionCommands } from "./cli/run-modes/session-commands.js";
+import { handlePluginCommands } from "./cli/run-modes/plugin-commands.js";
 import { handleWorkflowExport, handleWorkflowImport } from "./cli/run-modes/workflow-graph-io.js";
 import { runUiMode } from "./cli/run-modes/ui.js";
 import { join, resolve } from "node:path";
@@ -60,6 +61,10 @@ async function main(): Promise<void> {
   });
 
   if (await handleSessionCommands(options, sessionStore, memoryStore)) {
+    return;
+  }
+
+  if (await handlePluginCommands(options)) {
     return;
   }
 

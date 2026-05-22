@@ -1,7 +1,18 @@
 import type { ApprovalMode, RecursiveModelConfig } from "../domain/types.js";
 
 export interface CliOptions {
-  command: "ask" | "help" | "ui" | "plan-node" | "workflow-export" | "workflow-import";
+  command: "ask" | "help" | "ui" | "plan-node" | "workflow-export" | "workflow-import" | "plugin";
+  pluginSubcommand?:
+    | "list"
+    | "install"
+    | "enable"
+    | "disable"
+    | "uninstall"
+    | "doctor"
+    | "inspect"
+    | "validate"
+    | undefined;
+  pluginTarget?: string | undefined;
   prompt: string;
   config: RecursiveModelConfig;
   configOverrides: Partial<RecursiveModelConfig>;
@@ -63,6 +74,10 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     commandCandidate === "-h"
   ) {
     return helpOptions(env);
+  }
+
+  if (commandCandidate === "plugin") {
+    return parsePluginArgs(rest, env);
   }
 
   const command: CliOptions["command"] =
@@ -460,6 +475,12 @@ export function helpText(): string {
     '  rlm plan-node --node-id root-composer --prompt "your workflow"',
     "  rlm workflow-export --workflow demo --export-session session-1",
     "  rlm workflow-import --workflow demo [--variant playbook|pipeline]",
+    "  rlm plugin list [--json]",
+    "  rlm plugin install <local-path> [--json]",
+    "  rlm plugin enable|disable|uninstall <id> [--json]",
+    "  rlm plugin doctor [--json]",
+    "  rlm plugin inspect <id> [--json]",
+    "  rlm plugin validate <path> [--json]",
     "",
     "Options:",
     "  --depth <n>             Override YAML runtime recursion depth. Default: model-selected",
@@ -508,6 +529,80 @@ export function helpText(): string {
     "  RLM_LAUNCH_MODE=cli       Pair with RLM_NON_INTERACTIVE=1 to force CLI mode without a prompt.",
     "  Working directory is treated as the project root for ./rlm.config.yaml and ./.rlm/",
   ].join("\n");
+}
+
+function parsePluginArgs(args: string[], env: NodeJS.ProcessEnv): CliOptions {
+  const [subcommandCandidate, ...rest] = args;
+  const validSubcommands = new Set([
+    "list",
+    "install",
+    "enable",
+    "disable",
+    "uninstall",
+    "doctor",
+    "inspect",
+    "validate",
+  ]);
+
+  if (!subcommandCandidate || !validSubcommands.has(subcommandCandidate)) {
+    throw new Error(
+      "Missing plugin subcommand. Use: list | install | enable | disable | uninstall | doctor | inspect | validate",
+    );
+  }
+
+  let json = false;
+  let configPath: string | undefined;
+  const positional: string[] = [];
+
+  for (let index = 0; index < rest.length; index += 1) {
+    const arg = rest[index];
+    if (!arg) {
+      continue;
+    }
+    if (arg === "--json") {
+      json = true;
+      continue;
+    }
+    if (arg === "--config") {
+      configPath = readValue(rest, index, arg);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--")) {
+      throw new Error(`Unknown plugin flag: ${arg}`);
+    }
+    positional.push(arg);
+  }
+
+  const options: CliOptions = {
+    command: "plugin",
+    pluginSubcommand: subcommandCandidate as NonNullable<CliOptions["pluginSubcommand"]>,
+    prompt: "",
+    config: { ...DEFAULT_CONFIG },
+    configOverrides: {},
+    compact: false,
+    json,
+    trace: false,
+    verbose: env.RLM_VERBOSE === "1" || env.RLM_VERBOSE === "true",
+    jsonStream: false,
+    planOnly: false,
+    requireApproval: false,
+    approvalMode: "full",
+    approve: false,
+    model: env.RLM_MODEL ?? "granite4.1:3b",
+    sessionList: false,
+  };
+  if (configPath) {
+    options.configPath = configPath;
+  }
+  if (positional[0]) {
+    options.pluginTarget = positional[0];
+  }
+  if (env.RLM_MODEL) {
+    options.modelOverride = env.RLM_MODEL;
+  }
+
+  return options;
 }
 
 function helpOptions(env: NodeJS.ProcessEnv): CliOptions {
