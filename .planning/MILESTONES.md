@@ -1,15 +1,35 @@
 # Milestones
 
-## v1.9 Rust Runtime Hardening (Planning: 2026-05-22)
+## v1.9 Rust Runtime Hardening (Shipped: 2026-05-22)
 
-**Phases planned:** 10 (62–71)  
-**Status:** Requirements and roadmap defined; Phase 62 next
+**Phases completed:** 10 phases (62–71), 19 plans, 42 tasks  
+**Audit status:** tech_debt — 17/18 requirements satisfied; REG-01 human UAT unsigned  
+**Known deferred items at close:** 5 open artifacts acknowledged (see STATE.md Deferred Items)
 
-**Goal:** Close v1.8 functional debt (UI regressions, quality loop, resume, skills, CLI, PACK-03), then harden Rust architecture (application layer, handler split, decomposition, boundaries, optional crate split).
+**Key accomplishments:**
 
-**Requirements:** `.planning/REQUIREMENTS.md`  
-**Roadmap:** `.planning/ROADMAP.md`  
-**Planning note:** `.planning/notes/rust-architecture-improvement-plan.md`
+- UI regression fixes — pause-auto-approvals and HF download wiring restored for Phase 61 shell
+- Full Rust quality loop parity with TypeScript — draft/critique/refine/gate/best-of, golden tests
+- Cross-session resume via RunStateStorePort, cursor replay, confirm gate, integration test
+- Rust skill interop — discovery, path policies, `skill` tool, doctor warnings
+- Full Rust CLI parity — plan-node, workflow export/import, session/memory flags
+- PACK-03 CI smoke — headless `.deb` install on ubuntu-latest with xvfb
+- Rust `application/` layer mirroring TS concern layout; control-server handler split (11 modules)
+- Large-file decomposition — config, registry, session_graph, recursive_language_model
+- Rust boundary enforcement — AGENTS.md concern map, `check-rust-boundaries`, npm check:rust wiring
+- ARCH-06 evaluated defer — 7s clean build, 8s lib tests; no rlm-ports/rlm-domain extraction
+
+### Known Gaps (tech debt — accepted at close)
+
+- **REG-01 partial:** Automated wiring verified; human UAT checklist unsigned (`61-06-VERIFICATION.md`)
+- **UI resume:** Backend `/api/chat/resume-run` complete; no UI consumer wired
+- **TS cursor writes:** `persistResumeCursor` not invoked from TS graph executor
+- **Nyquist:** No `*-VALIDATION.md` artifacts for phases 62–71
+- **Boundary baseline:** 6 transitional arcs baselined; strict mode opt-in only
+
+**Archive:** `.planning/milestones/v1.9-ROADMAP.md`  
+**Requirements:** `.planning/milestones/v1.9-REQUIREMENTS.md`  
+**Audit:** `.planning/milestones/v1.9-MILESTONE-AUDIT.md`
 
 ---
 

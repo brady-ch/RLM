@@ -2,7 +2,7 @@
 
 ## Milestones
 
-- 🚧 **v1.9 Rust Runtime Hardening** — Phases 62-71 (in progress)
+- ✅ **v1.9 Rust Runtime Hardening** — Phases 62-71 (shipped 2026-05-22; archive: `.planning/milestones/v1.9-ROADMAP.md`)
 - ✅ **v1.8 Rust Runtime Migration** — Phases 1, 52-61 (shipped 2026-05-22; archive: `.planning/milestones/v1.8-ROADMAP.md`)
 - ✅ **v1.7 Adapter & Plugin Taxonomy** — Phases 43-51 (shipped 2026-05-22; archive: `.planning/milestones/v1.7-ROADMAP.md`)
 - ✅ **v1.6 Architecture Cleanup** — Phases 36-42 (shipped 2026-05-22; archive: `.planning/milestones/v1.6-ROADMAP.md`)
@@ -15,26 +15,31 @@
 
 ## Overview
 
-**v1.9 (in progress)** closes v1.8 functional debt first (UI regressions, quality loop parity, resume consumer, skill interop, full CLI, PACK-03 CI), then applies v1.6/v1.7 structural patterns to the Rust workspace (application layer, handler split, file decomposition, boundary enforcement, optional crate split).
+**Next milestone:** TBD — run `/gsd-new-milestone`
 
-**v1.8 (shipped 2026-05-22)** replaced the Node orchestration runtime with an embedded Rust workspace while keeping the TypeScript/React UI in Tauri. Milestone audit: **tech_debt** with documented deferrals now addressed by v1.9.
+**v1.9 (shipped 2026-05-22)** closed v1.8 functional debt (UI regressions, quality loop parity, resume consumer, skill interop, full CLI, PACK-03 CI) and hardened `rlm-core` architecture to match the TypeScript concern map (application layer, handler split, file decomposition, boundary enforcement, optional crate split evaluated defer). Milestone audit: **tech_debt** — REG-01 human UAT unsigned; documented deferrals in archive audit.
+
+**v1.8 (shipped 2026-05-22)** replaced the Node orchestration runtime with an embedded Rust workspace while keeping the TypeScript/React UI in Tauri.
 
 ## Phases
 
-### 🚧 v1.9 Rust Runtime Hardening (In Progress)
+<details>
+<summary>✅ v1.9 Rust Runtime Hardening (Phases 62-71) — SHIPPED 2026-05-22</summary>
 
-**Milestone Goal:** Close all v1.8 partial requirements and harden `rlm-core` architecture to match the concern map enforced in TypeScript.
+See `.planning/milestones/v1.9-ROADMAP.md`, `.planning/milestones/v1.9-REQUIREMENTS.md`, and `.planning/milestones/v1.9-MILESTONE-AUDIT.md`.
 
-- [x] **Phase 62: UI Regression Fixes** — Restore pause-auto-approvals, HF download wiring, sign REG-01 UAT — 2026-05-22
-- [x] **Phase 63: Quality Loop Parity** — Port full TS quality loop to Rust with golden tests — 2026-05-22
-- [x] **Phase 64: Resume Consumer + Run-State Port** — Cross-session resume loader, ARCH-01 boundary fix — 2026-05-22
-- [ ] **Phase 65: Skill Interop** — Port skill runtime and register `skill` tool in Rust
-- [x] **Phase 66: CLI Full Parity** — All Node run modes and flags in `rlm-cli` — 2026-05-22
-- [ ] **Phase 67: PACK-03 CI Smoke** — Headless `.deb` install smoke in release CI
-- [ ] **Phase 68: Application Layer + Handler Split** — `application/` grouping and split `routes.rs`
-- [x] **Phase 69: Large File Decomposition** — Split orchestrator, session_graph, registry, config
-- [ ] **Phase 70: Rust Boundary Enforcement** — AGENTS.md concern map + `check-rust-boundaries`
-- [ ] **Phase 71: Optional Crate Split** — Evaluate and split `rlm-ports`/`rlm-domain` if warranted
+- [x] **Phase 62: UI Regression Fixes** — pause-auto-approvals, HF download wiring (1/1 plan) — 2026-05-22
+- [x] **Phase 63: Quality Loop Parity** — full TS quality loop in Rust with golden tests (1/1 plan) — 2026-05-22
+- [x] **Phase 64: Resume Consumer + Run-State Port** — cross-session resume, ARCH-01 boundary fix (1/1 plan) — 2026-05-22
+- [x] **Phase 65: Skill Interop** — skill tool, path policies, doctor warnings (1/1 plan) — 2026-05-22
+- [x] **Phase 66: CLI Full Parity** — all Node run modes in `rlm-cli` (1/1 plan) — 2026-05-22
+- [x] **Phase 67: PACK-03 CI Smoke** — headless `.deb` install smoke in CI (2/2 plans) — 2026-05-22
+- [x] **Phase 68: Application Layer + Handler Split** — `application/` grouping, handler modules (2/2 plans) — 2026-05-22
+- [x] **Phase 69: Large File Decomposition** — orchestrator, session_graph, registry, config splits (5/5 plans) — 2026-05-22
+- [x] **Phase 70: Rust Boundary Enforcement** — AGENTS.md concern map + `check-rust-boundaries` (2/2 plans) — 2026-05-22
+- [x] **Phase 71: Optional Crate Split** — measured baseline, evaluated defer (3/3 plans) — 2026-05-22
+
+</details>
 
 <details>
 <summary>✅ v1.8 Rust Runtime Migration (Phases 1, 52-61) — SHIPPED 2026-05-22</summary>
@@ -56,153 +61,17 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 
 </details>
 
-## Phase Details
-
-### Phase 62: UI Regression Fixes
-
-**Goal:** Close Phase 61 integration regressions and sign REG-01 human UAT before deeper Rust parity work.  
-**Depends on:** v1.8 shipped  
-**Requirements:** REG-01, REG-02  
-**Success Criteria:**
-1. User can pause future auto-approvals from TopBar; control hits `/api/pause-future-auto-approvals` and session reflects state
-2. User can install HF models from Model Library UI via `/api/model-library/download`
-3. REG-01 human UAT checklist (`61-06-VERIFICATION.md`) operator-signed with live Ollama where applicable
-
-### Phase 63: Quality Loop Parity
-
-**Goal:** Rust recursive engine runs the full quality loop matching TypeScript behavior.  
-**Depends on:** Phase 62  
-**Requirements:** ENGN-01, ENGN-02, REG-02  
-**Success Criteria:**
-1. Quality-loop-enabled agent produces inspectable draft/critique/refine/gate/best-of iteration history in graph UI
-2. Golden parity tests pass against Node strangler fixtures for loop metadata and budget stops
-3. Session readiness JSON uses structured object shape consistent with TypeScript
-
-### Phase 64: Resume Consumer + Run-State Port
-
-**Goal:** User can resume interrupted graph runs after restart; domain boundary fixed via store port.  
-**Depends on:** Phase 63  
-**Requirements:** PERS-01, PERS-02, PERS-03, ARCH-01, REG-02  
-**Success Criteria:**
-1. Graph executor reads `resumeCursor` + `nodeStatuses` and skips completed nodes on entry
-2. Control-server resume requires explicit user confirmation
-3. TS `RunStatePersistence` writes same cursor shape as Rust
-4. Integration test: partial run → restart → resume → complete
-5. No `domain/` module imports concrete persistence types
-
-### Phase 65: Skill Interop
-
-**Goal:** Rust runtime supports configured skill loading matching Node interop.  
-**Depends on:** Phase 64  
-**Requirements:** PLUG-01, PLUG-02, REG-02  
-**Success Criteria:**
-1. `skill` tool loads skills from configured search paths with path policy enforcement
-2. Init order preserved: plugins → interop → tools resolver → agent registry → models
-3. Plugin doctor warns on invalid skill paths
-
-### Phase 66: CLI Full Parity
-
-**Goal:** Rust `rlm` binary replaces Node for all documented CLI workflows.  
-**Depends on:** Phase 65  
-**Requirements:** CLI-01, CLI-02, REG-02  
-**Success Criteria:**
-1. `plan-node`, `workflow-export`, `workflow-import` implemented (no exit-2 stubs)
-2. Session/memory flags and approval/plan-only/workflow/agent config match `args.ts`
-3. Parity CI covers new commands; README workflows run with `RLM_RUNTIME=rust` only
-
-### Phase 67: PACK-03 CI Smoke
-
-**Goal:** Release CI validates `.deb` artifacts on headless hosts.  
-**Depends on:** Phase 66 (may run in parallel with Phase 65–66)  
-**Requirements:** PACK-01, REG-02  
-**Success Criteria:**
-1. CI job installs built `.deb` and smoke-starts binary without GTK/dbus on developer machine
-2. Packaging workflow documents skip behavior for unsupported hosts
-
-**Plans:** 2/2 plans complete
-
-Plans:
-**Wave 1**
-- [x] 67-01-PLAN.md — Deb smoke script, skip detection, npm wiring
-
-**Wave 2** *(blocked on Wave 1 completion)*
-- [x] 67-02-PLAN.md — Headless Linux CI workflow + DESKTOP.md skip docs
-
-### Phase 68: Application Layer + Handler Split
-
-**Goal:** Rust module layout mirrors v1.6/v1.7 TypeScript concern grouping.  
-**Depends on:** Phase 67 (Wave 1 complete)  
-**Requirements:** ARCH-02, ARCH-03, REG-02  
-**Plans:** 2/2 plans complete
-**Success Criteria:**
-1. `application/` module groups execution, graph, memory, config, bootstrap facades
-2. `control_server/routes.rs` reduced to router wiring; handlers live in `handlers/` modules
-3. No handler file exceeds ~400 lines; existing route integration tests pass
-
-Plans:
-- [x] 68-01-PLAN.md — Application layer grouping (execution, graph, memory, config, bootstrap)
-- [x] 68-02-PLAN.md — Control-server handler split; routes.rs transport-only wiring
-
-### Phase 69: Large File Decomposition
-
-**Goal:** Break oversized Rust modules for maintainability without behavior change.  
-**Depends on:** Phase 68  
-**Requirements:** ARCH-04, REG-02  
-**Plans:** 5/5 plans complete
-**Success Criteria:**
-1. `recursive_language_model.rs`, `session_graph.rs`, `registry_service.rs`, `persistence/config.rs` split into focused modules
-2. Config split mirrors TS loader/validation/resolver separation
-3. All existing Rust integration tests pass after each extraction
-
-Plans:
-- [x] 69-01-PLAN.md — Config split: defaults, yaml_merge, validation, loader; persistence facade
-- [x] 69-02-PLAN.md — Plugin registry decomposition: types, catalog, install, doctor
-- [x] 69-03-PLAN.md — Session graph split: nodes, mutations, layout, planning
-- [x] 69-04-PLAN.md — RLM infrastructure peel: execution_control, engine_state, hosts, bridge
-- [x] 69-05-PLAN.md — RLM orchestrator phases + solve_tree; phase verification
-
-### Phase 70: Rust Boundary Enforcement
-
-**Goal:** Document and enforce Rust layer boundaries like TypeScript depcruise.  
-**Depends on:** Phase 69  
-**Requirements:** ARCH-05, REG-02  
-**Plans:** 2 plans  
-**Success Criteria:**
-1. `AGENTS.md` includes Rust concern map with may-import columns
-2. `scripts/check-rust-boundaries.sh` (or equivalent) fails CI on domain→persistence violations
-3. `npm run check:rust` invokes boundary check
-
-Plans:
-- [ ] 70-01-PLAN.md — Rust concern map in AGENTS.md + boundary rules TOML manifest
-- [ ] 70-02-PLAN.md — check-rust-boundaries.sh, domain test relocation, npm check:rust wiring
-
-### Phase 71: Optional Crate Split
-
-**Goal:** Improve compile iteration if single-crate layout remains painful after structural cleanup.  
-**Depends on:** Phase 70  
-**Requirements:** ARCH-06, REG-02  
-**Plans:** 3/3 plans complete
-**Success Criteria:**
-1. Compile/test baseline measured before and after split decision
-2. If split proceeds: `rlm-ports` + `rlm-domain` crates compile independently; `rlm-cli`/Tauri API unchanged
-3. If split deferred: documented rationale in phase summary with trigger conditions from seed
-
-Plans:
-- [x] 71-01-PLAN.md — Compile baseline measurement + SPLIT/DEFER gate
-- [x] 71-02-PLAN.md — Extract rlm-ports + rlm-domain (execute if SPLIT)
-- [x] 71-03-PLAN.md — Defer closure + ARCH-06 traceability (execute if DEFER)
-
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 62. UI Regression Fixes | v1.9 | 1/1 | Complete | 2026-05-22 |
-| 63. Quality Loop Parity | v1.9 | 1/1 | Complete   | 2026-05-22 |
-| 64. Resume Consumer + Run-State Port | v1.9 | 1/1 | Complete   | 2026-05-22 |
-| 65. Skill Interop | v1.9 | 1/1 | Complete   | 2026-05-22 |
+| 63. Quality Loop Parity | v1.9 | 1/1 | Complete | 2026-05-22 |
+| 64. Resume Consumer + Run-State Port | v1.9 | 1/1 | Complete | 2026-05-22 |
+| 65. Skill Interop | v1.9 | 1/1 | Complete | 2026-05-22 |
 | 66. CLI Full Parity | v1.9 | 1/1 | Complete | 2026-05-22 |
-| 67. PACK-03 CI Smoke | v1.9 | 2/2 | Complete    | 2026-05-22 |
-| 68. Application Layer + Handler Split | v1.9 | 2/2 | Complete    | 2026-05-22 |
-| 69. Large File Decomposition | v1.9 | 5/5 | Complete   | 2026-05-22 |
-| 70. Rust Boundary Enforcement | v1.9 | 0/? | Not started | — |
-| 71. Optional Crate Split | v1.9 | 3/3 | Complete   | 2026-05-22 |
+| 67. PACK-03 CI Smoke | v1.9 | 2/2 | Complete | 2026-05-22 |
+| 68. Application Layer + Handler Split | v1.9 | 2/2 | Complete | 2026-05-22 |
+| 69. Large File Decomposition | v1.9 | 5/5 | Complete | 2026-05-22 |
+| 70. Rust Boundary Enforcement | v1.9 | 2/2 | Complete | 2026-05-22 |
+| 71. Optional Crate Split | v1.9 | 3/3 | Complete | 2026-05-22 |

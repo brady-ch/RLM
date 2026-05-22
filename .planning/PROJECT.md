@@ -2,11 +2,13 @@
 
 ## Current State
 
-**Latest shipped milestone:** v1.8 — Rust Runtime Migration (2026-05-22; Phase 1 tech-debt closure 2026-05-22)  
-**Current milestone:** v1.9 — Rust Runtime Hardening (planning complete; Phase 62 next)  
-**Audit status:** v1.8 closed as tech_debt; v1.9 addresses documented deferrals and Rust structural cleanup
+**Latest shipped milestone:** v1.9 — Rust Runtime Hardening (2026-05-22)  
+**Current milestone:** None — run `/gsd-new-milestone` to plan next version  
+**Audit status:** v1.9 closed as tech_debt — 17/18 requirements satisfied; REG-01 human UAT unsigned; documented deferrals in archive audit
 
-v1.8 shipped a Rust-only runtime (`rlm-core`, `rlm-cli`) embedded in Tauri with no bundled Node. The Axum control server preserves the existing HTTP/SSE contract; persistence, recursive engine, graph executor, vector index, model library, plugins, and CLI parity CI all run in Rust. Phase 60.1 closed session/memory route gaps; Phase 61 rewrote the UI shell to a canvas-first AppShell (GraphCanvas, slim Run panel, Advanced hub). **471+** TypeScript tests and **67+** Rust integration tests green; ~15k LOC Rust workspace.
+v1.9 closed all v1.8 functional debt and hardened the Rust workspace to match the TypeScript concern map. Wave 1 delivered UI regression fixes, full quality loop parity, cross-session resume via `RunStateStorePort`, skill interop, full CLI parity, and PACK-03 CI smoke. Wave 2 applied application layer grouping, control-server handler split, large-file decomposition, Rust boundary enforcement (`check-rust-boundaries`), and evaluated defer on optional crate split (7s clean build, 8s lib tests — no split). Combined gates green at close: `npm run check`, `npm run check:rust`, `cargo test --workspace`.
+
+v1.8 shipped a Rust-only runtime (`rlm-core`, `rlm-cli`) embedded in Tauri with no bundled Node. The Axum control server preserves the existing HTTP/SSE contract; persistence, recursive engine, graph executor, vector index, model library, plugins, and CLI parity CI all run in Rust. Phase 61 rewrote the UI shell to a canvas-first AppShell (GraphCanvas, slim Run panel, Advanced hub). **471+** TypeScript tests and **67+** Rust integration tests green; ~15k LOC Rust workspace.
 
 <details>
 <summary>Prior milestone context (v1.0–v1.7)</summary>
@@ -89,18 +91,19 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Rust `rlm` binary with `RLM_RUNTIME` strangler switch and parity CI gate — v1.8 (partial: full ask/workflow/session CLI remains Node-only)
 - ✓ Tauri embeds Rust control server in-process; release bundle ships without bundled Node — v1.8
 - ✓ Canvas-first UI shell (AppShell, GraphCanvas, slim Run panel, Advanced hub) — v1.8
+- ✓ UI regression fixes — pause-auto-approvals and HF download wiring restored (REG-01 automated; human UAT pending) — v1.9
+- ✓ Rust quality loop matches TypeScript — full draft/critique/refine/gate/best-of with golden parity tests — v1.9
+- ✓ Cross-session resume consumer via RunStateStorePort with confirm gate and integration test — v1.9
+- ✓ Skill interop in Rust — discovery, path policies, `skill` tool, doctor warnings — v1.9
+- ✓ Full Rust CLI parity — plan-node, workflow export/import, session/memory flags — v1.9
+- ✓ Headless `.deb` CI smoke on ubuntu-latest with xvfb — v1.9
+- ✓ Rust `application/` layer, handler split, large-file decomposition — v1.9
+- ✓ Rust concern map in AGENTS.md and `check-rust-boundaries` in `npm run check:rust` — v1.9
+- ✓ Optional crate split evaluated defer — compile iteration acceptable, no extraction — v1.9
 
 ### Active
 
-See `.planning/REQUIREMENTS.md` for full v1.9 traceability.
-
-- [ ] **REG-01**: Close Phase 61 UI regressions and sign REG-01 human UAT
-- [ ] **ENGN-01**: Full Rust quality loop parity with TypeScript orchestrator
-- [ ] **PERS-01–03**: Cross-session resume consumer with dual-runtime cursor parity
-- [ ] **PLUG-01–02**: Skill interop depth in Rust runtime
-- [ ] **CLI-01–02**: Full Rust CLI parity (all Node run modes)
-- [ ] **PACK-01**: Headless `.deb` CI smoke (PACK-03 closure)
-- [ ] **ARCH-01–06**: Rust application layer, handler split, decomposition, boundary enforcement, optional crate split
+(None — next milestone requirements defined via `/gsd-new-milestone`)
 
 ### Candidate Future-Milestone Themes
 
@@ -119,7 +122,7 @@ See `.planning/REQUIREMENTS.md` for full v1.9 traceability.
 
 The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI in `ui/`, a Tauri shell under `src-tauri/`, and a Rust workspace under `crates/` (`rlm-core` ~15k LOC). **Production desktop uses Rust-only runtime** — Tauri embeds the Axum control server in-process; Node is no longer bundled. TypeScript remains for UI, tooling, and strangler parity tests (`RLM_RUNTIME=node|rust`).
 
-Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` (fmt, clippy, test). **471+** TS tests and **67+** Rust integration tests at v1.8 close.
+Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` (fmt, clippy, boundary check, test). **471+** TS tests and **67+** Rust integration tests at v1.9 close. Rust workspace has `application/`, decomposed handlers, and boundary enforcement matching TypeScript depcruise rules.
 
 ## Constraints
 
@@ -146,22 +149,26 @@ Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` 
 | v1.6 strangler extractions behind stable façades | Avoids flag-day breakage while shrinking hotspots | ✓ Good — v1.6 |
 | Dependency-cruiser ratcheted to error with empty baseline | Strict boundary enforcement after v1.7 taxonomy | ✓ Good — v1.7 |
 | v1.7 treats plugins as registration packages distinct from adapters | Enables auditable capability taxonomy | ✓ Good — v1.7 |
-| Rust runtime replaces Node for orchestration via HTTP/SSE strangler | Remove bundled Node; UI stays TS/React | ✓ Good — v1.8 (tech_debt on partial ports) |
+| Rust runtime replaces Node for orchestration via HTTP/SSE strangler | Remove bundled Node; UI stays TS/React | ✓ Good — v1.8; v1.9 closed partial ports |
 | Ollama remains default inference host during Rust migration | Avoid day-one llama.cpp bundling | ✓ Good — v1.8 |
-| Canvas-first UI shell (Phase 61) preserves HTTP/SSE contract | Frontend restructure only; Rust backend unchanged | ✓ Good — v1.8 (REG-01 human UAT pending) |
+| Canvas-first UI shell (Phase 61) preserves HTTP/SSE contract | Frontend restructure only; Rust backend unchanged | ✓ Good — v1.8/v1.9 |
+| v1.9 Wave 1 before Wave 2 structural cleanup | Close functional debt before architecture refactors | ✓ Good — v1.9 |
+| ARCH-06 evaluated defer over mandatory crate split | Measured compile iteration acceptable (7s/8s) | ✓ Good — v1.9 |
+| Rust boundary check baseline mode with strict opt-in | Transitional arcs documented; ratchet path preserved | ✓ Good — v1.9 |
 | Fine-tuning / LoRA explicitly out of scope | Compute and ecosystem cost | — Deferred |
 
-## Current Milestone: v1.9 Rust Runtime Hardening
+## Next Milestone Goals
 
-**Goal:** Close all v1.8 functional debt, then apply v1.6/v1.7 structural patterns to the Rust workspace so `rlm-core` matches the concern map enforced in TypeScript.
+Candidate themes (not yet scoped — run `/gsd-new-milestone`):
 
-**Target features:**
-- Wave 1: UI regression fixes, quality loop parity, resume consumer, skill interop, full CLI, PACK-03 CI
-- Wave 2: Application layer, handler split, file decomposition, Rust boundary enforcement, optional crate split
+- Product shell convergence: guided composer, session launcher, graph workspace as primary surface
+- UI resume control wiring (`POST /api/chat/resume-run`) and REG-01 human UAT sign-off
+- Managed llama.cpp runtime (INFR-01 seed)
+- Release hardening: signed artifacts, Windows/macOS packages, auto-update channel
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-22 after milestone v1.9 initialization*
+*Last updated: 2026-05-22 after v1.9 milestone*

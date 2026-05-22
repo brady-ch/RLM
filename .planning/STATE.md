@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Rust Runtime Hardening
-status: completed
-last_updated: "2026-05-22T22:39:20.639Z"
-last_activity: 2026-05-22
+status: Awaiting next milestone
+last_updated: "2026-05-22T23:00:00.000Z"
+last_activity: 2026-05-22 — Milestone v1.9 completed and archived
 progress:
   total_phases: 10
   completed_phases: 10
@@ -20,18 +20,18 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Phase 71 complete — optional crate split evaluated (DEFER)
+**Current focus:** Planning next milestone — run `/gsd-new-milestone`
 
 ## Current Position
 
-Phase: 71 (complete)
-Plan: 3/3
-Status: Complete
-Last activity: 2026-05-22
+Phase: Milestone v1.9 complete  
+Plan: —  
+Status: Awaiting next milestone  
+Last activity: 2026-05-22 — Milestone v1.9 completed and archived
 
 ## Performance Metrics
 
-**Velocity (v1.8):** 12 phases (1, 52–61), 23 plans; automated gates green on prior verification
+**Velocity (v1.9):** 10 phases (62–71), 19 plans, 42 tasks; milestone-close gates green
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -41,35 +41,41 @@ Last activity: 2026-05-22
 
 ## Accumulated Context
 
-v1.8 Rust runtime migration shipped: Axum control server strangler, persistence, recursive engine, graph executor, vector index, model library, plugins, CLI parity gate, Tauri in-process packaging, gap-closure routes (60.1), canvas-first UI shell (61). Phase 1 closed post-ship tech debt: UI regressions, MCP stdio client, `rlm ask`, resumeCursor, REG-01 UAT.
+v1.9 Rust Runtime Hardening shipped: UI regression fixes, full quality loop parity, cross-session resume via RunStateStorePort, skill interop, full CLI parity, PACK-03 CI smoke, application layer + handler split, large-file decomposition, Rust boundary enforcement, and ARCH-06 evaluated defer (no crate split). Combined gates: `npm run check`, `npm run check:rust`, `cargo test --workspace` — PASS at milestone close.
 
 ### Decisions
 
 - Empty `searchPaths: []` honored without default fallback (Phase 65)
 - SKILL_PARSE_ERROR lifecycle events deferred in Rust; string warnings only (Phase 65)
 - ARCH-06 closed via evaluated defer — compile iteration 7s clean, 8s lib tests (Phase 71)
+- Rust boundary check runs in baseline mode by default; strict mode available (Phase 70)
 
 ### Roadmap Evolution
 
+- Milestone v1.9 archived: Rust Runtime Hardening — phases 62–71 (2026-05-22)
 - Milestone v1.9 initialized: Rust Runtime Hardening — phases 62–71 (2026-05-22)
-- Phase 1 added: Close v1.8 tech debt — UI regressions, MCP client, CLI parity, run-state resume (2026-05-22)
-- Phase 60.1 inserted after Phase 60: Close v1.8 milestone gaps (2026-05-22)
-- Phase 61 added: UI shell rewrite — canvas-first shell (2026-05-22)
 
 ## Deferred Items
 
-v1.8 deferrals below are in scope for v1.9 (see `.planning/REQUIREMENTS.md`):
+Items acknowledged and deferred at milestone close on 2026-05-22:
 
-| Category | Item | v1.9 Phase |
-|----------|------|------------|
-| verification | Phase 61 REG-01 human UAT | 62 |
-| tech_debt | Quality loop simplified vs TS | 63 ✅ |
-| tech_debt | PERS-03 cross-session resume consumer | 64 ✅ |
-| tech_debt | PLUG-03 skill interop depth | 65 ✅ |
-| tech_debt | CLI-01 full workflow CLI on Rust | 66 |
-| tech_debt | PACK-03 .deb smoke on CI | 67 |
+| Category | Item | Status |
+|----------|------|--------|
+| verification | Phase 62 REG-01 human UAT (61-06 checklist unsigned) | human_needed |
+| verification | Phase 62 62-VERIFICATION.md | human_needed |
+| tech_debt | UI resume button not wired to POST /api/chat/resume-run | deferred |
+| tech_debt | TS graph executor persistResumeCursor at transitions | deferred |
+| tech_debt | SKILL_PARSE_ERROR lifecycle events in Rust | deferred |
+| tech_debt | ManifestSkillLoader async load() stub | deferred |
+| tech_debt | test:packaging not in default npm test gate | deferred |
+| tech_debt | 6 transitional boundary arcs baselined | deferred |
+| tech_debt | 71-DECISION.md stale Phase 70 prerequisite language | deferred |
+| todo | extract-runtime-composition-from-cli-entrypoint | pending |
+| todo | split-config-loader-resolver-validation | pending |
+| todo | rust-functional-debt-wave1 | pending |
+| todo | rust-structural-architecture-wave2 | pending |
 
 ## Operator Next Steps
 
-- `/gsd-plan-phase 66` — plan CLI Full Parity phase
-- Wire UI resume button to `POST /api/chat/resume-run` (optional follow-up)
+- `/gsd-new-milestone` — start next milestone (questioning → research → requirements → roadmap)
+- Optional: sign REG-01 human UAT on Rust-served UI; wire UI resume control

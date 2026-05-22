@@ -2,6 +2,58 @@
 
 *A living document updated after each milestone. Lessons feed forward into future planning.*
 
+## Milestone: v1.9 — Rust Runtime Hardening
+
+**Shipped:** 2026-05-22  
+**Phases:** 10 | **Plans:** 19 | **Audit:** tech_debt (17/18 requirements; REG-01 human UAT unsigned)
+
+### What Was Built
+
+- UI regression fixes restoring pause-auto-approvals and HF model download wiring for Phase 61 shell.
+- Full Rust quality loop parity — draft/critique/refine/gate/best-of with rubric selection, budget guard, and golden tests.
+- Cross-session graph resume via RunStateStorePort, cursor replay skipping completed nodes, confirm gate.
+- Rust skill interop — discovery, path policies, manifest loader registry, doctor warnings.
+- Full Rust CLI parity — plan-node, workflow export/import, session/memory flags.
+- PACK-03 CI smoke — headless `.deb` install on ubuntu-latest with xvfb.
+- Rust `application/` layer, control-server handler split (11 modules, 93-line router).
+- Large-file decomposition — config, registry, session_graph, recursive_language_model.
+- Rust boundary enforcement — AGENTS.md concern map, `check-rust-boundaries`, npm check:rust wiring.
+- ARCH-06 evaluated defer — 7s clean build, 8s lib tests; no crate split.
+
+### What Worked
+
+- Wave 1 (functional debt) before Wave 2 (structural cleanup) kept parity gates green throughout.
+- Measured compile baseline (71-01) provided objective gate for crate split defer decision.
+- Mirroring v1.6/v1.7 TypeScript patterns in Rust (`application/`, handler split) reduced cognitive load.
+- Same-day concentrated execution across 10 phases with OOM-safe per-phase verification policy.
+
+### What Was Inefficient
+
+- REG-01 human UAT deferred again — automated contract tests pass but operator sign-off still pending.
+- Nyquist validation artifacts missing for all phases 62–71 (same pattern as v1.8).
+- UI resume backend complete but no UI consumer wired — integration gap discovered at audit not phase close.
+- ROADMAP.md phase checkboxes lagged disk status during autonomous execution (65, 67, 68, 70 showed incomplete).
+
+### Patterns Established
+
+- Rust boundary rules in TOML manifest with baseline mode + strict opt-in (`check:rust:boundaries:strict`).
+- Evaluated defer as valid ARCH-06 closure when measured iteration is acceptable.
+- Decomposition waves: config/registry → session_graph → RLM infrastructure → orchestrator phases.
+
+### Key Lessons
+
+1. Backend-complete features need explicit UI wiring checklist before phase close (resume-run gap).
+2. Human UAT items should block REG-01 checkbox even when automated tests pass.
+3. ROADMAP checkbox sync should run at phase close to avoid audit confusion.
+
+### Cost Observations
+
+- Model mix: inherited session defaults.
+- Sessions: same-day execution; Wave 2 structural phases ran after Wave 1 parity confirmed green.
+- Notable: evaluated defer avoided premature crate split overhead with measured evidence.
+
+---
+
 ## Milestone: v1.8 — Rust Runtime Migration
 
 **Shipped:** 2026-05-22  
