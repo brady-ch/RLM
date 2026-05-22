@@ -56,9 +56,10 @@ if (!existsSync(rustBinarySrc)) {
 }
 
 mkdirSync(outRoot, { recursive: true });
-cpSync(rustBinarySrc, join(outRoot, rustBinaryName));
+mkdirSync(join(outRoot, "bin"), { recursive: true });
+cpSync(rustBinarySrc, join(outRoot, "bin", rustBinaryName));
 if (process.platform !== "win32") {
-  chmodSync(join(outRoot, rustBinaryName), 0o755);
+  chmodSync(join(outRoot, "bin", rustBinaryName), 0o755);
 }
 cpSync(srcUiDist, join(outRoot, "ui-dist"), { recursive: true });
 
@@ -72,7 +73,7 @@ if (process.platform === "win32") {
     "setlocal",
     "set \"SCRIPT_ROOT=%~dp0\"",
     "set \"SCRIPT_ROOT=%SCRIPT_ROOT:~0,-1%\"",
-    `"%SCRIPT_ROOT%\\${rustBinaryName}" %*`,
+    `"%SCRIPT_ROOT%\\bin\\${rustBinaryName}" %*`,
     "",
   ].join("\r\n");
   writeFileSync(join(outRoot, "rlm.cmd"), winSh);
@@ -81,7 +82,7 @@ if (process.platform === "win32") {
     "#!/usr/bin/env sh",
     "# RLM launcher — invokes packaged Rust binary",
     'SCRIPT_ROOT="$(CDPATH="" cd "$(dirname "$0")" && pwd)"',
-    `exec "$SCRIPT_ROOT/${rustBinaryName}" "$@"`,
+    `exec "$SCRIPT_ROOT/bin/${rustBinaryName}" "$@"`,
     "",
   ].join("\n");
   writeFileSync(join(outRoot, "rlm"), unixSh, { mode: 0o755 });
@@ -99,7 +100,7 @@ writeFileSync(
       uiDist: "ui-dist",
       runtime: {
         kind: "rust-binary",
-        binary: rustBinaryName,
+        binary: `bin/${rustBinaryName}`,
       },
       launch: {
         unix: "./rlm ui",

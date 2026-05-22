@@ -10,7 +10,8 @@ const tag = `${process.platform}-${process.arch}`;
 const outRoot = resolve(root, "dist", "release", tag);
 
 const rustBinaryName = process.platform === "win32" ? "rlm.exe" : "rlm";
-const required = ["ui-dist/index.html", rustBinaryName, "desktop-manifest.json"];
+const rustBinaryPath = `bin/${rustBinaryName}`;
+const required = ["ui-dist/index.html", rustBinaryPath, "desktop-manifest.json"];
 
 if (process.platform === "win32") {
   required.push("rlm.cmd");
@@ -29,12 +30,12 @@ if (manifest.platform !== process.platform || manifest.arch !== process.arch) {
   console.error("Release smoke failed; manifest platform does not match current build.");
   process.exit(1);
 }
-if (manifest.runtime?.kind !== "rust-binary" || manifest.runtime?.binary !== rustBinaryName) {
+if (manifest.runtime?.kind !== "rust-binary" || manifest.runtime?.binary !== rustBinaryPath) {
   console.error("Release smoke failed; manifest Rust runtime metadata is invalid.");
   process.exit(1);
 }
 
-const versionCheck = spawnSync(resolve(outRoot, rustBinaryName), ["--help"], {
+const versionCheck = spawnSync(resolve(outRoot, rustBinaryPath), ["--help"], {
   encoding: "utf8",
 });
 if (versionCheck.status !== 0) {
