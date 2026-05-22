@@ -1,0 +1,135 @@
+# Rust layer boundary rules for scripts/check-rust-boundaries.sh
+#
+# Layer detection:
+# - Files under crates/rlm-core/src/{layer}/ map to that layer name (first path segment).
+# - Files under crates/rlm-cli/src/ map to layer "cli" (no inner forbidden arcs from cli).
+#
+# Import detection:
+# - `use crate::{layer}::...` — resolved against the file's crate (rlm-core inner layers).
+# - `use rlm_core::{layer}::...` — external callers (rlm-cli) targeting rlm-core layers.
+# - Submodules like `use crate::domain::types::Foo` count as importing layer "domain".
+#
+# Rule names must match AGENTS.md "Rust boundary rules" table.
+
+[scan]
+roots = ["crates/rlm-core/src", "crates/rlm-cli/src"]
+exclude_globs = ["**/target/**"]
+
+[[forbidden]]
+name = "no-domain-to-persistence"
+from_layer = "domain"
+to_layer = "persistence"
+severity = "error"
+comment = "AGENTS.md: domain must not import persistence (concrete stores)"
+
+[[forbidden]]
+name = "no-domain-to-adapters"
+from_layer = "domain"
+to_layer = "adapters"
+severity = "error"
+comment = "AGENTS.md: domain must not import adapters (model hosts)"
+
+[[forbidden]]
+name = "no-domain-to-application"
+from_layer = "domain"
+to_layer = "application"
+severity = "error"
+comment = "AGENTS.md: domain holds policy, not orchestration"
+
+[[forbidden]]
+name = "no-domain-to-control_server"
+from_layer = "domain"
+to_layer = "control_server"
+severity = "error"
+comment = "AGENTS.md: domain stays transport-agnostic"
+
+[[forbidden]]
+name = "no-domain-to-plugins"
+from_layer = "domain"
+to_layer = "plugins"
+severity = "error"
+comment = "AGENTS.md: domain stays free of plugin machinery"
+
+[[forbidden]]
+name = "no-domain-to-interop"
+from_layer = "domain"
+to_layer = "interop"
+severity = "error"
+comment = "AGENTS.md: domain stays free of MCP/skill wiring"
+
+[[forbidden]]
+name = "no-ports-to-adapters"
+from_layer = "ports"
+to_layer = "adapters"
+severity = "error"
+comment = "AGENTS.md: ports are interfaces only"
+
+[[forbidden]]
+name = "no-ports-to-persistence"
+from_layer = "ports"
+to_layer = "persistence"
+severity = "error"
+comment = "AGENTS.md: ports must not reference implementations"
+
+[[forbidden]]
+name = "no-ports-to-control_server"
+from_layer = "ports"
+to_layer = "control_server"
+severity = "error"
+comment = "AGENTS.md: ports stay transport-agnostic"
+
+[[forbidden]]
+name = "no-ports-to-application"
+from_layer = "ports"
+to_layer = "application"
+severity = "error"
+comment = "AGENTS.md: ports are contracts, not use cases"
+
+[[forbidden]]
+name = "no-adapters-to-control_server"
+from_layer = "adapters"
+to_layer = "control_server"
+severity = "error"
+comment = "AGENTS.md: adapters implement ports, not HTTP"
+
+[[forbidden]]
+name = "no-adapters-to-application"
+from_layer = "adapters"
+to_layer = "application"
+severity = "error"
+comment = "AGENTS.md: adapters stay below orchestration"
+
+[[forbidden]]
+name = "no-persistence-to-control_server"
+from_layer = "persistence"
+to_layer = "control_server"
+severity = "error"
+comment = "AGENTS.md: stores stay below transport"
+
+[[forbidden]]
+name = "no-persistence-to-application"
+from_layer = "persistence"
+to_layer = "application"
+severity = "error"
+comment = "AGENTS.md: stores implement ports, not use cases"
+
+[[forbidden]]
+name = "no-plugins-to-application"
+from_layer = "plugins"
+to_layer = "application"
+severity = "error"
+comment = "AGENTS.md: plugins register via extension host, not orchestration"
+
+[[forbidden]]
+name = "no-plugins-to-domain"
+from_layer = "plugins"
+to_layer = "domain"
+severity = "error"
+comment = "AGENTS.md: plugins register tools; domain policy stays separate"
+
+[[forbidden]]
+name = "no-plugins-to-persistence"
+from_layer = "plugins"
+to_layer = "persistence"
+severity = "error"
+comment = "AGENTS.md: plugins reach stores through ports/bootstrap"
