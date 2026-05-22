@@ -13,12 +13,12 @@
 
 ### Concern Taxonomy (src + project)
 
-- [ ] **TAXN-01**: Publish a canonical concern map in `AGENTS.md` covering `src/` top-level areas (`cli`, `application`, `domain`, `ports`, `runtime`, `plugins`, `adapters`) and how `tests/`, `ui/`, and `scripts/` relate to each concern.
+- [x] **TAXN-01**: Publish a canonical concern map in `AGENTS.md` covering `src/` top-level areas (`cli`, `application`, `domain`, `ports`, `runtime`, `plugins`, `adapters`) and how `tests/`, `ui/`, and `scripts/` relate to each concern.
 - [x] **TAXN-02**: `src/application/` groups modules by concern — at minimum `execution/`, `graph/`, `memory/`, `plugins/` (manager), and `control-server/` — with flat root files reduced to facades or moved behind concern folders.
 - [x] **TAXN-03**: `src/runtime/` owns composition and interop wiring (`composition/`, `interop/`); `application/` no longer hosts `extension-host`, `runtime-composition`, `interop-runtime`, or `mcp-skill-runtime` after extraction.
 - [x] **TAXN-04**: `src/plugins/` owns registration/distribution packages; `src/adapters/` retains infrastructure port implementations only (persistence, model hosts, tracing) — no new tool implementations land in `adapters/tools/` after migration.
-- [ ] **TAXN-05**: `tests/` layout mirrors the stabilized `src/` concern map (e.g. `tests/runtime/`, `tests/plugins/`, `tests/application/graph/`) with shared helpers remaining in `tests/helpers/`.
-- [ ] **TAXN-06**: dependency-cruiser rules encode the concern taxonomy (forbidden arcs for `plugins→application`, `runtime→cli`, `domain→application`, etc.) and are documented alongside `AGENTS.md`.
+- [x] **TAXN-05**: `tests/` layout mirrors the stabilized `src/` concern map (e.g. `tests/runtime/`, `tests/plugins/`, `tests/application/graph/`) with shared helpers remaining in `tests/helpers/`.
+- [x] **TAXN-06**: dependency-cruiser rules encode the concern taxonomy (forbidden arcs for `plugins→application`, `runtime→cli`, `domain→application`, etc.) and are documented alongside `AGENTS.md`.
 
 ### Runtime & Boundary Fixes
 
@@ -40,7 +40,7 @@
 ### Dependency-Cruiser Enforcement
 
 - [ ] **DEPS-01**: All three baseline violations from v1.6 are fixed (not suppressed); `dependency-cruiser-baseline.json` shrinks toward empty.
-- [ ] **DEPS-02**: Rules for new paths (`plugins/`, `runtime/`) land before directory moves complete; forbidden import arcs match the concern map.
+- [x] **DEPS-02**: Rules for new paths (`plugins/`, `runtime/`) land before directory moves complete; forbidden import arcs match the concern map.
 - [ ] **DEPS-03**: dependency-cruiser severity ratchets from `warn` to `error` only when baseline is empty; `npm run check` uses strict depcruise without `--ignore-known`.
 - [ ] **DEPS-04**: Optional follow-on rule: `application→adapters` imports centralized through runtime composition/bootstrap only (documented exceptions if any remain).
 
@@ -107,12 +107,12 @@
 |-------------|-------|--------|
 | REG-01 | Phase 43 | Pending |
 | REG-02 | Phase 43 | Pending |
-| TAXN-01 | Phase 47 | Pending |
+| TAXN-01 | Phase 47 | Complete |
 | TAXN-02 | Phase 45 | Complete |
 | TAXN-03 | Phase 44 | Complete |
 | TAXN-04 | Phase 46 | Complete |
-| TAXN-05 | Phase 47 | Pending |
-| TAXN-06 | Phase 47 | Pending |
+| TAXN-05 | Phase 47 | Complete |
+| TAXN-06 | Phase 47 | Complete |
 | RUNT-01 | Phase 43 | Pending |
 | RUNT-02 | Phase 43 | Pending |
 | RUNT-03 | Phase 44 | Complete |
@@ -125,7 +125,7 @@
 | PLUG-05 | Phase 46 | Complete |
 | PLUG-06 | Phase 46 | Complete |
 | DEPS-01 | Phase 48 | Pending |
-| DEPS-02 | Phase 47 | Pending |
+| DEPS-02 | Phase 47 | Complete |
 | DEPS-03 | Phase 48 | Pending |
 | DEPS-04 | Phase 48 | Pending |
 | MGR-01 | Phase 49 | Pending |

@@ -27,7 +27,7 @@
 - [x] **Phase 44: Runtime & Interop Split** — Move composition and MCP/skill interop to `src/runtime/` with init-order test (1/1 plan) — 2026-05-22
 - [x] **Phase 45: Application Concern Grouping** — Group `application/` by execution, graph, memory, plugins, control-server (1/1 plan) — 2026-05-22
 - [x] **Phase 46: Plugin Taxonomy & Builtin Migration** — Manifest schema, PluginLoader, builtin migration, legacy YAML compat (1/1 plan) — 2026-05-22
-- [ ] **Phase 47: Concern Map, Tests Mirror & Depcruise Rules** — AGENTS.md taxonomy, mirrored tests, new path rules
+- [x] **Phase 47: Concern Map, Tests Mirror & Depcruise Rules** — AGENTS.md taxonomy, mirrored tests, new path rules (1/1 plan) — 2026-05-22
 - [ ] **Phase 48: Dependency-Cruiser Ratchet** — Empty baseline, warn→error severity, strict `npm run check`
 - [ ] **Phase 49: Local Plugin Manager** — CLI commands, shared registry service, catalog under `~/.rlm/plugins/`
 - [ ] **Phase 50: Remote Fetch** — HTTPS archive and optional git fetch-to-local with security defenses
@@ -129,9 +129,7 @@ See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIR
   2. `tests/` layout mirrors stabilized `src/` concerns (e.g. `tests/runtime/`, `tests/plugins/`, `tests/application/graph/`) with shared helpers in `tests/helpers/`
   3. dependency-cruiser rules for new paths (`plugins/`, `runtime/`) forbid arcs matching the concern map (e.g. `plugins→application`, `runtime→cli`, `domain→application`)
   4. Contributor adding a cross-layer import sees a dependency-cruiser violation with a message referencing the concern map
-**Plans**: TBD
-
-### Phase 48: Dependency-Cruiser Ratchet
+**Plans**: 1/1 complete
 **Goal**: Boundary enforcement is strict — baseline empty, severity error, CI uses strict depcruise without `--ignore-known`.
 **Depends on**: Phase 47
 **Requirements**: DEPS-01, DEPS-03, DEPS-04
@@ -190,7 +188,7 @@ Phases execute in numeric order: 43 → 44 → … → 51
 | 44. Runtime & Interop Split | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 45. Application Concern Grouping | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 46. Plugin Taxonomy & Builtin Migration | v1.7 | 1/1 | Complete   | 2026-05-22 |
-| 47. Concern Map, Tests Mirror & Depcruise Rules | v1.7 | 0/TBD | Not started | - |
+| 47. Concern Map, Tests Mirror & Depcruise Rules | v1.7 | 1/1 | Complete   | 2026-05-22 |
 | 48. Dependency-Cruiser Ratchet | v1.7 | 0/TBD | Not started | - |
 | 49. Local Plugin Manager | v1.7 | 0/TBD | Not started | - |
 | 50. Remote Fetch | v1.7 | 0/TBD | Not started | - |

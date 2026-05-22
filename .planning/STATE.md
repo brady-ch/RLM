@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Adapter & Plugin Taxonomy
 status: executing
-stopped_at: Completed 46-01-PLAN.md
+stopped_at: Completed 47-01-PLAN.md
 last_updated: "2026-05-22"
-last_activity: 2026-05-22 — Phase 46 complete (plugin taxonomy, 365 tests green)
+last_activity: 2026-05-22 — Phase 47 complete (concern map, tests mirror, depcruise rules, 450 tests green)
 progress:
   total_phases: 9
-  completed_phases: 4
-  total_plans: 4
-  completed_plans: 4
-  percent: 44
+  completed_phases: 5
+  total_plans: 5
+  completed_plans: 5
+  percent: 56
 ---
 
 # Project State
@@ -21,26 +21,27 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone v1.7 — Phase 47 Concern Map, Tests Mirror & Depcruise Rules.
+**Current focus:** Milestone v1.7 — Phase 48 Dependency-Cruiser Ratchet.
 
 ## Current Position
 
-Phase: 47 of 51 (Concern Map, Tests Mirror & Depcruise Rules)
+Phase: 48 of 51 (Dependency-Cruiser Ratchet)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-22 — Phase 46 complete (plugin taxonomy & builtin migration, 365 tests green)
+Last activity: 2026-05-22 — Phase 47 complete (concern map, tests mirror, depcruise rules, 450 tests green)
 
-Progress: [████░░░░░░] 44%
+Progress: [█████░░░░░] 56%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v1.7): 4
+- Total plans completed (v1.7): 5
 - Phase 43: 1 plan, 359 tests green
 - Phase 44: 1 plan, 360 tests green
 - Phase 45: 1 plan, 360 tests green
 - Phase 46: 1 plan, 365 tests green
+- Phase 47: 1 plan, 450 tests green
 
 **By Phase:**
 
@@ -50,7 +51,8 @@ Progress: [████░░░░░░] 44%
 | 44 | 1 | 1 | 1 |
 | 45 | 1 | 1 | 1 |
 | 46 | 1 | 1 | 1 |
-| 47-51 | 0 | TBD | — |
+| 47 | 1 | 1 | 1 |
+| 48-51 | 0 | TBD | — |
 
 ## Accumulated Context
 
@@ -71,12 +73,16 @@ Phase 45 completed: Application modules grouped into execution/, graph/, memory/
 
 Phase 46 completed: Plugin manifest schema, PluginLoader unified discovery, built-in tools migrated to `src/plugins/builtin/`; legacy `extensions.load` compat shim; AGENTS.md taxonomy.
 
+Phase 47 completed: Canonical concern map in AGENTS.md; tests/ mirrored to src/ layout; depcruise rules for plugins/runtime at warn severity; 450 tests green.
+
 - Optional onInitStage recorder on buildRuntimeContext for init-order testing
 - Runtime composition under `src/runtime/composition/`; interop under `src/runtime/interop/`
 - Root facade re-exports at application/ for backward-compatible imports
 - plugins/ concern established with ExtensionRegistryEntry facade (Phase 46 expands to manager)
 - Tool implementations under plugins/builtin/; adapters barrel re-exports during strangler migration
 - Legacy extensions.load synthesizes interop-category manifests when no rlm.plugin.json on disk
+- runtime→cli imports in build-runtime-context deferred to Phase 48 bootstrap injection
+- depcruise meta-tests under tests/depcruise/ as tooling concern
 
 ### Pending Todos
 
@@ -97,9 +103,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-05-22
-Stopped at: Completed 46-01-PLAN.md
+Stopped at: Completed 47-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
 
-Proceed with Phase 47 Concern Map, Tests Mirror & Depcruise Rules.
+Proceed with Phase 48 Dependency-Cruiser Ratchet (fix runtime→cli warnings, ratchet to error severity).
