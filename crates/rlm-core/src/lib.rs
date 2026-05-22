@@ -1,8 +1,10 @@
 pub mod adapters;
+pub mod bootstrap;
 pub mod control_server;
 pub mod domain;
 pub mod execution;
 pub mod graph;
+pub mod interop;
 pub mod memory;
 pub mod model_library;
 pub mod persistence;
@@ -11,6 +13,7 @@ pub mod ports;
 pub mod server;
 
 pub use adapters::OllamaLanguageModel;
+pub use bootstrap::prepare_ask_execution;
 pub use control_server::state;
 pub use domain::RecursiveLanguageModel;
 pub use execution::InteractiveExecutionSession;
