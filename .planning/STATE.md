@@ -20,14 +20,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Awaiting next milestone
+**Current focus:** Milestone v1.9 — Phase 62 UI Regression Fixes next
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 62 — UI Regression Fixes (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-22 — Milestone v1.9 started
+Status: Ready to plan
+Last activity: 2026-05-22 — Milestone v1.9 roadmap defined (10 phases, 18 requirements)
 
 ## Performance Metrics
 
@@ -39,28 +39,25 @@ v1.8 Rust runtime migration shipped: Axum control server strangler, persistence,
 
 ### Roadmap Evolution
 
+- Milestone v1.9 initialized: Rust Runtime Hardening — phases 62–71 (2026-05-22)
 - Phase 1 added: Close v1.8 tech debt — UI regressions, MCP client, CLI parity, run-state resume (2026-05-22)
 - Phase 60.1 inserted after Phase 60: Close v1.8 milestone gaps (2026-05-22)
 - Phase 61 added: UI shell rewrite — canvas-first shell (2026-05-22)
 
 ## Deferred Items
 
-Items acknowledged and deferred at milestone close on 2026-05-22:
+v1.8 deferrals below are in scope for v1.9 (see `.planning/REQUIREMENTS.md`):
 
-| Category | Item | Status |
-|----------|------|--------|
-| verification | Phase 61: 61-06-VERIFICATION.md | human_needed |
-| verification | Phase 61: 61-VERIFICATION.md | human_needed |
-| todo | create-next-milestone-roadmap | pending |
-| todo | extract-runtime-composition-from-cli-entrypoint | pending |
-| todo | split-config-loader-resolver-validation | pending |
-| tech_debt | CLI-01: full workflow CLI on Rust | partial |
-| tech_debt | PLUG-03: skill interop depth | partial |
-| tech_debt | PERS-03: cross-session resume consumer | partial |
-| tech_debt | PACK-03: .deb smoke deferred on CI hosts without GTK/dbus | deferred |
-| tech_debt | Phase 54: quality loop simplified vs TS orchestrator | partial |
+| Category | Item | v1.9 Phase |
+|----------|------|------------|
+| verification | Phase 61 REG-01 human UAT | 62 |
+| tech_debt | Quality loop simplified vs TS | 63 |
+| tech_debt | PERS-03 cross-session resume consumer | 64 |
+| tech_debt | PLUG-03 skill interop depth | 65 |
+| tech_debt | CLI-01 full workflow CLI on Rust | 66 |
+| tech_debt | PACK-03 .deb smoke on CI | 67 |
 
 ## Operator Next Steps
 
-- `/gsd-new-milestone` — define next milestone requirements and roadmap
-- Optional: `/gsd-cleanup` — no action needed (Phase 1 archived to v1.8-phases)
+- `/gsd-discuss-phase 62` — gather context for UI regression fixes
+- `/gsd-plan-phase 62` — plan Phase 62 directly
