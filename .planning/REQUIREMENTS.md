@@ -24,8 +24,8 @@
 
 ### Plugins & Interop
 
-- [ ] **PLUG-01**: Skill interop ports to Rust — skill discovery, path policies, cache, and `skill` tool registration with preserved init order.
-- [ ] **PLUG-02**: Plugin doctor surfaces skill path violations with actionable warnings (mirrors MCP doctor pattern).
+- [x] **PLUG-01**: Skill interop ports to Rust — skill discovery, path policies, cache, and `skill` tool registration with preserved init order.
+- [x] **PLUG-02**: Plugin doctor surfaces skill path violations with actionable warnings (mirrors MCP doctor pattern).
 
 ### CLI
 
@@ -77,8 +77,8 @@
 | PERS-01 | Phase 64 | Complete |
 | PERS-02 | Phase 64 | Complete |
 | PERS-03 | Phase 64 | Complete |
-| PLUG-01 | Phase 65 | Pending |
-| PLUG-02 | Phase 65 | Pending |
+| PLUG-01 | Phase 65 | Complete |
+| PLUG-02 | Phase 65 | Complete |
 | CLI-01 | Phase 66 | Pending |
 | CLI-02 | Phase 66 | Pending |
 | PACK-01 | Phase 67 | Pending |

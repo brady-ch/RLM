@@ -166,7 +166,7 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 | 62. UI Regression Fixes | v1.9 | 1/1 | Complete | 2026-05-22 |
 | 63. Quality Loop Parity | v1.9 | 1/1 | Complete   | 2026-05-22 |
 | 64. Resume Consumer + Run-State Port | v1.9 | 1/1 | Complete   | 2026-05-22 |
-| 65. Skill Interop | v1.9 | 0/? | Not started | — |
+| 65. Skill Interop | v1.9 | 1/1 | Complete   | 2026-05-22 |
 | 66. CLI Full Parity | v1.9 | 0/? | Not started | — |
 | 67. PACK-03 CI Smoke | v1.9 | 0/? | Not started | — |
 | 68. Application Layer + Handler Split | v1.9 | 0/? | Not started | — |
