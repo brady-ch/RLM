@@ -10,6 +10,7 @@ pub struct ServerConfig {
     pub port: u16,
     pub ui_dist_dir: Option<PathBuf>,
     pub project_root: PathBuf,
+    pub memory_session_id: Option<String>,
 }
 
 pub struct ControlServer {
@@ -20,10 +21,12 @@ pub struct ControlServer {
 }
 
 pub async fn start_server(config: ServerConfig) -> Result<ControlServer, std::io::Error> {
-    let app: Router = control_server::build_router(control_server::RouterState {
-        ui_dist_dir: config.ui_dist_dir,
-        project_root: config.project_root,
-    });
+    let mut router_state =
+        control_server::RouterState::new(config.project_root).with_ui_dist(config.ui_dist_dir);
+    if let Some(session_id) = config.memory_session_id {
+        router_state = router_state.with_memory_session_id(session_id);
+    }
+    let app: Router = control_server::build_router(router_state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], config.port));
     let listener = TcpListener::bind(addr).await?;

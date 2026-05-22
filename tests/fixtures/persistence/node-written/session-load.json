@@ -1,0 +1,86 @@
+{
+  "id": "demo",
+  "name": "Demo",
+  "createdAt": "2026-05-21T00:00:00.000Z",
+  "updatedAt": "2026-05-21T00:00:00.000Z",
+  "status": "complete",
+  "path": "/home/brady/workspace/RLM/tests/fixtures/persistence/node-written/.rlm/sessions/demo",
+  "payload": {
+    "session": {
+      "graph": {
+        "nodes": [],
+        "edges": []
+      },
+      "status": "planned"
+    },
+    "runState": null,
+    "artifacts": {
+      "refs": []
+    },
+    "memory": {
+      "status": "contract_saved",
+      "scopes": []
+    },
+    "preferences": {
+      "status": "contract_saved",
+      "preferences": []
+    },
+    "vectorIndex": {
+      "status": "not_indexed",
+      "rebuildNeeded": true
+    },
+    "graphWorkflowMetadata": {
+      "version": 1
+    }
+  },
+  "verification": {
+    "status": "complete",
+    "sections": [
+      {
+        "name": "session",
+        "status": "complete",
+        "path": "/home/brady/workspace/RLM/tests/fixtures/persistence/node-written/.rlm/sessions/demo/session.json",
+        "version": 1
+      },
+      {
+        "name": "runState",
+        "status": "complete",
+        "path": "/home/brady/workspace/RLM/tests/fixtures/persistence/node-written/.rlm/sessions/demo/run-state.json",
+        "version": 1
+      },
+      {
+        "name": "artifacts",
+        "status": "complete",
+        "path": "/home/brady/workspace/RLM/tests/fixtures/persistence/node-written/.rlm/sessions/demo/artifacts.json",
+        "version": 1
+      },
+      {
+        "name": "memory",
+        "status": "complete",
+        "path": "/home/brady/workspace/RLM/tests/fixtures/persistence/node-written/.rlm/sessions/demo/memory.json",
+        "version": 1
+      },
+      {
+        "name": "preferences",
+        "status": "complete",
+        "path": "/home/brady/workspace/RLM/tests/fixtures/persistence/node-written/.rlm/sessions/demo/preferences.json",
+        "version": 1
+      },
+      {
+        "name": "vectorIndex",
+        "status": "complete",
+        "path": "/home/brady/workspace/RLM/tests/fixtures/persistence/node-written/.rlm/sessions/demo/vector-index.json",
+        "version": 1
+      },
+      {
+        "name": "graphWorkflowMetadata",
+        "status": "complete",
+        "path": "/home/brady/workspace/RLM/tests/fixtures/persistence/node-written/.rlm/sessions/demo/graph-workflow-metadata.json",
+        "version": 1
+      }
+    ],
+    "missing": [],
+    "corrupt": [],
+    "unsafeToContinue": false
+  }
+}

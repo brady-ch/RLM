@@ -1,0 +1,22 @@
+{
+  "runId": "run-1",
+  "version": 2,
+  "metadata": {
+    "source": "fixture",
+    "phase": "planning"
+  },
+  "nodeStatuses": [],
+  "artifactRefs": {},
+  "checkpoints": [],
+  "mutationLog": [
+    {
+      "seq": 1,
+      "actor": "runtime",
+      "path": "metadata.phase",
+      "action": "set",
+      "accepted": true,
+      "reason": "accepted",
+      "timestamp": "2026-05-19T00:00:00.000Z"
+    }
+  ]
+}

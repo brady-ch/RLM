@@ -1,0 +1,11 @@
+[
+  {
+    "seq": 1,
+    "sessionId": "run-1",
+    "scopeId": "project-facts",
+    "actor": "node-a",
+    "accepted": true,
+    "reason": "accepted",
+    "timestamp": "2026-05-20T00:00:00.000Z"
+  }
+]

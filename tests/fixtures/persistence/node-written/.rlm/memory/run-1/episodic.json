@@ -1,0 +1,10 @@
+[
+  {
+    "id": "episode-1779470546543-4okvdk4qds4",
+    "sessionId": "run-1",
+    "type": "scope_write",
+    "summary": "Scope project-facts updated by node-a.",
+    "scopeIds": ["project-facts"],
+    "timestamp": "2026-05-20T00:00:00.000Z"
+  }
+]

@@ -30,6 +30,7 @@ async fn control_server_matches_golden_fixtures() {
         port: 0,
         ui_dist_dir: None,
         project_root: PathBuf::from("."),
+        memory_session_id: None,
     })
     .await
     .expect("start server");
@@ -73,6 +74,7 @@ async fn events_stream_uses_event_stream_content_type() {
         port: 0,
         ui_dist_dir: None,
         project_root: PathBuf::from("."),
+        memory_session_id: None,
     })
     .await
     .expect("start server");
@@ -110,6 +112,7 @@ async fn root_serves_ui_placeholder_without_dist() {
         port: 0,
         ui_dist_dir: None,
         project_root: PathBuf::from("."),
+        memory_session_id: None,
     })
     .await
     .expect("start server");

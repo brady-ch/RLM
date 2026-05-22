@@ -1,0 +1,37 @@
+{
+  "sessionId": "run-1",
+  "scopes": [
+    {
+      "sessionId": "run-1",
+      "scopeId": "project-facts",
+      "lifetime": "project",
+      "version": 1,
+      "content": {
+        "language": "TypeScript"
+      },
+      "updatedAt": "2026-05-20T00:00:00.000Z"
+    }
+  ],
+  "episodic": [
+    {
+      "id": "episode-1779470546543-4okvdk4qds4",
+      "sessionId": "run-1",
+      "type": "scope_write",
+      "summary": "Scope project-facts updated by node-a.",
+      "scopeIds": ["project-facts"],
+      "timestamp": "2026-05-20T00:00:00.000Z"
+    }
+  ],
+  "packets": [],
+  "audit": [
+    {
+      "seq": 1,
+      "sessionId": "run-1",
+      "scopeId": "project-facts",
+      "actor": "node-a",
+      "accepted": true,
+      "reason": "accepted",
+      "timestamp": "2026-05-20T00:00:00.000Z"
+    }
+  ]
+}

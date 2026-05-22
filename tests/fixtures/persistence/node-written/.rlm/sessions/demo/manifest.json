@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "demo",
+  "name": "Demo",
+  "createdAt": "2026-05-21T00:00:00.000Z",
+  "updatedAt": "2026-05-21T00:00:00.000Z",
+  "sections": {
+    "session": {
+      "file": "session.json",
+      "version": 1
+    },
+    "runState": {
+      "file": "run-state.json",
+      "version": 1
+    },
+    "artifacts": {
+      "file": "artifacts.json",
+      "version": 1
+    },
+    "memory": {
+      "file": "memory.json",
+      "version": 1
+    },
+    "preferences": {
+      "file": "preferences.json",
+      "version": 1
+    },
+    "vectorIndex": {
+      "file": "vector-index.json",
+      "version": 1
+    },
+    "graphWorkflowMetadata": {
+      "file": "graph-workflow-metadata.json",
+      "version": 1
+    }
+  }
+}
