@@ -112,6 +112,7 @@ pub fn build_router(state: Arc<RouterState>) -> Router {
         .route("/api/chat/apply", post(chat_apply))
         .route("/api/chat/cancel", post(chat_cancel))
         .route("/api/chat/confirm-run", post(chat_confirm_run))
+        .route("/api/chat/resume-run", post(chat_resume_run))
         .route("/api/stop", post(stop_run))
         .route("/api/clarifications/answer", post(clarifications_answer))
         .route("/api/clarifications/abort", post(clarifications_abort))
@@ -520,12 +521,64 @@ async fn chat_confirm_run(
     }
     let readiness = state.session.confirm_graph_and_run();
     if readiness.state == "ready_to_run" && !state.session.is_confirmed_execution_running() {
-        spawn_graph_execution(&state);
+        spawn_graph_execution(&state, false);
     }
     Json(snapshot_with_extra(
         &state.session,
         json!({ "readiness": readiness, "runVariant": variant }),
     ))
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatResumeRunBody {
+    confirm: Option<bool>,
+}
+
+async fn chat_resume_run(
+    State(state): State<Arc<RouterState>>,
+    Json(body): Json<ChatResumeRunBody>,
+) -> Result<Json<Value>, ApiError> {
+    if !body.confirm.unwrap_or(false) {
+        return Err(ApiError {
+            status: StatusCode::BAD_REQUEST,
+            body: json!({
+                "error": "Resume requires explicit user confirmation (confirm: true)."
+            }),
+        });
+    }
+
+    let run_state_dir = &state.paths.run_state_dir;
+    if !run_state_dir.is_dir() && fs::create_dir_all(run_state_dir).is_err() {
+        return Err(ApiError {
+            status: StatusCode::NOT_FOUND,
+            body: json!({ "error": "No run state directory configured." }),
+        });
+    }
+
+    let run_id = state.current_memory_session_id();
+    let store: Arc<dyn crate::ports::RunStateStorePort> = Arc::new(
+        crate::persistence::FileRunStateStore::new(run_state_dir.clone()),
+    );
+    let persistence = crate::domain::RunStatePersistence::new(run_id.clone(), Arc::clone(&store));
+    let resume = persistence.load_resume_state().map_err(|err| ApiError {
+        status: StatusCode::INTERNAL_SERVER_ERROR,
+        body: json!({ "error": format!("Failed to load run state: {err}") }),
+    })?;
+    if resume.is_none() {
+        return Err(ApiError {
+            status: StatusCode::NOT_FOUND,
+            body: json!({ "error": "No resumable run state found for this session." }),
+        });
+    }
+
+    let readiness = state.session.confirm_graph_and_run();
+    if readiness.state == "ready_to_run" && !state.session.is_confirmed_execution_running() {
+        spawn_graph_execution(&state, true);
+    }
+    Ok(Json(snapshot_with_extra(
+        &state.session,
+        json!({ "readiness": readiness, "resumed": true, "runId": run_id }),
+    )))
 }
 
 async fn stop_run(State(state): State<Arc<RouterState>>, body: Json<Value>) -> Json<Value> {
@@ -651,7 +704,7 @@ async fn graph_workflows_import(
     )))
 }
 
-fn spawn_graph_execution(state: &Arc<RouterState>) {
+fn spawn_graph_execution(state: &Arc<RouterState>, resume: bool) {
     let session = Arc::clone(&state.session);
     state.session.begin_confirmed_execution();
     let runtime_config = state.runtime_config();
@@ -663,11 +716,12 @@ fn spawn_graph_execution(state: &Arc<RouterState>) {
     let run_state = if state.paths.run_state_dir.is_dir()
         || fs::create_dir_all(&state.paths.run_state_dir).is_ok()
     {
+        let store: Arc<dyn crate::ports::RunStateStorePort> = Arc::new(
+            crate::persistence::FileRunStateStore::new(state.paths.run_state_dir.clone()),
+        );
         Some(Arc::new(crate::domain::RunStatePersistence::new(
             state.current_memory_session_id(),
-            Arc::new(crate::persistence::FileRunStateStore::new(
-                state.paths.run_state_dir.clone(),
-            )),
+            store,
         )))
     } else {
         None
@@ -678,6 +732,7 @@ fn spawn_graph_execution(state: &Arc<RouterState>) {
         create_model: Arc::new(move || Arc::clone(&exec_model) as Arc<dyn LanguageModel>),
         runtime: state.runtime_context.clone(),
         run_state,
+        resume,
     };
     let lifecycle = state.lifecycle.clone();
     lifecycle.clone().spawn(async move {
@@ -1330,7 +1385,20 @@ async fn plugins_doctor_fix(State(state): State<Arc<RouterState>>) -> impl IntoR
             .into_response();
     };
     match registry.doctor(true).await {
-        Ok(result) => Json(serde_json::to_value(result).unwrap_or(json!({}))).into_response(),
+        Ok(mut result) => {
+            if let Some(runtime) = state.runtime_context.as_ref() {
+                for warning in &runtime.interop_warnings {
+                    result.issues.push(crate::plugins::PluginDoctorIssue {
+                        code: "mcp_not_connected".into(),
+                        severity: "warn".into(),
+                        message: warning.clone(),
+                        plugin_id: None,
+                        path: None,
+                    });
+                }
+            }
+            Json(serde_json::to_value(result).unwrap_or(json!({}))).into_response()
+        }
         Err(err) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "error": err })),
