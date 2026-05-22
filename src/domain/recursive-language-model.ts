@@ -41,6 +41,25 @@ import type {
 } from "./types.js";
 import { EXECUTION_FAILURE_CODES } from "./execution-failure.js";
 import { RunStatePersistence } from "./run-state-persistence.js";
+import {
+  clamp,
+  fallbackFromMessages,
+  isCodeTask,
+  limitPrompt,
+  parseClarificationRequest,
+  parseFirstInteger,
+  preview,
+  toModelPurpose,
+} from "./recursion/prompt-utilities.js";
+import {
+  canSpendAnyModelCall,
+  estimateModelCalls,
+  estimateToolRounds,
+  hasCallReservedForDirectAnswer,
+  maxToolRoundsFromLimit,
+  remainingModelCalls,
+} from "./recursion/budget-guard.js";
+import { buildLiveExecutionMetadata } from "./recursion/execution-graph-sync.js";
 
 const DIRECT = "DIRECT";
 const RECURSIVE = "RECURSIVE";
@@ -118,7 +137,7 @@ export class RecursiveLanguageModel {
       };
       const root: TaskNode = {
         id: this.createId(),
-        prompt: this.limitPrompt(request.prompt, config),
+        prompt: limitPrompt(request.prompt, config),
         depth: 0,
       };
       this.ensureExecutionNode(root, "quality-loop", request.prompt);
@@ -128,7 +147,7 @@ export class RecursiveLanguageModel {
         status: this.metadata.executionStatus,
         nodeId: root.id,
         modelCallsUsed: this.modelCalls,
-        modelCallsRemaining: this.remainingModelCalls(),
+        modelCallsRemaining: remainingModelCalls(this.modelCalls, this.maxModelCalls),
         toolCallsUsed: this.metadata.toolCalls.length,
         message: request.execution?.planOnly ? "quality loop plan created" : "quality loop started",
       });
@@ -191,7 +210,7 @@ export class RecursiveLanguageModel {
     };
     const root: TaskNode = {
       id: this.createId(),
-      prompt: this.limitPrompt(request.prompt, config),
+      prompt: limitPrompt(request.prompt, config),
       depth: 0,
     };
     this.ensureExecutionNode(root, "task", request.prompt);
@@ -201,7 +220,7 @@ export class RecursiveLanguageModel {
       status: this.metadata.executionStatus,
       nodeId: root.id,
       modelCallsUsed: this.modelCalls,
-      modelCallsRemaining: this.remainingModelCalls(),
+      modelCallsRemaining: remainingModelCalls(this.modelCalls, this.maxModelCalls),
       toolCallsUsed: this.metadata.toolCalls.length,
       message: request.execution?.planOnly ? "execution plan created" : "execution started",
     });
@@ -209,8 +228,8 @@ export class RecursiveLanguageModel {
     if (request.execution?.planOnly) {
       this.updateExecutionGraph();
       this.metadata.budget = {
-        estimatedModelCalls: this.estimateModelCalls(config),
-        estimatedToolRounds: this.estimateToolRounds(config),
+        estimatedModelCalls: estimateModelCalls(config, this.modelCalls),
+        estimatedToolRounds: estimateToolRounds(this.toolRoundLimit, config),
         modelCallsUsed: 0,
         modelCallsRemaining: this.maxModelCalls,
         toolCallsUsed: 0,
@@ -288,7 +307,7 @@ export class RecursiveLanguageModel {
       status: "running",
       nodeId: task.id,
       modelCallsUsed: this.modelCalls,
-      modelCallsRemaining: this.remainingModelCalls(),
+      modelCallsRemaining: remainingModelCalls(this.modelCalls, this.maxModelCalls),
       toolCallsUsed: this.metadata.toolCalls.length,
       message: "quality loop started",
     });
@@ -332,7 +351,7 @@ export class RecursiveLanguageModel {
         status: status === "failed" ? "failed" : status === "cancelled" ? "cancelled" : "completed",
         nodeId: task.id,
         modelCallsUsed: this.modelCalls,
-        modelCallsRemaining: this.remainingModelCalls(),
+        modelCallsRemaining: remainingModelCalls(this.modelCalls, this.maxModelCalls),
         toolCallsUsed: this.metadata.toolCalls.length,
         message: stopEventMessage,
       });
@@ -400,7 +419,7 @@ export class RecursiveLanguageModel {
         if (manualBeforeIteration !== undefined) {
           return manualBeforeIteration;
         }
-        if (this.remainingModelCalls() < 5) {
+        if (remainingModelCalls(this.modelCalls, this.maxModelCalls) < 5) {
           return finish(
             "stopped",
             "budget_exhausted",
@@ -561,7 +580,7 @@ export class RecursiveLanguageModel {
             status: "running",
             nodeId: task.id,
             modelCallsUsed: this.modelCalls,
-            modelCallsRemaining: this.remainingModelCalls(),
+            modelCallsRemaining: remainingModelCalls(this.modelCalls, this.maxModelCalls),
             toolCallsUsed: this.metadata.toolCalls.length,
             message: `quality loop phase completed: ${phase}`,
           });
@@ -626,7 +645,7 @@ export class RecursiveLanguageModel {
     completedAt: string;
   }> {
     this.throwIfCancelled(task);
-    if (!this.canSpendAnyModelCall()) {
+    if (!canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)) {
       throw new Error(`model call budget reached before quality loop ${phase}`);
     }
 
@@ -828,7 +847,7 @@ export class RecursiveLanguageModel {
       return answer;
     }
 
-    if (this.remainingModelCalls() <= 1) {
+    if (remainingModelCalls(this.modelCalls, this.maxModelCalls) <= 1) {
       const answer = await this.answerDirectly(
         task,
         "Model call budget is nearly exhausted; answer directly.",
@@ -861,7 +880,7 @@ export class RecursiveLanguageModel {
       return answer;
     }
 
-    if (!this.hasCallReservedForDirectAnswer(config)) {
+    if (!hasCallReservedForDirectAnswer(this.modelCalls, config.maxModelCalls)) {
       const answer = await this.answerDirectly(
         task,
         "Model call budget is nearly exhausted; answer directly.",
@@ -898,7 +917,7 @@ export class RecursiveLanguageModel {
 
     const solvedChildren: SolvedTask[] = [];
     for (const child of children) {
-      if (this.remainingModelCalls() <= 1) {
+      if (remainingModelCalls(this.modelCalls, this.maxModelCalls) <= 1) {
         this.recordLimit(task, "model call budget reached before all child tasks could be solved");
         break;
       }
@@ -906,7 +925,9 @@ export class RecursiveLanguageModel {
       try {
         const answer = await this.solve(child, config);
         const summary =
-          this.remainingModelCalls() > 1 ? await this.summarize(child, answer) : answer;
+          remainingModelCalls(this.modelCalls, this.maxModelCalls) > 1
+            ? await this.summarize(child, answer)
+            : answer;
         solvedChildren.push({
           id: child.id,
           prompt: child.prompt,
@@ -923,7 +944,7 @@ export class RecursiveLanguageModel {
       }
     }
 
-    const answer = await (this.canSpendAnyModelCall()
+    const answer = await (canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)
       ? this.synthesize(task, solvedChildren)
       : this.synthesizeWithoutModel(task, solvedChildren));
     await this.appendMemorySummary(task, answer);
@@ -987,7 +1008,7 @@ export class RecursiveLanguageModel {
       .map((prompt) => ({
         id: this.createId(),
         parentId: task.id,
-        prompt: this.limitPrompt(prompt, config),
+        prompt: limitPrompt(prompt, config),
         depth: task.depth + 1,
       }));
     for (const child of children) {
@@ -1005,7 +1026,7 @@ export class RecursiveLanguageModel {
   }
 
   private async answerDirectly(task: TaskNode, reason: string): Promise<string> {
-    if (!this.canSpendAnyModelCall()) {
+    if (!canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)) {
       this.recordLimit(task, "model call budget reached before direct answer");
       return fallbackFromMessages([{ role: "user", content: task.prompt }]);
     }
@@ -1100,7 +1121,7 @@ export class RecursiveLanguageModel {
     allowTools = false,
   ): Promise<string> {
     this.throwIfCancelled(task);
-    if (!this.canSpendAnyModelCall()) {
+    if (!canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)) {
       this.recordLimit(task, `model call budget reached before ${kind}`);
       return fallbackFromMessages(messages);
     }
@@ -1109,7 +1130,7 @@ export class RecursiveLanguageModel {
     const conversation = memoryPacket?.text
       ? [{ role: "system" as const, content: memoryPacket.text }, ...messages]
       : [...messages];
-    for (let round = 0; round <= this.maxToolRounds(); round += 1) {
+    for (let round = 0; round <= maxToolRoundsFromLimit(this.toolRoundLimit); round += 1) {
       this.modelCalls += 1;
       const callNumber = this.modelCalls;
       this.log("completion", "starting model completion", {
@@ -1175,13 +1196,13 @@ export class RecursiveLanguageModel {
         return response.content || fallbackFromMessages(conversation);
       }
 
-      if (round >= this.maxToolRounds()) {
+      if (round >= maxToolRoundsFromLimit(this.toolRoundLimit)) {
         this.recordLimit(task, `tool round limit reached during ${kind}`);
         if (response.content) {
           return response.content;
         }
 
-        return this.canSpendAnyModelCall()
+        return canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)
           ? this.completeWithoutTools(task, kind, [
               ...conversation,
               {
@@ -1267,7 +1288,7 @@ export class RecursiveLanguageModel {
         });
       }
 
-      if (!this.canSpendAnyModelCall()) {
+      if (!canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)) {
         this.recordLimit(task, `model call budget reached after tool calls during ${kind}`);
         return response.content || fallbackFromMessages(conversation);
       }
@@ -1282,7 +1303,7 @@ export class RecursiveLanguageModel {
     kind: Parameters<TracePort["record"]>[0]["kind"],
     messages: Parameters<LanguageModelPort["complete"]>[0],
   ): Promise<string> {
-    if (!this.canSpendAnyModelCall()) {
+    if (!canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)) {
       this.recordLimit(task, `model call budget reached before direct ${kind} follow-up`);
       return fallbackFromMessages(messages);
     }
@@ -1343,14 +1364,14 @@ export class RecursiveLanguageModel {
     }
 
     const maxDynamicDepth = Math.max(0, config.maxDynamicDepth);
-    if (!this.canSpendAnyModelCall()) {
+    if (!canSpendAnyModelCall(this.modelCalls, this.maxModelCalls)) {
       this.metadata.depth = { selected: 2, source: "fallback" };
       return 2;
     }
 
     const task: TaskNode = {
       id: "depth-selector",
-      prompt: this.limitPrompt(prompt, config),
+      prompt: limitPrompt(prompt, config),
       depth: 0,
     };
     this.ensureExecutionNode(task, "task", task.prompt);
@@ -1393,23 +1414,6 @@ export class RecursiveLanguageModel {
     this.markExecutionNodeCompleted(task.id);
     return selected;
   }
-
-  private hasCallReservedForDirectAnswer(config: RecursiveModelConfig): boolean {
-    return this.modelCalls < config.maxModelCalls - 1;
-  }
-
-  private canSpendAnyModelCall(): boolean {
-    return this.modelCalls < this.maxModelCalls;
-  }
-
-  private remainingModelCalls(): number {
-    return this.maxModelCalls - this.modelCalls;
-  }
-
-  private maxToolRounds(): number {
-    return Math.max(0, this.toolRoundLimit);
-  }
-
   private withAgentSystemPrompt(
     messages: Parameters<LanguageModelPort["complete"]>[0],
   ): Parameters<LanguageModelPort["complete"]>[0] {
@@ -1451,7 +1455,7 @@ export class RecursiveLanguageModel {
           status: "running",
           nodeId: task.id,
           modelCallsUsed: this.modelCalls,
-          modelCallsRemaining: this.remainingModelCalls(),
+          modelCallsRemaining: remainingModelCalls(this.modelCalls, this.maxModelCalls),
           toolCallsUsed: this.metadata.toolCalls.length,
           message: `memory context degraded: ${packet.metadata.reasons.join("; ") || "unknown reason"}`,
         });
@@ -1463,7 +1467,7 @@ export class RecursiveLanguageModel {
         status: "running",
         nodeId: task.id,
         modelCallsUsed: this.modelCalls,
-        modelCallsRemaining: this.remainingModelCalls(),
+        modelCallsRemaining: remainingModelCalls(this.modelCalls, this.maxModelCalls),
         toolCallsUsed: this.metadata.toolCalls.length,
         message: `memory context unavailable: ${error instanceof Error ? error.message : String(error)}`,
       });
@@ -1492,7 +1496,7 @@ export class RecursiveLanguageModel {
         status: "running",
         nodeId: task.id,
         modelCallsUsed: this.modelCalls,
-        modelCallsRemaining: this.remainingModelCalls(),
+        modelCallsRemaining: remainingModelCalls(this.modelCalls, this.maxModelCalls),
         toolCallsUsed: this.metadata.toolCalls.length,
         message: `memory summary unavailable: ${error instanceof Error ? error.message : String(error)}`,
       });
@@ -1573,7 +1577,7 @@ export class RecursiveLanguageModel {
       status: "cancelled",
       nodeId: task.id,
       modelCallsUsed: this.modelCalls,
-      modelCallsRemaining: this.remainingModelCalls(),
+      modelCallsRemaining: remainingModelCalls(this.modelCalls, this.maxModelCalls),
       toolCallsUsed: this.metadata.toolCalls.length,
       message: reason,
     });
@@ -1664,7 +1668,7 @@ export class RecursiveLanguageModel {
       status: "running",
       nodeId,
       modelCallsUsed: this.modelCalls,
-      modelCallsRemaining: this.remainingModelCalls(),
+      modelCallsRemaining: remainingModelCalls(this.modelCalls, this.maxModelCalls),
       toolCallsUsed: this.metadata.toolCalls.length,
     });
   }
@@ -1688,7 +1692,7 @@ export class RecursiveLanguageModel {
       status: "completed",
       nodeId,
       modelCallsUsed: this.modelCalls,
-      modelCallsRemaining: this.remainingModelCalls(),
+      modelCallsRemaining: remainingModelCalls(this.modelCalls, this.maxModelCalls),
       toolCallsUsed: this.metadata.toolCalls.length,
     });
   }
@@ -1855,17 +1859,17 @@ export class RecursiveLanguageModel {
   }
 
   private updateExecutionGraph(): void {
-    this.metadata.executionGraph = {
-      nodes: [...this.executionNodes.values()],
-      edges: [...this.executionEdges],
-    };
-    this.metadata.budget = {
-      estimatedModelCalls: this.estimateModelCalls(undefined),
-      estimatedToolRounds: this.estimateToolRounds(undefined),
-      modelCallsUsed: this.modelCalls,
-      modelCallsRemaining: this.remainingModelCalls(),
-      toolCallsUsed: this.metadata.toolCalls.length,
-    };
+    const live = buildLiveExecutionMetadata({
+      executionNodes: this.executionNodes,
+      executionEdges: this.executionEdges,
+      modelCalls: this.modelCalls,
+      maxModelCalls: this.maxModelCalls,
+      toolCallsLength: this.metadata.toolCalls.length,
+      toolRoundLimit: this.toolRoundLimit,
+      config: undefined,
+    });
+    this.metadata.executionGraph = live.executionGraph;
+    this.metadata.budget = live.budget;
   }
 
   private updateExecutionNodeModel(
@@ -1925,34 +1929,6 @@ export class RecursiveLanguageModel {
     const writes = this.runStateWrites.splice(0);
     await Promise.all(writes);
   }
-
-  private estimateModelCalls(config: RecursiveModelConfig | undefined): number {
-    if (!config) {
-      return Math.max(this.modelCalls, 1);
-    }
-
-    const depth = config.maxDepth ?? config.maxDynamicDepth;
-    const branchFactor = Math.max(1, config.maxBranches);
-    const maxNodes =
-      depth <= 0
-        ? 1
-        : Math.floor((Math.pow(branchFactor, depth + 1) - 1) / (branchFactor - 1 || 1));
-    return Math.min(config.maxModelCalls, 1 + maxNodes * 4);
-  }
-
-  private estimateToolRounds(config: RecursiveModelConfig | undefined): number {
-    const maxToolRounds = config?.maxToolRounds ?? this.toolRoundLimit;
-    return Math.max(0, maxToolRounds);
-  }
-
-  private limitPrompt(prompt: string, config: RecursiveModelConfig): string {
-    if (prompt.length <= config.maxPromptCharacters) {
-      return prompt;
-    }
-
-    return prompt.slice(0, config.maxPromptCharacters).trimEnd();
-  }
-
   private createId(): string {
     const id = `task-${this.nextId}`;
     this.nextId += 1;
@@ -2522,57 +2498,4 @@ function qualityLoopPhasePurpose(phase: QualityLoopPhaseName): LanguageModelPurp
     case "best_of_progress":
       return "quality_loop_best_of_progress";
   }
-}
-
-function preview(value: string, maxLength = 180): string {
-  const normalized = value.replace(/\s+/g, " ").trim();
-  return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 3)}...`;
-}
-
-function parseClarificationRequest(value: string): string | undefined {
-  const match = value.trim().match(/^CLARIFY\s*:\s*(.+)$/is);
-  return match?.[1]?.trim();
-}
-
-function parseFirstInteger(value: string): number | undefined {
-  const match = value.match(/\b\d+\b/);
-  if (!match?.[0]) {
-    return undefined;
-  }
-
-  return Number.parseInt(match[0], 10);
-}
-
-function isCodeTask(task: TaskNode): boolean {
-  if (task.kind === "code") {
-    return true;
-  }
-  const normalized = task.prompt.trim().toLowerCase();
-  return normalized.startsWith("code:") || normalized.startsWith("run code:");
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-function fallbackFromMessages(messages: Parameters<LanguageModelPort["complete"]>[0]): string {
-  const userContent = [...messages].reverse().find((message) => message.role === "user")?.content;
-  return userContent?.trim() || "No additional model calls are available.";
-}
-
-function toModelPurpose(
-  kind: Parameters<TracePort["record"]>[0]["kind"],
-): LanguageModelPurpose | undefined {
-  if (
-    kind === "depth" ||
-    kind === "classify" ||
-    kind === "decompose" ||
-    kind === "answer" ||
-    kind === "summarize" ||
-    kind === "synthesize"
-  ) {
-    return kind;
-  }
-
-  return undefined;
 }
