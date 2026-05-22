@@ -75,6 +75,62 @@ Boundary rules live in `.dependency-cruiser.js` at **error** severity. Rule name
 
 Run `npm run depcruise:strict` (or `dependency-cruise src --config .dependency-cruiser.js`) to verify. `npm run check` uses strict depcruise without `--ignore-known`; `dependency-cruiser-baseline.json` remains empty.
 
+## Rust workspace (`crates/`)
+
+The Rust workspace mirrors the TypeScript concern map: **dependency direction flows inward** — outer layers (CLI, application, control server) orchestrate; inner layers (domain, ports) define policy and contracts; adapters and persistence implement port contracts; plugins and interop wire capabilities at the composition edge. `rlm-core` holds all layers under `crates/rlm-core/src/`; `rlm-cli` is the CLI transport crate and must use `rlm_core` public re-exports only.
+
+```
+rlm-cli ──► application / control_server ──► domain
+  │                    │                        ▲
+  │                    ▼                        │ (types only)
+  └──► rlm_core facades ├── ports ◄── adapters
+                          ▲
+              plugins / interop (composition edge)
+              persistence ◄── ports
+```
+
+| Concern | Path | Role | May import |
+|---------|------|------|------------|
+| **cli** | `crates/rlm-cli/src/` | Command dispatch, stderr logging, shutdown | `rlm_core` public re-exports (bootstrap, persistence facades, domain types), not internal `crate::` modules |
+| **application** | `crates/rlm-core/src/application/` | Execution, graph, memory, config, bootstrap | domain, ports; persistence/adapters via documented bootstrap exceptions |
+| **domain** | `crates/rlm-core/src/domain/` | Recursion policy, agent profiles, shared result types | ports (interfaces), `domain/recursion` helpers only |
+| **ports** | `crates/rlm-core/src/ports/` | Trait contracts (models, tools, stores, extension host) | domain types, other ports |
+| **adapters** | `crates/rlm-core/src/adapters/` | Model hosts (Ollama, etc.) | ports, domain types |
+| **persistence** | `crates/rlm-core/src/persistence/` | File stores, vector index, config loader | ports, domain types; may re-export application config loaders (transitional) |
+| **plugins** | `crates/rlm-core/src/plugins/` | Manifest, registry, builtins, runtime context | ports, interop, adapters (tool impl) |
+| **interop** | `crates/rlm-core/src/interop/` | MCP/skill runtime and tool factories | ports, plugin paths |
+| **control_server** | `crates/rlm-core/src/control_server/` | HTTP transport and handlers | application, ports, persistence (handler wiring) |
+| **server** | `crates/rlm-core/src/server/` | Server bootstrap | control_server, application |
+| **model_library** | `crates/rlm-core/src/model_library/` | HF/catalog service | ports, persistence paths |
+
+### Rust boundary rules
+
+Boundary rules live in `scripts/rust-boundary-rules.toml` and are enforced by `scripts/check-rust-boundaries.sh` at **error** severity. Rule names reference the concern map above.
+
+| Rule | Forbidden arc | Concern map rationale |
+|------|---------------|----------------------|
+| `no-domain-to-persistence` | domain → persistence | Domain stays free of concrete stores |
+| `no-domain-to-adapters` | domain → adapters | Domain stays free of model hosts |
+| `no-domain-to-application` | domain → application | Domain holds policy, not orchestration |
+| `no-domain-to-control_server` | domain → control_server | Domain stays transport-agnostic |
+| `no-domain-to-plugins` | domain → plugins | Domain stays free of plugin machinery |
+| `no-domain-to-interop` | domain → interop | Domain stays free of MCP/skill wiring |
+| `no-ports-to-adapters` | ports → adapters | Ports are interfaces only |
+| `no-ports-to-persistence` | ports → persistence | Ports must not reference implementations |
+| `no-ports-to-control_server` | ports → control_server | Ports stay transport-agnostic |
+| `no-ports-to-application` | ports → application | Ports are contracts, not use cases |
+| `no-adapters-to-control_server` | adapters → control_server | Adapters implement ports, not HTTP |
+| `no-adapters-to-application` | adapters → application | Adapters stay below orchestration |
+| `no-persistence-to-control_server` | persistence → control_server | Stores stay below transport |
+| `no-persistence-to-application` | persistence → application | Stores implement ports, not use cases |
+| `no-plugins-to-application` | plugins → application | Plugins register via extension host, not orchestration |
+| `no-plugins-to-domain` | plugins → domain | Plugins register tools; domain policy stays separate |
+| `no-plugins-to-persistence` | plugins → persistence | Plugins reach stores through ports/bootstrap |
+
+**Optional follow-on (not enforced):** `application` → `persistence` / `adapters` direct imports (bootstrap, memory index, handler wiring); `ports` → `domain` types for shared message/result shapes; transitional `plugins/builtin` → `domain::types::ToolExecutionResult` until tool result types consolidate under `ports`. Baseline entries in `scripts/rust-boundary-baseline.json` may document transitional arcs; **`no-domain-to-persistence` must never appear in the baseline.**
+
+Run `npm run check:rust:boundaries` or `bash scripts/check-rust-boundaries.sh` to verify. `npm run check:rust` includes the boundary check after fmt/clippy.
+
 ## Layout
 
 | Area | Role |
