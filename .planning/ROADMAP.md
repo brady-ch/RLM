@@ -20,9 +20,9 @@
 
 **Milestone Goal:** Canvas-first UI reads as a polished product — readable edges, dark/light mode, neutral dot-grid canvas, light node cards, Radix context menu.
 
-- [ ] **Phase 82: Theme System & Edge Contrast** — Light/dark tokens, system + manual toggle, high-contrast React Flow edges (THEME-*, EDGE-*)
-- [ ] **Phase 83: Canvas & Node Card Polish** — Dot-grid canvas, status chips, card chrome per 79-UI-SPEC in both themes (CANV-01, CANV-02, CANV-04)
-- [ ] **Phase 84: Radix Context Menu** — Replace hand-rolled menu with Radix primitive; preserve all actions (CANV-03)
+- [x] **Phase 82: Theme System & Edge Contrast** — Light/dark tokens, system + manual toggle, high-contrast React Flow edges (THEME-*, EDGE-*)
+- [x] **Phase 83: Canvas & Node Card Polish** — Dot-grid canvas, status chips, card chrome per 79-UI-SPEC in both themes (CANV-01, CANV-02, CANV-04)
+- [x] **Phase 84: Radix Context Menu** — Replace hand-rolled menu with Radix primitive; preserve all actions (CANV-03)
 - [ ] **Phase 85: Operator Visual UAT** — Browser checklist for theme, edges, and polish; ratchet REG-02 (REG-02)
 
 ## Phase Details
@@ -77,10 +77,10 @@
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 82. Theme System & Edge Contrast | v1.12 | 0/0 | Not started | — |
-| 83. Canvas & Node Card Polish | v1.12 | 0/0 | Not started | — |
-| 84. Radix Context Menu | v1.12 | 0/0 | Not started | — |
-| 85. Operator Visual UAT | v1.12 | 0/0 | Not started | — |
+| 82. Theme System & Edge Contrast | v1.12 | 1/1 | Complete | 2026-05-23 |
+| 83. Canvas & Node Card Polish | v1.12 | 1/1 | Complete | 2026-05-23 |
+| 84. Radix Context Menu | v1.12 | 1/1 | Complete | 2026-05-23 |
+| 85. Operator Visual UAT | v1.12 | 1/1 | Awaiting operator | — |
 
 ---
 *Roadmap created: 2026-05-23 — milestone v1.12 UI Canvas Visual Polish*

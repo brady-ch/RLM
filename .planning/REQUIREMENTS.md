@@ -8,22 +8,22 @@
 
 ### Theme (THEME)
 
-- [ ] **THEME-01**: UI defaults to system light/dark preference via `prefers-color-scheme` when no manual override is stored
-- [ ] **THEME-02**: User can switch theme (light / dark / system) from the workflow TopBar; choice persists in `localStorage` across browser sessions
-- [ ] **THEME-03**: Workflow canvas, node cards, TopBar, Run panel, and Advanced hub surfaces use semantic CSS tokens and render correctly in both light and dark themes
+- [x] **THEME-01**: UI defaults to system light/dark preference via `prefers-color-scheme` when no manual override is stored
+- [x] **THEME-02**: User can switch theme (light / dark / system) from the workflow TopBar; choice persists in `localStorage` across browser sessions
+- [x] **THEME-03**: Workflow canvas, node cards, TopBar, Run panel, and Advanced hub surfaces use semantic CSS tokens and render correctly in both light and dark themes
 
 ### Graph Edges (EDGE)
 
-- [ ] **EDGE-01**: Default graph connection lines are clearly visible in light mode (minimum 4.5:1 contrast against canvas background)
-- [ ] **EDGE-02**: Default graph connection lines are clearly visible in dark mode (minimum 4.5:1 contrast against canvas background)
-- [ ] **EDGE-03**: Edge stroke color reflects execution state (default, running, completed, failed) in both themes without relying on low-contrast gray defaults
+- [x] **EDGE-01**: Default graph connection lines are clearly visible in light mode (minimum 4.5:1 contrast against canvas background)
+- [x] **EDGE-02**: Default graph connection lines are clearly visible in dark mode (minimum 4.5:1 contrast against canvas background)
+- [x] **EDGE-03**: Edge stroke color reflects execution state (default, running, completed, failed) in both themes without relying on low-contrast gray defaults
 
 ### Canvas Visual Polish (CANV)
 
-- [ ] **CANV-01**: Canvas uses neutral dot-grid background per `79-UI-SPEC.md` in both themes
-- [ ] **CANV-02**: Node cards use light-header design with status chips (no dark `#1f2937` header bar); card chrome matches spec in both themes
-- [ ] **CANV-03**: Node context menu uses `@radix-ui/react-context-menu` with keyboard/a11y parity; all Plan/Run/Graph/Advanced actions preserved
-- [ ] **CANV-04**: React Flow Background, MiniMap, handles, and controls are themed and remain usable in both modes
+- [x] **CANV-01**: Canvas uses neutral dot-grid background per `79-UI-SPEC.md` in both themes
+- [x] **CANV-02**: Node cards use light-header design with status chips (no dark `#1f2937` header bar); card chrome matches spec in both themes
+- [x] **CANV-03**: Node context menu uses `@radix-ui/react-context-menu` with keyboard/a11y parity; all Plan/Run/Graph/Advanced actions preserved
+- [x] **CANV-04**: React Flow Background, MiniMap, handles, and controls are themed and remain usable in both modes
 
 ### Verification (REG)
 
@@ -63,17 +63,17 @@ Deferred beyond v1.12.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| THEME-01 | Phase 82 | Pending |
-| THEME-02 | Phase 82 | Pending |
-| THEME-03 | Phase 82 | Pending |
-| EDGE-01 | Phase 82 | Pending |
-| EDGE-02 | Phase 82 | Pending |
-| EDGE-03 | Phase 82 | Pending |
-| CANV-01 | Phase 83 | Pending |
-| CANV-02 | Phase 83 | Pending |
-| CANV-04 | Phase 83 | Pending |
-| CANV-03 | Phase 84 | Pending |
-| REG-02 | Phase 85 | Pending |
+| THEME-01 | Phase 82 | Complete |
+| THEME-02 | Phase 82 | Complete |
+| THEME-03 | Phase 82 | Complete |
+| EDGE-01 | Phase 82 | Complete |
+| EDGE-02 | Phase 82 | Complete |
+| EDGE-03 | Phase 82 | Complete |
+| CANV-01 | Phase 83 | Complete |
+| CANV-02 | Phase 83 | Complete |
+| CANV-04 | Phase 83 | Complete |
+| CANV-03 | Phase 84 | Complete |
+| REG-02 | Phase 85 | Pending operator |
 
 **Coverage:**
 - v1.12 requirements: 11 total
