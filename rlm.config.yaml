@@ -6,14 +6,15 @@ models:
       estimatedRamMb: 1024
     medium:
       name: granite4.1:3b
-      estimatedRamMb: 4096
+      estimatedRamMb: 2048
     large:
       name: granite4.1:30b
       estimatedRamMb: 16000
 
 memory:
   maxRamMb: 4096
-  reserveSystemRamMb: 512
+  reserveSystemRamMb: 1024
+  wslAutoCapMb: 4096
   waitForCapacity: false
   capacityCheckIntervalMs: 1000
 

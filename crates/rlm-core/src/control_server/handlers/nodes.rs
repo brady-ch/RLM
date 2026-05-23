@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use axum::response::Json;
 use serde_json::{json, Value};
 
 use crate::domain::types::{DeleteStrategy, ExpertRuntimeMode};
 
 use super::common::{parse_replan, snapshot_with_extra, ApiError};
-use crate::control_server::RouterState;
+use crate::control_server::{resolve_ollama_base_url, RouterState};
 
 pub(crate) async fn nodes_add(
     State(state): State<Arc<RouterState>>,
@@ -110,6 +111,28 @@ pub(crate) async fn nodes_plan(
     Path(node_id): Path<String>,
     body: Json<Value>,
 ) -> Result<Json<Value>, ApiError> {
+    if let Some(loaded) = state.project_config.as_ref() {
+        let plan_model_name = state
+            .plan_model()
+            .model_label()
+            .unwrap_or("granite4.1:3b")
+            .to_string();
+        let base_url = resolve_ollama_base_url(&loaded.config);
+        let client = reqwest::Client::new();
+        if let Err(reason) = crate::application::memory::assert_model_ram_eligible_async(
+            &plan_model_name,
+            &loaded.config,
+            &base_url,
+            &client,
+        )
+        .await
+        {
+            return Err(ApiError {
+                status: StatusCode::CONFLICT,
+                body: json!({ "error": reason }),
+            });
+        }
+    }
     let replan = parse_replan(body.get("replan"));
     let plan_model = state.plan_model();
     let result = state

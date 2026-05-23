@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 
 use crate::application::execution::InteractiveExecutionSession;
 use crate::application::graph::{execute_graph, GraphExecutorInput};
+use crate::application::memory::resource_guard_json;
 use crate::domain::run_state_types::ResumeCursor;
 use crate::domain::types::ReplanChoice;
 use crate::domain::RunStatePersistence;
@@ -23,6 +24,12 @@ pub(crate) fn session_snapshot_json(state: &Arc<RouterState>) -> Value {
     };
     if let Some(obj) = snap.as_object_mut() {
         obj.insert("runState".into(), run_state);
+        if let Some(loaded) = state.project_config.as_ref() {
+            obj.insert(
+                "resourceGuard".into(),
+                resource_guard_json(&loaded.config, 0),
+            );
+        }
     }
     snap
 }

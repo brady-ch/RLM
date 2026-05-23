@@ -10,6 +10,8 @@ use serde_json::{json, Value};
 use crate::application::graph::{
     apply_pipeline_template, build_import_session_snapshot, graph_has_pipeline_template,
 };
+use crate::application::memory::assert_runtime_ram_eligible_async;
+use crate::control_server::resolve_ollama_base_url;
 use crate::domain::types::DeleteStrategy;
 
 use super::common::{snapshot_with_extra, spawn_graph_execution, ApiError};
@@ -93,7 +95,7 @@ pub(crate) struct ChatConfirmRunBody {
 pub(crate) async fn chat_confirm_run(
     State(state): State<Arc<RouterState>>,
     Json(body): Json<ChatConfirmRunBody>,
-) -> Json<Value> {
+) -> Result<Json<Value>, ApiError> {
     let variant = body.variant.as_deref().unwrap_or("playbook");
     let input = body.input.as_deref().unwrap_or("").trim();
     if variant == "pipeline" && !input.is_empty() {
@@ -106,14 +108,26 @@ pub(crate) async fn chat_confirm_run(
             }
         }
     }
+    if let Some(loaded) = state.project_config.as_ref() {
+        let base_url = resolve_ollama_base_url(&loaded.config);
+        let client = reqwest::Client::new();
+        if let Err(reason) =
+            assert_runtime_ram_eligible_async(&loaded.config, &base_url, &client).await
+        {
+            return Err(ApiError {
+                status: StatusCode::CONFLICT,
+                body: json!({ "error": reason }),
+            });
+        }
+    }
     let readiness = state.session.confirm_graph_and_run();
     if readiness.state == "ready_to_run" && !state.session.is_confirmed_execution_running() {
         spawn_graph_execution(&state, false);
     }
-    Json(snapshot_with_extra(
+    Ok(Json(snapshot_with_extra(
         &state.session,
         json!({ "readiness": readiness, "runVariant": variant }),
-    ))
+    )))
 }
 
 #[derive(Debug, Deserialize)]
@@ -177,6 +191,19 @@ pub(crate) async fn chat_resume_run(
             status: StatusCode::CONFLICT,
             body: json!({ "error": readiness.reason }),
         });
+    }
+
+    if let Some(loaded) = state.project_config.as_ref() {
+        let base_url = resolve_ollama_base_url(&loaded.config);
+        let client = reqwest::Client::new();
+        if let Err(reason) =
+            assert_runtime_ram_eligible_async(&loaded.config, &base_url, &client).await
+        {
+            return Err(ApiError {
+                status: StatusCode::CONFLICT,
+                body: json!({ "error": reason }),
+            });
+        }
     }
 
     spawn_graph_execution(&state, true);

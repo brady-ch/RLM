@@ -6,4 +6,5 @@ pub use hf_registry::{HfDownloadError, HfRegistry};
 pub use service::ModelLibraryService;
 pub use types::{
     ModelInstallJob, ModelLibraryEntry, ModelLibrarySearchResult, ModelLibrarySnapshot,
+    CURATED_MODELS,
 };
