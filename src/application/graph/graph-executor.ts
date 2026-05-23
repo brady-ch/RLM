@@ -177,11 +177,7 @@ function isExpertRuntime(value: unknown): value is ExpertRuntimeMode {
 }
 
 function shouldSkipExecutionStatus(status: ExecutionStatus): boolean {
-  return (
-    status === "skipped" ||
-    status === "cancelled" ||
-    status === "completed"
-  );
+  return status === "skipped" || status === "cancelled" || status === "completed";
 }
 
 function createRunStatePersistence(input: GraphExecutorInput): RunStatePersistence | undefined {
@@ -254,7 +250,7 @@ async function prepareResumeState(
   persistence: RunStatePersistence | undefined,
 ): Promise<{ skipCompleted: Set<string>; completedNodeIds: string[] }> {
   const skipCompleted = new Set<string>();
-  let completedNodeIds: string[] = [];
+  const completedNodeIds: string[] = [];
 
   if (!input.resume || !input.runState || !persistence) {
     return { skipCompleted, completedNodeIds };

@@ -34,9 +34,9 @@ fn run_state_resumable_json(state: &Arc<RouterState>) -> Value {
     }
 
     let run_id = state.current_memory_session_id();
-    let store: Arc<dyn RunStateStorePort> = Arc::new(
-        crate::persistence::FileRunStateStore::new(run_state_dir.clone()),
-    );
+    let store: Arc<dyn RunStateStorePort> = Arc::new(crate::persistence::FileRunStateStore::new(
+        run_state_dir.clone(),
+    ));
     let persistence = RunStatePersistence::new(run_id, store);
 
     let Ok(Some(snapshot)) = persistence.get_snapshot() else {

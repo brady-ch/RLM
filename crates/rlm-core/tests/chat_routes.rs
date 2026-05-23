@@ -352,7 +352,6 @@ async fn chat_resume_run_accepts_confirm_and_skips_completed_nodes() {
         memory_session_id: Some(run_id.into()),
         session: Some(session.clone()),
         exec_model: Some(Arc::clone(&model) as Arc<dyn LanguageModel>),
-        ..Default::default()
     })
     .await
     .expect("start server");

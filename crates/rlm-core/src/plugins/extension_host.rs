@@ -76,14 +76,15 @@ impl ExtensionHost {
     }
 }
 
-pub(crate) fn resolve_manifest_loader_path(plugin_root: &Path, loader_path: &str) -> Result<PathBuf, String> {
+pub(crate) fn resolve_manifest_loader_path(
+    plugin_root: &Path,
+    loader_path: &str,
+) -> Result<PathBuf, String> {
     let resolved = resolve_config_path(plugin_root, loader_path);
     let plugin_root = plugin_root
         .canonicalize()
         .unwrap_or_else(|_| plugin_root.to_path_buf());
-    let canonical = resolved
-        .canonicalize()
-        .unwrap_or_else(|_| resolved.clone());
+    let canonical = resolved.canonicalize().unwrap_or_else(|_| resolved.clone());
     if !canonical.starts_with(&plugin_root) {
         return Err(format!(
             "Skill loader path escapes plugin root: {}",
@@ -93,7 +94,7 @@ pub(crate) fn resolve_manifest_loader_path(plugin_root: &Path, loader_path: &str
     Ok(resolved)
 }
 
-pub async fn register_manifest_skill_loaders_async(
+pub fn register_manifest_skill_loaders(
     host: &mut ExtensionHost,
     plugin_root: &Path,
     skill_loader_paths: &[String],
@@ -109,7 +110,7 @@ pub async fn register_manifest_skill_loaders_async(
         };
         let name = loader_path.clone();
         let loader = Arc::new(ManifestSkillLoader::new(name.clone(), resolved));
-        if let Err(err) = loader.load().await {
+        if let Err(err) = loader.load_sync() {
             warnings.push(format!(
                 "Skill loader {} failed to load at {}: {err}",
                 name,
@@ -122,25 +123,10 @@ pub async fn register_manifest_skill_loaders_async(
     Ok(warnings)
 }
 
-pub fn register_manifest_skill_loaders(
+pub async fn register_manifest_skill_loaders_async(
     host: &mut ExtensionHost,
     plugin_root: &Path,
     skill_loader_paths: &[String],
 ) -> Result<Vec<String>, String> {
-    block_on_async(register_manifest_skill_loaders_async(
-        host,
-        plugin_root,
-        skill_loader_paths,
-    ))
-}
-
-fn block_on_async<F: std::future::Future>(future: F) -> F::Output {
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        return handle.block_on(future);
-    }
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("runtime");
-    runtime.block_on(future)
+    register_manifest_skill_loaders(host, plugin_root, skill_loader_paths)
 }

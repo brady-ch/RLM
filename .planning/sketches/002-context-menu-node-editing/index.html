@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sketch 002 — Context Menu + Node Editing</title>
+  <link rel="stylesheet" href="../themes/default.css" />
+  <style>
+    body { padding-top: 52px; margin: 0; }
+    .variant-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10000;
+      background: var(--color-card); border-bottom: 1px solid var(--color-border);
+      padding: 8px 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    }
+    .variant-tab {
+      background: var(--color-surface); color: var(--color-text);
+      border: 1px solid var(--color-border); min-height: 32px; font-size: var(--text-sm);
+    }
+    .variant-tab.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+    .hint-bar {
+      font-size: var(--text-sm); color: var(--color-text-muted); margin-left: auto;
+      max-width: 420px; text-align: right;
+    }
+    .variant { display: none; }
+    .variant.active { display: block; }
+    .topbar {
+      height: var(--topbar-height); display: flex; align-items: center; gap: var(--space-4);
+      padding: 0 var(--space-4); background: var(--color-card); border-bottom: 1px solid var(--color-border);
+    }
+    .topbar .spacer { flex: 1; }
+    .shell { display: grid; height: calc(100vh - 52px - var(--topbar-height)); }
+    .shell.with-dock { grid-template-columns: 1fr var(--dock-width); }
+    .shell.no-dock { grid-template-columns: 1fr; }
+    .canvas {
+      background: var(--color-bg); position: relative; overflow: hidden;
+      background-image: radial-gradient(circle, #d8ded9 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .node-card {
+      position: absolute; width: 300px; background: var(--color-card);
+      border: 1px solid var(--color-border); border-radius: var(--radius-md);
+      padding: var(--space-4); box-shadow: var(--shadow-sm); cursor: pointer;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .node-card:hover { border-color: #b8c4bc; }
+    .node-card.selected {
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 2px rgba(45, 108, 223, 0.28);
+    }
+    .node-card.n1 { left: 60px; top: 80px; }
+    .node-card.n2 { left: 400px; top: 160px; }
+    .node-type { font-size: var(--text-sm); font-weight: 700; text-transform: uppercase; color: var(--color-text-muted); }
+    .node-title { font-weight: 700; margin: var(--space-2) 0 var(--space-1); }
+    .node-card textarea {
+      width: 100%; min-height: 64px; font: inherit; font-size: var(--text-sm);
+      border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+      padding: var(--space-2); resize: vertical; background: #fff;
+    }
+    .node-card textarea:focus { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+    .node-card.readonly textarea { background: var(--color-surface); color: var(--color-text-muted); }
+    .status-row { display: flex; gap: var(--space-2); align-items: center; margin-top: var(--space-2); flex-wrap: wrap; }
+    .status-chip {
+      font-size: var(--text-xs); font-weight: 700; text-transform: uppercase;
+      padding: 2px 8px; border-radius: var(--radius-pill); background: var(--color-surface);
+      border: 1px solid var(--color-border);
+    }
+    .status-chip.running { border-color: var(--color-accent); color: var(--color-accent); }
+    .status-chip.awaiting { border-color: var(--color-warning); color: #8a5a00; }
+    .ctx-hint { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-2); }
+    .dock {
+      background: var(--color-surface); border-left: 1px solid var(--color-border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .dock-head {
+      padding: var(--space-4); border-bottom: 1px solid var(--color-border);
+      background: var(--color-card);
+    }
+    .dock-head h2 { margin: 0; font-size: var(--text-base); }
+    .dock-body { padding: var(--space-4); overflow-y: auto; flex: 1; }
+    .dock-body label {
+      display: block; font-size: var(--text-sm); font-weight: 700;
+      text-transform: uppercase; margin-bottom: var(--space-2);
+    }
+    .dock-body textarea {
+      width: 100%; min-height: 120px; font: inherit;
+      border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+      padding: var(--space-2); margin-bottom: var(--space-4);
+    }
+    .dock-actions { display: flex; flex-direction: column; gap: var(--space-2); }
+    .dock-actions button { width: 100%; justify-content: center; }
+    .clarify-box {
+      background: #fff8ef; border: 1px solid #e8cfa8; border-radius: var(--radius-md);
+      padding: var(--space-3); margin-top: var(--space-4);
+    }
+    .instruction {
+      position: absolute; bottom: var(--space-4); left: var(--space-4); right: var(--space-4);
+      background: rgba(251, 252, 253, 0.95); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); padding: var(--space-3); font-size: var(--text-sm);
+    }
+    .instruction kbd {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm); padding: 1px 6px; font-size: var(--text-xs);
+    }
+    /* Context menu */
+    .ctx-menu {
+      position: fixed; z-index: 9999; min-width: 200px;
+      background: var(--color-card); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(22, 32, 26, 0.14);
+      padding: var(--space-1) 0; display: none;
+    }
+    .ctx-menu.open { display: block; }
+    .ctx-menu button {
+      display: block; width: 100%; text-align: left; background: transparent;
+      color: var(--color-text); border: 0; border-radius: 0; min-height: 36px;
+      padding: 0 var(--space-4); font-size: var(--text-sm);
+    }
+    .ctx-menu button:hover { background: var(--color-surface); }
+    .ctx-menu button.danger { color: var(--color-danger); }
+    .ctx-menu hr { border: 0; border-top: 1px solid var(--color-border); margin: var(--space-1) 0; }
+    .ctx-menu .section {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      color: var(--color-text-muted); padding: var(--space-2) var(--space-4) var(--space-1);
+    }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--color-primary); color: #fff; padding: 10px 20px;
+      border-radius: var(--radius-md); font-size: var(--text-sm); z-index: 10001;
+      opacity: 0; transition: opacity 0.2s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <nav class="variant-nav">
+    <button class="variant-tab" type="button" data-v="a">A: Card + context menu only</button>
+    <button class="variant-tab active" type="button" data-v="b">B: Card + slim Run panel ★ Selected</button>
+    <button class="variant-tab" type="button" data-v="c">C: Card summary + full edit panel</button>
+    <span class="hint-bar">Right-click any node · Click to select</span>
+  </nav>
+
+  <div id="ctx-menu" class="ctx-menu" role="menu" aria-hidden="true"></div>
+  <div id="toast" class="toast" role="status"></div>
+
+  <!-- A: No panel -->
+  <section class="variant" id="variant-a" data-mode="a">
+    <header class="topbar">
+      <span class="pill running">Running</span>
+      <span class="meta">Variant A — no right panel</span>
+      <span class="spacer"></span>
+      <button type="button" class="secondary">Advanced</button>
+    </header>
+    <div class="shell no-dock">
+      <div class="canvas" data-canvas></div>
+      <p class="instruction"><kbd>Right-click</kbd> node for actions · Edit prompt directly on card · No panel opens on click</p>
+    </div>
+  </section>
+
+  <!-- B: Slim run panel -->
+  <section class="variant active" id="variant-b" data-mode="b">
+    <header class="topbar">
+      <span class="pill running">Running</span>
+      <span class="meta">Variant B — Run panel on select</span>
+      <span class="spacer"></span>
+      <button type="button" class="secondary">Advanced</button>
+    </header>
+    <div class="shell with-dock">
+      <div class="canvas" data-canvas></div>
+      <aside class="dock" id="dock-b" hidden>
+        <div class="dock-head">
+          <h2 id="dock-b-title">Select a node</h2>
+          <p class="meta" id="dock-b-meta"></p>
+        </div>
+        <div class="dock-body">
+          <p class="meta">Edit stays on the card. This panel is for run control only.</p>
+          <label>Approval</label>
+          <div class="dock-actions">
+            <button type="button" onclick="toast('Approved task-2')">Approve</button>
+            <button type="button" class="secondary" onclick="toast('Skipped task-2')">Skip</button>
+          </div>
+          <div class="clarify-box">
+            <label>Clarification</label>
+            <p class="meta" style="margin:0 0 8px">Which auth library — Passport or custom JWT middleware?</p>
+            <textarea placeholder="Type your answer…" rows="2"></textarea>
+            <button type="button" style="margin-top:8px;width:100%">Submit answer</button>
+          </div>
+        </div>
+      </aside>
+      <p class="instruction" style="right:380px"><kbd>Click</kbd> node → Run panel · <kbd>Right-click</kbd> for Plan/Delete · Prompt edits on card</p>
+    </div>
+  </section>
+
+  <!-- C: Full edit panel -->
+  <section class="variant" id="variant-c" data-mode="c">
+    <header class="topbar">
+      <span class="pill">Ready</span>
+      <span class="meta">Variant C — full edit panel on select</span>
+      <span class="spacer"></span>
+      <button type="button" class="secondary">Advanced</button>
+    </header>
+    <div class="shell with-dock">
+      <div class="canvas" data-canvas></div>
+      <aside class="dock" id="dock-c" hidden>
+        <div class="dock-head">
+          <h2 id="dock-c-title">Select a node</h2>
+          <p class="meta" id="dock-c-meta"></p>
+        </div>
+        <div class="dock-body">
+          <label for="panel-prompt">Prompt</label>
+          <textarea id="panel-prompt">Add Express middleware validating JWT on protected routes.</textarea>
+          <label>Expert</label>
+          <p class="meta">coding · single-pass · tools: shell, write_file</p>
+          <div class="dock-actions">
+            <button type="button">Save prompt</button>
+            <button type="button" class="secondary">Plan children</button>
+            <button type="button" class="secondary">Break down</button>
+            <button type="button">Approve</button>
+            <button type="button" class="danger">Delete subtree</button>
+          </div>
+        </div>
+      </aside>
+      <p class="instruction" style="right:380px"><kbd>Click</kbd> node → full editor panel · Card shows summary only · <kbd>Right-click</kbd> still works</p>
+    </div>
+  </section>
+
+  <script>
+    const nodes = [
+      {
+        id: 'root-composer', cls: 'n1', type: 'AI · root-composer',
+        title: 'Build auth module', status: 'ready', statusLabel: 'ready',
+        prompt: 'Design JWT-based auth with refresh tokens and role checks.',
+        expert: 'default · single-pass',
+      },
+      {
+        id: 'task-2', cls: 'n2', type: 'AI · task',
+        title: 'Implement middleware', status: 'running', statusLabel: 'running',
+        prompt: 'Add Express middleware validating JWT on protected routes.',
+        expert: 'coding · single-pass',
+      },
+    ];
+
+    const menuTemplate = (node) => `
+      <div class="section">Plan</div>
+      <button type="button" role="menuitem" data-action="Plan children">Plan children</button>
+      <button type="button" role="menuitem" data-action="Break down">Break down</button>
+      <button type="button" role="menuitem" data-action="Extend budget">Extend budget</button>
+      <hr />
+      <div class="section">Run</div>
+      <button type="button" role="menuitem" data-action="Approve">Approve</button>
+      <button type="button" role="menuitem" data-action="Skip">Skip</button>
+      <hr />
+      <div class="section">Graph</div>
+      <button type="button" role="menuitem" data-action="Add child">Add child</button>
+      <button type="button" role="menuitem" data-action="Connect">Connect parent…</button>
+      <button type="button" role="menuitem" class="danger" data-action="Delete subtree">Delete subtree</button>
+      <hr />
+      <button type="button" role="menuitem" data-action="Expert overrides…">Expert overrides… (Advanced)</button>
+    `;
+
+    let selectedId = 'task-2';
+    let ctxNode = null;
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 1800);
+    }
+
+    function renderNode(node, mode) {
+      const editableOnCard = mode !== 'c';
+      const card = document.createElement('div');
+      card.className = `node-card ${node.cls}${node.id === selectedId ? ' selected' : ''}${editableOnCard ? '' : ' readonly'}`;
+      card.dataset.id = node.id;
+      card.innerHTML = `
+        <div class="node-type">${node.type}</div>
+        <div class="node-title">${node.title}</div>
+        ${editableOnCard
+          ? `<textarea aria-label="Prompt for ${node.title}" onclick="event.stopPropagation()">${node.prompt}</textarea>`
+          : `<p class="meta" style="margin:0">${node.prompt.slice(0, 72)}…</p>`}
+        <div class="status-row">
+          <span class="status-chip ${node.status}">${node.statusLabel}</span>
+          <span class="meta">${node.expert}</span>
+        </div>
+        <div class="ctx-hint">Right-click for actions</div>
+      `;
+      card.addEventListener('click', () => selectNode(node.id, mode));
+      card.addEventListener('contextmenu', (e) => openCtx(e, node));
+      return card;
+    }
+
+    function renderCanvas(mode) {
+      document.querySelectorAll(`[data-mode="${mode}"] [data-canvas]`).forEach(canvas => {
+        canvas.innerHTML = '';
+        nodes.forEach(n => canvas.appendChild(renderNode(n, mode)));
+      });
+      updateDocks(mode);
+    }
+
+    function selectNode(id, mode) {
+      selectedId = id;
+      renderCanvas(mode);
+      if (mode === 'b' || mode === 'c') updateDocks(mode);
+      if (mode === 'a') toast(`Selected ${id} — no panel in Variant A`);
+    }
+
+    function updateDocks(mode) {
+      const node = nodes.find(n => n.id === selectedId);
+      if (mode === 'b') {
+        const dock = document.getElementById('dock-b');
+        dock.hidden = !node;
+        if (node) {
+          document.getElementById('dock-b-title').textContent = node.title;
+          document.getElementById('dock-b-meta').textContent = `${node.id} · ${node.expert}`;
+        }
+      }
+      if (mode === 'c') {
+        const dock = document.getElementById('dock-c');
+        dock.hidden = !node;
+        if (node) {
+          document.getElementById('dock-c-title').textContent = node.title;
+          document.getElementById('dock-c-meta').textContent = `${node.id} · ${node.statusLabel}`;
+          document.getElementById('panel-prompt').value = node.prompt;
+        }
+      }
+    }
+
+    function openCtx(e, node) {
+      e.preventDefault();
+      ctxNode = node;
+      const menu = document.getElementById('ctx-menu');
+      menu.innerHTML = menuTemplate(node);
+      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 220)}px`;
+      menu.style.top = `${Math.min(e.clientY, window.innerHeight - 280)}px`;
+      menu.classList.add('open');
+      menu.setAttribute('aria-hidden', 'false');
+      menu.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          toast(`${btn.dataset.action} → ${node.id}`);
+          closeCtx();
+        });
+      });
+    }
+
+    function closeCtx() {
+      const menu = document.getElementById('ctx-menu');
+      menu.classList.remove('open');
+      menu.setAttribute('aria-hidden', 'true');
+    }
+
+    document.addEventListener('click', closeCtx);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCtx(); });
+
+    document.querySelectorAll('.variant-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const v = tab.dataset.v;
+        document.querySelectorAll('.variant-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.variant').forEach(el => el.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`variant-${v}`).classList.add('active');
+        renderCanvas(v);
+      });
+    });
+
+    ['a', 'b', 'c'].forEach(renderCanvas);
+    selectNode('task-2', 'a');
+    selectNode('task-2', 'b');
+    selectNode('task-2', 'c');
+  </script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sketch 001 — Workflow + Advanced Shell</title>
+  <link rel="stylesheet" href="../themes/default.css" />
+  <style>
+    body { padding-top: 52px; }
+    .variant-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+      background: var(--color-card); border-bottom: 1px solid var(--color-border);
+      padding: 8px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    }
+    .variant-tab {
+      background: var(--color-surface); color: var(--color-text);
+      border: 1px solid var(--color-border); min-height: 32px; font-size: var(--text-sm);
+    }
+    .variant-tab.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+    .variant { display: none; min-height: calc(100vh - 52px); }
+    .variant.active { display: block; }
+    .topbar {
+      height: var(--topbar-height); display: flex; align-items: center; gap: var(--space-4);
+      padding: 0 var(--space-4); background: var(--color-card); border-bottom: 1px solid var(--color-border);
+    }
+    .topbar .spacer { flex: 1; }
+    .shell-grid {
+      display: grid; grid-template-columns: 1fr var(--dock-width); height: calc(100vh - var(--topbar-height) - 52px);
+    }
+    .shell-grid.no-dock { grid-template-columns: 1fr; }
+    .canvas {
+      background: var(--color-bg); position: relative; overflow: hidden;
+      background-image: radial-gradient(circle, #d8ded9 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .node-card {
+      position: absolute; width: 280px; background: var(--color-card);
+      border: 1px solid var(--color-border); border-radius: var(--radius-md);
+      padding: var(--space-4); box-shadow: var(--shadow-sm);
+    }
+    .node-card.selected { border-color: var(--color-accent); box-shadow: 0 0 0 2px rgba(45,108,223,0.25); }
+    .node-card.root { left: 80px; top: 100px; }
+    .node-card.child { left: 420px; top: 180px; }
+    .node-type { font-size: var(--text-sm); font-weight: 700; text-transform: uppercase; color: var(--color-text-muted); }
+    .node-title { font-weight: 700; margin: var(--space-2) 0; }
+    .node-card textarea {
+      width: 100%; min-height: 72px; font: inherit; border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm); padding: var(--space-2); resize: vertical;
+    }
+    .node-actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); flex-wrap: wrap; }
+    .node-actions button { font-size: var(--text-sm); min-height: 32px; }
+    .dock {
+      background: var(--color-surface); border-left: 1px solid var(--color-border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .dock-tabs { display: flex; border-bottom: 1px solid var(--color-border); }
+    .dock-tabs button {
+      flex: 1; border-radius: 0; background: transparent; color: var(--color-text);
+      border-bottom: 2px solid transparent; min-height: 40px;
+    }
+    .dock-tabs button.active { border-bottom-color: var(--color-accent); font-weight: 700; }
+    .dock-body { padding: var(--space-4); overflow-y: auto; flex: 1; }
+    .dock-body label { display: block; font-size: var(--text-sm); font-weight: 700; text-transform: uppercase; margin-bottom: var(--space-2); }
+    .dock-body textarea, .dock-body input {
+      width: 100%; font: inherit; border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+      padding: var(--space-2); margin-bottom: var(--space-4);
+    }
+    .advanced-shell { min-height: calc(100vh - 52px); display: flex; flex-direction: column; }
+    .advanced-header {
+      padding: var(--space-4); background: var(--color-card); border-bottom: 1px solid var(--color-border);
+    }
+    .advanced-tabs { display: flex; gap: var(--space-2); margin-top: var(--space-3); flex-wrap: wrap; }
+    .advanced-tabs button { background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); }
+    .advanced-tabs button.active { background: var(--color-primary); color: #fff; }
+    .advanced-content { flex: 1; padding: var(--space-6); background: var(--color-bg); overflow-y: auto; }
+    .model-row, .plugin-row {
+      background: var(--color-card); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-3);
+      display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4);
+    }
+    .tag-row { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-2); }
+    .tag-row span {
+      font-size: var(--text-xs); background: var(--color-surface);
+      border: 1px solid var(--color-border); padding: 2px 6px; border-radius: var(--radius-pill);
+    }
+    .hint {
+      position: absolute; bottom: var(--space-4); left: var(--space-4); right: var(--space-4);
+      background: rgba(251,252,253,0.92); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); padding: var(--space-3); font-size: var(--text-sm);
+    }
+    .budget { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-2); }
+  </style>
+</head>
+<body>
+  <nav class="variant-nav" aria-label="Sketch variants">
+    <button class="variant-tab active" type="button" onclick="showVariant('a', this)">A: Canvas + node dock ★</button>
+    <button class="variant-tab" type="button" onclick="showVariant('b', this)">B: Canvas only</button>
+    <button class="variant-tab" type="button" onclick="showVariant('c', this)">C: Advanced hub</button>
+  </nav>
+
+  <!-- Variant A: Recommended -->
+  <section id="variant-a" class="variant active" aria-label="Variant A">
+    <header class="topbar">
+      <span class="pill running">Running</span>
+      <span class="meta">task-2 · coding · single-pass</span>
+      <span class="spacer"></span>
+      <button type="button">Run workflow</button>
+      <button type="button" class="danger">Stop</button>
+      <button type="button" class="secondary" onclick="showVariant('c', document.querySelectorAll('.variant-tab')[2])">Advanced</button>
+    </header>
+    <div class="shell-grid">
+      <div class="canvas">
+        <div class="node-card root">
+          <div class="node-type">AI · root-composer</div>
+          <div class="node-title">Build auth module</div>
+          <textarea aria-label="Prompt">Design JWT-based auth with refresh tokens and role checks.</textarea>
+          <div class="budget">Budget 1/3 depth · 2/12 nodes</div>
+          <div class="node-actions">
+            <button type="button">Plan children</button>
+          </div>
+        </div>
+        <div class="node-card child selected">
+          <div class="node-type">AI · task</div>
+          <div class="node-title">Implement middleware</div>
+          <div class="meta">running · expert: coding</div>
+        </div>
+        <p class="hint">Workflow view: canvas is primary. Node dock shows only the selected node. No models/plugins/sessions stacked here.</p>
+      </div>
+      <aside class="dock" aria-label="Node dock">
+        <div class="dock-tabs">
+          <button type="button" class="active" onclick="setDockTab('edit', this)">Edit</button>
+          <button type="button" onclick="setDockTab('run', this)">Run</button>
+        </div>
+        <div class="dock-body" id="dock-edit">
+          <label for="dock-prompt">Prompt</label>
+          <textarea id="dock-prompt">Add Express middleware validating JWT on protected routes.</textarea>
+          <div class="node-actions">
+            <button type="button">Save prompt</button>
+            <button type="button">Plan children</button>
+            <button type="button" class="secondary">Break down</button>
+          </div>
+        </div>
+        <div class="dock-body" id="dock-run" hidden>
+          <label>Approval</label>
+          <p class="meta">Mode: Full checkpoints · Source: manual</p>
+          <div class="node-actions">
+            <button type="button">Approve</button>
+            <button type="button" class="secondary">Skip</button>
+          </div>
+          <label style="margin-top:16px">Clarification</label>
+          <p class="meta">No pending clarification.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Variant B: Canvas only -->
+  <section id="variant-b" class="variant" aria-label="Variant B">
+    <header class="topbar">
+      <span class="pill">Ready</span>
+      <span class="spacer"></span>
+      <button type="button">Run workflow</button>
+      <button type="button" class="secondary" onclick="showVariant('c', document.querySelectorAll('.variant-tab')[2])">Advanced</button>
+    </header>
+    <div class="shell-grid no-dock">
+      <div class="canvas">
+        <div class="node-card root selected">
+          <div class="node-type">AI · root-composer</div>
+          <div class="node-title">Build auth module</div>
+          <textarea aria-label="Prompt">Design JWT-based auth with refresh tokens and role checks.</textarea>
+          <div class="budget">Budget 0/3 depth · 1/12 nodes</div>
+          <div class="node-actions">
+            <button type="button">Plan children</button>
+            <button type="button">Save prompt</button>
+            <button type="button">Approve</button>
+          </div>
+        </div>
+        <p class="hint">Most minimal: no dock. Risk: node cards become crowded; approvals/clarifications compete for card space.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Variant C: Advanced hub -->
+  <section id="variant-c" class="variant" aria-label="Variant C">
+    <div class="advanced-shell">
+      <header class="advanced-header">
+        <button type="button" class="secondary" onclick="showVariant('a', document.querySelectorAll('.variant-tab')[0])">← Back to workflow</button>
+        <nav class="advanced-tabs" aria-label="Advanced sections">
+          <button type="button" class="active" onclick="setAdvancedTab('models', this)">Models</button>
+          <button type="button" onclick="setAdvancedTab('plugins', this)">Plugins</button>
+          <button type="button" onclick="setAdvancedTab('sessions', this)">Sessions</button>
+          <button type="button" onclick="setAdvancedTab('memory', this)">Memory</button>
+          <button type="button" onclick="setAdvancedTab('settings', this)">Settings</button>
+        </nav>
+      </header>
+      <main class="advanced-content" id="adv-models">
+        <h2 style="margin:0 0 16px;font-size:var(--text-lg)">Model Library</h2>
+        <div class="model-row">
+          <div>
+            <strong>llama3.2:3b</strong>
+            <p class="meta">Curated · installed · planner tier</p>
+            <div class="tag-row"><span>fast</span><span>local</span></div>
+          </div>
+          <button type="button" class="secondary">Assign tier</button>
+        </div>
+        <div class="model-row">
+          <div>
+            <strong>qwen2.5-coder:7b</strong>
+            <p class="meta">Curated · available</p>
+          </div>
+          <button type="button">Install</button>
+        </div>
+      </main>
+      <main class="advanced-content" id="adv-plugins" hidden>
+        <h2 style="margin:0 0 16px;font-size:var(--text-lg)">Plugins</h2>
+        <div class="plugin-row">
+          <div>
+            <strong>shell</strong>
+            <p class="meta">builtin · enabled · tools: run_command</p>
+          </div>
+        </div>
+        <div class="plugin-row">
+          <div>
+            <strong>my-fetcher</strong>
+            <p class="meta">local · disabled</p>
+          </div>
+          <button type="button">Enable</button>
+        </div>
+      </main>
+      <main class="advanced-content" id="adv-sessions" hidden>
+        <h2 style="margin:0 0 16px;font-size:var(--text-lg)">Saved Sessions</h2>
+        <div class="model-row"><div><strong>Session 2026-05-22</strong><p class="meta">complete · 4 nodes</p></div><button type="button" class="secondary">Open</button></div>
+      </main>
+      <main class="advanced-content" id="adv-memory" hidden>
+        <h2 style="margin:0 0 16px;font-size:var(--text-lg)">Memory</h2>
+        <p class="meta">3 scopes · 12 episodes · preference editor</p>
+      </main>
+      <main class="advanced-content" id="adv-settings" hidden>
+        <h2 style="margin:0 0 16px;font-size:var(--text-lg)">Settings</h2>
+        <p class="meta">Expert overrides · sampling · workflows · chat refine</p>
+      </main>
+    </div>
+  </section>
+
+  <script>
+    function showVariant(id, tabEl) {
+      document.querySelectorAll('.variant').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.variant-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('variant-' + id).classList.add('active');
+      if (tabEl) tabEl.classList.add('active');
+    }
+    function setDockTab(which, btn) {
+      document.getElementById('dock-edit').hidden = which !== 'edit';
+      document.getElementById('dock-run').hidden = which !== 'run';
+      btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    function setAdvancedTab(which, btn) {
+      ['models','plugins','sessions','memory','settings'].forEach(id => {
+        document.getElementById('adv-' + id).hidden = id !== which;
+      });
+      btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>

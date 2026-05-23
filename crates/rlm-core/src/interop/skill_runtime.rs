@@ -527,10 +527,7 @@ mod tests {
         );
         assert_eq!(resolved.warnings.len(), 1);
         assert_eq!(resolved.warnings[0].code, "SKILL_PARSE_ERROR");
-        assert_eq!(
-            resolved.warnings[0].severity,
-            RuntimeEventSeverity::Warn
-        );
+        assert_eq!(resolved.warnings[0].severity, RuntimeEventSeverity::Warn);
     }
 
     #[test]

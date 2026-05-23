@@ -26,6 +26,22 @@ impl ManifestSkillLoader {
             loaded_paths: Mutex::new(Vec::new()),
         }
     }
+
+    pub fn load_sync(&self) -> Result<(), String> {
+        if !self.root_path.is_dir() {
+            return Err(format!(
+                "Skill loader root is missing or not a directory: {}",
+                self.root_path.display()
+            ));
+        }
+
+        let mut paths = self
+            .loaded_paths
+            .lock()
+            .map_err(|err| format!("Skill loader path lock poisoned: {err}"))?;
+        *paths = vec![self.root_path.clone()];
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -46,18 +62,6 @@ impl SkillLoader for ManifestSkillLoader {
     }
 
     async fn load(&self) -> Result<(), String> {
-        if !self.root_path.is_dir() {
-            return Err(format!(
-                "Skill loader root is missing or not a directory: {}",
-                self.root_path.display()
-            ));
-        }
-
-        let mut paths = self
-            .loaded_paths
-            .lock()
-            .map_err(|err| format!("Skill loader path lock poisoned: {err}"))?;
-        *paths = vec![self.root_path.clone()];
-        Ok(())
+        self.load_sync()
     }
 }

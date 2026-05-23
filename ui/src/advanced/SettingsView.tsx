@@ -1,11 +1,6 @@
 import { useEffect } from "react";
 import type { ExecutionNode, GraphWorkflowSummary, SessionSnapshot } from "../shared/types";
-import {
-  GraphWorkflowPanel,
-  NodeInspector,
-  QualityLoopInspector,
-  RefineGraphPanel,
-} from "../legacy/panels";
+import { GraphWorkflowPanel, NodeInspector, RefineGraphPanel } from "../legacy/panels";
 
 export type SettingsViewProps = {
   snapshot: SessionSnapshot;
@@ -87,9 +82,6 @@ export function SettingsView({
       ) : (
         <p className="empty">Select a node on the workflow canvas for overrides.</p>
       )}
-      {selectedNode?.loop ? (
-        <QualityLoopInspector node={selectedNode} refresh={refresh} setErrorMessage={setErrorMessage} />
-      ) : null}
     </div>
   );
 }

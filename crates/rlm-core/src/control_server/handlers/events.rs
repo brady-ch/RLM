@@ -5,8 +5,8 @@ use axum::response::sse::{Event, KeepAlive, Sse};
 use futures::stream::{self, StreamExt};
 use tokio_stream::wrappers::BroadcastStream;
 
-use crate::control_server::RouterState;
 use crate::control_server::handlers::common::session_snapshot_json;
+use crate::control_server::RouterState;
 
 pub(crate) async fn events(
     State(state): State<Arc<RouterState>>,

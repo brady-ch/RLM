@@ -170,15 +170,51 @@
       "reason": "accepted",
       "seq": 17,
       "timestamp": "2026-05-22T22:42:13.314368995Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 18,
+      "timestamp": "2026-05-23T00:14:15.619874508Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 19,
+      "timestamp": "2026-05-23T00:14:35.82731796Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 20,
+      "timestamp": "2026-05-23T00:21:15.859655879Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 21,
+      "timestamp": "2026-05-23T00:22:34.943333485Z"
     }
   ],
   "nodeStatuses": [
     {
       "nodeId": "root-composer",
       "status": "failed",
-      "updatedAt": "2026-05-22T22:42:13.31417908Z"
+      "updatedAt": "2026-05-23T00:22:34.943077104Z"
     }
   ],
   "runId": "default",
-  "version": 18
+  "version": 22
 }

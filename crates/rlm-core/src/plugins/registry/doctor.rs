@@ -4,6 +4,7 @@ use std::path::Path;
 use serde_json::{json, Value};
 
 use super::super::builtin::builtin_plugins;
+use super::super::extension_host::resolve_manifest_loader_path;
 use super::super::manifest::{read_and_validate_plugin_manifest, PluginManifest};
 use super::super::remote_fetch::resolve_plugin_layout;
 use super::catalog::{
@@ -12,7 +13,6 @@ use super::catalog::{
 };
 use super::service::PluginRegistryService;
 use super::types::{PluginDoctorIssue, PluginDoctorResult};
-use super::super::extension_host::resolve_manifest_loader_path;
 use crate::interop::{parse_skill_config, validate_skill_search_paths};
 use crate::ports::{ManifestSkillLoader, SkillLoader};
 

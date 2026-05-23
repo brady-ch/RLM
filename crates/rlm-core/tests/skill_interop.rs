@@ -226,7 +226,9 @@ fn manifest_skill_loader_load_succeeds_for_valid_directory() {
     let loader_root = temp.path().join("demo");
     let loader = rlm_core::ports::ManifestSkillLoader::new("loaders/demo", loader_root.clone());
     let runtime = tokio::runtime::Runtime::new().expect("runtime");
-    runtime.block_on(loader.load()).expect("load should succeed");
+    runtime
+        .block_on(loader.load())
+        .expect("load should succeed");
 
     let paths = loader.search_paths();
     assert_eq!(paths, vec![loader_root]);
@@ -266,8 +268,8 @@ fn manifest_skill_loaders_register_on_extension_host() {
     assert!(warnings.is_empty());
     assert!(host.get_skill_loader("loaders/demo").is_some());
 
-    let skill = rlm_core::interop::load_skill_interop(None, temp.path(), &mut host)
-        .expect("skill interop");
+    let skill =
+        rlm_core::interop::load_skill_interop(None, temp.path(), &mut host).expect("skill interop");
     let runtime = tokio::runtime::Runtime::new().expect("runtime");
     let result = runtime.block_on(skill.tool.execute(json!({ "name": "summarize" })));
     assert!(!result.is_error, "{}", result.content);

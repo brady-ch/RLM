@@ -32,8 +32,7 @@ export function TopBar({
     ? snapshot.graph.nodes.find((node) => node.id === snapshot.activeNodeId)
     : undefined;
 
-  const showResumeControl =
-    snapshot.runState?.resumable === true && snapshot.status !== "running";
+  const showResumeControl = snapshot.runState?.resumable === true && snapshot.status !== "running";
 
   const resumeDescription = snapshot.runState?.activeNodeId
     ? `Incomplete nodes will continue from saved state. Active node: ${snapshot.runState.activeNodeId}.`

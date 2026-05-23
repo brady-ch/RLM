@@ -22,9 +22,7 @@ export function parseLoadedResumeState(snapshot: RunStateSnapshot): LoadedResume
   }
   const cursor = snapshot.resumeCursor;
   if (cursor) {
-    const cursorCompleted = Array.isArray(cursor.completedNodeIds)
-      ? cursor.completedNodeIds
-      : [];
+    const cursorCompleted = Array.isArray(cursor.completedNodeIds) ? cursor.completedNodeIds : [];
     for (const nodeId of cursorCompleted) {
       if (typeof nodeId === "string") {
         completed.add(nodeId);
