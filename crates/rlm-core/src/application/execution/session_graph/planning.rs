@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use crate::application::graph::planner::{plan_children, GraphPlannerContext};
 use crate::domain::types::{
-    ChatRunReadiness, ComposerPlanBudget, ExecutionGraphNode, ExecutionStatus, ExpertRuntimeMode,
-    GraphPosition, PlanNodeResult, ReplanChoice,
+    ChatRunReadiness, ComposerPlanBudget, ExecutionGraphEdge, ExecutionGraphNode, ExecutionStatus,
+    ExpertRuntimeMode, GraphPosition, PlanNodeResult, ReplanChoice,
 };
 use crate::ports::LanguageModel;
 
@@ -163,7 +163,17 @@ impl InteractiveExecutionSession {
                 editable_fields: Some(vec!["prompt".into()]),
                 r#loop: None,
             };
-            self.register_node_internal(child);
+            self.register_node_internal(child.clone());
+            let edge = ExecutionGraphEdge {
+                from: node_id.to_string(),
+                to: id.clone(),
+                source_handle: None,
+                target_handle: None,
+            };
+            let mut edges = self.edges.lock().expect("edges");
+            if !edges.iter().any(|e| e.from == edge.from && e.to == edge.to) {
+                edges.push(edge);
+            }
             created.push(id);
         }
         let next_budget = ComposerPlanBudget {

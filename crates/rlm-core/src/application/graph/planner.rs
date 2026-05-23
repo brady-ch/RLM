@@ -68,6 +68,14 @@ pub async fn plan_children(
         )
         .await;
 
+    if response.content.starts_with("Ollama inference failed:") {
+        return Err(format!(
+            "MUTATION:planning_failed|Graph planning failed.|{}|{}|",
+            context.node_id,
+            response.content.trim()
+        ));
+    }
+
     let json_text = extract_json_object(&response.content).ok_or_else(|| {
         format!(
             "MUTATION:invalid_planner_output|Planner returned invalid output.|{}||",

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use reqwest::Client;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use thiserror::Error;
 
 use crate::application::execution::CancellationController;
@@ -106,19 +106,7 @@ impl OllamaLanguageModel {
         tools: Option<&[Value]>,
     ) -> Result<LanguageModelResponse, OllamaLanguageModelError> {
         let url = format!("{}/api/chat", self.base_url);
-        let mut body = json!({
-            "model": self.model,
-            "messages": messages.iter().map(chat_message_to_ollama).collect::<Vec<_>>(),
-            "stream": true,
-            "options": {
-                "temperature": self.temperature,
-            },
-        });
-        if let Some(tools) = tools {
-            if !tools.is_empty() {
-                body["tools"] = json!(tools);
-            }
-        }
+        let body = self.build_chat_body(messages, tools);
 
         let response = self.client.post(url).json(&body).send().await?;
         if !response.status().is_success() {
@@ -168,6 +156,24 @@ impl OllamaLanguageModel {
             model: Some(self.model.clone()),
             tool_calls,
         })
+    }
+
+    fn build_chat_body(&self, messages: &[ChatMessage], tools: Option<&[Value]>) -> Value {
+        let mut body = json!({
+            "model": self.model,
+            "messages": messages.iter().map(chat_message_to_ollama).collect::<Vec<_>>(),
+            "stream": true,
+            "keep_alive": 0,
+            "options": {
+                "temperature": self.temperature,
+            },
+        });
+        if let Some(tools) = tools {
+            if !tools.is_empty() {
+                body["tools"] = json!(tools);
+            }
+        }
+        body
     }
 
     fn build_tool_definitions(options: &LanguageModelCompleteOptions<'_>) -> Vec<Value> {
@@ -317,5 +323,20 @@ mod tests {
         let defs = OllamaLanguageModel::build_tool_definitions(&options);
         assert_eq!(defs.len(), 1);
         assert_eq!(defs[0]["function"]["name"], "shell");
+    }
+
+    #[test]
+    fn chat_request_unloads_model_after_response() {
+        let model = OllamaLanguageModel::new(None, Some("llama3.1:8b"), false);
+        let body = model.build_chat_body(
+            &[ChatMessage {
+                role: "user".into(),
+                content: "hello".into(),
+            }],
+            None,
+        );
+
+        assert_eq!(body["model"], "llama3.1:8b");
+        assert_eq!(body["keep_alive"], 0);
     }
 }
