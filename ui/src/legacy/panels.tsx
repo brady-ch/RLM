@@ -616,6 +616,21 @@ function MemoryPanel({
   );
 }
 
+function tierModelOptions(library?: ModelLibrarySnapshot): string[] {
+  const ids = new Set<string>();
+  for (const entry of library?.installed ?? []) {
+    if (entry.status === "installed" && entry.ollamaModel) {
+      ids.add(entry.ollamaModel);
+    }
+  }
+  for (const entry of library?.curated ?? []) {
+    if (entry.status === "installed" && entry.ollamaModel) {
+      ids.add(entry.ollamaModel);
+    }
+  }
+  return [...ids].sort((a, b) => a.localeCompare(b));
+}
+
 function ModelLibraryPanel({
   library,
   search,
@@ -634,6 +649,7 @@ function ModelLibraryPanel({
   setErrorMessage: (message: string | undefined) => void;
 }) {
   const tierEntries = Object.entries(library?.tiers ?? {});
+  const assignableModels = tierModelOptions(library);
   return (
     <div className="model-library-panel">
       <div className="panel-heading">
@@ -676,9 +692,35 @@ function ModelLibraryPanel({
       </div>
       <div className="tier-grid">
         {tierEntries.map(([tier, model]) => (
-          <div className="meta-row" key={tier}>
-            {tier}: {model}
-          </div>
+          <label className="tier-row" key={tier}>
+            <span className="tier-label">{tier}</span>
+            <select
+              aria-label={`Assign ${tier} tier model`}
+              value={model}
+              disabled={!library || assignableModels.length === 0}
+              onChange={(event) => {
+                const next = event.target.value;
+                if (!next || next === model) {
+                  return;
+                }
+                void runAction(
+                  setErrorMessage,
+                  () =>
+                    post("/api/model-library/select-tier", {
+                      tier,
+                      model: next,
+                    }),
+                  refresh,
+                );
+              }}
+            >
+              {assignableModels.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </select>
+          </label>
         ))}
       </div>
       <div className="model-list">
@@ -1767,8 +1809,6 @@ function PolicyRows({ title, items }: { title: string; items: string[] }) {
     </div>
   );
 }
-
-createRoot(document.getElementById("root")!).render(<App />);
 
 export {
   RefineGraphPanel,

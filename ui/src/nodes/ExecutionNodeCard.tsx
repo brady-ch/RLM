@@ -127,7 +127,7 @@ export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
       ) : null}
       {editable ? (
         <textarea
-          className="node-card-prompt"
+          className="node-card-prompt nodrag nowheel"
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           aria-label={`Prompt for ${node.label || node.id}`}
