@@ -127,7 +127,21 @@ Boundary rules live in `scripts/rust-boundary-rules.toml` and are enforced by `s
 | `no-plugins-to-domain` | plugins → domain | Plugins register tools; domain policy stays separate |
 | `no-plugins-to-persistence` | plugins → persistence | Plugins reach stores through ports/bootstrap |
 
-**Optional follow-on (not enforced):** `application` → `persistence` / `adapters` direct imports (bootstrap, memory index, handler wiring); `ports` → `domain` types for shared message/result shapes; transitional `plugins/builtin` → `domain::types::ToolExecutionResult` until tool result types consolidate under `ports`. Baseline entries in `scripts/rust-boundary-baseline.json` may document transitional arcs; **`no-domain-to-persistence` must never appear in the baseline.**
+**Optional follow-on (not enforced):** `application` → `persistence` / `adapters` direct imports (bootstrap, memory index, handler wiring); `ports` → `domain` types for shared message/result shapes.
+
+### Transitional boundary baseline (ratchet plan)
+
+Default CI runs `scripts/check-rust-boundaries.sh` in **baseline mode** (known transitional arcs in `scripts/rust-boundary-baseline.json` are suppressed). Strict mode (`--strict` or `npm run check:rust:boundaries:strict`) fails on any arc; use only when baseline count reaches zero. **`no-domain-to-persistence` must never appear in the baseline.**
+
+| Rule | From module | Rationale for defer | Removal condition |
+|------|-------------|---------------------|-------------------|
+| `no-persistence-to-application` | `persistence/config.rs` | Transitional config loader re-export from application until persistence owns config resolution | Move `load_project_config` / `merge_yaml_layers` behind a persistence facade or port; drop pub use |
+| `no-plugins-to-application` | `plugins/runtime.rs` | Plugin runtime filters agent tools via `agent_registry` during composition | Expose filter API through ports/bootstrap; plugins register tools only via extension host |
+| `no-plugins-to-persistence` | `plugins/registry/service.rs` | Registry service reads `LoadedProjectConfig` for install/doctor | Inject config through port at composition root; registry depends on ports only |
+| `no-plugins-to-domain` | `plugins/builtin/shell.rs` | Builtin tools return `domain::types::ToolExecutionResult` | Consolidate tool result type under `ports/`; update all four builtin tools |
+| `no-plugins-to-domain` | `plugins/builtin/web_fetch.rs` | Same transitional tool result type | Same as shell — ports consolidation |
+| `no-plugins-to-domain` | `plugins/builtin/web_search.rs` | Same transitional tool result type | Same as shell — ports consolidation |
+| `no-plugins-to-domain` | `plugins/builtin/write_file.rs` | Same transitional tool result type | Same as shell — ports consolidation |
 
 Run `npm run check:rust:boundaries` or `bash scripts/check-rust-boundaries.sh` to verify. `npm run check:rust` includes the boundary check after fmt/clippy.
 
