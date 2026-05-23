@@ -1,23 +1,24 @@
 # Recursive Language Model CLI
 
-## Current Milestone: v1.12 UI Canvas Visual Polish
+## Current Milestone: v1.13 Runtime Safety & WSL Hardening
 
-**Goal:** Upgrade the workflow canvas from prototype aesthetic to Figma/Miro-style product polish with dark/light themes and readable graph edges — without changing shell layout or API contracts.
+**Goal:** Prevent OOM crashes on WSL when Ollama runs on the Windows host — enforce memory budgets end-to-end, serialize execution, and give operators visible guardrails plus runbooks.
 
 **Target features:**
-- Full 79-02 visual spec — neutral dot-grid canvas, light node cards with status chips, Radix context menu
-- **Dark and light mode** — default to system `prefers-color-scheme`, manual override in UI, persisted preference
-- **High-contrast edges** — graph connection lines readable in both themes (user-reported pain point)
-- Preserve all Plan/Run/Graph/Advanced actions and shell boundaries from v1.11
+- Complete RAM guard on Rust + TypeScript paths (plan/run/tier/install with live Ollama `/api/ps`)
+- WSL conservative memory caps and config validation (`estimatedRamMb` vs `maxRamMb`)
+- Single-run concurrency and model unload on stop
+- UI memory visibility and WSL operator runbook
+- REG-03 operator safety UAT checklist
 
 ## Current State
 
-**Latest shipped milestone:** v1.11 — UI Product Hardening (2026-05-23)  
-**Audit status:** complete — 13/13 requirements including REG-01 operator browser UAT
+**Latest shipped milestone:** v1.12 — UI Canvas Visual Polish (2026-05-23)  
+**Audit status:** implementation complete — REG-02 visual UAT checklist archived unsigned
 
-v1.11 delivered shell architecture completion (`legacy/panels.tsx` removed), interaction polish (canvas, tiers, run/stop, UI server lifecycle), first-run launcher, workflow overview panel, model RAM guards, and operator-signed `81-UAT.md`. Rust-served UI is operator-ready for daily plan/run workflows.
+v1.12 delivered theme system (light/dark/system), high-contrast edges, dot-grid canvas, light node cards, Radix context menu, initial RAM guards (`ram_guard.rs`), and workflow overview/run-control fixes. v1.11 REG-01 remains the baseline operator sign-off for shell workflows.
 
-**Prior shipped:** v1.10 v1.9 Debt Closure (2026-05-23); v1.9 Rust Runtime Hardening; v1.8 Rust Runtime Migration.
+**Prior shipped:** v1.11 UI Product Hardening (2026-05-23); v1.10 v1.9 Debt Closure; v1.9 Rust Runtime Hardening; v1.8 Rust Runtime Migration.
 
 <details>
 <summary>Prior milestone context (v1.0–v1.7)</summary>
@@ -126,9 +127,14 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-- **THEME-01–03**: Dark/light mode with system default and persisted manual override
-- **CANV-01–04**: Canvas visual polish per `79-UI-SPEC.md` (dot grid, light cards, status chips, Radix menu)
-- **EDGE-01–02**: High-contrast graph edges readable in both themes
+- **MEM-01–06**: Memory budget enforcement, WSL caps, Ollama ps integration, TS parity
+- **SAFE-01–04**: Execution concurrency, model lifecycle, UI memory visibility
+- **REG-03**: Operator WSL safety UAT checklist
+
+### Recently Validated (v1.12)
+
+- **THEME-01–03**, **EDGE-01–03**, **CANV-01–04**: UI canvas visual polish (phases 82–84)
+- Initial RAM guard on Rust plan/run path (`8680496`)
 
 ### Candidate Future-Milestone Themes
 

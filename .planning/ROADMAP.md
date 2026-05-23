@@ -2,7 +2,8 @@
 
 ## Milestones
 
-- 🚧 **v1.12 UI Canvas Visual Polish** — Phases 82-85 (planning)
+- 🚧 **v1.13 Runtime Safety & WSL Hardening** — Phases 86-89 (planning)
+- ✅ **v1.12 UI Canvas Visual Polish** — Phases 82-85 (shipped 2026-05-23; archive: `.planning/milestones/v1.12-phases/`)
 - ✅ **v1.11 UI Product Hardening** — Phases 77-81 (shipped 2026-05-23)
 - ✅ **v1.10 v1.9 Debt Closure** — Phases 72-76 (shipped 2026-05-23; archive: `.planning/milestones/v1.10-ROADMAP.md`)
 - ✅ **v1.9 Rust Runtime Hardening** — Phases 62-71 (shipped 2026-05-22; archive: `.planning/milestones/v1.9-ROADMAP.md`)
@@ -10,66 +11,62 @@
 
 ## Overview
 
-**Current milestone:** v1.12 UI Canvas Visual Polish — dark/light themes, high-contrast graph edges, and Figma/Miro-style canvas polish per approved `79-UI-SPEC.md`. No API or shell layout changes.
+**Current milestone:** v1.13 Runtime Safety & WSL Hardening — prevent OOM crashes on WSL when Ollama runs on the Windows host; extend RAM guardrails, execution concurrency, and operator runbooks.
 
-**v1.11 (shipped 2026-05-23)** delivered shell boundaries, interaction polish, first-run launcher, workflow overview, model RAM guards, and REG-01 operator UAT.
+**v1.12 (shipped 2026-05-23)** delivered theme system, canvas polish, Radix context menu, initial RAM guards, and workflow overview fixes. REG-02 visual UAT checklist archived but not operator-signed.
 
 ## Phases
 
-### 🚧 v1.12 UI Canvas Visual Polish (Phases 82-85)
+### 🚧 v1.13 Runtime Safety & WSL Hardening (Phases 86-89)
 
-**Milestone Goal:** Canvas-first UI reads as a polished product — readable edges, dark/light mode, neutral dot-grid canvas, light node cards, Radix context menu.
+**Milestone Goal:** Operators can plan and run workflows on WSL without OOM-killing the VM — memory budget enforced end-to-end with visible UI feedback.
 
-- [x] **Phase 82: Theme System & Edge Contrast** — Light/dark tokens, system + manual toggle, high-contrast React Flow edges (THEME-*, EDGE-*)
-- [x] **Phase 83: Canvas & Node Card Polish** — Dot-grid canvas, status chips, card chrome per 79-UI-SPEC in both themes (CANV-01, CANV-02, CANV-04)
-- [x] **Phase 84: Radix Context Menu** — Replace hand-rolled menu with Radix primitive; preserve all actions (CANV-03)
-- [ ] **Phase 85: Operator Visual UAT** — Browser checklist for theme, edges, and polish; ratchet REG-02 (REG-02)
+- [ ] **Phase 86: RAM Guard Completion** — Live Ollama ps in guards, config validation, TS parity (MEM-*)
+- [ ] **Phase 87: Execution Concurrency & Model Lifecycle** — Single-run mutex, keep_alive ratchet, stop unload (SAFE-01–03)
+- [ ] **Phase 88: Memory Visibility & WSL Runbook** — Live resourceGuard in UI, budget panel, docs (SAFE-04, MEM-05)
+- [ ] **Phase 89: Operator Safety UAT** — WSL memory checklist; ratchet REG-03 (REG-03)
 
 ## Phase Details
 
-### Phase 82: Theme System & Edge Contrast
-**Goal:** User can switch light/dark (or follow system) and clearly see graph connection lines in both modes  
-**Depends on:** v1.11 complete  
-**Requirements:** THEME-01, THEME-02, THEME-03, EDGE-01, EDGE-02, EDGE-03  
+### Phase 86: RAM Guard Completion
+**Goal:** Memory budget enforced consistently across Rust and TypeScript paths with config validation  
+**Depends on:** v1.12 RAM guard foundation (`8680496`)  
+**Requirements:** MEM-01, MEM-02, MEM-03, MEM-04, MEM-06  
 **Success Criteria:**
-1. User opens UI and sees theme matching system preference when no override stored
-2. User toggles light/dark/system from TopBar; choice persists after refresh
-3. Graph edges are visibly contrasting against canvas in light and dark modes
-4. TopBar, Run panel, and Advanced hub inherit theme tokens without broken contrast  
-**Plans:** TBD  
-**Reference:** `.planning/research/SUMMARY.md`, `.planning/todos/pending/79-02-canvas-visual-polish.md` (edge contrast section)
-
-### Phase 83: Canvas & Node Card Polish
-**Goal:** Canvas and node cards match 79-UI-SPEC Figma/Miro aesthetic in both themes  
-**Depends on:** Phase 82  
-**Requirements:** CANV-01, CANV-02, CANV-04  
-**Success Criteria:**
-1. User sees neutral dot-grid canvas (not green prototype tint) in light and dark
-2. Node cards use light header + status chips; no dark header bar
-3. Selected, hover, and running card states match spec
-4. MiniMap, handles, and React Flow controls remain usable in both themes  
-**Plans:** TBD  
-**Reference:** `.planning/milestones/v1.11-phases/79-shell-boundaries-context-menu/79-UI-SPEC.md`
-
-### Phase 84: Radix Context Menu
-**Goal:** Context menu meets a11y bar with Radix while preserving Variant B actions  
-**Depends on:** Phase 83  
-**Requirements:** CANV-03  
-**Success Criteria:**
-1. Right-click, ⋮, and keyboard open Radix context menu on node cards
-2. All Plan/Run/Graph/Advanced menu items work unchanged
-3. Menu renders correctly in light and dark themes
-4. Shell boundary tests pass — no `advanced/` imports in run-panel  
+1. Plan/run/resume/tier/install blocked when peak tier exceeds budget (with Ollama ps subtracted)
+2. Invalid config (tier estimate > maxRamMb) rejected at load with clear error
+3. WSL auto cap applied when maxRamMb is auto
+4. Node runtime path matches Rust guard behavior in tests  
 **Plans:** TBD
 
-### Phase 85: Operator Visual UAT
-**Goal:** Operator signs browser checklist for v1.12 visual requirements  
-**Depends on:** Phase 84  
-**Requirements:** REG-02  
+### Phase 87: Execution Concurrency & Model Lifecycle
+**Goal:** Prevent stacked model loads and duplicate executions from exhausting memory  
+**Depends on:** Phase 86  
+**Requirements:** SAFE-01, SAFE-02, SAFE-03  
 **Success Criteria:**
-1. Operator verifies theme toggle and persistence in browser
-2. Operator confirms edge visibility in both themes
-3. Operator confirms canvas/card polish and context menu actions
+1. Second Run/Resume while running returns HTTP 409
+2. Tests ratchet keep_alive: 0 on Ollama chat/generate
+3. Stop triggers model unload when Ollama reachable  
+**Plans:** TBD
+
+### Phase 88: Memory Visibility & WSL Runbook
+**Goal:** Operator sees memory budget state and has documented WSL setup guidance  
+**Depends on:** Phase 87  
+**Requirements:** SAFE-04, MEM-05  
+**Success Criteria:**
+1. resourceGuard on session poll reflects live Ollama loaded MB
+2. UI shows available/peak/blocked state in overview or TopBar
+3. docs/UI.md or dedicated runbook covers WSL + Ollama host memory limits  
+**Plans:** TBD
+
+### Phase 89: Operator Safety UAT
+**Goal:** Operator signs WSL safety checklist  
+**Depends on:** Phase 88  
+**Requirements:** REG-03  
+**Success Criteria:**
+1. Operator verifies tier block when model exceeds cap
+2. Operator verifies Run blocked with clear message when over budget
+3. Operator verifies Stop clears running state without WSL freeze
 4. Verification artifact ratcheted to passed  
 **Plans:** TBD
 
@@ -77,10 +74,10 @@
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 82. Theme System & Edge Contrast | v1.12 | 1/1 | Complete | 2026-05-23 |
-| 83. Canvas & Node Card Polish | v1.12 | 1/1 | Complete | 2026-05-23 |
-| 84. Radix Context Menu | v1.12 | 1/1 | Complete | 2026-05-23 |
-| 85. Operator Visual UAT | v1.12 | 1/1 | Awaiting operator | — |
+| 86. RAM Guard Completion | v1.13 | 0/0 | Not started | — |
+| 87. Execution Concurrency & Model Lifecycle | v1.13 | 0/0 | Not started | — |
+| 88. Memory Visibility & WSL Runbook | v1.13 | 0/0 | Not started | — |
+| 89. Operator Safety UAT | v1.13 | 0/0 | Not started | — |
 
 ---
-*Roadmap created: 2026-05-23 — milestone v1.12 UI Canvas Visual Polish*
+*Roadmap created: 2026-05-23 — milestone v1.13 Runtime Safety & WSL Hardening*

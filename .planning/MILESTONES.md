@@ -1,5 +1,23 @@
 # Milestones
 
+## v1.12 UI Canvas Visual Polish (Shipped: 2026-05-23)
+
+**Phases completed:** 4 phases (82–85), 4 plans  
+**Audit status:** implementation complete — 10/11 requirements; REG-02 visual UAT checklist archived unsigned
+
+**Key accomplishments:**
+
+- Theme system — light/dark/system toggle, FOUC prevention, semantic tokens
+- High-contrast graph edges and neutral dot-grid canvas
+- Light node cards with status chips; Radix context menu (Variant B preserved)
+- Initial RAM guardrails (`ram_guard.rs`) and workflow overview/run-control fixes
+- REG-02 checklist at `.planning/milestones/v1.12-phases/85-operator-visual-uat/85-UAT.md`
+
+**Archive:** `.planning/milestones/v1.12-phases/`  
+**Requirements:** `.planning/REQUIREMENTS.md` (v1.12 section in git history)
+
+---
+
 ## v1.11 UI Product Hardening (Shipped: 2026-05-23)
 
 **Phases completed:** 5 phases (77–81), 5 plans  
