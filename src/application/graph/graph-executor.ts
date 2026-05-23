@@ -177,7 +177,11 @@ function isExpertRuntime(value: unknown): value is ExpertRuntimeMode {
 }
 
 function shouldSkipExecutionStatus(status: ExecutionStatus): boolean {
-  return status === "skipped" || status === "cancelled";
+  return (
+    status === "skipped" ||
+    status === "cancelled" ||
+    status === "completed"
+  );
 }
 
 function createRunStatePersistence(input: GraphExecutorInput): RunStatePersistence | undefined {
