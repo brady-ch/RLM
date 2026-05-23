@@ -3,8 +3,8 @@
 ## Current State
 
 **Latest shipped milestone:** v1.9 — Rust Runtime Hardening (2026-05-22)  
-**Current milestone:** None — run `/gsd-new-milestone` to plan next version  
-**Audit status:** v1.9 closed as tech_debt — 17/18 requirements satisfied; REG-01 human UAT unsigned; documented deferrals in archive audit
+**Current milestone:** v1.10 — v1.9 Debt Closure (planning)  
+**Audit status:** v1.9 closed as tech_debt — 17/18 requirements; this milestone closes documented deferrals
 
 v1.9 closed all v1.8 functional debt and hardened the Rust workspace to match the TypeScript concern map. Wave 1 delivered UI regression fixes, full quality loop parity, cross-session resume via `RunStateStorePort`, skill interop, full CLI parity, and PACK-03 CI smoke. Wave 2 applied application layer grouping, control-server handler split, large-file decomposition, Rust boundary enforcement (`check-rust-boundaries`), and evaluated defer on optional crate split (7s clean build, 8s lib tests — no split). Combined gates green at close: `npm run check`, `npm run check:rust`, `cargo test --workspace`.
 
@@ -103,7 +103,21 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-(None — next milestone requirements defined via `/gsd-new-milestone`)
+(None yet — v1.10 requirements in `.planning/REQUIREMENTS.md`)
+
+## Current Milestone: v1.10 v1.9 Debt Closure
+
+**Goal:** Close all documented v1.9 tech debt so REG-01 is fully satisfied and resume/skill/packaging/boundary deferrals are resolved or explicitly ratcheted.
+
+**Target features:**
+- REG-01 human UAT sign-off on Rust-served UI (61-06 checklist)
+- UI resume control wired to `POST /api/chat/resume-run` with confirm gate
+- TS graph executor `persistResumeCursor` at node transitions
+- HTTP integration test for resume-run confirm gate
+- Skill interop depth: SKILL_PARSE_ERROR lifecycle events; ManifestSkillLoader async load
+- `test:packaging` in default `npm test` gate
+- Architecture hygiene: 71-DECISION.md refresh, baseline script fix, boundary debt documented or reduced
+- Stale v1.9 wave todos archived
 
 ### Candidate Future-Milestone Themes
 
@@ -159,10 +173,9 @@ Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` 
 
 ## Next Milestone Goals
 
-Candidate themes (not yet scoped — run `/gsd-new-milestone`):
+v1.10 in progress — see Current Milestone above. After close, candidate themes:
 
-- Product shell convergence: guided composer, session launcher, graph workspace as primary surface
-- UI resume control wiring (`POST /api/chat/resume-run`) and REG-01 human UAT sign-off
+- Product shell convergence: guided composer, session launcher, graph workspace as primary surface (`ui-shell-architecture.md`)
 - Managed llama.cpp runtime (INFR-01 seed)
 - Release hardening: signed artifacts, Windows/macOS packages, auto-update channel
 
@@ -171,4 +184,4 @@ Candidate themes (not yet scoped — run `/gsd-new-milestone`):
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-22 after v1.9 milestone*
+*Last updated: 2026-05-22 after v1.10 milestone start*
