@@ -121,7 +121,17 @@ Plans:
   1. TypeScript graph executor invokes `persistResumeCursor` at each node transition
   2. Node runtime cursor shape matches Rust `RunStateStorePort` expectations
   3. Resume after partial Node execution skips completed nodes using the persisted cursor
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 74-01-PLAN.md — Graph executor run-state writes at node transitions
+- [ ] 74-02-PLAN.md — Resume flag + loadResumeState + skip-completed test
+
+**Wave 1** *(autonomous)*
+- 74-01 — persistNodeStatus + persistResumeCursor mirroring Rust executor
+
+**Wave 2** *(depends 74-01)*
+- 74-02 — resume consumption + targeted graph-executor-resume test
 
 ### Phase 75: Skill Interop Depth
 **Goal**: Skill load/parse failures surface as structured lifecycle events with working async declarative loader
@@ -131,7 +141,17 @@ Plans:
   1. When skill parse fails, execution lifecycle emits structured `SKILL_PARSE_ERROR` events (not warning strings only)
   2. Declarative skill paths load asynchronously via `ManifestSkillLoader.load()` (stub behavior removed)
   3. Doctor/status surfaces reflect skill load failures with structured error context
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 75-01-PLAN.md — RuntimeEvent module + SKILL_PARSE_ERROR lifecycle emission
+- [ ] 75-02-PLAN.md — ManifestSkillLoader async load + doctor/runtime merge
+
+**Wave 1** *(autonomous)*
+- 75-01 — PLUG-04 structured parse error events
+
+**Wave 2** *(depends 75-01)*
+- 75-02 — PLUG-05 async manifest loader + doctor context
 
 ### Phase 76: Packaging & Architecture Hygiene
 **Goal**: Default test gate includes packaging smoke; architecture docs, baselines, and milestone meta artifacts are accurate
@@ -142,7 +162,17 @@ Plans:
   2. `71-DECISION.md` accurately reflects Phase 70 prerequisites; `measure-rust-compile-baseline.sh` preserves cargo exit status
   3. Transitional boundary arcs either reduced or documented with ratchet plan in AGENTS.md; default `check:rust:boundaries` behavior unchanged unless arcs eliminated
   4. Stale v1.9 wave todos (`rust-functional-debt-wave1`, `rust-structural-architecture-wave2`) archived or cancelled; `66-01-SUMMARY.md` frontmatter includes `requirements-completed`
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 76-01-PLAN.md — Chain test:packaging into npm test (PACK-04)
+- [ ] 76-02-PLAN.md — 71-DECISION refresh + baseline script guard + AGENTS ratchet (ARCH-07, ARCH-08)
+- [ ] 76-03-PLAN.md — Archive wave todos + 66-01-SUMMARY frontmatter (META-01)
+
+**Wave 1** *(autonomous; parallel)*
+- 76-01 — PACK-04 packaging in npm test
+- 76-02 — ARCH-07 + ARCH-08 docs and boundary ratchet
+- 76-03 — META-01 todo archive + summary frontmatter
 
 ## Progress
 
@@ -160,6 +190,6 @@ Plans:
 | 71. Optional Crate Split | v1.9 | 3/3 | Complete | 2026-05-22 |
 | 72. Human UAT Sign-off | v1.10 | 0/TBD | Not started | - |
 | 73. UI Resume Control | v1.10 | 0/TBD | Not started | - |
-| 74. TS Resume Cursor Parity | v1.10 | 0/TBD | Not started | - |
-| 75. Skill Interop Depth | v1.10 | 0/TBD | Not started | - |
-| 76. Packaging & Architecture Hygiene | v1.10 | 0/TBD | Not started | - |
+| 74. TS Resume Cursor Parity | v1.10 | 0/2 | Not started | - |
+| 75. Skill Interop Depth | v1.10 | 0/2 | Not started | - |
+| 76. Packaging & Architecture Hygiene | v1.10 | 0/3 | Not started | - |
