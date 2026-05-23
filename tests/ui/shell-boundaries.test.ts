@@ -81,10 +81,10 @@ test("NodeContextMenu implements Variant B sections and API mutations", () => {
 
 test("ExecutionNodeCard exposes context menu via right-click, ⋮, and keyboard", () => {
   const source = readUi("nodes/ExecutionNodeCard.tsx");
-  assert.match(source, /onContextMenu/);
+  assert.match(source, /NodeContextMenuShell/);
+  assert.match(source, /openNodeContextMenuFromButton/);
   assert.match(source, /node-actions-trigger/);
   assert.match(source, /ContextMenu|F10/);
-  assert.match(source, /NodeContextMenu/);
   assert.match(source, /btn-primary-plan/);
   assert.match(source, /Plan children/);
   assert.doesNotMatch(source, /\/breakdown/);

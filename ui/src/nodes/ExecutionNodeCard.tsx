@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { AlertTriangle, GitBranchPlus } from "lucide-react";
 import type { FlowNodeData } from "../shared/types";
 import { formatPlanningError, post, truncateFailureMessage } from "../shared/api";
+import { uiRunStatusLabels } from "../shared/labels";
 import { QualityLoopCardSummary } from "./QualityLoopCardSummary";
-import { NodeContextMenu } from "./NodeContextMenu";
+import { NodeContextMenuShell, openNodeContextMenuFromButton } from "./NodeContextMenu";
 
 export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
   const node = data.execution;
@@ -22,16 +23,11 @@ export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
     data.planningErrorNodeId === node.id ? data.planningErrorMessage : undefined;
   const editable =
     node.status === "planned" || node.status === "ready" || node.status === "awaiting_approval";
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
+  const cardRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setPrompt(node.prompt ?? "");
   }, [node.id, node.prompt]);
-
-  const openMenu = (clientX: number, clientY: number) => {
-    setMenuPos({ x: clientX, y: clientY });
-    setMenuOpen(true);
-  };
 
   const planChildren = () => {
     if (!data.setErrorMessage || !data.refresh || !data.setPlanningNodeId) {
@@ -75,20 +71,28 @@ export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
       }
     })();
   };
-  return (
+
+  const openMenuFromKeyboard = () => {
+    cardRef.current?.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 0,
+        clientY: 0,
+      }),
+    );
+  };
+
+  const cardBody = (
     <div
+      ref={cardRef}
       className={`node-card ${node.status} ${node.id === "root-composer" ? "root-composer-focus" : ""} ${isPlanning ? "planning-in-progress" : ""} ${isActive ? "active-execution" : ""} ${blockedByAncestor ? "blocked-by-ancestor" : ""} ${data.isSelected ? "node-card-selected" : ""}`}
       tabIndex={0}
       aria-busy={node.status === "running" || isPlanning ? "true" : undefined}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        openMenu(event.clientX, event.clientY);
-      }}
       onKeyDown={(event) => {
         if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
           event.preventDefault();
-          const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-          openMenu(rect.left + 8, rect.top + 8);
+          openMenuFromKeyboard();
         }
       }}
     >
@@ -112,12 +116,15 @@ export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
         />
       )}
       <div className="node-header">
-        <div>
-          <div className="node-type">{composer?.type ?? node.kind}</div>
+        <div className="node-header-main">
+          <div className="node-header-row">
+            <div className="node-type">{composer?.type ?? node.kind}</div>
+            <span className={`node-status-chip status-${node.status}`}>
+              {uiRunStatusLabels[node.status] ?? node.status}
+            </span>
+          </div>
           <div className="node-runtime">
-            {node.status === "running" ? "Executing: " : ""}
-            {node.expertRuntime ?? "single-pass"} · {node.expertAgentId ?? "default"} ·{" "}
-            {node.status}
+            {node.expertRuntime ?? "single-pass"} · {node.expertAgentId ?? "default"}
           </div>
         </div>
         <span className={`complexity ${composer?.complexity ?? "low"}`}>
@@ -127,11 +134,7 @@ export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
           type="button"
           className="icon node-actions-trigger"
           aria-label="Actions"
-          onClick={(event) => {
-            event.stopPropagation();
-            const rect = event.currentTarget.getBoundingClientRect();
-            openMenu(rect.right, rect.bottom);
-          }}
+          onClick={openNodeContextMenuFromButton}
         >
           ⋮
         </button>
@@ -246,19 +249,20 @@ export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
           position={Position.Right}
         />
       )}
-      <NodeContextMenu
-        node={node}
-        prompt={prompt}
-        open={menuOpen}
-        x={menuPos.x}
-        y={menuPos.y}
-        onClose={() => setMenuOpen(false)}
-        setErrorMessage={data.setErrorMessage}
-        refresh={data.refresh}
-        setPlanningNodeId={data.setPlanningNodeId}
-        setPlanningError={data.setPlanningError}
-        onNavigateAdvancedSettings={data.onNavigateAdvancedSettings}
-      />
     </div>
+  );
+
+  return (
+    <NodeContextMenuShell
+      node={node}
+      prompt={prompt}
+      setErrorMessage={data.setErrorMessage}
+      refresh={data.refresh}
+      setPlanningNodeId={data.setPlanningNodeId}
+      setPlanningError={data.setPlanningError}
+      onNavigateAdvancedSettings={data.onNavigateAdvancedSettings}
+    >
+      {cardBody}
+    </NodeContextMenuShell>
   );
 }

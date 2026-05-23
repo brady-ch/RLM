@@ -55,8 +55,8 @@ export function GraphCanvas({
       onNodeClick={(_, node) => onNodeClick(node.id)}
       onPaneClick={onPaneClick}
     >
-      <Background gap={20} color="#d8ded9" />
-      <MiniMap pannable zoomable />
+      <Background gap={20} color="var(--color-canvas-dot)" />
+      <MiniMap pannable zoomable className="graph-minimap" />
       <Controls />
     </ReactFlow>
   );

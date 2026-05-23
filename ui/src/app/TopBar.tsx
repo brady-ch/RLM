@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PauseCircle, Play, Settings, Square } from "lucide-react";
 import { GraphActionModal } from "../nodes/GraphActionModal";
+import { ThemeToggle } from "../shared/ThemeToggle";
 import type { ExecutionNode, SessionSnapshot } from "../shared/types";
 import { uiRunStatusLabels } from "../shared/labels";
 import { approvalModeLabel, post, runAction } from "../shared/api";
@@ -134,6 +135,7 @@ export function TopBar({
           <Settings size={16} aria-hidden />
           Advanced
         </button>
+        <ThemeToggle />
       </div>
       <GraphActionModal
         open={resumeConfirmOpen}

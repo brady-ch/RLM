@@ -1,15 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
+import * as ContextMenu from "@radix-ui/react-context-menu";
 import type { ExecutionNode } from "../shared/types";
 import { formatPlanningError, post, runAction } from "../shared/api";
 import { GraphActionModal } from "./GraphActionModal";
 
-export type NodeContextMenuProps = {
+export type NodeContextMenuShellProps = {
   node: ExecutionNode;
   prompt: string;
-  open: boolean;
-  x: number;
-  y: number;
-  onClose: () => void;
+  children: React.ReactNode;
   setErrorMessage?: (message: string | undefined) => void;
   refresh?: () => Promise<void>;
   setPlanningNodeId?: (nodeId: string | undefined) => void;
@@ -17,60 +15,28 @@ export type NodeContextMenuProps = {
   onNavigateAdvancedSettings?: () => void;
 };
 
-export function NodeContextMenu({
+export function NodeContextMenuShell({
   node,
   prompt,
-  open,
-  x,
-  y,
-  onClose,
+  children,
   setErrorMessage,
   refresh,
   setPlanningNodeId,
   setPlanningError,
   onNavigateAdvancedSettings,
-}: NodeContextMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
+}: NodeContextMenuShellProps) {
   const [graphModal, setGraphModal] = useState<
     null | { kind: "add-child" } | { kind: "connect-parent" } | { kind: "delete-subtree" }
   >(null);
+
+  if (!setErrorMessage || !refresh) {
+    return <>{children}</>;
+  }
+
   const editable =
     node.status === "planned" || node.status === "ready" || node.status === "awaiting_approval";
   const waiting = node.status === "awaiting_approval";
   const exhausted = node.composer?.planBudget.exhausted === true;
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    const onPointer = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("mousedown", onPointer);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("mousedown", onPointer);
-    };
-  }, [open, onClose]);
-
-  if (!setErrorMessage || !refresh) {
-    return null;
-  }
-
-  const showMenu = open;
-  const showGraphModal = graphModal !== null;
-
-  if (!showMenu && !showGraphModal) {
-    return null;
-  }
 
   const planChildren = () => {
     void (async () => {
@@ -86,62 +52,52 @@ export function NodeContextMenu({
       } finally {
         setPlanningNodeId?.(undefined);
         await refresh();
-        onClose();
       }
     })();
   };
 
   const run = (operation: () => Promise<void>) => {
-    void runAction(setErrorMessage, operation, async () => {
-      await refresh();
-      onClose();
-    });
+    void runAction(setErrorMessage, operation, refresh);
   };
 
   const closeGraphModal = () => setGraphModal(null);
 
   return (
     <>
-      {showMenu ? (
-        <div
-          ref={menuRef}
-          className="node-context-menu"
-          role="menu"
-          style={{ position: "fixed", top: y, left: x, zIndex: 1000 }}
-        >
-          <div className="node-context-menu-section" role="presentation">
-            <span className="node-context-menu-label">Plan</span>
-            <button type="button" role="menuitem" disabled={!editable} onClick={planChildren}>
-              Plan children
-            </button>
-            <button
-              type="button"
-              role="menuitem"
+      <ContextMenu.Root>
+        <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
+        <ContextMenu.Portal>
+          <ContextMenu.Content className="radix-context-menu" sideOffset={4} alignOffset={4}>
+            <ContextMenu.Label className="radix-context-menu-label">Plan</ContextMenu.Label>
+            <ContextMenu.Item
+              className="radix-context-menu-item"
               disabled={!editable}
-              onClick={() =>
-                run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/breakdown`, {}))
-              }
+              onSelect={planChildren}
+            >
+              Plan children
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              className="radix-context-menu-item"
+              disabled={!editable}
+              onSelect={() => run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/breakdown`, {}))}
             >
               Break down
-            </button>
-            <button
-              type="button"
-              role="menuitem"
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              className="radix-context-menu-item"
               disabled={!editable || !exhausted}
-              onClick={() =>
+              onSelect={() =>
                 run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/extend-budget`, {}))
               }
             >
               Extend budget
-            </button>
-          </div>
-          <div className="node-context-menu-section" role="presentation">
-            <span className="node-context-menu-label">Run</span>
-            <button
-              type="button"
-              role="menuitem"
+            </ContextMenu.Item>
+            <ContextMenu.Separator className="radix-context-menu-separator" />
+            <ContextMenu.Label className="radix-context-menu-label">Run</ContextMenu.Label>
+            <ContextMenu.Item
+              className="radix-context-menu-item"
               disabled={!waiting}
-              onClick={() =>
+              onSelect={() =>
                 run(() =>
                   post(`/api/nodes/${encodeURIComponent(node.id)}/approve`, {
                     token: node.approvalToken,
@@ -150,12 +106,11 @@ export function NodeContextMenu({
               }
             >
               Approve
-            </button>
-            <button
-              type="button"
-              role="menuitem"
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              className="radix-context-menu-item"
               disabled={!waiting}
-              onClick={() =>
+              onSelect={() =>
                 run(() =>
                   post(`/api/nodes/${encodeURIComponent(node.id)}/skip`, {
                     token: node.approvalToken,
@@ -164,50 +119,41 @@ export function NodeContextMenu({
               }
             >
               Skip
-            </button>
-          </div>
-          <div className="node-context-menu-section" role="presentation">
-            <span className="node-context-menu-label">Graph</span>
-            <button
-              type="button"
-              role="menuitem"
+            </ContextMenu.Item>
+            <ContextMenu.Separator className="radix-context-menu-separator" />
+            <ContextMenu.Label className="radix-context-menu-label">Graph</ContextMenu.Label>
+            <ContextMenu.Item
+              className="radix-context-menu-item"
               disabled={!editable}
-              onClick={() => setGraphModal({ kind: "add-child" })}
+              onSelect={() => setGraphModal({ kind: "add-child" })}
             >
               Add child…
-            </button>
-            <button
-              type="button"
-              role="menuitem"
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              className="radix-context-menu-item"
               disabled={!editable}
-              onClick={() => setGraphModal({ kind: "connect-parent" })}
+              onSelect={() => setGraphModal({ kind: "connect-parent" })}
             >
               Connect parent…
-            </button>
-            <button
-              type="button"
-              role="menuitem"
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              className="radix-context-menu-item"
               disabled={!editable}
-              onClick={() => setGraphModal({ kind: "delete-subtree" })}
+              onSelect={() => setGraphModal({ kind: "delete-subtree" })}
             >
               Delete subtree
-            </button>
-          </div>
-          <div className="node-context-menu-section" role="presentation">
-            <span className="node-context-menu-label">Advanced</span>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                onNavigateAdvancedSettings?.();
-                onClose();
-              }}
+            </ContextMenu.Item>
+            <ContextMenu.Separator className="radix-context-menu-separator" />
+            <ContextMenu.Label className="radix-context-menu-label">Advanced</ContextMenu.Label>
+            <ContextMenu.Item
+              className="radix-context-menu-item"
+              onSelect={() => onNavigateAdvancedSettings?.()}
             >
               Expert overrides…
-            </button>
-          </div>
-        </div>
-      ) : null}
+            </ContextMenu.Item>
+          </ContextMenu.Content>
+        </ContextMenu.Portal>
+      </ContextMenu.Root>
       <GraphActionModal
         open={graphModal?.kind === "add-child"}
         mode="prompt"
@@ -251,5 +197,20 @@ export function NodeContextMenu({
         }}
       />
     </>
+  );
+}
+
+/** @deprecated Use NodeContextMenuShell — kept for shell-boundaries import name */
+export const NodeContextMenu = NodeContextMenuShell;
+
+export function openNodeContextMenuFromButton(event: React.MouseEvent<HTMLElement>): void {
+  event.stopPropagation();
+  event.currentTarget.dispatchEvent(
+    new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    }),
   );
 }

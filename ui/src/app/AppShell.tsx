@@ -227,7 +227,7 @@ export function AppShell() {
         }),
       ),
     );
-    setEdges(graphToFlowEdges(snapshot.graph.edges));
+    setEdges(graphToFlowEdges(snapshot.graph.edges, snapshot.graph.nodes));
   }, [planningError, planningNodeId, refresh, selectedNodeId, snapshot]);
 
   useEffect(() => {
