@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rlm_core::domain::run_state_persistence::RunStatePersistence;
@@ -24,6 +24,23 @@ fn seeded_session() -> Arc<InteractiveExecutionSession> {
         ..Default::default()
     });
     session
+}
+
+fn write_run_friendly_config(dir: &Path) {
+    std::fs::write(
+        dir.join("rlm.config.yaml"),
+        r"memory:
+  maxRamMb: 65536
+  reserveSystemRamMb: 512
+models:
+  default: granite4.1:3b
+  tiers:
+    small: { name: granite4.1:3b, estimatedRamMb: 1024 }
+    medium: { name: granite4.1:3b, estimatedRamMb: 2048 }
+    large: { name: granite4.1:3b, estimatedRamMb: 2048 }
+",
+    )
+    .expect("write rlm.config.yaml");
 }
 
 #[tokio::test]
@@ -123,11 +140,13 @@ async fn chat_apply_and_cancel_mutate_pending_mutation() {
 
 #[tokio::test]
 async fn chat_confirm_run_pipeline_variant_returns_run_variant() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    write_run_friendly_config(dir.path());
     let session = seeded_session();
     let server = start_server(ServerConfig {
         port: 0,
         ui_dist_dir: None,
-        project_root: PathBuf::from("."),
+        project_root: dir.path().to_path_buf(),
         memory_session_id: None,
         session: Some(session.clone()),
         ..Default::default()
@@ -340,6 +359,7 @@ async fn chat_resume_run_rejects_without_confirm() {
 #[tokio::test]
 async fn chat_resume_run_accepts_confirm_and_skips_completed_nodes() {
     let dir = tempfile::tempdir().expect("tempdir");
+    write_run_friendly_config(dir.path());
     let run_id = "run-resume-accept";
     seed_resumable_run_state(dir.path(), run_id);
     let session = seeded_resume_session();

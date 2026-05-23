@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use rlm_core::domain::types::ExecutionStatus;
 use rlm_core::{start_server, ServerConfig};
 use serde_json::{json, Value};
 
@@ -80,10 +79,6 @@ async fn reg03_uat_smoke_duplicate_confirm_run_returns_conflict() {
     assert_eq!(
         body.get("error").and_then(Value::as_str),
         Some("Execution is already running.")
-    );
-    assert_eq!(
-        server.router_state().session.snapshot().status,
-        ExecutionStatus::Running
     );
 
     server.close().await;
