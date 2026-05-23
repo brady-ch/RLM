@@ -29,7 +29,7 @@
 
 ### Verification (REG)
 
-- [ ] **REG-01**: Operator completes merged browser UAT checklist (`72-UAT.md` items 2–10) on Rust-served UI with live Ollama where applicable; evidence recorded; verification ratcheted to passed
+- [ ] **REG-01**: Operator completes merged browser UAT checklist (`81-UAT.md` items 2–13) on Rust-served UI with live Ollama where applicable; evidence recorded; verification ratcheted to passed
 
 ## Future Requirements
 
