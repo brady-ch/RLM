@@ -1,25 +1,23 @@
 # Recursive Language Model CLI
 
-## Current Milestone: v1.11 UI Product Hardening
+## Current Milestone: v1.12 UI Canvas Visual Polish
 
-**Goal:** Make the Rust-served UI reliable, complete, and approachable — finish the Phase 61 shell vision, polish daily interactions, add first-run guidance, and close REG-01 operator sign-off.
+**Goal:** Upgrade the workflow canvas from prototype aesthetic to Figma/Miro-style product polish with dark/light themes and readable graph edges — without changing shell layout or API contracts.
 
 **Target features:**
-- Finish shell architecture — extract `legacy/panels.tsx`, enforce workflow vs Advanced boundaries, fully wire context menu (Variant B)
-- Interaction polish — canvas, tier assignment, run/stop, UI server lifecycle
-- First-run / session launcher — guided composer and project/session entry before graph workspace
-- Operator readiness — complete `72-UAT.md` browser checklist and ratchet verification to passed
+- Full 79-02 visual spec — neutral dot-grid canvas, light node cards with status chips, Radix context menu
+- **Dark and light mode** — default to system `prefers-color-scheme`, manual override in UI, persisted preference
+- **High-contrast edges** — graph connection lines readable in both themes (user-reported pain point)
+- Preserve all Plan/Run/Graph/Advanced actions and shell boundaries from v1.11
 
 ## Current State
 
-**Latest shipped milestone:** v1.10 — v1.9 Debt Closure (2026-05-23)  
-**Audit status:** tech_debt — 9/10 requirements; REG-01 operator browser UAT unsigned (accepted at close)
+**Latest shipped milestone:** v1.11 — UI Product Hardening (2026-05-23)  
+**Audit status:** complete — 13/13 requirements including REG-01 operator browser UAT
 
-v1.10 closed documented v1.9 deferrals: UI resume control wired to `POST /api/chat/resume-run` with confirm gate and HTTP integration tests; TypeScript graph executor persists resume cursor at node transitions; Rust skill runtime emits structured `SKILL_PARSE_ERROR` lifecycle events with async `ManifestSkillLoader.load()`; `test:packaging` chained into default `npm test`; architecture docs, boundary ratchet table, and v1.9 meta artifacts refreshed. Phase 72 automated preflight and live-server smoke PASS; operator browser checklist (`72-UAT.md` items 2–10) remains unsigned — same tech_debt acceptance pattern as v1.9 close. Combined gates green at close: `npm run check`, `npm run check:rust`, `cargo test --workspace`.
+v1.11 delivered shell architecture completion (`legacy/panels.tsx` removed), interaction polish (canvas, tiers, run/stop, UI server lifecycle), first-run launcher, workflow overview panel, model RAM guards, and operator-signed `81-UAT.md`. Rust-served UI is operator-ready for daily plan/run workflows.
 
-v1.9 closed all v1.8 functional debt and hardened the Rust workspace to match the TypeScript concern map. Wave 1 delivered UI regression fixes, full quality loop parity, cross-session resume via `RunStateStorePort`, skill interop, full CLI parity, and PACK-03 CI smoke. Wave 2 applied application layer grouping, control-server handler split, large-file decomposition, Rust boundary enforcement (`check-rust-boundaries`), and evaluated defer on optional crate split (7s clean build, 8s lib tests — no split).
-
-v1.8 shipped a Rust-only runtime (`rlm-core`, `rlm-cli`) embedded in Tauri with no bundled Node. The Axum control server preserves the existing HTTP/SSE contract; persistence, recursive engine, graph executor, vector index, model library, plugins, and CLI parity CI all run in Rust. Phase 61 rewrote the UI shell to a canvas-first AppShell (GraphCanvas, slim Run panel, Advanced hub). **471+** TypeScript tests and **67+** Rust integration tests green; ~15k LOC Rust workspace.
+**Prior shipped:** v1.10 v1.9 Debt Closure (2026-05-23); v1.9 Rust Runtime Hardening; v1.8 Rust Runtime Migration.
 
 <details>
 <summary>Prior milestone context (v1.0–v1.7)</summary>
@@ -122,12 +120,15 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Tier assignment from installed Ollama models in Advanced → Models — v1.11 Phase 77
 - ✓ Run/Stop and tier refresh reflect server state — v1.11 Phase 77
 - ✓ UI server single-instance lock and `--stop`/`--replace` lifecycle — v1.11 Phase 77
+- ✓ Shell architecture — domain panels in `advanced/*`, workflow vs Advanced boundaries, context menu Variant B — v1.11 Phases 78–79
+- ✓ First-run launcher — guided composer and session picker — v1.11 Phase 80
+- ✓ REG-01 operator browser UAT signed on Rust-served UI — v1.11 Phase 81
 
 ### Active
 
-- **SHEL-01–05**: Shell architecture completion per `ui-shell-architecture.md`
-- **LAUN-01–03**: Guided composer and session launcher
-- **REG-01**: Operator browser UAT sign-off on Rust-served UI
+- **THEME-01–03**: Dark/light mode with system default and persisted manual override
+- **CANV-01–04**: Canvas visual polish per `79-UI-SPEC.md` (dot grid, light cards, status chips, Radix menu)
+- **EDGE-01–02**: High-contrast graph edges readable in both themes
 
 ### Candidate Future-Milestone Themes
 
@@ -179,18 +180,18 @@ Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` 
 | v1.9 Wave 1 before Wave 2 structural cleanup | Close functional debt before architecture refactors | ✓ Good — v1.9 |
 | ARCH-06 evaluated defer over mandatory crate split | Measured compile iteration acceptable (7s/8s) | ✓ Good — v1.9 |
 | Rust boundary check baseline mode with strict opt-in | Transitional arcs documented; ratchet path preserved | ✓ Good — v1.9/v1.10 |
-| REG-01 operator UAT accepted as tech_debt at milestone close | Autonomous executor cannot substitute browser sign-off; automated gates green | ⚠️ Revisit — operator checklist in `72-UAT.md` |
+| REG-01 operator UAT accepted as tech_debt at milestone close | Autonomous executor cannot substitute browser sign-off; automated gates green | ✓ Resolved — v1.11 operator signed `81-UAT.md` |
 | Fine-tuning / LoRA explicitly out of scope | Compute and ecosystem cost | — Deferred |
 
 ## Next Milestone Goals
 
-v1.11 UI Product Hardening — in planning. See `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md`.
+v1.12 UI Canvas Visual Polish — in planning. See `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md`.
 
-Deferred beyond v1.11: managed llama.cpp (INFR-01), multi-runner adapters, release hardening (REL-01/02).
+Deferred beyond v1.12: managed llama.cpp (INFR-01), multi-runner adapters, release hardening (REL-01/02), execution trace/output panel.
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-23 after v1.11 milestone planning*
+*Last updated: 2026-05-23 after v1.12 milestone planning*

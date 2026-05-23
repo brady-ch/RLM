@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.11
-milestone_name: UI Product Hardening
-status: complete
-stopped_at: Phase 81 operator UAT signed — milestone v1.11 complete
-last_updated: "2026-05-23T12:00:00Z"
-last_activity: 2026-05-23 — REG-01 operator sign-off; 81-UAT.md signed
+milestone: v1.12
+milestone_name: UI Canvas Visual Polish
+status: planning
+stopped_at: Milestone v1.12 started — defining requirements
+last_updated: "2026-05-23T14:00:00Z"
+last_activity: 2026-05-23 — Milestone v1.12 started; research in progress
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-23)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone v1.11 UI Product Hardening — **complete** (REG-01 signed 2026-05-23)
+**Current focus:** Milestone v1.12 UI Canvas Visual Polish — dark/light themes, high-contrast edges, Figma/Miro canvas polish
 
 ## Current Position
 
-Phase: 81 — Operator UAT Sign-off  
-Plan: 01 complete  
-Status: `81-VERIFICATION.md` passed; `81-UAT.md` operator_signed  
-Last activity: 2026-05-23 — operator confirmed workflow working; REG-01 ratcheted
+Phase: Not started (defining requirements)  
+Plan: —  
+Status: Defining requirements  
+Last activity: 2026-05-23 — Milestone v1.12 started
 
 ## Performance Metrics
 
@@ -44,38 +44,30 @@ Last activity: 2026-05-23 — operator confirmed workflow working; REG-01 ratche
 
 ## Accumulated Context
 
-v1.11 UI Product Hardening shipped 2026-05-23. All 13 requirements complete including REG-01 operator browser UAT.
+v1.11 UI Product Hardening shipped 2026-05-23. v1.12 adds visual polish from approved `79-UI-SPEC.md` plus user-requested dark/light mode and contrasting graph edges.
 
 ### Decisions
 
-- REG-01 closed via `81-UAT.md` operator sign-off (supersedes deferred 72-UAT tech debt from v1.10)
-- 81-UAT.md supersedes 72-UAT.md for v1.11 operator runs; preflight via `npm run test:uat:preflight`
-- Workflow overview panel always visible (post-UAT UX enhancement for result visualization)
-- First-run launcher shows on pristine root-composer graph; sessionStorage persists dismissal
+- v1.12 scope: full 79-02 spec + theme system (system default + manual override) + edge contrast
+- Theme toggle: both system preference and persisted manual override
+- shadcn not adopted — Radix context menu primitive only
+- Advanced hub / TopBar / Run panel visual restyle deferred unless needed for theme consistency
 
 ### Blockers/Concerns
 
-None — milestone complete.
+None — planning phase.
 
 ## Deferred Items
 
-Items acknowledged and deferred:
-
 | Category | Item | Status |
 |----------|------|--------|
-| verification | REG-01 operator browser UAT | **complete — signed 2026-05-23** |
-| integration | PLUG-04 production event sink — `NoopRuntimeEventSink` in default bootstrap | deferred |
-| meta | Nyquist `*-VERIFICATION.md` missing for phases 73–76 (NYQT-01) | deferred |
-| todo | extract-runtime-composition-from-cli-entrypoint | pending |
-| todo | split-config-loader-resolver-validation | pending |
-
-## Next Steps
-
-1. Run `/gsd-complete-milestone` to archive v1.11 and start next milestone cycle
-2. Or `/gsd-new-milestone` to define v1.12 scope
+| integration | PLUG-04 production event sink | deferred |
+| meta | Nyquist verification gaps (NYQT-01) | deferred |
+| infra | INFR-01/02 managed runners | deferred |
+| release | REL-01/02 packaging | deferred |
 
 ## Session Continuity
 
-Last session: 2026-05-23T12:00:00Z  
-Stopped at: Phase 81 operator UAT signed — milestone v1.11 complete  
+Last session: 2026-05-23T14:00:00Z  
+Stopped at: Milestone v1.12 started — defining requirements  
 Resume file: None
