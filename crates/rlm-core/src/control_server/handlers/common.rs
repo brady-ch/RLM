@@ -29,7 +29,7 @@ pub(crate) fn session_snapshot_json(state: &Arc<RouterState>) -> Value {
 
 fn run_state_resumable_json(state: &Arc<RouterState>) -> Value {
     let run_state_dir = &state.paths.run_state_dir;
-    if !run_state_dir.is_dir() && fs::create_dir_all(run_state_dir).is_err() {
+    if !run_state_dir.is_dir() {
         return json!({ "resumable": false });
     }
 

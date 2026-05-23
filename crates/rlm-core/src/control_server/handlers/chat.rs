@@ -147,21 +147,39 @@ pub(crate) async fn chat_resume_run(
         crate::persistence::FileRunStateStore::new(run_state_dir.clone()),
     );
     let persistence = crate::domain::RunStatePersistence::new(run_id.clone(), Arc::clone(&store));
-    let resume = persistence.load_resume_state().map_err(|err| ApiError {
+    let snapshot = persistence.get_snapshot().map_err(|err| ApiError {
         status: StatusCode::INTERNAL_SERVER_ERROR,
         body: json!({ "error": format!("Failed to load run state: {err}") }),
     })?;
-    if resume.is_none() {
+    let Some(snapshot) = snapshot else {
+        return Err(ApiError {
+            status: StatusCode::NOT_FOUND,
+            body: json!({ "error": "No resumable run state found for this session." }),
+        });
+    };
+    if snapshot.resume_cursor.is_none() {
         return Err(ApiError {
             status: StatusCode::NOT_FOUND,
             body: json!({ "error": "No resumable run state found for this session." }),
         });
     }
 
-    let readiness = state.session.confirm_graph_and_run();
-    if readiness.state == "ready_to_run" && !state.session.is_confirmed_execution_running() {
-        spawn_graph_execution(&state, true);
+    if state.session.is_confirmed_execution_running() {
+        return Err(ApiError {
+            status: StatusCode::CONFLICT,
+            body: json!({ "error": "Execution is already running." }),
+        });
     }
+
+    let readiness = state.session.confirm_graph_and_run();
+    if readiness.state != "ready_to_run" {
+        return Err(ApiError {
+            status: StatusCode::CONFLICT,
+            body: json!({ "error": readiness.reason }),
+        });
+    }
+
+    spawn_graph_execution(&state, true);
     Ok(Json(snapshot_with_extra(
         &state.session,
         json!({ "readiness": readiness, "resumed": true, "runId": run_id }),
