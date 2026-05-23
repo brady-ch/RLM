@@ -30,7 +30,7 @@
 - [x] **Phase 77: Interaction Polish** — Canvas, tier assignment, run/stop cancellation, UI server lifecycle (UX-01–04)
 - [x] **Phase 78: Legacy Panel Extraction** — Move domain panels out of `legacy/panels.tsx` into `advanced/*` (SHEL-01, SHEL-05)
 - [x] **Phase 79: Shell Boundaries & Context Menu** — Run panel scope, workflow-only view, context menu Variant B (SHEL-02–04) (completed 2026-05-23)
-- [ ] **Phase 80: First-Run Launcher** — Guided composer and session picker entry flow (LAUN-01–03)
+- [x] **Phase 80: First-Run Launcher** — Guided composer and session picker entry flow (LAUN-01–03)
 - [ ] **Phase 81: Operator UAT Sign-off** — Complete `72-UAT.md` browser checklist and ratchet verification (REG-01)
 
 ## Phase Details
@@ -77,7 +77,7 @@
 2. User can open a saved session from a launcher list or start new workflow
 3. After launcher, graph workspace is primary; Advanced remains secondary via TopBar
 4. Existing deep-link / refresh restores session without losing graph state  
-**Plans:** TBD
+**Plans:** 1/1 plans complete
 
 ### Phase 81: Operator UAT Sign-off
 **Goal:** Operator completes browser UAT on Rust-served UI and REG-01 verification ratchets to passed  
@@ -97,7 +97,7 @@
 | 77. Interaction Polish | v1.11 | 1/1 | Complete | 2026-05-23 |
 | 78. Legacy Panel Extraction | v1.11 | 1/1 | Complete   | 2026-05-23 |
 | 79. Shell Boundaries & Context Menu | v1.11 | 1/1 | Complete   | 2026-05-23 |
-| 80. First-Run Launcher | v1.11 | 0/? | Not Started | — |
+| 80. First-Run Launcher | v1.11 | 1/1 | Complete   | 2026-05-23 |
 | 81. Operator UAT Sign-off | v1.11 | 0/? | Not Started | — |
 
 ---

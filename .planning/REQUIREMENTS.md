@@ -23,9 +23,9 @@
 
 ### First-Run & Launcher (LAUN)
 
-- [ ] **LAUN-01**: New workflow entry shows guided composer — prompt input and clear path to first plan/run on canvas
-- [ ] **LAUN-02**: User can open an existing saved session or start fresh from a launcher before entering workflow view
-- [ ] **LAUN-03**: Graph workspace remains primary surface after launcher; Advanced is secondary navigation
+- [x] **LAUN-01**: New workflow entry shows guided composer — prompt input and clear path to first plan/run on canvas
+- [x] **LAUN-02**: User can open an existing saved session or start fresh from a launcher before entering workflow view
+- [x] **LAUN-03**: Graph workspace remains primary surface after launcher; Advanced is secondary navigation
 
 ### Verification (REG)
 
@@ -74,9 +74,9 @@ Deferred beyond v1.11.
 | SHEL-02 | Phase 79 | Complete |
 | SHEL-03 | Phase 79 | Complete |
 | SHEL-04 | Phase 79 | Complete |
-| LAUN-01 | Phase 80 | Pending |
-| LAUN-02 | Phase 80 | Pending |
-| LAUN-03 | Phase 80 | Pending |
+| LAUN-01 | Phase 80 | Complete |
+| LAUN-02 | Phase 80 | Complete |
+| LAUN-03 | Phase 80 | Complete |
 | REG-01 | Phase 81 | Pending |
 
 **Coverage:**
