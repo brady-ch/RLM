@@ -31,7 +31,7 @@
 - [x] **Phase 78: Legacy Panel Extraction** — Move domain panels out of `legacy/panels.tsx` into `advanced/*` (SHEL-01, SHEL-05)
 - [x] **Phase 79: Shell Boundaries & Context Menu** — Run panel scope, workflow-only view, context menu Variant B (SHEL-02–04) (completed 2026-05-23)
 - [x] **Phase 80: First-Run Launcher** — Guided composer and session picker entry flow (LAUN-01–03)
-- [ ] **Phase 81: Operator UAT Sign-off** — Complete `72-UAT.md` browser checklist and ratchet verification (REG-01)
+- [ ] **Phase 81: Operator UAT Sign-off** — Complete `81-UAT.md` browser checklist and ratchet verification (REG-01)
 
 ## Phase Details
 
@@ -88,7 +88,7 @@
 2. All rows signed PASS or documented SKIP with evidence
 3. `72-VERIFICATION.md` (or successor) status updated from `human_needed` to `passed`
 4. No FAIL rows at sign-off unless explicitly accepted  
-**Plans:** TBD
+**Plans:** 1/1 plans complete
 
 ## Progress
 
@@ -98,7 +98,7 @@
 | 78. Legacy Panel Extraction | v1.11 | 1/1 | Complete   | 2026-05-23 |
 | 79. Shell Boundaries & Context Menu | v1.11 | 1/1 | Complete   | 2026-05-23 |
 | 80. First-Run Launcher | v1.11 | 1/1 | Complete   | 2026-05-23 |
-| 81. Operator UAT Sign-off | v1.11 | 0/? | Not Started | — |
+| 81. Operator UAT Sign-off | v1.11 | 1/1 | Awaiting operator | — |
 
 ---
 *Roadmap created: 2026-05-22 — milestone v1.11 UI Product Hardening*
