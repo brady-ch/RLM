@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Square } from "lucide-react";
+import { GraphActionModal } from "../nodes/GraphActionModal";
 import type { ExecutionNode, SessionSnapshot } from "../shared/types";
 import { uiRunStatusLabels } from "../shared/labels";
 import { approvalModeLabel, post, runAction } from "../shared/api";
@@ -24,9 +26,18 @@ export function TopBar({
   refresh,
   setErrorMessage,
 }: TopBarProps) {
+  const [resumeConfirmOpen, setResumeConfirmOpen] = useState(false);
+
   const activeNode: ExecutionNode | undefined = snapshot.activeNodeId
     ? snapshot.graph.nodes.find((node) => node.id === snapshot.activeNodeId)
     : undefined;
+
+  const showResumeControl =
+    snapshot.runState?.resumable === true && snapshot.status !== "running";
+
+  const resumeDescription = snapshot.runState?.activeNodeId
+    ? `Incomplete nodes will continue from saved state. Active node: ${snapshot.runState.activeNodeId}.`
+    : "Incomplete nodes will continue from saved state.";
 
   return (
     <header className="workflow-topbar">
@@ -61,6 +72,17 @@ export function TopBar({
           }
         >
           Pause future auto-approvals
+        </button>
+      ) : null}
+      {showResumeControl ? (
+        <button
+          type="button"
+          className="secondary"
+          aria-label="Resume interrupted run"
+          data-testid="resume-run-button"
+          onClick={() => setResumeConfirmOpen(true)}
+        >
+          Resume run
         </button>
       ) : null}
       <button
@@ -101,6 +123,23 @@ export function TopBar({
       <button type="button" className="secondary" onClick={onAdvanced}>
         Advanced
       </button>
+      <GraphActionModal
+        open={resumeConfirmOpen}
+        mode="confirm"
+        title="Resume interrupted run?"
+        description={resumeDescription}
+        confirmLabel="Resume run"
+        cancelLabel="Cancel"
+        onCancel={() => setResumeConfirmOpen(false)}
+        onSubmit={() => {
+          setResumeConfirmOpen(false);
+          runAction(
+            setErrorMessage,
+            () => post("/api/chat/resume-run", { confirm: true }),
+            refresh,
+          );
+        }}
+      />
     </header>
   );
 }
