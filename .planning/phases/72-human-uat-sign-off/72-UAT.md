@@ -4,7 +4,8 @@ phase: 72-human-uat-sign-off
 sources:
   - .planning/milestones/v1.8-phases/61-ui-shell-rewrite/61-06-VERIFICATION.md
   - .planning/milestones/v1.9-phases/62-ui-regression-fixes/62-VERIFICATION.md
-updated: "2026-05-23T00:00:00Z"
+updated: "2026-05-23T00:10:00Z"
+automated_attempt: "2026-05-23T00:10:00Z"
 ---
 
 # Phase 72 — REG-01 Human UAT Checklist
@@ -41,21 +42,30 @@ Screenshots or logs may be saved under `.planning/phases/72-human-uat-sign-off/e
 
 | # | Item | Steps | Result | Notes | Evidence |
 |---|------|-------|--------|-------|----------|
-| 1 | Rust server + UI | Run `npm run build:ui`, then `RLM_UI_DIST=$PWD/ui/dist cargo run -p rlm-cli -- ui --port 0`; open URL from stderr | PENDING | | |
-| 2 | Workflow shell layout | On workflow view, confirm top bar + canvas only — no sidebar for models, plugins, sessions, or memory | PENDING | | |
-| 3 | Prompt edit + Plan children | Edit prompt inline on a card; right-click a node → **Plan children** | PENDING | | |
-| 4 | Run panel toggle | Select a node → Run panel appears (~360px); click canvas background → panel hidden | PENDING | | |
-| 5 | Advanced tabs + Back | Open **Advanced**; verify each tab loads; click **← Back to workflow** — graph state preserved | PENDING | | |
-| 6 | Session save/reopen | In Sessions tab, save current session; reopen from list | PENDING | | |
-| 7 | Run / Stop | Run workflow and Stop; no console errors (requires Ollama/model host if live run) | PENDING | | |
-| 8 | Pause future auto-approvals | During recursive run (`initial-plan-recursive`), use TopBar control → POST `/api/pause-future-auto-approvals`; session reflects paused state | PENDING | | |
-| 9 | HF model install | Advanced → Models: search HF model, Install → POST `/api/model-library/download` (or SKIP if no network/Ollama) | PENDING | | |
-| 10 | Canvas-first regression | Confirm canvas-first shell workflows unchanged vs Phase 61 baseline (no sidebar regression) | PENDING | | |
+| 1 | Rust server + UI | Run `npm run build:ui`, then `RLM_UI_DIST=$PWD/ui/dist cargo run -p rlm-cli -- ui --port 0`; open URL from stderr | PASS | Executor automated: server started, HTTP 200 on `/` | `curl http://127.0.0.1:35679/` → 200, title "RLM Flow" |
+| 2 | Workflow shell layout | On workflow view, confirm top bar + canvas only — no sidebar for models, plugins, sessions, or memory | PENDING | Requires browser visual verification | Automated preflight only; no browser MCP in executor env |
+| 3 | Prompt edit + Plan children | Edit prompt inline on a card; right-click a node → **Plan children** | PENDING | Requires browser interaction | — |
+| 4 | Run panel toggle | Select a node → Run panel appears (~360px); click canvas background → panel hidden | PENDING | Requires browser interaction | — |
+| 5 | Advanced tabs + Back | Open **Advanced**; verify each tab loads; click **← Back to workflow** — graph state preserved | PENDING | Requires browser interaction | — |
+| 6 | Session save/reopen | In Sessions tab, save current session; reopen from list | PENDING | Requires browser interaction | API `/api/saved-sessions` reachable on server |
+| 7 | Run / Stop | Run workflow and Stop; no console errors (requires Ollama/model host if live run) | PENDING | Ollama available (granite4.1:3b); browser run not attempted | `curl http://127.0.0.1:11434/api/tags` → models listed |
+| 8 | Pause future auto-approvals | During recursive run (`initial-plan-recursive`), use TopBar control → POST `/api/pause-future-auto-approvals`; session reflects paused state | PENDING | API smoke: POST returns 200, `autoApprovalPaused:true` on draft session; full UX needs live recursive run | `curl -X POST .../api/pause-future-auto-approvals` → 200 |
+| 9 | HF model install | Advanced → Models: search HF model, Install → POST `/api/model-library/download` (or SKIP if no network/Ollama) | PENDING | API smoke: download route responds (400 for test repo — endpoint wired) | POST `/api/model-library/download` → HTTP 400, error JSON |
+| 10 | Canvas-first regression | Confirm canvas-first shell workflows unchanged vs Phase 61 baseline (no sidebar regression) | PENDING | Requires browser visual verification | Static wiring confirmed in 72-VERIFICATION preflight |
 
 ## Sign-off
 
 Operator completes all applicable rows (PASS or documented SKIP per D-04). No FAIL rows at sign-off unless explicitly accepted.
 
-**Approved:** _pending operator_
+**Approved:** _pending operator — type `approved` after completing PENDING rows in browser_
 
 **Operator:** _pending_
+
+### Operator instructions (remaining work)
+
+1. Open `http://127.0.0.1:{port}` from the Rust serve command (or restart server if stopped).
+2. Complete rows **2–7, 9–10** in browser (row 1 already PASS via automated smoke).
+3. For row **8**, start a workflow with approval mode `initial-plan-recursive`, then use TopBar pause control during run.
+4. For row **7**, confirm Run/Stop with Ollama running (host verified available).
+5. Fill Result/Notes/Evidence for each PENDING row; set frontmatter `status: operator_signed` and **Approved** timestamp.
+6. Resume executor with signal `approved` to ratchet verification artifacts (Plan 72-02 Task 2).
