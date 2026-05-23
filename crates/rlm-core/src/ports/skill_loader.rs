@@ -3,8 +3,6 @@ use std::sync::Mutex;
 
 use async_trait::async_trait;
 
-use crate::interop::discover_skill_candidates;
-
 /// Declarative skill loader registered from plugin manifest `skillLoaders`.
 #[async_trait]
 pub trait SkillLoader: Send + Sync {
@@ -44,7 +42,7 @@ impl SkillLoader for ManifestSkillLoader {
         self.loaded_paths
             .lock()
             .map(|paths| paths.clone())
-            .unwrap_or_default()
+            .unwrap_or_else(|err| panic!("Skill loader path lock poisoned: {err}"))
     }
 
     async fn load(&self) -> Result<(), String> {
@@ -55,7 +53,6 @@ impl SkillLoader for ManifestSkillLoader {
             ));
         }
 
-        let _ = discover_skill_candidates(&[self.root_path.clone()]);
         let mut paths = self
             .loaded_paths
             .lock()
