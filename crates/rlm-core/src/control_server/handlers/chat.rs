@@ -12,9 +12,9 @@ use crate::application::graph::{
 };
 use crate::application::memory::assert_runtime_ram_eligible_async;
 use crate::control_server::resolve_ollama_base_url;
-use crate::domain::types::DeleteStrategy;
+use crate::domain::types::{DeleteStrategy, ExecutionStatus};
 
-use super::common::{snapshot_with_extra, spawn_graph_execution, ApiError};
+use super::common::{snapshot_with_extra, spawn_graph_execution, unload_session_models, ApiError};
 use crate::control_server::RouterState;
 
 #[derive(Debug, Deserialize)]
@@ -107,6 +107,14 @@ pub(crate) async fn chat_confirm_run(
                     .restore_snapshot(build_import_session_snapshot(updated));
             }
         }
+    }
+    if state.session.is_confirmed_execution_running()
+        || state.session.snapshot().status == ExecutionStatus::Running
+    {
+        return Err(ApiError {
+            status: StatusCode::CONFLICT,
+            body: json!({ "error": "Execution is already running." }),
+        });
     }
     if let Some(loaded) = state.project_config.as_ref() {
         let base_url = resolve_ollama_base_url(&loaded.config);
@@ -223,6 +231,7 @@ pub(crate) async fn stop_run(
         .unwrap_or("Run stopped by user.");
     state.session.stop(reason);
     state.lifecycle.cancel_running_tasks();
+    unload_session_models(&state).await;
     Json(json!(state.session.snapshot()))
 }
 
