@@ -9,9 +9,9 @@
 ### Shell Architecture (SHEL)
 
 - [x] **SHEL-01**: Domain panels (Models, Plugins, Sessions, Memory, Settings) live in `advanced/*` views — not imported from `legacy/panels.tsx` monolith
-- [ ] **SHEL-02**: Node context menu (Variant B) dispatches Plan, Run, Graph, and Advanced-link actions via existing `/api/nodes/*` and navigation mutations
-- [ ] **SHEL-03**: Run panel mounts on node select only; shows approve/clarify/readiness — no prompt edit, plan buttons, or domain panels
-- [ ] **SHEL-04**: Workflow view shows top bar + canvas only — models, plugins, sessions, and memory accessible only through Advanced hub
+- [x] **SHEL-02**: Node context menu (Variant B) dispatches Plan, Run, Graph, and Advanced-link actions via existing `/api/nodes/*` and navigation mutations
+- [x] **SHEL-03**: Run panel mounts on node select only; shows approve/clarify/readiness — no prompt edit, plan buttons, or domain panels
+- [x] **SHEL-04**: Workflow view shows top bar + canvas only — models, plugins, sessions, and memory accessible only through Advanced hub
 - [x] **SHEL-05**: `main.tsx` is thin entry (AppShell mount only); `run-panel/` does not import from `advanced/`
 
 ### Interaction Polish (UX)
@@ -71,9 +71,9 @@ Deferred beyond v1.11.
 | UX-04 | Phase 77 | Complete |
 | SHEL-01 | Phase 78 | Complete |
 | SHEL-05 | Phase 78 | Complete |
-| SHEL-02 | Phase 79 | Pending |
-| SHEL-03 | Phase 79 | Pending |
-| SHEL-04 | Phase 79 | Pending |
+| SHEL-02 | Phase 79 | Complete |
+| SHEL-03 | Phase 79 | Complete |
+| SHEL-04 | Phase 79 | Complete |
 | LAUN-01 | Phase 80 | Pending |
 | LAUN-02 | Phase 80 | Pending |
 | LAUN-03 | Phase 80 | Pending |
