@@ -47,7 +47,7 @@
     "depcruise:ci": "dependency-cruise src --config .dependency-cruiser.js --ignore-known dependency-cruiser-baseline.json",
     "depcruise:strict": "dependency-cruise src --config .dependency-cruiser.js",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test dist/tests"
+    "test": "npm run build && node --test dist/tests && npm run test:packaging"
   },
   "keywords": [],
   "author": "",
