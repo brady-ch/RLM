@@ -2,6 +2,54 @@
 
 *A living document updated after each milestone. Lessons feed forward into future planning.*
 
+## Milestone: v1.10 — v1.9 Debt Closure
+
+**Shipped:** 2026-05-23  
+**Phases:** 5 | **Plans:** 12 | **Audit:** tech_debt (9/10 requirements; REG-01 human UAT unsigned)
+
+### What Was Built
+
+- REG-01 merged checklist, automated preflight, and live-server HTTP smoke for Rust-served UI.
+- UI resume control — `runState.resumable` signal, TopBar confirm gate, `POST /api/chat/resume-run`.
+- HTTP integration tests for resume-run confirm gate and skip-completed-nodes.
+- TypeScript graph executor `persistResumeCursor` at node transitions with resume consumption test.
+- Rust `SKILL_PARSE_ERROR` structured lifecycle events and async `ManifestSkillLoader.load()`.
+- `test:packaging` chained into default `npm test`; 71-DECISION refresh and boundary ratchet table.
+- v1.9 wave todos archived; 66-01-SUMMARY frontmatter restored.
+
+### What Worked
+
+- Autonomous execution of phases 73–76 after explicit REG-01 defer acceptance at close.
+- Parallel wave structure in Phase 76 (packaging, docs, meta) kept close fast.
+- Code review auto-fix passes (73-REVIEW, 74-REVIEW-FIX, 75-REVIEW) unblocked without replans.
+- Same tech_debt close pattern as v1.9 — automated gates green, human UAT documented not faked.
+
+### What Was Inefficient
+
+- REG-01 operator browser UAT deferred for the third milestone cycle (v1.8 → v1.9 → v1.10).
+- Production skill event sink still noop — PLUG-04 satisfied at code level but not in live observability path.
+- Phases 73–76 shipped without formal `*-VERIFICATION.md` artifacts (Nyquist gap persists).
+
+### Patterns Established
+
+- Resume UX split: Rust UI path (73) and TS executor path (74) as parallel runtimes, not serial blockers.
+- Milestone close with `gaps_found` audit when operator checkpoint cannot run in autonomous mode.
+- Deferred Items table in STATE.md records acknowledged open artifacts at close.
+
+### Key Lessons
+
+1. Operator browser checkpoints need explicit milestone-close policy (accept vs block) before autonomous runs.
+2. Backend-complete observability (event sinks) should be distinguished from API/event emission in requirements.
+3. Carry-forward REG-01 to next milestone planning unless product shell rewrite replaces checklist scope.
+
+### Cost Observations
+
+- Model mix: autonomous `--auto` executor for phases 73–76.
+- Sessions: single-day close after v1.10 audit.
+- Notable: accepting REG-01 tech_debt avoided fake verification ratchet while shipping 9/10 requirements.
+
+---
+
 ## Milestone: v1.9 — Rust Runtime Hardening
 
 **Shipped:** 2026-05-22  

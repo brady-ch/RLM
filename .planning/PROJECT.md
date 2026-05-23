@@ -2,11 +2,12 @@
 
 ## Current State
 
-**Latest shipped milestone:** v1.9 — Rust Runtime Hardening (2026-05-22)  
-**Current milestone:** v1.10 — v1.9 Debt Closure (planning)  
-**Audit status:** v1.9 closed as tech_debt — 17/18 requirements; this milestone closes documented deferrals
+**Latest shipped milestone:** v1.10 — v1.9 Debt Closure (2026-05-23)  
+**Audit status:** tech_debt — 9/10 requirements; REG-01 operator browser UAT unsigned (accepted at close)
 
-v1.9 closed all v1.8 functional debt and hardened the Rust workspace to match the TypeScript concern map. Wave 1 delivered UI regression fixes, full quality loop parity, cross-session resume via `RunStateStorePort`, skill interop, full CLI parity, and PACK-03 CI smoke. Wave 2 applied application layer grouping, control-server handler split, large-file decomposition, Rust boundary enforcement (`check-rust-boundaries`), and evaluated defer on optional crate split (7s clean build, 8s lib tests — no split). Combined gates green at close: `npm run check`, `npm run check:rust`, `cargo test --workspace`.
+v1.10 closed documented v1.9 deferrals: UI resume control wired to `POST /api/chat/resume-run` with confirm gate and HTTP integration tests; TypeScript graph executor persists resume cursor at node transitions; Rust skill runtime emits structured `SKILL_PARSE_ERROR` lifecycle events with async `ManifestSkillLoader.load()`; `test:packaging` chained into default `npm test`; architecture docs, boundary ratchet table, and v1.9 meta artifacts refreshed. Phase 72 automated preflight and live-server smoke PASS; operator browser checklist (`72-UAT.md` items 2–10) remains unsigned — same tech_debt acceptance pattern as v1.9 close. Combined gates green at close: `npm run check`, `npm run check:rust`, `cargo test --workspace`.
+
+v1.9 closed all v1.8 functional debt and hardened the Rust workspace to match the TypeScript concern map. Wave 1 delivered UI regression fixes, full quality loop parity, cross-session resume via `RunStateStorePort`, skill interop, full CLI parity, and PACK-03 CI smoke. Wave 2 applied application layer grouping, control-server handler split, large-file decomposition, Rust boundary enforcement (`check-rust-boundaries`), and evaluated defer on optional crate split (7s clean build, 8s lib tests — no split).
 
 v1.8 shipped a Rust-only runtime (`rlm-core`, `rlm-cli`) embedded in Tauri with no bundled Node. The Axum control server preserves the existing HTTP/SSE contract; persistence, recursive engine, graph executor, vector index, model library, plugins, and CLI parity CI all run in Rust. Phase 61 rewrote the UI shell to a canvas-first AppShell (GraphCanvas, slim Run panel, Advanced hub). **471+** TypeScript tests and **67+** Rust integration tests green; ~15k LOC Rust workspace.
 
@@ -100,24 +101,17 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Rust `application/` layer, handler split, large-file decomposition — v1.9
 - ✓ Rust concern map in AGENTS.md and `check-rust-boundaries` in `npm run check:rust` — v1.9
 - ✓ Optional crate split evaluated defer — compile iteration acceptable, no extraction — v1.9
+- ✓ UI resume control — TopBar confirm gate → `POST /api/chat/resume-run`; session reflects resumed state — v1.10
+- ✓ Resume-run HTTP integration test — reject without confirm; accept with confirm; skip completed nodes — v1.10
+- ✓ TypeScript graph executor `persistResumeCursor` at node transitions — v1.10
+- ✓ Rust `SKILL_PARSE_ERROR` structured lifecycle events on skill parse failure — v1.10
+- ✓ `ManifestSkillLoader.load()` async declarative skill path discovery — v1.10
+- ✓ `test:packaging` in default `npm test` gate — v1.10
+- ✓ Architecture hygiene — 71-DECISION refresh, boundary ratchet table, wave todo archive — v1.10
 
 ### Active
 
-(None yet — v1.10 requirements in `.planning/REQUIREMENTS.md`)
-
-## Current Milestone: v1.10 v1.9 Debt Closure
-
-**Goal:** Close all documented v1.9 tech debt so REG-01 is fully satisfied and resume/skill/packaging/boundary deferrals are resolved or explicitly ratcheted.
-
-**Target features:**
-- REG-01 human UAT sign-off on Rust-served UI (61-06 checklist)
-- UI resume control wired to `POST /api/chat/resume-run` with confirm gate
-- TS graph executor `persistResumeCursor` at node transitions
-- HTTP integration test for resume-run confirm gate
-- Skill interop depth: SKILL_PARSE_ERROR lifecycle events; ManifestSkillLoader async load
-- `test:packaging` in default `npm test` gate
-- Architecture hygiene: 71-DECISION.md refresh, baseline script fix, boundary debt documented or reduced
-- Stale v1.9 wave todos archived
+(None — start next milestone with `/gsd-new-milestone`)
 
 ### Candidate Future-Milestone Themes
 
@@ -136,7 +130,7 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI in `ui/`, a Tauri shell under `src-tauri/`, and a Rust workspace under `crates/` (`rlm-core` ~15k LOC). **Production desktop uses Rust-only runtime** — Tauri embeds the Axum control server in-process; Node is no longer bundled. TypeScript remains for UI, tooling, and strangler parity tests (`RLM_RUNTIME=node|rust`).
 
-Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` (fmt, clippy, boundary check, test). **471+** TS tests and **67+** Rust integration tests at v1.9 close. Rust workspace has `application/`, decomposed handlers, and boundary enforcement matching TypeScript depcruise rules.
+Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` (fmt, clippy, boundary check, test). **471+** TS tests and **67+** Rust integration tests green at v1.10 close. Rust workspace has `application/`, decomposed handlers, boundary enforcement, UI resume wiring, and skill lifecycle events matching TypeScript depcruise rules.
 
 ## Constraints
 
@@ -168,14 +162,16 @@ Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` 
 | Canvas-first UI shell (Phase 61) preserves HTTP/SSE contract | Frontend restructure only; Rust backend unchanged | ✓ Good — v1.8/v1.9 |
 | v1.9 Wave 1 before Wave 2 structural cleanup | Close functional debt before architecture refactors | ✓ Good — v1.9 |
 | ARCH-06 evaluated defer over mandatory crate split | Measured compile iteration acceptable (7s/8s) | ✓ Good — v1.9 |
-| Rust boundary check baseline mode with strict opt-in | Transitional arcs documented; ratchet path preserved | ✓ Good — v1.9 |
+| Rust boundary check baseline mode with strict opt-in | Transitional arcs documented; ratchet path preserved | ✓ Good — v1.9/v1.10 |
+| REG-01 operator UAT accepted as tech_debt at milestone close | Autonomous executor cannot substitute browser sign-off; automated gates green | ⚠️ Revisit — operator checklist in `72-UAT.md` |
 | Fine-tuning / LoRA explicitly out of scope | Compute and ecosystem cost | — Deferred |
 
 ## Next Milestone Goals
 
-v1.10 in progress — see Current Milestone above. After close, candidate themes:
+Planning next milestone via `/gsd-new-milestone`. Candidate themes:
 
 - Product shell convergence: guided composer, session launcher, graph workspace as primary surface (`ui-shell-architecture.md`)
+- REG-01 operator browser UAT sign-off (carry-forward from v1.10 tech_debt)
 - Managed llama.cpp runtime (INFR-01 seed)
 - Release hardening: signed artifacts, Windows/macOS packages, auto-update channel
 
@@ -184,4 +180,4 @@ v1.10 in progress — see Current Milestone above. After close, candidate themes
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-22 after v1.10 milestone start*
+*Last updated: 2026-05-23 after v1.10 milestone*

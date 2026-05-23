@@ -2,85 +2,78 @@
 gsd_state_version: 1.0
 milestone: v1.10
 milestone_name: v1.9 Debt Closure
-status: Blocked — REG-01 human browser UAT pending (`72-UAT.md` checklist rows 2–10)
-stopped_at: v1.10 roadmap created
-last_updated: "2026-05-23T00:18:10.512Z"
-last_activity: 2026-05-23 -- Phase 72 preflight PASS; automated server/API smoke recorded; operator UAT outstanding
+status: Awaiting next milestone
+stopped_at: Milestone v1.10 archived
+last_updated: "2026-05-23T00:30:00.000Z"
+last_activity: 2026-05-23 — Milestone v1.10 completed and archived (tech_debt close)
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-05-22)
+See: `.planning/PROJECT.md` (updated 2026-05-23)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone v1.10 — v1.9 Debt Closure (Phases 72-76)
+**Current focus:** Planning next milestone (`/gsd-new-milestone`)
 
 ## Current Position
 
-Phase: 72 of 76 (Human UAT Sign-off)
-Plan: 72-02 — Task 2 (verification ratchet) deferred until operator sign-off
-Status: Blocked — REG-01 human browser UAT pending (`72-UAT.md` checklist rows 2–10)
-Last activity: 2026-05-23 -- Phase 72 preflight PASS; automated server/API smoke recorded; operator UAT outstanding
-
-Progress: [██████████] 100%
+Phase: —
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-05-23 — Milestone v1.10 shipped (tech_debt audit; REG-01 operator UAT deferred)
 
 ## Performance Metrics
 
-**Velocity (v1.9):** 10 phases (62–71), 19 plans, 42 tasks; milestone-close gates green
+**Velocity (v1.10):** 5 phases (72–76), 12 plans, 26 tasks; milestone-close gates green
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
-| 65 | 01 | 45min | 8 | 9 |
-| 69 | 01-05 | 110min | 10 | 25 |
-| 71 | 01-03 | 25min | 4 | 6 |
+| 73 | 01-03 | — | — | — |
+| 74 | 01-02 | — | — | — |
+| 75 | 01-02 | — | — | — |
+| 76 | 01-03 | — | — | — |
 
 ## Accumulated Context
 
-v1.9 Rust Runtime Hardening shipped with documented tech debt. v1.10 roadmap maps 10 requirements across 5 phases (72-76): human UAT sign-off, UI resume + HTTP test, TS resume cursor, skill interop depth, packaging + architecture hygiene.
+v1.10 v1.9 Debt Closure shipped 2026-05-23. Closed resume UX, TS cursor parity, skill interop depth, packaging gate, and architecture/meta hygiene. REG-01 operator browser UAT accepted as tech_debt at close (same pattern as v1.9).
 
 ### Decisions
 
-- Empty `searchPaths: []` honored without default fallback (Phase 65)
-- SKILL_PARSE_ERROR lifecycle events deferred in Rust; string warnings only (Phase 65) — **v1.10 Phase 75 closes**
-- ARCH-06 closed via evaluated defer — compile iteration 7s clean, 8s lib tests (Phase 71)
-- Rust boundary check runs in baseline mode by default; strict mode available (Phase 70) — **v1.10 Phase 76 addresses transitional arcs**
+- REG-01 operator sign-off deferred at milestone close — no fake ratchet per T-72-03/T-72-04
+- Production skill event sink remains noop until run-scoped wiring (PLUG-04 partial)
+- 7 transitional Rust boundary arcs documented with ratchet plan; strict mode opt-in
 
 ### Blockers/Concerns
 
-- REG-01 human UAT unsigned blocks full verification closure (Phase 72)
+(None blocking next milestone planning)
 
 ## Deferred Items
 
-Items targeted for closure in v1.10 (from v1.9 milestone audit):
+Items acknowledged and deferred at milestone close on 2026-05-23:
 
-| Category | Item | Phase |
-|----------|------|-------|
-| verification | Phase 62 REG-01 human UAT (61-06 checklist unsigned) | 72 |
-| tech_debt | UI resume button not wired to POST /api/chat/resume-run | 73 |
-| tech_debt | TS graph executor persistResumeCursor at transitions | 74 |
-| tech_debt | SKILL_PARSE_ERROR lifecycle events in Rust | 75 |
-| tech_debt | ManifestSkillLoader async load() stub | 75 |
-| tech_debt | test:packaging not in default npm test gate | 76 |
-| tech_debt | 6 transitional boundary arcs baselined | 76 |
-| tech_debt | 71-DECISION.md stale Phase 70 prerequisite language | 76 |
-| meta | Stale v1.9 wave todos; 66-01-SUMMARY frontmatter | 76 |
+| Category | Item | Status |
+|----------|------|--------|
+| verification | REG-01 operator browser UAT (`72-UAT.md` items 2–10; `72-VERIFICATION.md` human_needed) | deferred |
+| integration | PLUG-04 production event sink — `NoopRuntimeEventSink` in default bootstrap | deferred |
+| meta | Nyquist `*-VERIFICATION.md` missing for phases 73–76 (NYQT-01) | deferred |
+| todo | extract-runtime-composition-from-cli-entrypoint | pending |
+| todo | split-config-loader-resolver-validation | pending |
 
 ## Operator Next Steps
 
-- Run the Rust UI per `72-UAT.md`; complete checklist rows **2–10** with PASS or documented SKIP
-- Fill sign-off fields and set `72-UAT.md` frontmatter `status: operator_signed`; then resume Plan 72-02 Task 2 ratchet (`approved` signal per runbook)
-- Optional backlog: `/gsd-ui-phase 72` if a UI contract iteration is desired (not blocking current checklist)
+- Start the next milestone with `/gsd-new-milestone`
+- Optional carry-forward: complete `72-UAT.md` browser checklist and ratchet `72-VERIFICATION.md` to passed
 
 ## Session Continuity
 
-Last session: 2026-05-23T00:18:10.505Z
-Stopped at: v1.10 roadmap created
+Last session: 2026-05-23
+Stopped at: Milestone v1.10 archived
 Resume file: None

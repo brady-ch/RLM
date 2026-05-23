@@ -1,5 +1,39 @@
 # Milestones
 
+## v1.10 v1.9 Debt Closure (Shipped: 2026-05-23)
+
+**Phases completed:** 5 phases (72–76), 12 plans, 26 tasks  
+**Audit status:** tech_debt — 9/10 requirements satisfied; REG-01 human UAT unsigned (accepted at close, same pattern as v1.9)  
+**Known deferred items at close:** 4 open artifacts acknowledged (see STATE.md Deferred Items)
+
+**Key accomplishments:**
+
+- Merged 10-item REG-01 checklist and targeted preflight green for Rust-served UI operator UAT
+- Automated live-server smoke tests recorded; operator browser sign-off still required for REG-01 closure
+- Server-computed `runState.resumable` on GET /api/session and SSE initial snapshot for UI resume visibility
+- HTTP integration coverage for resume-run confirm gate and skip-completed-nodes via QueueModel
+- TopBar resume button gated by runState.resumable with GraphActionModal confirm before POST
+- TypeScript graph executor now persists node status and playbook resume cursor at running/completed/failed transitions when runState is wired.
+- Graph executor loads persisted resume cursor and skips completed nodes on resume:true, verified by a targeted test with exactly one model invocation.
+- Structured SKILL_PARSE_ERROR lifecycle events in Rust SkillRuntime with warn/error severity parity to TypeScript
+- ManifestSkillLoader.load() discovers declarative skill paths, merges them into runtime search paths, and doctor reports load failures
+- Default npm test now chains deb-smoke-lib unit tests after dist tests via test:packaging.
+- 71-DECISION reflects Phase 70 complete; AGENTS documents all 7 transitional Rust boundary arcs with ratchet removal conditions.
+- 66-01-SUMMARY frontmatter restored; v1.9 wave todos archived as cancelled under todos/done.
+
+### Known Gaps (tech debt — accepted at close)
+
+- **REG-01 partial:** Automated preflight and HTTP smoke PASS; operator browser checklist unsigned (`72-UAT.md` items 2–10, `72-VERIFICATION.md` human_needed)
+- **PLUG-04 partial:** Production bootstrap uses `NoopRuntimeEventSink` — parse-error events not observable via `/api/events` in live runs
+- **Nyquist:** No `*-VERIFICATION.md` artifacts for phases 73–76 (NYQT-01 future)
+- **Boundary baseline:** 7 transitional arcs documented with ratchet plan; strict mode opt-in only
+
+**Archive:** `.planning/milestones/v1.10-ROADMAP.md`  
+**Requirements:** `.planning/milestones/v1.10-REQUIREMENTS.md`  
+**Audit:** `.planning/milestones/v1.10-MILESTONE-AUDIT.md`
+
+---
+
 ## v1.9 Rust Runtime Hardening (Shipped: 2026-05-22)
 
 **Phases completed:** 10 phases (62–71), 19 plans, 42 tasks  
