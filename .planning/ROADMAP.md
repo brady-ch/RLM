@@ -82,7 +82,18 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
   1. Operator completes Phase 61 human UAT checklist (`61-06-VERIFICATION.md`) on Rust-served UI with live Ollama where applicable
   2. All checklist items are signed with evidence recorded (screenshots, notes, or equivalent)
   3. Phase 62 verification updated from `human_needed` to passed
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 72-01-PLAN.md — UAT checklist template + targeted automated preflight
+- [ ] 72-02-PLAN.md — Operator human UAT sign-off + verification ratchet
+
+**Wave 1** *(autonomous)*
+- 72-01 — checklist template, runbook, targeted preflight (build:ui, lint, cargo check, approval contract test)
+
+**Wave 2** *(blocked on Wave 1; operator checkpoint)*
+- 72-02 — operator UAT on Rust-served UI; update 61-06, 61, 62, 72 verification + REG-01 Complete
+
 **UI hint**: yes
 
 ### Phase 73: UI Resume Control
