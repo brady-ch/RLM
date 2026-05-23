@@ -1,9 +1,39 @@
 import type { ExecutionEvent, ExecutionStatus, RuntimeRunState } from "./types.js";
+import type { RunStateSnapshot } from "../ports/run-state-store-port.js";
 
 export interface ResumeCursor {
   activeNodeId: string;
   completedNodeIds: string[];
   variant: string;
+}
+
+export interface LoadedResumeState {
+  completedNodeIds: string[];
+  activeNodeId?: string | undefined;
+  variant?: string | undefined;
+}
+
+export function parseLoadedResumeState(snapshot: RunStateSnapshot): LoadedResumeState {
+  const completed = new Set<string>();
+  for (const entry of snapshot.nodeStatuses) {
+    if (entry.status === "completed") {
+      completed.add(entry.nodeId);
+    }
+  }
+  const cursor = snapshot.resumeCursor;
+  if (cursor) {
+    for (const nodeId of cursor.completedNodeIds) {
+      completed.add(nodeId);
+    }
+    return {
+      completedNodeIds: [...completed],
+      activeNodeId: cursor.activeNodeId,
+      variant: cursor.variant,
+    };
+  }
+  return {
+    completedNodeIds: [...completed],
+  };
 }
 
 export class RunStatePersistence {
@@ -44,6 +74,14 @@ export class RunStatePersistence {
       .then(() => this.persistResumeCursorNow(cursor));
     this.writeQueue = write;
     await write;
+  }
+
+  async loadResumeState(): Promise<LoadedResumeState | undefined> {
+    const snapshot = await this.runState.store.getSnapshot(this.runState.runId);
+    if (!snapshot) {
+      return undefined;
+    }
+    return parseLoadedResumeState(snapshot);
   }
 
   private async persistResumeCursorNow(cursor: ResumeCursor): Promise<void> {
