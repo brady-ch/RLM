@@ -70,7 +70,7 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 - [x] **Phase 73: UI Resume Control** — Wire resume button to POST /api/chat/resume-run with confirm gate + HTTP integration test (RESU-01, RESU-02) (completed 2026-05-23)
 - [x] **Phase 74: TS Resume Cursor Parity** — Graph executor persistResumeCursor at node transitions (PERS-04) (completed 2026-05-23)
 - [ ] **Phase 75: Skill Interop Depth** — SKILL_PARSE_ERROR lifecycle events; ManifestSkillLoader async load (PLUG-04, PLUG-05)
-- [ ] **Phase 76: Packaging & Architecture Hygiene** — test:packaging in npm test; 71-DECISION refresh; boundary debt; meta cleanup (PACK-04, ARCH-07, ARCH-08, META-01)
+- [x] **Phase 76: Packaging & Architecture Hygiene** — test:packaging in npm test; 71-DECISION refresh; boundary debt; meta cleanup (PACK-04, ARCH-07, ARCH-08, META-01) (completed 2026-05-23)
 
 ## Phase Details
 
@@ -165,9 +165,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 76-01-PLAN.md — Chain test:packaging into npm test (PACK-04)
-- [ ] 76-02-PLAN.md — 71-DECISION refresh + baseline script guard + AGENTS ratchet (ARCH-07, ARCH-08)
-- [ ] 76-03-PLAN.md — Archive wave todos + 66-01-SUMMARY frontmatter (META-01)
+- [x] 76-01-PLAN.md — Chain test:packaging into npm test (PACK-04)
+- [x] 76-02-PLAN.md — 71-DECISION refresh + baseline script guard + AGENTS ratchet (ARCH-07, ARCH-08)
+- [x] 76-03-PLAN.md — Archive wave todos + 66-01-SUMMARY frontmatter (META-01)
 
 **Wave 1** *(autonomous; parallel)*
 - 76-01 — PACK-04 packaging in npm test
@@ -192,4 +192,4 @@ Plans:
 | 73. UI Resume Control | v1.10 | 3/3 | Complete   | 2026-05-23 |
 | 74. TS Resume Cursor Parity | v1.10 | 2/2 | Complete   | 2026-05-23 |
 | 75. Skill Interop Depth | v1.10 | 0/2 | Not started | - |
-| 76. Packaging & Architecture Hygiene | v1.10 | 0/3 | Not started | - |
+| 76. Packaging & Architecture Hygiene | v1.10 | 3/3 | Complete   | 2026-05-23 |

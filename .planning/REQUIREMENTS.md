@@ -25,13 +25,13 @@ Requirements close documented v1.9 tech debt from `.planning/milestones/v1.9-MIL
 
 ### Packaging & CI (PACK)
 
-- [ ] **PACK-04**: `test:packaging` runs as part of default `npm test` gate (deb-smoke-lib unit tests included in CI developer loop)
+- [x] **PACK-04**: `test:packaging` runs as part of default `npm test` gate (deb-smoke-lib unit tests included in CI developer loop)
 
 ### Architecture Hygiene (ARCH / META)
 
-- [ ] **ARCH-07**: `71-DECISION.md` refreshed — Phase 70 prerequisite language accurate; `measure-rust-compile-baseline.sh` preserves cargo exit status per 71-REVIEW finding
-- [ ] **ARCH-08**: Transitional boundary arcs documented with ratchet plan — either reduce baseline count with code moves or publish explicit defer rationale in AGENTS.md; default `check:rust:boundaries` behavior unchanged unless arcs eliminated
-- [ ] **META-01**: Stale v1.9 wave todos (`rust-functional-debt-wave1`, `rust-structural-architecture-wave2`) archived or cancelled; `66-01-SUMMARY.md` frontmatter includes `requirements-completed`
+- [x] **ARCH-07**: `71-DECISION.md` refreshed — Phase 70 prerequisite language accurate; `measure-rust-compile-baseline.sh` preserves cargo exit status per 71-REVIEW finding
+- [x] **ARCH-08**: Transitional boundary arcs documented with ratchet plan — either reduce baseline count with code moves or publish explicit defer rationale in AGENTS.md; default `check:rust:boundaries` behavior unchanged unless arcs eliminated
+- [x] **META-01**: Stale v1.9 wave todos (`rust-functional-debt-wave1`, `rust-structural-architecture-wave2`) archived or cancelled; `66-01-SUMMARY.md` frontmatter includes `requirements-completed`
 
 ## Future Requirements
 
@@ -76,10 +76,10 @@ Deferred beyond v1.10 — not in this milestone roadmap.
 | PERS-04 | Phase 74 | Complete |
 | PLUG-04 | Phase 75 | Pending |
 | PLUG-05 | Phase 75 | Pending |
-| PACK-04 | Phase 76 | Pending |
-| ARCH-07 | Phase 76 | Pending |
-| ARCH-08 | Phase 76 | Pending |
-| META-01 | Phase 76 | Pending |
+| PACK-04 | Phase 76 | Complete |
+| ARCH-07 | Phase 76 | Complete |
+| ARCH-08 | Phase 76 | Complete |
+| META-01 | Phase 76 | Complete |
 
 **Coverage:**
 - v1.10 requirements: 10 total
