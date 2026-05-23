@@ -23,6 +23,8 @@ import type {
 import { executionToFlowNode, graphToFlowEdges } from "../shared/graph-utils";
 import { post, runAction } from "../shared/api";
 import { AdvancedHub, type AdvancedTab } from "../advanced/AdvancedHub";
+import { isPristineFirstRunGraph } from "../shared/session-utils";
+import { FirstRunLauncher } from "./FirstRunLauncher";
 import { TopBar } from "./TopBar";
 import { GraphCanvas } from "../canvas/GraphCanvas";
 import { RunPanel } from "../run-panel/RunPanel";
@@ -139,6 +141,29 @@ export function AppShell() {
 
   const [viewMode, setViewMode] = useState<"workflow" | "advanced">("workflow");
   const [advancedTab, setAdvancedTab] = useState<AdvancedTab>("settings");
+  const [launcherDismissed, setLauncherDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem("rlm-workflow-entered") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const dismissLauncher = useCallback(() => {
+    try {
+      sessionStorage.setItem("rlm-workflow-entered", "1");
+    } catch {
+      // sessionStorage unavailable
+    }
+    setLauncherDismissed(true);
+  }, []);
+  const showLauncher =
+    viewMode === "workflow" && isPristineFirstRunGraph(snapshot) && !launcherDismissed;
+
+  useEffect(() => {
+    if (showLauncher) {
+      void refreshSavedSessions();
+    }
+  }, [showLauncher, refreshSavedSessions]);
 
   useEffect(() => {
     void refresh();
@@ -192,11 +217,21 @@ export function AppShell() {
   }, [planningError, planningNodeId, refresh, selectedNodeId, snapshot]);
 
   useEffect(() => {
-    if (snapshot.graph.nodes.length === 1 && snapshot.graph.nodes[0]?.id === "root-composer") {
-      setSelectedNodeId("root-composer");
-      rfInstanceRef.current?.setViewport({ x: 260, y: 120, zoom: 1 });
+    if (!isPristineFirstRunGraph(snapshot)) {
+      return;
     }
-  }, [snapshot.graph.nodes]);
+    if (!launcherDismissed) {
+      return;
+    }
+    setSelectedNodeId("root-composer");
+    rfInstanceRef.current?.setViewport({ x: 260, y: 120, zoom: 1 });
+  }, [launcherDismissed, snapshot]);
+
+  useEffect(() => {
+    if (!isPristineFirstRunGraph(snapshot)) {
+      setLauncherDismissed(true);
+    }
+  }, [snapshot]);
 
   useEffect(() => {
     const v = snapshot.graph.viewport;
@@ -296,7 +331,22 @@ export function AppShell() {
             setErrorMessage={setErrorMessage}
           />
           {errorMessage ? <p className="error workflow-error">{errorMessage}</p> : null}
-          <div className="workflow-main" data-testid="workflow-main">
+          {showLauncher ? (
+            <FirstRunLauncher
+              sessions={savedSessions}
+              refreshSessions={refreshSavedSessions}
+              refresh={refresh}
+              setErrorMessage={setErrorMessage}
+              initialPrompt={
+                snapshot.graph.nodes.find((node) => node.id === "root-composer")?.prompt ?? ""
+              }
+              onContinue={dismissLauncher}
+            />
+          ) : null}
+          <div
+            className={`workflow-main ${showLauncher ? "workflow-main-dimmed" : ""}`}
+            data-testid="workflow-main"
+          >
             <section className="canvas">
               <GraphCanvas
                 nodes={nodes}

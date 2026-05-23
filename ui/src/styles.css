@@ -1158,6 +1158,134 @@ select {
   opacity: 0.45;
 }
 
+.workflow-main-dimmed {
+  filter: blur(2px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.first-run-overlay {
+  align-items: center;
+  display: flex;
+  inset: 48px 0 0;
+  justify-content: center;
+  padding: var(--space-lg);
+  position: fixed;
+  z-index: 20;
+}
+
+.first-run-card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 48px rgba(22, 32, 26, 0.16);
+  max-height: calc(100vh - 96px);
+  max-width: 960px;
+  overflow-y: auto;
+  padding: var(--space-lg);
+  width: min(960px, 100%);
+}
+
+.first-run-header {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.first-run-header h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.first-run-lead {
+  color: #5a6b60;
+  margin: var(--space-xs) 0 0;
+}
+
+.first-run-grid {
+  display: grid;
+  gap: var(--space-lg);
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+}
+
+.first-run-composer,
+.first-run-sessions {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.first-run-composer h2,
+.first-run-sessions h2 {
+  font-size: var(--font-label);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.first-run-prompt {
+  min-height: 120px;
+  resize: vertical;
+  width: 100%;
+}
+
+.first-run-hint {
+  color: #5a6b60;
+  font-size: var(--font-meta);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.first-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.first-run-fresh {
+  justify-self: start;
+}
+
+.first-run-session-list {
+  display: grid;
+  gap: var(--space-xs);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.first-run-session-row {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: space-between;
+  padding: var(--space-sm);
+}
+
+.first-run-session-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.first-run-session-main span {
+  color: #5a6b60;
+  font-size: var(--font-meta);
+}
+
+@media (max-width: 800px) {
+  .first-run-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .first-run-overlay {
+    inset: 0;
+    padding: var(--space-md);
+  }
+}
+
 .advanced-shell {
   display: flex;
   flex-direction: column;
