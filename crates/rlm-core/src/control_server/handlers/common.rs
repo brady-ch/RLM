@@ -7,7 +7,8 @@ use serde_json::{json, Value};
 
 use crate::application::execution::InteractiveExecutionSession;
 use crate::application::graph::{execute_graph, GraphExecutorInput};
-use crate::application::memory::resource_guard_json;
+use crate::application::memory::{ollama_loaded_ram_mb, resource_guard_json, unload_ollama_models, configured_model_names};
+use crate::control_server::resolve_ollama_base_url;
 use crate::domain::run_state_types::ResumeCursor;
 use crate::domain::types::ReplanChoice;
 use crate::domain::RunStatePersistence;
@@ -16,6 +17,21 @@ use crate::ports::{LanguageModel, RunStateStorePort};
 use crate::control_server::RouterState;
 
 pub(crate) fn session_snapshot_json(state: &Arc<RouterState>) -> Value {
+    session_snapshot_json_with_loaded_mb(state, None)
+}
+
+pub(crate) async fn session_snapshot_json_async(state: &Arc<RouterState>) -> Value {
+    let loaded_mb = if let Some(loaded) = state.project_config.as_ref() {
+        let base_url = resolve_ollama_base_url(&loaded.config);
+        let client = reqwest::Client::new();
+        ollama_loaded_ram_mb(&base_url, &client).await
+    } else {
+        0
+    };
+    session_snapshot_json_with_loaded_mb(state, Some(loaded_mb))
+}
+
+fn session_snapshot_json_with_loaded_mb(state: &Arc<RouterState>, ollama_loaded_mb: Option<u32>) -> Value {
     let mut snap = serde_json::to_value(state.session.snapshot()).unwrap_or(json!({}));
     let run_state = if state.session.is_confirmed_execution_running() {
         json!({ "resumable": false })
@@ -27,11 +43,24 @@ pub(crate) fn session_snapshot_json(state: &Arc<RouterState>) -> Value {
         if let Some(loaded) = state.project_config.as_ref() {
             obj.insert(
                 "resourceGuard".into(),
-                resource_guard_json(&loaded.config, 0),
+                resource_guard_json(&loaded.config, ollama_loaded_mb.unwrap_or(0)),
             );
         }
     }
     snap
+}
+
+pub(crate) async fn unload_session_models(state: &Arc<RouterState>) {
+    let Some(loaded) = state.project_config.as_ref() else {
+        return;
+    };
+    let base_url = resolve_ollama_base_url(&loaded.config);
+    let models = configured_model_names(&loaded.config);
+    if models.is_empty() {
+        return;
+    }
+    let client = reqwest::Client::new();
+    unload_ollama_models(&base_url, &models, &client).await;
 }
 
 fn run_state_resumable_json(state: &Arc<RouterState>) -> Value {

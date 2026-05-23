@@ -219,6 +219,66 @@ pub fn peak_runtime_model_ram_mb(config: &Value) -> Option<u32> {
     (peak > 0).then_some(peak)
 }
 
+pub fn validate_memory_budget(config: &Value) -> Result<(), String> {
+    let Some(cap) = configured_cap_mb(config) else {
+        return Ok(());
+    };
+    let mut violations: Vec<String> = Vec::new();
+    if let Some(tiers) = config.pointer("/models/tiers").and_then(Value::as_object) {
+        for (tier_id, tier) in tiers {
+            let estimate = tier
+                .get("estimatedRamMb")
+                .and_then(Value::as_u64)
+                .and_then(|value| u32::try_from(value).ok());
+            if let Some(estimate) = estimate {
+                if estimate > cap {
+                    violations.push(format!(
+                        "models.tiers.{tier_id}.estimatedRamMb ({estimate} MB) exceeds memory.maxRamMb ({cap} MB)"
+                    ));
+                }
+            }
+        }
+    }
+    if violations.is_empty() {
+        Ok(())
+    } else {
+        Err(violations.join("; "))
+    }
+}
+
+pub async fn unload_ollama_models(base_url: &str, models: &[String], client: &Client) {
+    let url = format!("{}/api/generate", base_url.trim_end_matches('/'));
+    for model in models {
+        let _ = client
+            .post(&url)
+            .json(&serde_json::json!({
+                "model": model,
+                "prompt": "",
+                "stream": false,
+                "keep_alive": 0,
+            }))
+            .send()
+            .await;
+    }
+}
+
+pub fn configured_model_names(config: &Value) -> Vec<String> {
+    let mut names = Vec::new();
+    if let Some(default_model) = config.pointer("/models/default").and_then(Value::as_str) {
+        names.push(default_model.to_string());
+    }
+    if let Some(tiers) = config.pointer("/models/tiers").and_then(Value::as_object) {
+        for tier in tiers.values() {
+            if let Some(name) = tier.get("name").and_then(Value::as_str) {
+                if !names.iter().any(|existing| existing == name) {
+                    names.push(name.to_string());
+                }
+            }
+        }
+    }
+    names
+}
+
 pub fn assert_runtime_ram_eligible(
     config: &Value,
     ollama_loaded_mb: u32,
@@ -313,6 +373,21 @@ pub async fn assert_runtime_ram_eligible_async(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn validate_memory_budget_rejects_tier_above_cap() {
+        let config = json!({
+            "memory": { "maxRamMb": 4096 },
+            "models": {
+                "tiers": {
+                    "large": { "name": "qwen2.5-coder:14b", "estimatedRamMb": 16000 }
+                }
+            }
+        });
+        let err = validate_memory_budget(&config).expect_err("should reject");
+        assert!(err.contains("16000"));
+        assert!(err.contains("4096"));
+    }
 
     #[test]
     fn fixed_cap_blocks_models_above_budget() {

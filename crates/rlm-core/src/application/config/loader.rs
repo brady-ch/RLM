@@ -7,7 +7,7 @@ use serde_json::{json, Map, Value};
 use crate::persistence::ProjectPaths;
 
 use super::defaults::default_project_plain;
-use super::validation::{validate_config_references, validate_config_shape};
+use super::validation::{validate_config_references, validate_config_shape, validate_memory_budget};
 use super::yaml_merge::{is_plain_record, merge_yaml_layers};
 
 #[derive(Debug, Clone)]
@@ -64,6 +64,7 @@ pub fn load_project_config(
 
     validate_config_shape(&merged)?;
     validate_config_references(&merged)?;
+    validate_memory_budget(&merged)?;
     Ok(LoadedProjectConfig {
         config: merged,
         path: primary_path,
@@ -76,6 +77,7 @@ fn load_explicit(path: &Path) -> io::Result<LoadedProjectConfig> {
     let merged = merge_yaml_layers(default_project_plain(), yaml_root);
     validate_config_shape(&merged)?;
     validate_config_references(&merged)?;
+    validate_memory_budget(&merged)?;
     Ok(LoadedProjectConfig {
         config: merged,
         path: Some(resolved),

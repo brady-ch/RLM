@@ -5,13 +5,13 @@ use axum::response::sse::{Event, KeepAlive, Sse};
 use futures::stream::{self, StreamExt};
 use tokio_stream::wrappers::BroadcastStream;
 
-use crate::control_server::handlers::common::session_snapshot_json;
+use crate::control_server::handlers::common::session_snapshot_json_async;
 use crate::control_server::RouterState;
 
 pub(crate) async fn events(
     State(state): State<Arc<RouterState>>,
 ) -> Sse<impl StreamExt<Item = Result<Event, std::convert::Infallible>>> {
-    let snapshot = session_snapshot_json(&state);
+    let snapshot = session_snapshot_json_async(&state).await;
     let initial = Event::default()
         .event("snapshot")
         .data(serde_json::to_string(&snapshot).unwrap_or_else(|_| "{}".into()));

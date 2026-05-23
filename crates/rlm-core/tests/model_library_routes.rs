@@ -24,6 +24,10 @@ fn project_config() -> Value {
 
 fn constrained_project_config() -> Value {
     let mut config = project_config();
+    config["models"]["tiers"]["medium"] = json!({
+        "name": "llama3.1:8b",
+        "estimatedRamMb": 4096
+    });
     config["memory"] = json!({
         "maxRamMb": 7952,
         "reserveSystemRamMb": 0,

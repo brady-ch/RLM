@@ -12,6 +12,17 @@ fn fixture(name: &str) -> Value {
     serde_json::from_str(&raw).expect("parse fixture")
 }
 
+fn normalize_session_snapshot(mut body: Value) -> Value {
+    if let Some(obj) = body.as_object_mut() {
+        if let Some(guard) = obj.get_mut("resourceGuard").and_then(|v| v.as_object_mut()) {
+            guard.remove("freeRamMb");
+            guard.remove("availableRamMb");
+            guard.remove("wslDetected");
+        }
+    }
+    body
+}
+
 async fn get_json(base: &str, path: &str) -> (reqwest::StatusCode, Value) {
     let client = reqwest::Client::new();
     let response = client
@@ -42,7 +53,10 @@ async fn control_server_matches_golden_fixtures() {
 
     let (status, body) = get_json(&base, "/api/session").await;
     assert_eq!(status, reqwest::StatusCode::OK);
-    assert_eq!(body, fixture("session-idle.json"));
+    assert_eq!(
+        normalize_session_snapshot(body),
+        fixture("session-idle.json")
+    );
 
     let (status, body) = get_json(&base, "/api/run-mode").await;
     assert_eq!(status, reqwest::StatusCode::OK);

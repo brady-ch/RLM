@@ -2,6 +2,8 @@ use std::io;
 
 use serde_json::Value;
 
+use crate::application::memory::validate_memory_budget as check_memory_budget;
+
 pub(crate) fn validate_config_shape(config: &Value) -> io::Result<()> {
     let required = [
         "models",
@@ -95,4 +97,8 @@ pub(crate) fn validate_config_references(config: &Value) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+pub(crate) fn validate_memory_budget(config: &Value) -> io::Result<()> {
+    check_memory_budget(config).map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
 }

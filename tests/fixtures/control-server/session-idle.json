@@ -24,6 +24,14 @@
   },
   "approvalMode": "full",
   "autoApprovalPaused": false,
+  "resourceGuard": {
+    "configuredCapMb": null,
+    "ollamaLoadedRamMb": 0,
+    "peakModelRamMb": 4096,
+    "reserveRamMb": 2048,
+    "runBlocked": false,
+    "runBlockedReason": null
+  },
   "chat": {
     "readiness": {
       "state": "ready_to_run",
