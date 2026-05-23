@@ -1,0 +1,7 @@
+# Copy to %UserProfile%\.wslconfig on Windows to cap WSL2 memory use.
+# After editing: wsl --shutdown, then reopen your distro.
+#
+# [wsl2]
+# memory=8GB
+# swap=2GB
+# localhostForwarding=true

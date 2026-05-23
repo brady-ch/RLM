@@ -1,6 +1,7 @@
 mod commands;
 mod exec_control;
 mod flags;
+mod ui_lock;
 
 use std::path::{Path, PathBuf};
 
@@ -43,18 +44,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match command.unwrap_or(Commands::Ui {
         port: 0,
         ui_dist: None,
+        stop: false,
+        replace: false,
         flags: flags::ExecutionFlags::default(),
     }) {
         Commands::Ui {
             port,
             ui_dist,
+            stop,
+            replace,
             flags,
         } => {
             let ctx = command_context(&project_root, &config, json, flags);
             if session::handle_session_flags(&ctx).await? {
                 return Ok(());
             }
-            ui::run(port, ui_dist, project_root).await
+            ui::run(port, ui_dist, project_root, stop, replace).await
         }
         Commands::Ask {
             prompt_parts,

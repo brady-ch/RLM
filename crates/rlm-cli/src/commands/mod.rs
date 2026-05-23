@@ -25,6 +25,14 @@ pub enum Commands {
         #[arg(long)]
         ui_dist: Option<PathBuf>,
 
+        /// Stop a running UI server for this project (uses .rlm/ui-server.lock)
+        #[arg(long)]
+        stop: bool,
+
+        /// Stop any existing UI server before starting a new one
+        #[arg(long)]
+        replace: bool,
+
         #[command(flatten)]
         flags: ExecutionFlags,
     },
