@@ -7,7 +7,7 @@ stopped_at: Milestone v1.12 started — defining requirements
 last_updated: "2026-05-23T14:00:00Z"
 last_activity: 2026-05-23 — Milestone v1.12 started; research in progress
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -65,6 +65,11 @@ None — planning phase.
 | meta | Nyquist verification gaps (NYQT-01) | deferred |
 | infra | INFR-01/02 managed runners | deferred |
 | release | REL-01/02 packaging | deferred |
+
+## Next Steps
+
+1. `/gsd-discuss-phase 82` — theme system and edge contrast approach
+2. Or `/gsd-plan-phase 82` — plan directly
 
 ## Session Continuity
 

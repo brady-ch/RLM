@@ -4,6 +4,7 @@ title: Phase 79-02 — Canvas visual polish (A + Radix menu)
 priority: high
 phase: 79-shell-boundaries-context-menu
 plan: 79-02
+resolves_phase: 83
 requirements: []
 files:
   - ui/src/shared/tokens.css

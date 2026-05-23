@@ -1,39 +1,37 @@
 # Requirements: Recursive Language Model CLI
 
-**Defined:** 2026-05-22  
-**Milestone:** v1.11 — UI Product Hardening  
+**Defined:** 2026-05-23  
+**Milestone:** v1.12 — UI Canvas Visual Polish  
 **Core Value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.
 
-## v1.11 Requirements
+## v1.12 Requirements
 
-### Shell Architecture (SHEL)
+### Theme (THEME)
 
-- [x] **SHEL-01**: Domain panels (Models, Plugins, Sessions, Memory, Settings) live in `advanced/*` views — not imported from `legacy/panels.tsx` monolith
-- [x] **SHEL-02**: Node context menu (Variant B) dispatches Plan, Run, Graph, and Advanced-link actions via existing `/api/nodes/*` and navigation mutations
-- [x] **SHEL-03**: Run panel mounts on node select only; shows approve/clarify/readiness — no prompt edit, plan buttons, or domain panels
-- [x] **SHEL-04**: Workflow view shows top bar + canvas only — models, plugins, sessions, and memory accessible only through Advanced hub
-- [x] **SHEL-05**: `main.tsx` is thin entry (AppShell mount only); `run-panel/` does not import from `advanced/`
+- [ ] **THEME-01**: UI defaults to system light/dark preference via `prefers-color-scheme` when no manual override is stored
+- [ ] **THEME-02**: User can switch theme (light / dark / system) from the workflow TopBar; choice persists in `localStorage` across browser sessions
+- [ ] **THEME-03**: Workflow canvas, node cards, TopBar, Run panel, and Advanced hub surfaces use semantic CSS tokens and render correctly in both light and dark themes
 
-### Interaction Polish (UX)
+### Graph Edges (EDGE)
 
-- [x] **UX-01**: Canvas renders and interacts reliably on Rust-served UI
-- [x] **UX-02**: User assigns plan/exec tiers from installed Ollama models in Advanced → Models without editing YAML
-- [x] **UX-03**: Run/Stop and tier changes reflect server state — plan/exec models refresh after tier select; stop aborts in-flight inference
-- [x] **UX-04**: UI server lifecycle is operator-safe — single-instance lock, `--stop`/`--replace`, documented in UAT runbook
+- [ ] **EDGE-01**: Default graph connection lines are clearly visible in light mode (minimum 4.5:1 contrast against canvas background)
+- [ ] **EDGE-02**: Default graph connection lines are clearly visible in dark mode (minimum 4.5:1 contrast against canvas background)
+- [ ] **EDGE-03**: Edge stroke color reflects execution state (default, running, completed, failed) in both themes without relying on low-contrast gray defaults
 
-### First-Run & Launcher (LAUN)
+### Canvas Visual Polish (CANV)
 
-- [x] **LAUN-01**: New workflow entry shows guided composer — prompt input and clear path to first plan/run on canvas
-- [x] **LAUN-02**: User can open an existing saved session or start fresh from a launcher before entering workflow view
-- [x] **LAUN-03**: Graph workspace remains primary surface after launcher; Advanced is secondary navigation
+- [ ] **CANV-01**: Canvas uses neutral dot-grid background per `79-UI-SPEC.md` in both themes
+- [ ] **CANV-02**: Node cards use light-header design with status chips (no dark `#1f2937` header bar); card chrome matches spec in both themes
+- [ ] **CANV-03**: Node context menu uses `@radix-ui/react-context-menu` with keyboard/a11y parity; all Plan/Run/Graph/Advanced actions preserved
+- [ ] **CANV-04**: React Flow Background, MiniMap, handles, and controls are themed and remain usable in both modes
 
 ### Verification (REG)
 
-- [x] **REG-01**: Operator completes merged browser UAT checklist (`81-UAT.md` items 2–13) on Rust-served UI with live Ollama where applicable; evidence recorded; verification ratcheted to passed
+- [ ] **REG-02**: Operator completes browser checklist for theme toggle, edge visibility, and canvas polish on Rust-served UI; evidence recorded
 
 ## Future Requirements
 
-Deferred beyond v1.11.
+Deferred beyond v1.12.
 
 ### Infrastructure
 
@@ -48,42 +46,39 @@ Deferred beyond v1.11.
 ### UX Enhancements
 
 - **UX-05**: Command palette (`⌘K`) for power-user navigation
+- **UX-06**: Execution trace/output panel surfacing LLM results on nodes
 - **NYQT-01**: Nyquist `*-VERIFICATION.md` artifacts for v1.10 phases 73–76
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| New control-server endpoints (unless launcher requires minimal session bootstrap) | Shell restructure uses existing `/api/*` contract |
-| Full visual redesign / new design system | Apply Phase 11/30 tokens; relocate existing panels first |
-| Managed llama.cpp / multi-runner | Infrastructure milestone (INFR-01/02) |
-| Release packaging / auto-update | Release milestone (REL-01/02) |
-| Strict Rust boundary mode as default CI gate | Architecture debt; not UI milestone |
-| Tauri desktop shell changes | Focus on browser-served Rust UI; Tauri inherits static build |
+| shadcn / full component library adoption | Radix context menu primitive only per 79-UI-SPEC |
+| Advanced hub full visual redesign | Theme tokens only unless required for contrast |
+| Backend/API changes | Visual milestone only |
+| Radix Dialog for GraphActionModal | Modals work today; defer |
+| Managed llama.cpp / multi-runner | Infrastructure milestone |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| UX-01 | Phase 77 | Complete |
-| UX-02 | Phase 77 | Complete |
-| UX-03 | Phase 77 | Complete |
-| UX-04 | Phase 77 | Complete |
-| SHEL-01 | Phase 78 | Complete |
-| SHEL-05 | Phase 78 | Complete |
-| SHEL-02 | Phase 79 | Complete |
-| SHEL-03 | Phase 79 | Complete |
-| SHEL-04 | Phase 79 | Complete |
-| LAUN-01 | Phase 80 | Complete |
-| LAUN-02 | Phase 80 | Complete |
-| LAUN-03 | Phase 80 | Complete |
-| REG-01 | Phase 81 | Complete |
+| THEME-01 | Phase 82 | Pending |
+| THEME-02 | Phase 82 | Pending |
+| THEME-03 | Phase 82 | Pending |
+| EDGE-01 | Phase 82 | Pending |
+| EDGE-02 | Phase 82 | Pending |
+| EDGE-03 | Phase 82 | Pending |
+| CANV-01 | Phase 83 | Pending |
+| CANV-02 | Phase 83 | Pending |
+| CANV-04 | Phase 83 | Pending |
+| CANV-03 | Phase 84 | Pending |
+| REG-02 | Phase 85 | Pending |
 
 **Coverage:**
-- v1.11 requirements: 13 total
-- Mapped to phases: 13
+- v1.12 requirements: 11 total
+- Mapped to phases: 11
 - Unmapped: 0 ✓
 
 ---
-*Requirements defined: 2026-05-22*
-*Last updated: 2026-05-22 after milestone v1.11 definition*
+*Requirements defined: 2026-05-23*

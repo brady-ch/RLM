@@ -1,5 +1,23 @@
 # Milestones
 
+## v1.11 UI Product Hardening (Shipped: 2026-05-23)
+
+**Phases completed:** 5 phases (77–81), 5 plans  
+**Audit status:** complete — 13/13 requirements including REG-01 operator browser UAT
+
+**Key accomplishments:**
+
+- Shell architecture — `legacy/panels.tsx` removed; domain panels in `advanced/*`; workflow vs Advanced boundaries enforced
+- Interaction polish — canvas reliability, tier assignment, run/stop cancellation, UI server lifecycle
+- First-run launcher — guided composer and session picker on pristine graph
+- Workflow overview panel, model RAM guards, plan edge wiring, Ollama keep_alive
+- REG-01 operator sign-off via `81-UAT.md`
+
+**Archive:** `.planning/milestones/v1.11-phases/`  
+**Requirements:** `.planning/REQUIREMENTS.md` (v1.11 section in git history)
+
+---
+
 ## v1.10 v1.9 Debt Closure (Shipped: 2026-05-23)
 
 **Phases completed:** 5 phases (72–76), 12 plans, 26 tasks  
