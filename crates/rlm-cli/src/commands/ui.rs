@@ -14,7 +14,10 @@ pub async fn run(
     if stop {
         match UiServerLock::stop_running(&project_root)? {
             Some(record) => {
-                eprintln!("Stopped RLM UI server (pid {}, {}).", record.pid, record.url);
+                eprintln!(
+                    "Stopped RLM UI server (pid {}, port {}, {}).",
+                    record.pid, record.port, record.url
+                );
             }
             None => {
                 eprintln!("No RLM UI server lock file found for this project.");
@@ -25,7 +28,10 @@ pub async fn run(
 
     if replace {
         if let Some(record) = UiServerLock::stop_running(&project_root)? {
-            eprintln!("Stopped previous RLM UI server (pid {}).", record.pid);
+            eprintln!(
+                "Stopped previous RLM UI server (pid {}, port {}).",
+                record.pid, record.port
+            );
             tokio::time::sleep(std::time::Duration::from_millis(300)).await;
         }
     }
