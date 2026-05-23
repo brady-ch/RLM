@@ -64,8 +64,8 @@ Operator completes all applicable rows (PASS or documented SKIP per D-04). No FA
 ### Operator instructions (remaining work)
 
 1. Open `http://127.0.0.1:{port}` from the Rust serve command (or restart server if stopped).
-2. Complete rows **2–7, 9–10** in browser (row 1 already PASS via automated smoke).
-3. For row **8**, start a workflow with approval mode `initial-plan-recursive`, then use TopBar pause control during run.
+2. Complete rows **2–10** in browser (row 1 already PASS via automated smoke).
+3. For row **8** specifically: start a workflow with approval mode `initial-plan-recursive`, then use TopBar pause control during run (POST `/api/pause-future-auto-approvals`).
 4. For row **7**, confirm Run/Stop with Ollama running (host verified available).
 5. Fill Result/Notes/Evidence for each PENDING row; set frontmatter `status: operator_signed` and **Approved** timestamp.
 6. Resume executor with signal `approved` to ratchet verification artifacts (Plan 72-02 Task 2).

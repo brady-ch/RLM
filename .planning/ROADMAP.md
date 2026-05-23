@@ -66,7 +66,7 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 
 **Milestone Goal:** Close all documented v1.9 tech debt so verification, resume UX, skill interop, packaging, and architecture deferrals are resolved or explicitly ratcheted.
 
-- [ ] **Phase 72: Human UAT Sign-off** — Complete Phase 61 checklist on Rust-served UI; update Phase 62 verification (REG-01)
+- [ ] **Phase 72: Human UAT Sign-off** — REG-01: plan 72-01 executed; automated scope of plan 72-02 done — browser checklist and verification ratchet (Task 2) still awaiting operator (`72-UAT.md`, `72-VERIFICATION.md` remain `human_needed` / checklist `pending`)
 - [ ] **Phase 73: UI Resume Control** — Wire resume button to POST /api/chat/resume-run with confirm gate + HTTP integration test (RESU-01, RESU-02)
 - [ ] **Phase 74: TS Resume Cursor Parity** — Graph executor persistResumeCursor at node transitions (PERS-04)
 - [ ] **Phase 75: Skill Interop Depth** — SKILL_PARSE_ERROR lifecycle events; ManifestSkillLoader async load (PLUG-04, PLUG-05)
@@ -85,8 +85,8 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 **Plans**: 2 plans
 
 Plans:
-- [ ] 72-01-PLAN.md — UAT checklist template + targeted automated preflight
-- [ ] 72-02-PLAN.md — Operator human UAT sign-off + verification ratchet
+- [x] 72-01-PLAN.md — UAT checklist template + targeted automated preflight
+- [ ] 72-02-PLAN.md — Operator human UAT sign-off + verification ratchet (Task 2 ratchet awaits operator-signed `72-UAT.md`)
 
 **Wave 1** *(autonomous)*
 - 72-01 — checklist template, runbook, targeted preflight (build:ui, lint, cargo check, approval contract test)
@@ -188,7 +188,7 @@ Plans:
 | 69. Large File Decomposition | v1.9 | 5/5 | Complete | 2026-05-22 |
 | 70. Rust Boundary Enforcement | v1.9 | 2/2 | Complete | 2026-05-22 |
 | 71. Optional Crate Split | v1.9 | 3/3 | Complete | 2026-05-22 |
-| 72. Human UAT Sign-off | v1.10 | 0/TBD | Not started | - |
+| 72. Human UAT Sign-off | v1.10 | 1/2 | Blocked — operator UAT | — |
 | 73. UI Resume Control | v1.10 | 0/TBD | Not started | - |
 | 74. TS Resume Cursor Parity | v1.10 | 0/2 | Not started | - |
 | 75. Skill Interop Depth | v1.10 | 0/2 | Not started | - |

@@ -4,8 +4,8 @@ milestone: v1.10
 milestone_name: v1.9 Debt Closure
 status: executing
 stopped_at: v1.10 roadmap created
-last_updated: "2026-05-23T00:08:57.991Z"
-last_activity: 2026-05-23 -- Phase 72 planning complete
+last_updated: "2026-05-23T00:08:58.492Z"
+last_activity: 2026-05-23 -- Phase 72 preflight PASS; operator UAT outstanding
 progress:
   total_phases: 5
   completed_phases: 1
@@ -26,9 +26,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-22)
 ## Current Position
 
 Phase: 72 of 76 (Human UAT Sign-off)
-Plan: —
-Status: Ready to execute
-Last activity: 2026-05-23 -- Phase 72 planning complete
+Plan: 72-02 — Task 2 (verification ratchet) deferred until operator sign-off
+Status: Blocked — REG-01 human browser UAT pending (`72-UAT.md` checklist rows 2–10)
+Last activity: 2026-05-23 -- Phase 72 preflight PASS; automated server/API smoke recorded; operator UAT outstanding
 
 Progress: [██░░░░░░░░] 17%
 
@@ -75,11 +75,12 @@ Items targeted for closure in v1.10 (from v1.9 milestone audit):
 
 ## Operator Next Steps
 
-- `/gsd-plan-phase 72` — plan Human UAT Sign-off (REG-01)
-- Optional: `/gsd-ui-phase 72` — UI design contract for UAT checklist workflow
+- Run the Rust UI per `72-UAT.md`; complete checklist rows **2–10** with PASS or documented SKIP
+- Fill sign-off fields and set `72-UAT.md` frontmatter `status: operator_signed`; then resume Plan 72-02 Task 2 ratchet (`approved` signal per runbook)
+- Optional backlog: `/gsd-ui-phase 72` if a UI contract iteration is desired (not blocking current checklist)
 
 ## Session Continuity
 
-Last session: 2026-05-22
+Last session: 2026-05-23T00:08:58.487Z
 Stopped at: v1.10 roadmap created
 Resume file: None
