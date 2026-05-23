@@ -1,3 +1,12 @@
+---
+phase: 66-cli-full-parity
+plan: 01
+subsystem: cli
+tags: [rust, cli, parity]
+requirements-completed: [CLI-01, CLI-02, REG-02]
+completed: 2026-05-22
+---
+
 # Phase 66 Plan 01 Summary
 
 **Rust CLI now covers plan-node, workflow export/import, session flags, and extended execution flags.**
