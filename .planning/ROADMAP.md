@@ -24,7 +24,7 @@
 - [x] **Phase 86: RAM Guard Completion** — Live Ollama ps in guards, config validation, TS parity (MEM-*)
 - [x] **Phase 87: Execution Concurrency & Model Lifecycle** — Single-run mutex, keep_alive ratchet, stop unload (SAFE-01–03)
 - [x] **Phase 88: Memory Visibility & WSL Runbook** — Live resourceGuard in UI, budget panel, docs (SAFE-04, MEM-05)
-- [ ] **Phase 89: Operator Safety UAT** — WSL memory checklist; ratchet REG-03 (REG-03) — checklist at `.planning/phases/89-operator-safety-uat/89-UAT.md`
+- [ ] **Phase 89: Operator Safety UAT** — WSL memory checklist; ratchet REG-03 (REG-03) — preflight PASS, operator sign-off pending (`89-UAT.md`, `89-VERIFICATION.md` human_needed)
 
 ## Phase Details
 
@@ -77,7 +77,7 @@
 | 86. RAM Guard Completion | v1.13 | 1/1 | Complete | 2026-05-23 |
 | 87. Execution Concurrency & Model Lifecycle | v1.13 | 1/1 | Complete | 2026-05-23 |
 | 88. Memory Visibility & WSL Runbook | v1.13 | 1/1 | Complete | 2026-05-23 |
-| 89. Operator Safety UAT | v1.13 | 0/1 | Pending operator | — |
+| 89. Operator Safety UAT | v1.13 | 1/1 | Pending operator — preflight PASS | — |
 
 ---
 *Roadmap created: 2026-05-23 — milestone v1.13 Runtime Safety & WSL Hardening*
