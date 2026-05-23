@@ -1,5 +1,4 @@
 use rlm_core::control_server::RouterState;
-use rlm_core::ports::LanguageModel as _;
 use rlm_core::{start_server, ServerConfig};
 use serde_json::{json, Value};
 
@@ -21,6 +20,17 @@ fn project_config() -> Value {
         },
         "runtimeHost": "local_ollama"
     })
+}
+
+fn constrained_project_config() -> Value {
+    let mut config = project_config();
+    config["memory"] = json!({
+        "maxRamMb": 7952,
+        "reserveSystemRamMb": 0,
+        "waitForCapacity": false,
+        "capacityCheckIntervalMs": 1
+    });
+    config
 }
 
 fn write_project_config(dir: &std::path::Path, config: &Value) {
@@ -73,6 +83,95 @@ async fn model_library_routes_support_catalog_and_tier_select() {
         body.pointer("/tiers/medium").and_then(Value::as_str),
         Some("granite4.1:3b")
     );
+
+    server.close().await;
+}
+
+#[tokio::test]
+async fn model_library_disables_and_rejects_models_above_ram_limit() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    write_project_config(temp.path(), &constrained_project_config());
+
+    let server = start_server(ServerConfig {
+        port: 0,
+        ui_dist_dir: None,
+        project_root: temp.path().to_path_buf(),
+        memory_session_id: None,
+        session: None,
+        ..Default::default()
+    })
+    .await
+    .expect("start server");
+
+    let client = reqwest::Client::new();
+    let catalog = client
+        .get(format!("{}/api/model-library", server.url))
+        .send()
+        .await
+        .expect("catalog");
+    assert_eq!(catalog.status(), reqwest::StatusCode::OK);
+    let catalog_body: Value = catalog.json().await.expect("json");
+    let large = catalog_body
+        .get("curated")
+        .and_then(Value::as_array)
+        .and_then(|entries| {
+            entries
+                .iter()
+                .find(|entry| entry.get("id").and_then(Value::as_str) == Some("qwen2.5-coder:14b"))
+        })
+        .expect("large model entry");
+    assert_eq!(
+        large.get("status").and_then(Value::as_str),
+        Some("available")
+    );
+    assert_eq!(large.get("disabled").and_then(Value::as_bool), Some(true));
+    assert!(large
+        .get("disabledReason")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .contains("requires 16000 MB but only 7952 MB is available"));
+    let installed = catalog_body
+        .get("installed")
+        .and_then(Value::as_array)
+        .and_then(|entries| {
+            entries
+                .iter()
+                .find(|entry| entry.get("id").and_then(Value::as_str) == Some("qwen2.5-coder:14b"))
+        });
+    if let Some(installed) = installed {
+        assert_eq!(
+            installed.get("disabled").and_then(Value::as_bool),
+            Some(true)
+        );
+    }
+
+    let select = client
+        .post(format!("{}/api/model-library/select-tier", server.url))
+        .json(&json!({ "tier": "medium", "model": "qwen2.5-coder:14b" }))
+        .send()
+        .await
+        .expect("select tier");
+    assert_eq!(select.status(), reqwest::StatusCode::BAD_REQUEST);
+    let body: Value = select.json().await.expect("json");
+    assert!(body
+        .get("error")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .contains("requires 16000 MB but only 7952 MB is available"));
+
+    let install = client
+        .post(format!("{}/api/model-library/install", server.url))
+        .json(&json!({ "model": "qwen2.5-coder:14b" }))
+        .send()
+        .await
+        .expect("install model");
+    assert_eq!(install.status(), reqwest::StatusCode::BAD_REQUEST);
+    let body: Value = install.json().await.expect("json");
+    assert!(body
+        .get("error")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .contains("requires 16000 MB but only 7952 MB is available"));
 
     server.close().await;
 }

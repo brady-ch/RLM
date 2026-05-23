@@ -116,3 +116,32 @@ test("unavailable host aborts when decision is abort", async () => {
 
   await assert.rejects(() => model.selectModel("answer", 1), /unavailable/i);
 });
+
+test("model selection rejects configured tiers that exceed available RAM", async () => {
+  const project = buildProject();
+  project.models.tiers.small = { name: "too-large", estimatedRamMb: 8192 };
+  project.memory = {
+    maxRamMb: "auto",
+    reserveSystemRamMb: 1024,
+    waitForCapacity: false,
+    capacityCheckIntervalMs: 1,
+  };
+  const model = new PurposeRoutingLanguageModel({
+    config: project,
+    agent: buildAgent(),
+    hostSelection: { hostId: "local_ollama", source: "config" },
+    createModel: () => new StubModel(),
+    memorySnapshot: () => ({
+      totalRamMb: 16_384,
+      freeRamMb: 4096,
+      usableRamMb: 3072,
+      reservedRamMb: 0,
+      availableRamMb: 3072,
+    }),
+  });
+
+  await assert.rejects(
+    () => model.selectModel("answer", 1),
+    /requires 8192 MB but only 3072 MB is available/i,
+  );
+});

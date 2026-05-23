@@ -1,4 +1,11 @@
 import type { ProjectConfig } from "../project-config.js";
+import type { MemorySnapshot } from "../memory/memory-manager.js";
+import {
+  assertModelRamEligible,
+  estimateModelRamMb,
+  modelRamEligibility,
+  resolveMemorySnapshot,
+} from "./model-ram-guard.js";
 
 export type ModelLibraryEntry = {
   id: string;
@@ -10,6 +17,8 @@ export type ModelLibraryEntry = {
   estimatedRamMb?: number | undefined;
   status: "available" | "installed" | "installing" | "failed" | "unsupported";
   reason?: string | undefined;
+  disabled?: boolean | undefined;
+  disabledReason?: string | undefined;
 };
 
 export type ModelInstallJob = {
@@ -75,16 +84,29 @@ export class ModelLibraryService {
       config: ProjectConfig;
       ollamaBaseUrl: string;
       fetch?: typeof fetch | undefined;
+      memorySnapshot?: (() => MemorySnapshot) | undefined;
     },
   ) {}
 
   async snapshot(): Promise<ModelLibrarySnapshot> {
-    const installed = await this.listInstalled();
-    const installedIds = new Set(installed.map((entry) => entry.id));
+    const rawInstalled = await this.listInstalled();
+    const installedIds = new Set(rawInstalled.map((entry) => entry.id));
     const activeJobs = new Map([...this.jobs.values()].map((job) => [job.model, job]));
+    const snapshot = resolveMemorySnapshot(this.input.config, this.input.memorySnapshot);
+    const installed = rawInstalled.map((entry) => {
+      const estimatedRamMb = estimateModelRamMb(this.input.config, entry.ollamaModel ?? entry.id);
+      const eligibility = modelRamEligibility(estimatedRamMb, snapshot);
+      return {
+        ...entry,
+        estimatedRamMb: entry.estimatedRamMb ?? estimatedRamMb,
+        disabled: eligibility.disabled,
+        disabledReason: eligibility.disabledReason,
+      };
+    });
     return {
       curated: CURATED_MODELS.map((entry) => {
         const job = activeJobs.get(entry.ollamaModel ?? entry.id);
+        const eligibility = modelRamEligibility(entry.estimatedRamMb, snapshot);
         return {
           ...entry,
           status: installedIds.has(entry.ollamaModel ?? entry.id)
@@ -95,6 +117,8 @@ export class ModelLibraryService {
                 ? "installing"
                 : "available",
           reason: job?.status === "failed" ? job.message : entry.reason,
+          disabled: eligibility.disabled,
+          disabledReason: eligibility.disabledReason,
         };
       }),
       installed,
@@ -155,6 +179,12 @@ export class ModelLibraryService {
     if (!allowed.has(normalized)) {
       throw new Error(`Model "${normalized}" is not a curated Ollama model.`);
     }
+    const estimatedRamMb = estimateModelRamMb(this.input.config, normalized);
+    assertModelRamEligible(
+      normalized,
+      estimatedRamMb,
+      resolveMemorySnapshot(this.input.config, this.input.memorySnapshot),
+    );
     const existing = [...this.jobs.values()].find(
       (job) => job.model === normalized && (job.status === "queued" || job.status === "running"),
     );
@@ -184,9 +214,16 @@ export class ModelLibraryService {
     if (!model) {
       throw new Error("Model id is required.");
     }
+    const estimatedRamMb = estimateModelRamMb(this.input.config, model);
+    assertModelRamEligible(
+      model,
+      estimatedRamMb,
+      resolveMemorySnapshot(this.input.config, this.input.memorySnapshot),
+    );
     this.input.config.models.tiers[tier] = {
       ...existing,
       name: model,
+      estimatedRamMb: estimatedRamMb ?? existing.estimatedRamMb,
     };
     if (tier === "small") {
       this.input.config.models.default = model;

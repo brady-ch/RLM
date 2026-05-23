@@ -49,9 +49,24 @@ impl ModelLibraryService {
     }
 
     pub async fn snapshot(&self) -> ModelLibrarySnapshot {
-        let installed = self.list_installed().await;
+        let raw_installed = self.list_installed().await;
         let installed_ids: std::collections::HashSet<_> =
-            installed.iter().map(|entry| entry.id.clone()).collect();
+            raw_installed.iter().map(|entry| entry.id.clone()).collect();
+        let config_snapshot = self.config_snapshot().await;
+        let available_ram_mb = available_model_ram_mb(&config_snapshot);
+        let installed = raw_installed
+            .into_iter()
+            .map(|mut entry| {
+                let model = entry.ollama_model.as_deref().unwrap_or(&entry.id);
+                if let Some(estimate) = estimate_model_ram_mb(&config_snapshot, model) {
+                    entry.estimated_ram_mb.get_or_insert(estimate);
+                    let disabled_reason = model_disabled_reason(estimate, available_ram_mb);
+                    entry.disabled = Some(disabled_reason.is_some()).filter(|disabled| *disabled);
+                    entry.disabled_reason = disabled_reason;
+                }
+                entry
+            })
+            .collect();
         let jobs = self.jobs.lock().await;
         let active_jobs: HashMap<_, _> = jobs
             .values()
@@ -64,6 +79,7 @@ impl ModelLibraryService {
             .map(|(id, label, description, ram, tags)| {
                 let ollama_model = (*id).to_string();
                 let job = active_jobs.get(&ollama_model);
+                let disabled_reason = model_disabled_reason(*ram, available_ram_mb);
                 let status = if installed_ids.contains(&ollama_model) {
                     "installed"
                 } else if job.is_some_and(|job| job.status == "failed") {
@@ -85,6 +101,8 @@ impl ModelLibraryService {
                     reason: job
                         .filter(|job| job.status == "failed")
                         .map(|job| job.message.clone()),
+                    disabled: Some(disabled_reason.is_some()).filter(|disabled| *disabled),
+                    disabled_reason,
                 }
             })
             .collect();
@@ -162,6 +180,8 @@ impl ModelLibraryService {
                     } else {
                         Some("No compatible GGUF signal found.".into())
                     },
+                    disabled: None,
+                    disabled_reason: None,
                 }
             })
             .collect();
@@ -186,6 +206,18 @@ impl ModelLibraryService {
                 "Model \"{normalized}\" is not a curated Ollama model."
             ));
         }
+        let config = self.config.lock().await;
+        if let (Some(estimate), Some(available)) = (
+            estimate_model_ram_mb(&config, normalized),
+            available_model_ram_mb(&config),
+        ) {
+            if estimate > available {
+                return Err(format!(
+                    "Model \"{normalized}\" requires {estimate} MB but only {available} MB is available."
+                ));
+            }
+        }
+        drop(config);
 
         let mut jobs = self.jobs.lock().await;
         if let Some(existing) = jobs.values().find(|job| {
@@ -240,6 +272,14 @@ impl ModelLibraryService {
         }
 
         let mut config = self.config.lock().await;
+        let estimate = estimate_model_ram_mb(&config, model);
+        if let (Some(estimate), Some(available)) = (estimate, available_model_ram_mb(&config)) {
+            if estimate > available {
+                return Err(format!(
+                    "Model \"{model}\" requires {estimate} MB but only {available} MB is available."
+                ));
+            }
+        }
         let tiers = config
             .pointer_mut("/models/tiers")
             .and_then(Value::as_object_mut)
@@ -249,6 +289,12 @@ impl ModelLibraryService {
             .and_then(Value::as_object_mut)
             .ok_or_else(|| format!("Unknown model tier \"{tier}\"."))?;
         tier_doc.insert("name".into(), Value::String(model.to_string()));
+        if let Some(estimate) = estimate {
+            tier_doc.insert(
+                "estimatedRamMb".into(),
+                Value::Number(serde_json::Number::from(estimate)),
+            );
+        }
         if tier == "small" {
             if let Some(models) = config.get_mut("models").and_then(Value::as_object_mut) {
                 models.insert("default".into(), Value::String(model.to_string()));
@@ -311,6 +357,8 @@ impl ModelLibraryService {
                             estimated_ram_mb: None,
                             status: "installed".into(),
                             reason: None,
+                            disabled: None,
+                            disabled_reason: None,
                         })
                     })
                     .collect()
@@ -325,6 +373,8 @@ impl ModelLibraryService {
                 estimated_ram_mb: None,
                 status: "failed".into(),
                 reason: Some(format!("HTTP {}", response.status())),
+                disabled: None,
+                disabled_reason: None,
             }],
             Err(err) => vec![ModelLibraryEntry {
                 id: "ollama-unavailable".into(),
@@ -336,6 +386,8 @@ impl ModelLibraryService {
                 estimated_ram_mb: None,
                 status: "failed".into(),
                 reason: Some(err.to_string()),
+                disabled: None,
+                disabled_reason: None,
             }],
         }
     }
@@ -398,4 +450,69 @@ fn now_epoch_ms() -> u128 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_millis())
         .unwrap_or(0)
+}
+
+fn estimate_model_ram_mb(config: &Value, model: &str) -> Option<u32> {
+    config
+        .pointer("/models/tiers")
+        .and_then(Value::as_object)
+        .and_then(|tiers| {
+            tiers.values().find_map(|tier| {
+                if tier.get("name").and_then(Value::as_str) == Some(model) {
+                    tier.get("estimatedRamMb")
+                        .and_then(Value::as_u64)
+                        .and_then(|value| u32::try_from(value).ok())
+                } else {
+                    None
+                }
+            })
+        })
+        .or_else(|| {
+            CURATED_MODELS
+                .iter()
+                .find_map(|(id, _, _, ram, _)| (*id == model).then_some(*ram))
+        })
+}
+
+fn available_model_ram_mb(config: &Value) -> Option<u32> {
+    let memory = config.get("memory")?;
+    let reserve = memory
+        .get("reserveSystemRamMb")
+        .and_then(Value::as_u64)
+        .and_then(|value| u32::try_from(value).ok())
+        .unwrap_or(0);
+    match memory.get("maxRamMb") {
+        Some(Value::Number(value)) => value.as_u64().and_then(|value| u32::try_from(value).ok()),
+        Some(Value::String(value)) if value == "auto" => {
+            current_free_ram_mb().map(|free| free.saturating_sub(reserve))
+        }
+        _ => current_free_ram_mb().map(|free| free.saturating_sub(reserve)),
+    }
+}
+
+fn model_disabled_reason(estimated: u32, available: Option<u32>) -> Option<String> {
+    let available = available?;
+    (estimated > available)
+        .then(|| format!("Model requires {estimated} MB but only {available} MB is available."))
+}
+
+fn current_free_ram_mb() -> Option<u32> {
+    #[cfg(target_os = "linux")]
+    {
+        let meminfo = std::fs::read_to_string("/proc/meminfo").ok()?;
+        for key in ["MemAvailable:", "MemFree:"] {
+            if let Some(kb) = meminfo.lines().find_map(|line| {
+                let mut parts = line.split_whitespace();
+                (parts.next() == Some(key)).then(|| parts.next())?
+            }) {
+                let kb = kb.parse::<u64>().ok()?;
+                return u32::try_from(kb / 1024).ok();
+            }
+        }
+        None
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
 }

@@ -12,6 +12,12 @@ import type {
 import type { AgentConfig, ProjectConfig, RuntimeHostSelection } from "../project-config.js";
 import { resolveModelTier } from "../project-config.js";
 import type { RuntimeLogger } from "../../ports/runtime-logger-port.js";
+import type { MemorySnapshot } from "../memory/memory-manager.js";
+import {
+  assertModelRamEligible,
+  estimateModelRamMb,
+  resolveMemorySnapshot,
+} from "./model-ram-guard.js";
 
 export interface ModelProviderOptions {
   config: ProjectConfig;
@@ -26,6 +32,7 @@ export interface ModelProviderOptions {
     | undefined;
   recordSelection?: (selection: ModelSelectionRecord) => void;
   logger?: RuntimeLogger | undefined;
+  memorySnapshot?: (() => MemorySnapshot) | undefined;
 }
 
 export interface ModelSelectionRecord {
@@ -175,6 +182,7 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
     if (completeOptions.overrideModelSelection) {
       const tier = this.options.config.models.tiers[selection];
       if (tier) {
+        this.assertRamEligible(tier.name, tier.estimatedRamMb);
         return {
           model: tier.name,
           tier: selection,
@@ -183,10 +191,12 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       }
     }
 
+    const estimatedRamMb = estimateModelRamMb(this.options.config, selection);
+    this.assertRamEligible(selection, estimatedRamMb);
     return {
       model: selection,
       tier: "override",
-      estimatedRamMb: 0,
+      estimatedRamMb: estimatedRamMb ?? 0,
     };
   }
 
@@ -201,6 +211,7 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
         ? selectDynamicTier(complexityDepth)
         : (configuredSelection ?? "small");
     const tier = resolveModelTier(this.options.config, tierName);
+    this.assertRamEligible(tier.name, tier.estimatedRamMb);
 
     const runtime = await this.resolveRuntimeSelection();
 
@@ -296,6 +307,14 @@ export class PurposeRoutingLanguageModel implements LanguageModelPort {
       baseUrl: host.baseUrl,
       allowUnconstrainedToolCalls: host.allowUnconstrainedToolCalls ?? false,
     };
+  }
+
+  private assertRamEligible(model: string, estimatedRamMb: number | undefined): void {
+    assertModelRamEligible(
+      model,
+      estimatedRamMb,
+      resolveMemorySnapshot(this.options.config, this.options.memorySnapshot),
+    );
   }
 }
 

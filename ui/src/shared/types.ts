@@ -272,6 +272,8 @@ export type ModelLibraryEntry = {
   estimatedRamMb?: number;
   status: "available" | "installed" | "installing" | "failed" | "unsupported";
   reason?: string;
+  disabled?: boolean;
+  disabledReason?: string;
 };
 
 export type ModelInstallJob = {
