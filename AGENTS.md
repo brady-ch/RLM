@@ -202,6 +202,29 @@ MCP/skill interop tools are registered separately under `src/runtime/interop/` a
 
 For install, usage, and configuration fields, start with [`README.md`](README.md).
 
+## Autonomous agent verification (OOM prevention)
+
+Chained `npm run build` + `cargo test` + parallel GSD agents can OOM the desktop even on 32 GB machines (Cursor + compile + Vite stack concurrently).
+
+**All test entry points check MemAvailable before running** via [`scripts/lib/ram-gate.mjs`](scripts/lib/ram-gate.mjs):
+
+| Layer | Behavior |
+|-------|----------|
+| `npm test` | RAM gate before build, test suite, and packaging (`run-test-suite.mjs`) |
+| `node --test` | `test-ram-preload.mjs` checks RAM **before every test case** (`beforeEach`) |
+| `cargo test` | Use `node scripts/cargo-with-ram-gate.mjs -- cargo test ...` |
+| Agent verify | `agent-safe-verify.mjs` gates **every** step (minimal / compile / build tiers) |
+
+| Command | When |
+|---------|------|
+| `npm run test:agent:verify:light` | Default for phase execution |
+| `npm run test:agent:verify` | REG-01 UAT preflight |
+| `npm run test:reg03:preflight` | REG-03 operator UAT preflight |
+
+**Do not run** `npm run check` or hand-rolled build chains in autonomous mode.
+
+Gates auto-scale from host RAM. Default **strict** (block when low). Escape: `RAM_GATE_DISABLED=1` or `RAM_GATE_STRICT=0`. Overrides: `RAM_GATE_MINIMAL_MB`, `AGENT_VERIFY_BUILD_GATE_MB`, `AGENT_VERIFY_COMPILE_GATE_MB`, `RAM_GATE_WAIT_SEC`. Project GSD config: `parallelization.max_concurrent_agents: 1`.
+
 ## GSD Project Context (2026-05-08)
 
 - Project initialized for recursive workflow planning/execution UX hardening.

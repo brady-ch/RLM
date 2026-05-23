@@ -30,10 +30,18 @@ See also: [docs/UI.md](../../../docs/UI.md) — WSL memory section.
 ### Automated preflight
 
 ```bash
+npm run test:reg03:preflight
+```
+
+Individual targets (same scope):
+
+```bash
 cargo test -p rlm-core ram_guard
 cargo test -p rlm-core --test chat_routes
+cargo test -p rlm-core reg03_uat_smoke
 node --import tsx --test tests/application/config/validation.unit.test.ts
 npm run build:ui
+npm run test:uat:preflight
 ```
 
 ## Checklist

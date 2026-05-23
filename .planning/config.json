@@ -1,7 +1,13 @@
 {
   "mode": "yolo",
   "granularity": "fine",
-  "parallelization": true,
+  "parallelization": {
+    "enabled": false,
+    "plan_level": false,
+    "task_level": false,
+    "max_concurrent_agents": 1,
+    "min_plans_for_parallel": 99
+  },
   "commit_docs": true,
   "model_profile": "inherit",
   "workflow": {
