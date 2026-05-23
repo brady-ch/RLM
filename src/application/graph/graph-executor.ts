@@ -1,5 +1,5 @@
 import type { AgentProfile } from "../../domain/agents.js";
-import { RunStatePersistence } from "../../domain/run-state-persistence.js";
+import { RunStatePersistence, type LoadedResumeState } from "../../domain/run-state-persistence.js";
 import type {
   ExecutionGraph,
   ExecutionGraphNode,
@@ -260,7 +260,12 @@ async function prepareResumeState(
     return { skipCompleted, completedNodeIds };
   }
 
-  const resume = await persistence.loadResumeState();
+  let resume: LoadedResumeState | undefined;
+  try {
+    resume = await persistence.loadResumeState();
+  } catch {
+    resume = undefined;
+  }
   if (!resume) {
     return { skipCompleted, completedNodeIds };
   }
