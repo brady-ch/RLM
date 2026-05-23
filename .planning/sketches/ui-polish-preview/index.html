@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RLM UI Polish — Canvas Comparison</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #1a1a1a;
+      color: #e8e8e8;
+      min-height: 100vh;
+    }
+    header {
+      padding: 20px 24px 12px;
+      border-bottom: 1px solid #333;
+    }
+    header h1 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    header p { font-size: 13px; color: #999; max-width: 720px; line-height: 1.5; }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 12px 24px;
+      border-bottom: 1px solid #333;
+      flex-wrap: wrap;
+    }
+    .tab {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 8px 14px;
+    }
+    .tab:hover { border-color: #666; color: #fff; }
+    .tab.active { background: #2d6cdf; border-color: #2d6cdf; color: #fff; }
+    .panel { display: none; padding: 16px 24px 32px; }
+    .panel.active { display: block; }
+    .panel-label {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .compare-row {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 900px) { .compare-row { grid-template-columns: 1fr; } }
+
+    /* ── CURRENT (Phase 61 tokens) ── */
+    .current-canvas {
+      --bg: #eef2ef;
+      --surface: #f8faf8;
+      --card: #fbfcfd;
+      --accent: #2d6cdf;
+      --border: #d9e0db;
+      --primary: #1f3d32;
+      background: var(--bg);
+      border-radius: 12px;
+      height: 420px;
+      overflow: hidden;
+      position: relative;
+    }
+    .current-canvas .topbar {
+      align-items: center;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      font-size: 12px;
+      gap: 8px;
+      padding: 10px 14px;
+    }
+    .current-canvas .topbar .status { color: #56665d; flex: 1; }
+    .current-canvas .topbar button {
+      background: var(--primary);
+      border: 0;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 12px;
+      padding: 6px 12px;
+    }
+    .current-canvas .topbar button.secondary { background: #e8ede9; color: #16201a; }
+    .current-canvas .board {
+      height: calc(100% - 44px);
+      position: relative;
+    }
+    .current-canvas .node {
+      background: var(--card);
+      border: 2px solid #4b5563;
+      border-radius: 8px;
+      box-shadow: 0 12px 30px rgba(30, 45, 38, 0.12);
+      left: 48px;
+      position: absolute;
+      top: 40px;
+      width: 280px;
+    }
+    .current-canvas .node.selected {
+      box-shadow: 0 0 0 2px rgba(45, 108, 223, 0.35);
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .current-canvas .node.running { border-color: #2d6cdf; }
+    .current-canvas .node-header {
+      background: #1f2937;
+      color: #f8fafc;
+      font-size: 11px;
+      padding: 8px 12px;
+    }
+    .current-canvas .node-header strong { display: block; font-size: 13px; margin-top: 2px; }
+    .current-canvas .node-body { font-size: 12px; padding: 10px 12px; color: #16201a; }
+    .current-canvas .node-body textarea {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font: inherit;
+      min-height: 56px;
+      padding: 6px;
+      resize: none;
+      width: 100%;
+    }
+    .current-canvas .node2 { left: 200px; top: 180px; width: 240px; opacity: 0.85; }
+    .current-canvas .edge {
+      border-top: 2px solid #94a3b8;
+      left: 180px;
+      position: absolute;
+      top: 120px;
+      transform: rotate(28deg);
+      width: 80px;
+    }
+    .current-canvas .ctx {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.1);
+      font-size: 12px;
+      left: 120px;
+      position: absolute;
+      top: 100px;
+      width: 160px;
+    }
+    .current-canvas .ctx div { padding: 7px 12px; }
+    .current-canvas .ctx div:hover { background: #f0f4f1; }
+
+    /* ── FIGMA / MIRO POLISH (CSS-only) ── */
+    .miro-canvas {
+      --bg: #f5f5f5;
+      --card: #ffffff;
+      --accent: #4262ff;
+      --text: #1e1e1e;
+      --muted: #6b6b6b;
+      --border: rgba(0,0,0,.08);
+      background-color: var(--bg);
+      background-image: radial-gradient(circle, #d0d0d0 1px, transparent 1px);
+      background-size: 20px 20px;
+      border-radius: 12px;
+      height: 420px;
+      overflow: hidden;
+      position: relative;
+    }
+    .miro-canvas .topbar {
+      align-items: center;
+      backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.92);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      font-size: 12px;
+      gap: 8px;
+      padding: 10px 16px;
+    }
+    .miro-canvas .topbar .status { color: var(--muted); flex: 1; }
+    .miro-canvas .topbar .dot {
+      background: #22c55e;
+      border-radius: 50%;
+      height: 8px;
+      width: 8px;
+    }
+    .miro-canvas .topbar button {
+      background: var(--accent);
+      border: 0;
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 7px 14px;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+    .miro-canvas .topbar button:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(66,98,255,.35); }
+    .miro-canvas .topbar button.secondary {
+      background: #fff;
+      border: 1px solid var(--border);
+      box-shadow: none;
+      color: var(--text);
+    }
+    .miro-canvas .board { height: calc(100% - 44px); position: relative; }
+    .miro-canvas .node {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      left: 48px;
+      position: absolute;
+      top: 40px;
+      transition: box-shadow 180ms ease, transform 180ms ease;
+      width: 280px;
+    }
+    .miro-canvas .node:hover { box-shadow: 0 4px 16px rgba(0,0,0,.12); transform: translateY(-1px); }
+    .miro-canvas .node.selected {
+      box-shadow: 0 0 0 2px var(--accent), 0 4px 20px rgba(66,98,255,.18);
+    }
+    .miro-canvas .node.running {
+      border-left: 3px solid var(--accent);
+    }
+    .miro-canvas .node-header {
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+    }
+    .miro-canvas .chip {
+      background: #eef2ff;
+      border-radius: 6px;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      text-transform: uppercase;
+    }
+    .miro-canvas .node-header strong { color: var(--text); flex: 1; font-size: 13px; }
+    .miro-canvas .node-body { color: var(--text); font-size: 12px; padding: 12px 14px; }
+    .miro-canvas .node-body textarea {
+      background: #fafafa;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+      line-height: 1.45;
+      min-height: 56px;
+      padding: 8px 10px;
+      resize: none;
+      width: 100%;
+    }
+    .miro-canvas .node-body textarea:focus {
+      border-color: var(--accent);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(66,98,255,.15);
+    }
+    .miro-canvas .node2 { left: 200px; top: 180px; width: 240px; }
+    .miro-canvas .edge {
+      border-top: 2px solid #cbd5e1;
+      left: 180px;
+      position: absolute;
+      top: 120px;
+      transform: rotate(28deg);
+      width: 80px;
+    }
+    .miro-canvas .edge::after {
+      border: 5px solid transparent;
+      border-left-color: #cbd5e1;
+      content: "";
+      position: absolute;
+      right: -6px;
+      top: -6px;
+    }
+    .miro-canvas .ctx {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.06);
+      font-size: 12px;
+      left: 120px;
+      overflow: hidden;
+      position: absolute;
+      top: 100px;
+      width: 180px;
+    }
+    .miro-canvas .ctx .section {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 8px 12px 4px;
+      text-transform: uppercase;
+    }
+    .miro-canvas .ctx div.item { padding: 8px 12px; transition: background 100ms; }
+    .miro-canvas .ctx div.item:hover { background: #f4f4f5; }
+
+    /* ── HYBRID (Miro canvas + Radix-style menu) ── */
+    .hybrid-canvas { composes: miro; }
+    .hybrid-canvas {
+      --bg: #f5f5f5;
+      --card: #ffffff;
+      --accent: #4262ff;
+      --text: #1e1e1e;
+      --muted: #6b6b6b;
+      background-color: var(--bg);
+      background-image: radial-gradient(circle, #d0d0d0 1px, transparent 1px);
+      background-size: 20px 20px;
+      border-radius: 12px;
+      height: 420px;
+      overflow: hidden;
+      position: relative;
+    }
+    .hybrid-canvas .topbar,
+    .hybrid-canvas .board,
+    .hybrid-canvas .node,
+    .hybrid-canvas .node-header,
+    .hybrid-canvas .node-body,
+    .hybrid-canvas .chip { /* reuse miro structure via duplicate minimal set */ }
+    .hybrid-canvas .topbar {
+      align-items: center;
+      backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.92);
+      border-bottom: 1px solid rgba(0,0,0,.08);
+      display: flex;
+      font-size: 12px;
+      gap: 8px;
+      padding: 10px 16px;
+    }
+    .hybrid-canvas .topbar .status { color: var(--muted); flex: 1; }
+    .hybrid-canvas .topbar button {
+      background: var(--accent);
+      border: 0;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 12px;
+      padding: 7px 14px;
+    }
+    .hybrid-canvas .board { height: calc(100% - 44px); position: relative; }
+    .hybrid-canvas .node {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      left: 48px;
+      position: absolute;
+      top: 40px;
+      width: 280px;
+    }
+    .hybrid-canvas .node.selected {
+      box-shadow: 0 0 0 2px var(--accent), 0 4px 20px rgba(66,98,255,.18);
+    }
+    .hybrid-canvas .node-header {
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+    }
+    .hybrid-canvas .chip {
+      background: #eef2ff;
+      border-radius: 6px;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+    }
+    .hybrid-canvas .node-header strong { flex: 1; font-size: 13px; }
+    .hybrid-canvas .node-body { font-size: 12px; padding: 12px 14px; }
+    .hybrid-canvas .node-body textarea {
+      background: #fafafa;
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 8px;
+      font: inherit;
+      min-height: 56px;
+      padding: 8px;
+      resize: none;
+      width: 100%;
+    }
+    .hybrid-canvas .node2 { left: 200px; opacity: .9; top: 180px; width: 240px; }
+    .hybrid-canvas .ctx-radix {
+      animation: menuIn 150ms ease;
+      background: #fff;
+      border: 1px solid rgba(0,0,0,.06);
+      border-radius: 8px;
+      box-shadow: 0 10px 38px rgba(0,0,0,.15), 0 4px 12px rgba(0,0,0,.08);
+      font-size: 13px;
+      left: 110px;
+      min-width: 200px;
+      padding: 4px;
+      position: absolute;
+      top: 95px;
+    }
+    @keyframes menuIn {
+      from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .hybrid-canvas .ctx-radix .item {
+      align-items: center;
+      border-radius: 4px;
+      cursor: default;
+      display: flex;
+      gap: 10px;
+      outline: none;
+      padding: 8px 10px;
+    }
+    .hybrid-canvas .ctx-radix .item:hover,
+    .hybrid-canvas .ctx-radix .item:focus {
+      background: #f4f4f5;
+    }
+    .hybrid-canvas .ctx-radix .item svg { color: #71717a; flex-shrink: 0; }
+    .hybrid-canvas .ctx-radix .sep {
+      background: rgba(0,0,0,.06);
+      height: 1px;
+      margin: 4px 0;
+    }
+    .hybrid-canvas .ctx-radix kbd {
+      color: #a1a1aa;
+      font-size: 11px;
+      margin-left: auto;
+    }
+
+    .callout {
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.55;
+      margin-top: 16px;
+      padding: 12px 14px;
+    }
+    .callout strong { color: #fff; }
+    .callout ul { margin: 8px 0 0 18px; color: #aaa; }
+    .live-link {
+      background: #2d6cdf;
+      border-radius: 8px;
+      color: #fff;
+      display: inline-block;
+      font-size: 13px;
+      margin-top: 12px;
+      padding: 10px 16px;
+      text-decoration: none;
+    }
+    .live-link:hover { background: #2558c4; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>RLM Canvas UI — Visual Polish Comparison</h1>
+    <p>Side-by-side mockups for the three design-system paths we discussed. Tab between views; hover nodes and menus where applicable.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="compare">A vs Miro polish</button>
+    <button class="tab" data-tab="hybrid">C — Hybrid + Radix menu</button>
+    <button class="tab" data-tab="live">Live app note</button>
+  </div>
+
+  <div id="compare" class="panel active">
+    <div class="panel-label">Left: current tokens · Right: Figma/Miro CSS-only (Option A)</div>
+    <div class="compare-row">
+      <div>
+        <div class="current-canvas">
+          <div class="topbar">
+            <span class="status">● Ready</span>
+            <button>Run workflow</button>
+            <button class="secondary">Advanced</button>
+          </div>
+          <div class="board">
+            <div class="edge"></div>
+            <div class="node selected running">
+              <div class="node-header">
+                <span>EXECUTION</span>
+                <strong>Research competitors</strong>
+              </div>
+              <div class="node-body">
+                <textarea readonly>Analyze top 3 competitors and summarize positioning…</textarea>
+              </div>
+            </div>
+            <div class="node node2">
+              <div class="node-header">
+                <span>PLAN</span>
+                <strong>Break into tasks</strong>
+              </div>
+              <div class="node-body" style="color:#56665d;padding:14px">Completed</div>
+            </div>
+            <div class="ctx">
+              <div>Plan children</div>
+              <div>Approve</div>
+              <div>Delete subtree</div>
+            </div>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>Option A baseline — what you have now</strong>
+          <ul>
+            <li>Green-tinted canvas (#eef2ef)</li>
+            <li>Dark node header bar (#1f2937)</li>
+            <li>Heavy border-based status (2px colored borders)</li>
+            <li>Plain context menu box</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="miro-canvas">
+          <div class="topbar">
+            <span class="dot"></span>
+            <span class="status">Ready · 2 nodes</span>
+            <button>Run workflow</button>
+            <button class="secondary">Advanced</button>
+          </div>
+          <div class="board">
+            <div class="edge"></div>
+            <div class="node selected running">
+              <div class="node-header">
+                <span class="chip">Running</span>
+                <strong>Research competitors</strong>
+              </div>
+              <div class="node-body">
+                <textarea readonly>Analyze top 3 competitors and summarize positioning…</textarea>
+              </div>
+            </div>
+            <div class="node node2">
+              <div class="node-header">
+                <span class="chip" style="background:#ecfdf5;color:#059669">Done</span>
+                <strong>Break into tasks</strong>
+              </div>
+              <div class="node-body" style="color:#6b6b6b">3 subtasks created</div>
+            </div>
+            <div class="ctx">
+              <div class="section">Plan</div>
+              <div class="item">Plan children</div>
+              <div class="item">Break down</div>
+              <div class="section">Run</div>
+              <div class="item">Approve</div>
+              <div class="item">Skip</div>
+            </div>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>Option A target — CSS/tokens only</strong>
+          <ul>
+            <li>Neutral dot-grid canvas</li>
+            <li>White floating cards, soft shadow</li>
+            <li>Status chips instead of border colors</li>
+            <li>Grouped context menu sections</li>
+            <li>No new dependencies</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="hybrid" class="panel">
+    <div class="panel-label">Option C — Miro canvas + Radix-style context menu (keyboard/a11y ready)</div>
+    <div style="max-width:640px">
+      <div class="hybrid-canvas">
+        <div class="topbar">
+          <span class="status" style="color:#6b6b6b">Ready · node selected</span>
+          <button style="background:#4262ff;border:0;border-radius:8px;color:#fff;padding:7px 14px">Run workflow</button>
+        </div>
+        <div class="board">
+          <div class="node selected">
+            <div class="node-header">
+              <span class="chip">Awaiting</span>
+              <strong>Research competitors</strong>
+            </div>
+            <div class="node-body">
+              <textarea readonly>Right-click for actions…</textarea>
+            </div>
+          </div>
+          <div class="node node2">
+            <div class="node-header">
+              <span class="chip" style="background:#f4f4f5;color:#71717a">Planned</span>
+              <strong>Child task</strong>
+            </div>
+          </div>
+          <div class="ctx-radix" role="menu">
+            <div class="item" tabindex="0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              Plan children
+            </div>
+            <div class="item" tabindex="0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3"/></svg>
+              Break down
+            </div>
+            <div class="sep"></div>
+            <div class="item" tabindex="0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+              Approve
+              <kbd>↵</kbd>
+            </div>
+            <div class="item" tabindex="0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              Skip
+            </div>
+            <div class="sep"></div>
+            <div class="item" tabindex="0" style="color:#dc2626">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2"/></svg>
+              Delete subtree
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>Option C — recommended hybrid</strong>
+        <ul>
+          <li>Same Miro canvas CSS as Option A target</li>
+          <li>Radix Context Menu for focus trap, arrow keys, typeahead</li>
+          <li>Icons + keyboard hints on destructive/primary actions</li>
+          <li>~2 deps (@radix-ui/react-context-menu) vs full shadcn</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="live" class="panel">
+    <div class="panel-label">Running the real RLM UI locally</div>
+    <div class="callout">
+      <strong>Mockups above</strong> — static HTML on this preview server.<br><br>
+      <strong>Live Rust-served UI</strong> (needs build + control server):
+      <pre style="margin-top:8px;color:#ccc;font-size:11px;overflow-x:auto">npm run build:ui && RLM_UI_DIST=$PWD/ui/dist cargo run -p rlm-cli -- ui --port 5173</pre>
+      <strong>Vite dev</strong> (frontend only, API calls may fail without backend):
+      <pre style="margin-top:8px;color:#ccc;font-size:11px">npm run dev:ui</pre>
+    </div>
+    <p style="font-size:13px;color:#888;margin-top:16px" id="server-status">Preview server URL will appear in your terminal.</p>
+  </div>
+
+  <script>
+    document.querySelectorAll(".tab").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+        document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
+      });
+    });
+  </script>
+</body>
+</html>
