@@ -2,6 +2,7 @@
 
 ## Milestones
 
+- 🚧 **v1.10 v1.9 Debt Closure** — Phases 72-76 (planning)
 - ✅ **v1.9 Rust Runtime Hardening** — Phases 62-71 (shipped 2026-05-22; archive: `.planning/milestones/v1.9-ROADMAP.md`)
 - ✅ **v1.8 Rust Runtime Migration** — Phases 1, 52-61 (shipped 2026-05-22; archive: `.planning/milestones/v1.8-ROADMAP.md`)
 - ✅ **v1.7 Adapter & Plugin Taxonomy** — Phases 43-51 (shipped 2026-05-22; archive: `.planning/milestones/v1.7-ROADMAP.md`)
@@ -15,9 +16,9 @@
 
 ## Overview
 
-**Next milestone:** TBD — run `/gsd-new-milestone`
+**Current milestone:** v1.10 v1.9 Debt Closure — Phases 72-76. Close all documented v1.9 tech debt: REG-01 human UAT sign-off, UI resume wiring, TS resume cursor parity, skill interop depth, packaging in default test gate, and architecture/meta hygiene.
 
-**v1.9 (shipped 2026-05-22)** closed v1.8 functional debt (UI regressions, quality loop parity, resume consumer, skill interop, full CLI, PACK-03 CI) and hardened `rlm-core` architecture to match the TypeScript concern map (application layer, handler split, file decomposition, boundary enforcement, optional crate split evaluated defer). Milestone audit: **tech_debt** — REG-01 human UAT unsigned; documented deferrals in archive audit.
+**v1.9 (shipped 2026-05-22)** closed v1.8 functional debt (UI regressions, quality loop parity, resume consumer, skill interop, full CLI, PACK-03 CI) and hardened `rlm-core` architecture to match the TypeScript concern map (application layer, handler split, file decomposition, boundary enforcement, optional crate split evaluated defer). Milestone audit: **tech_debt** — REG-01 human UAT unsigned; documented deferrals drive v1.10 scope.
 
 **v1.8 (shipped 2026-05-22)** replaced the Node orchestration runtime with an embedded Rust workspace while keeping the TypeScript/React UI in Tauri.
 
@@ -61,6 +62,72 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 
 </details>
 
+### 🚧 v1.10 v1.9 Debt Closure (Phases 72-76)
+
+**Milestone Goal:** Close all documented v1.9 tech debt so verification, resume UX, skill interop, packaging, and architecture deferrals are resolved or explicitly ratcheted.
+
+- [ ] **Phase 72: Human UAT Sign-off** — Complete Phase 61 checklist on Rust-served UI; update Phase 62 verification (REG-01)
+- [ ] **Phase 73: UI Resume Control** — Wire resume button to POST /api/chat/resume-run with confirm gate + HTTP integration test (RESU-01, RESU-02)
+- [ ] **Phase 74: TS Resume Cursor Parity** — Graph executor persistResumeCursor at node transitions (PERS-04)
+- [ ] **Phase 75: Skill Interop Depth** — SKILL_PARSE_ERROR lifecycle events; ManifestSkillLoader async load (PLUG-04, PLUG-05)
+- [ ] **Phase 76: Packaging & Architecture Hygiene** — test:packaging in npm test; 71-DECISION refresh; boundary debt; meta cleanup (PACK-04, ARCH-07, ARCH-08, META-01)
+
+## Phase Details
+
+### Phase 72: Human UAT Sign-off
+**Goal**: Operator completes documented human UAT on the Rust-served UI and Phase 62 verification reflects passed status
+**Depends on**: Phase 71 (v1.9 complete)
+**Requirements**: REG-01
+**Success Criteria** (what must be TRUE):
+  1. Operator completes Phase 61 human UAT checklist (`61-06-VERIFICATION.md`) on Rust-served UI with live Ollama where applicable
+  2. All checklist items are signed with evidence recorded (screenshots, notes, or equivalent)
+  3. Phase 62 verification updated from `human_needed` to passed
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 73: UI Resume Control
+**Goal**: Users can resume interrupted runs from the UI with an explicit confirm gate and automated HTTP coverage
+**Depends on**: Phase 72
+**Requirements**: RESU-01, RESU-02
+**Success Criteria** (what must be TRUE):
+  1. User sees a resume control when an interrupted run has persisted run state
+  2. User must explicitly confirm before resume proceeds (no silent resume)
+  3. After confirmation, UI calls `POST /api/chat/resume-run` with `{ confirm: true }` and session reflects resumed execution state
+  4. HTTP integration test rejects resume without confirm, accepts with confirm, and executor skips completed nodes
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 74: TS Resume Cursor Parity
+**Goal**: Node runtime persists resume cursor at transitions with the same shape as Rust
+**Depends on**: Phase 73
+**Requirements**: PERS-04
+**Success Criteria** (what must be TRUE):
+  1. TypeScript graph executor invokes `persistResumeCursor` at each node transition
+  2. Node runtime cursor shape matches Rust `RunStateStorePort` expectations
+  3. Resume after partial Node execution skips completed nodes using the persisted cursor
+**Plans**: TBD
+
+### Phase 75: Skill Interop Depth
+**Goal**: Skill load/parse failures surface as structured lifecycle events with working async declarative loader
+**Depends on**: Phase 74
+**Requirements**: PLUG-04, PLUG-05
+**Success Criteria** (what must be TRUE):
+  1. When skill parse fails, execution lifecycle emits structured `SKILL_PARSE_ERROR` events (not warning strings only)
+  2. Declarative skill paths load asynchronously via `ManifestSkillLoader.load()` (stub behavior removed)
+  3. Doctor/status surfaces reflect skill load failures with structured error context
+**Plans**: TBD
+
+### Phase 76: Packaging & Architecture Hygiene
+**Goal**: Default test gate includes packaging smoke; architecture docs, baselines, and milestone meta artifacts are accurate
+**Depends on**: Phase 75
+**Requirements**: PACK-04, ARCH-07, ARCH-08, META-01
+**Success Criteria** (what must be TRUE):
+  1. Running `npm test` includes `test:packaging` (deb-smoke-lib unit tests in the developer loop)
+  2. `71-DECISION.md` accurately reflects Phase 70 prerequisites; `measure-rust-compile-baseline.sh` preserves cargo exit status
+  3. Transitional boundary arcs either reduced or documented with ratchet plan in AGENTS.md; default `check:rust:boundaries` behavior unchanged unless arcs eliminated
+  4. Stale v1.9 wave todos (`rust-functional-debt-wave1`, `rust-structural-architecture-wave2`) archived or cancelled; `66-01-SUMMARY.md` frontmatter includes `requirements-completed`
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -75,3 +142,8 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 | 69. Large File Decomposition | v1.9 | 5/5 | Complete | 2026-05-22 |
 | 70. Rust Boundary Enforcement | v1.9 | 2/2 | Complete | 2026-05-22 |
 | 71. Optional Crate Split | v1.9 | 3/3 | Complete | 2026-05-22 |
+| 72. Human UAT Sign-off | v1.10 | 0/TBD | Not started | - |
+| 73. UI Resume Control | v1.10 | 0/TBD | Not started | - |
+| 74. TS Resume Cursor Parity | v1.10 | 0/TBD | Not started | - |
+| 75. Skill Interop Depth | v1.10 | 0/TBD | Not started | - |
+| 76. Packaging & Architecture Hygiene | v1.10 | 0/TBD | Not started | - |
