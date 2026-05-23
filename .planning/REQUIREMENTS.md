@@ -16,7 +16,7 @@ Requirements close documented v1.9 tech debt from `.planning/milestones/v1.9-MIL
 
 - [ ] **RESU-01**: User can resume an interrupted run from the UI — control calls `POST /api/chat/resume-run` with `{ confirm: true }` after explicit confirmation; session reflects resumed execution state
 - [ ] **RESU-02**: HTTP integration test covers resume-run confirm gate (reject without confirm; accept with confirm; executor skips completed nodes)
-- [ ] **PERS-04**: TypeScript graph executor invokes `persistResumeCursor` at node transitions so Node runtime writes the same cursor shape as Rust
+- [x] **PERS-04**: TypeScript graph executor invokes `persistResumeCursor` at node transitions so Node runtime writes the same cursor shape as Rust
 
 ### Skill Interop Depth (PLUG)
 
@@ -73,7 +73,7 @@ Deferred beyond v1.10 — not in this milestone roadmap.
 | REG-01 | Phase 72 | Pending |
 | RESU-01 | Phase 73 | Pending |
 | RESU-02 | Phase 73 | Pending |
-| PERS-04 | Phase 74 | Pending |
+| PERS-04 | Phase 74 | Complete |
 | PLUG-04 | Phase 75 | Pending |
 | PLUG-05 | Phase 75 | Pending |
 | PACK-04 | Phase 76 | Pending |

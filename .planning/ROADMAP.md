@@ -68,7 +68,7 @@ See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREME
 
 - [ ] **Phase 72: Human UAT Sign-off** — REG-01: plan 72-01 executed; automated scope of plan 72-02 done — browser checklist and verification ratchet (Task 2) still awaiting operator (`72-UAT.md`, `72-VERIFICATION.md` remain `human_needed` / checklist `pending`)
 - [ ] **Phase 73: UI Resume Control** — Wire resume button to POST /api/chat/resume-run with confirm gate + HTTP integration test (RESU-01, RESU-02)
-- [ ] **Phase 74: TS Resume Cursor Parity** — Graph executor persistResumeCursor at node transitions (PERS-04)
+- [x] **Phase 74: TS Resume Cursor Parity** — Graph executor persistResumeCursor at node transitions (PERS-04) (completed 2026-05-23)
 - [ ] **Phase 75: Skill Interop Depth** — SKILL_PARSE_ERROR lifecycle events; ManifestSkillLoader async load (PLUG-04, PLUG-05)
 - [ ] **Phase 76: Packaging & Architecture Hygiene** — test:packaging in npm test; 71-DECISION refresh; boundary debt; meta cleanup (PACK-04, ARCH-07, ARCH-08, META-01)
 
@@ -124,8 +124,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 74-01-PLAN.md — Graph executor run-state writes at node transitions
-- [ ] 74-02-PLAN.md — Resume flag + loadResumeState + skip-completed test
+- [x] 74-01-PLAN.md — Graph executor run-state writes at node transitions
+- [x] 74-02-PLAN.md — Resume flag + loadResumeState + skip-completed test
 
 **Wave 1** *(autonomous)*
 - 74-01 — persistNodeStatus + persistResumeCursor mirroring Rust executor
@@ -190,6 +190,6 @@ Plans:
 | 71. Optional Crate Split | v1.9 | 3/3 | Complete | 2026-05-22 |
 | 72. Human UAT Sign-off | v1.10 | 1/2 | Blocked — operator UAT | — |
 | 73. UI Resume Control | v1.10 | 0/TBD | Not started | - |
-| 74. TS Resume Cursor Parity | v1.10 | 0/2 | Not started | - |
+| 74. TS Resume Cursor Parity | v1.10 | 2/2 | Complete   | 2026-05-23 |
 | 75. Skill Interop Depth | v1.10 | 0/2 | Not started | - |
 | 76. Packaging & Architecture Hygiene | v1.10 | 0/3 | Not started | - |
