@@ -50,6 +50,7 @@ export interface GraphExecutorInput {
   createModel: (model: string, runtime: ModelRuntimeSelection) => LanguageModelPort;
   logger?: RuntimeLogger | undefined;
   runState?: RuntimeRunState | undefined;
+  resume?: boolean | undefined;
   resolveMemory?: () => RuntimeMemory | undefined;
   memory?: RuntimeMemory | undefined;
 }
@@ -225,7 +226,7 @@ async function prepareFreshRunState(
   graph: ExecutionGraph,
   persistence: RunStatePersistence | undefined,
 ): Promise<void> {
-  if (!input.runState || !persistence) {
+  if (!input.runState || !persistence || input.resume) {
     return;
   }
   const existing = await input.runState.store.getSnapshot(input.runState.runId);
@@ -240,6 +241,35 @@ async function prepareFreshRunState(
   } catch {
     // Match Rust `_ =` on fresh-run initialize.
   }
+}
+
+async function prepareResumeState(
+  session: InteractiveExecutionSession,
+  input: GraphExecutorInput,
+  graph: ExecutionGraph,
+  persistence: RunStatePersistence | undefined,
+): Promise<{ skipCompleted: Set<string>; completedNodeIds: string[] }> {
+  const skipCompleted = new Set<string>();
+  let completedNodeIds: string[] = [];
+
+  if (!input.resume || !input.runState || !persistence) {
+    return { skipCompleted, completedNodeIds };
+  }
+
+  const resume = await persistence.loadResumeState();
+  if (!resume) {
+    return { skipCompleted, completedNodeIds };
+  }
+
+  for (const nodeId of resume.completedNodeIds) {
+    if (graph.nodes.some((node) => node.id === nodeId)) {
+      session.control.updateNodeStatus?.(nodeId, "completed");
+    }
+    skipCompleted.add(nodeId);
+    completedNodeIds.push(nodeId);
+  }
+
+  return { skipCompleted, completedNodeIds };
 }
 
 export async function executeGraph(
@@ -258,10 +288,21 @@ export async function executeGraph(
   let completedNodeIds: string[] = [];
 
   await prepareFreshRunState(input, graph, persistence);
+  const { skipCompleted, completedNodeIds: resumedCompleted } = await prepareResumeState(
+    session,
+    input,
+    graph,
+    persistence,
+  );
+  completedNodeIds = resumedCompleted;
 
   for (const nodeId of order) {
     const node = nodeById.get(nodeId);
     if (!node) {
+      continue;
+    }
+
+    if (skipCompleted.has(nodeId)) {
       continue;
     }
 
