@@ -105,8 +105,13 @@ Plans:
   2. User must explicitly confirm before resume proceeds (no silent resume)
   3. After confirmation, UI calls `POST /api/chat/resume-run` with `{ confirm: true }` and session reflects resumed execution state
   4. HTTP integration test rejects resume without confirm, accepts with confirm, and executor skips completed nodes
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 73-01-PLAN.md — Session snapshot runState.resumable signal (REST + SSE)
+- [ ] 73-02-PLAN.md — HTTP integration tests for resume-run confirm gate + skip completed nodes
+- [ ] 73-03-PLAN.md — TopBar resume button with GraphActionModal confirm → POST resume-run
 
 ### Phase 74: TS Resume Cursor Parity
 **Goal**: Node runtime persists resume cursor at transitions with the same shape as Rust
