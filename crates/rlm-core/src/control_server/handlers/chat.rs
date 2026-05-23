@@ -195,6 +195,7 @@ pub(crate) async fn stop_run(
         .and_then(|v| v.as_str())
         .unwrap_or("Run stopped by user.");
     state.session.stop(reason);
+    state.lifecycle.cancel_running_tasks();
     Json(json!(state.session.snapshot()))
 }
 

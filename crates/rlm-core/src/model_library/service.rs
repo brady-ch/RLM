@@ -11,6 +11,7 @@ use super::types::{
     ModelInstallJob, ModelLibraryEntry, ModelLibrarySearchResult, ModelLibrarySnapshot,
     CURATED_MODELS,
 };
+use crate::application::execution::ProcessShutdown;
 
 #[derive(Clone)]
 pub struct ModelLibraryService {
@@ -19,10 +20,16 @@ pub struct ModelLibraryService {
     client: Client,
     jobs: Arc<Mutex<HashMap<String, ModelInstallJob>>>,
     hf_registry: HfRegistry,
+    lifecycle: Option<ProcessShutdown>,
 }
 
 impl ModelLibraryService {
-    pub fn new(project_root: std::path::PathBuf, config: Value, ollama_base_url: String) -> Self {
+    pub fn new(
+        project_root: std::path::PathBuf,
+        config: Value,
+        ollama_base_url: String,
+        lifecycle: Option<ProcessShutdown>,
+    ) -> Self {
         let registry_dir = project_root.join(".rlm").join("models").join("registry");
         Self {
             config: Arc::new(Mutex::new(config)),
@@ -33,7 +40,12 @@ impl ModelLibraryService {
                 .unwrap_or_else(|_| Client::new()),
             jobs: Arc::new(Mutex::new(HashMap::new())),
             hf_registry: HfRegistry::new(registry_dir),
+            lifecycle,
         }
+    }
+
+    pub async fn config_snapshot(&self) -> Value {
+        self.config.lock().await.clone()
     }
 
     pub async fn snapshot(&self) -> ModelLibrarySnapshot {
@@ -196,9 +208,14 @@ impl ModelLibraryService {
 
         let service = self.clone();
         let model_name = normalized.to_string();
-        tokio::spawn(async move {
+        let install = async move {
             service.run_install(&model_name).await;
-        });
+        };
+        if let Some(lifecycle) = &self.lifecycle {
+            lifecycle.spawn(install);
+        } else {
+            tokio::spawn(install);
+        }
 
         Ok(job)
     }

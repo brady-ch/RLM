@@ -38,6 +38,12 @@ impl ProcessShutdown {
 
     pub fn shutdown(&self, reason: &str) {
         self.requested.store(true, Ordering::SeqCst);
+        self.cancel_running_tasks();
+        tracing::debug!(reason, "process shutdown requested");
+    }
+
+    /// Abort in-flight background tasks without marking the process shut down.
+    pub fn cancel_running_tasks(&self) {
         let mut tasks = self
             .tasks
             .lock()
@@ -45,6 +51,5 @@ impl ProcessShutdown {
         for handle in tasks.drain(..) {
             handle.abort();
         }
-        tracing::debug!(reason, "process shutdown requested");
     }
 }
