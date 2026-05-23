@@ -39,6 +39,7 @@ async fn plugin_routes_list_builtins_when_configured() {
         project_root: temp.path().to_path_buf(),
         memory_session_id: None,
         session: None,
+        ..Default::default()
     })
     .await
     .expect("start server");

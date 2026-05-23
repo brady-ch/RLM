@@ -73,6 +73,7 @@ async fn node_add_route_returns_added_node_id() {
         project_root: PathBuf::from("."),
         memory_session_id: None,
         session: Some(session),
+        ..Default::default()
     })
     .await
     .expect("start server");
@@ -99,6 +100,7 @@ async fn graph_layout_requires_positions_object() {
         project_root: PathBuf::from("."),
         memory_session_id: None,
         session: None,
+        ..Default::default()
     })
     .await
     .expect("start server");

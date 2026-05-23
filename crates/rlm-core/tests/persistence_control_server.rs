@@ -39,6 +39,7 @@ async fn saved_sessions_returns_list_when_configured() {
         project_root: project_root.clone(),
         memory_session_id: Some("run-1".into()),
         session: None,
+        ..Default::default()
     })
     .await
     .expect("start server");
@@ -65,6 +66,7 @@ async fn memory_returns_inspect_when_configured() {
         project_root: project_root.clone(),
         memory_session_id: Some("run-1".into()),
         session: None,
+        ..Default::default()
     })
     .await
     .expect("start server");
@@ -99,6 +101,7 @@ async fn save_open_round_trip_restores_graph_after_mutation() {
         project_root,
         memory_session_id: Some("run-ui".into()),
         session: Some(session.clone()),
+        ..Default::default()
     })
     .await
     .expect("start server");
@@ -167,6 +170,7 @@ async fn memory_preference_round_trip_creates_and_deletes_tone() {
         project_root,
         memory_session_id: Some("run-ui".into()),
         session: None,
+        ..Default::default()
     })
     .await
     .expect("start server");

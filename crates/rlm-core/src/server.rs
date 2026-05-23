@@ -7,6 +7,7 @@ use tokio::net::TcpListener;
 
 use crate::application::execution::InteractiveExecutionSession;
 use crate::control_server;
+use crate::ports::LanguageModel;
 
 pub struct ServerConfig {
     pub port: u16,
@@ -14,6 +15,20 @@ pub struct ServerConfig {
     pub project_root: PathBuf,
     pub memory_session_id: Option<String>,
     pub session: Option<Arc<InteractiveExecutionSession>>,
+    pub exec_model: Option<Arc<dyn LanguageModel>>,
+}
+
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            port: 0,
+            ui_dist_dir: None,
+            project_root: PathBuf::from("."),
+            memory_session_id: None,
+            session: None,
+            exec_model: None,
+        }
+    }
 }
 
 pub struct ControlServer {
@@ -32,6 +47,9 @@ pub async fn start_server(config: ServerConfig) -> Result<ControlServer, std::io
     }
     if let Some(session) = config.session {
         router_state = router_state.with_session(session);
+    }
+    if let Some(exec_model) = config.exec_model {
+        router_state = router_state.with_exec_model(exec_model);
     }
     let state = Arc::new(router_state);
     let app: Router = control_server::build_router(Arc::clone(&state));

@@ -44,6 +44,7 @@ async fn model_library_routes_support_catalog_and_tier_select() {
         project_root: temp.path().to_path_buf(),
         memory_session_id: None,
         session: None,
+        ..Default::default()
     })
     .await
     .expect("start server");

@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -9,13 +9,19 @@ use tauri::{Manager, WindowEvent};
 struct EmbeddedRuntime {
     rt: tokio::runtime::Runtime,
     server: std::sync::Mutex<Option<ControlServer>>,
+    ollama_child: std::sync::Mutex<Option<Child>>,
 }
 
 impl EmbeddedRuntime {
-    fn new(rt: tokio::runtime::Runtime, server: ControlServer) -> Self {
+    fn new(
+        rt: tokio::runtime::Runtime,
+        server: ControlServer,
+        ollama_child: Option<Child>,
+    ) -> Self {
         Self {
             rt,
             server: std::sync::Mutex::new(Some(server)),
+            ollama_child: std::sync::Mutex::new(ollama_child),
         }
     }
 
@@ -24,6 +30,17 @@ impl EmbeddedRuntime {
         if let Some(server) = guard.take() {
             self.rt.block_on(server.close());
         }
+        let mut ollama = self.ollama_child.lock().expect("ollama child mutex");
+        if let Some(mut child) = ollama.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
+impl Drop for EmbeddedRuntime {
+    fn drop(&mut self) {
+        self.stop();
     }
 }
 
@@ -31,7 +48,7 @@ fn main() {
     tauri::Builder::default()
         .setup(|app| {
             let release_root = resolve_release_root(app)?;
-            ensure_ollama_ready()?;
+            let ollama_child = ensure_ollama_ready()?;
 
             let ui_dist = release_root.join("ui-dist");
             let ui_dist_dir = ui_dist.is_dir().then_some(ui_dist);
@@ -43,12 +60,15 @@ fn main() {
                 project_root: release_root.clone(),
                 memory_session_id: None,
                 session: None,
+                exec_model: None,
             }))?;
 
             let url = server.url.clone();
             eprintln!("RLM UI listening at {url}");
 
-            let runtime = Arc::new(EmbeddedRuntime::new(rt, server));
+            let runtime = Arc::new(EmbeddedRuntime::new(rt, server, ollama_child));
+            app.manage(Arc::clone(&runtime));
+
             let window = app
                 .get_webview_window("main")
                 .ok_or("missing main webview window")?;
@@ -59,7 +79,10 @@ fn main() {
                     event,
                     WindowEvent::CloseRequested { .. } | WindowEvent::Destroyed
                 ) {
-                    runtime_for_close.stop();
+                    // Never block the GTK main thread on server shutdown — the webview
+                    // must finish closing before axum graceful shutdown can complete.
+                    let runtime = Arc::clone(&runtime_for_close);
+                    std::thread::spawn(move || runtime.stop());
                 }
             });
 
@@ -74,7 +97,7 @@ fn main() {
         .expect("failed to run RLM desktop shell");
 }
 
-fn ensure_ollama_ready() -> Result<(), Box<dyn std::error::Error>> {
+fn ensure_ollama_ready() -> Result<Option<Child>, Box<dyn std::error::Error>> {
     let base_url =
         std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://127.0.0.1:11434".to_string());
     let trimmed = base_url.trim_end_matches('/');
@@ -89,7 +112,7 @@ fn ensure_ollama_ready() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(false)
     {
         eprintln!("[rlm desktop] Ollama ready at {base_url}");
-        return Ok(());
+        return Ok(None);
     }
 
     if std::env::var("RLM_MANAGE_OLLAMA").ok().as_deref() == Some("1") {
@@ -103,7 +126,7 @@ fn ensure_ollama_ready() -> Result<(), Box<dyn std::error::Error>> {
             use std::os::unix::process::CommandExt;
             child.process_group(0);
         }
-        let _ = child.spawn();
+        let mut spawned = child.spawn()?;
 
         for _ in 0..30 {
             std::thread::sleep(Duration::from_millis(500));
@@ -114,9 +137,14 @@ fn ensure_ollama_ready() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap_or(false)
             {
                 eprintln!("[rlm desktop] Ollama started at {base_url}");
-                return Ok(());
+                return Ok(Some(spawned));
             }
         }
+        let _ = spawned.kill();
+        return Err(format!(
+            "Ollama failed to start at {base_url} within timeout."
+        )
+        .into());
     }
 
     Err(format!(

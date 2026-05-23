@@ -15,6 +15,7 @@ pub async fn run(
         project_root,
         memory_session_id: None,
         session: None,
+        exec_model: None,
     })
     .await?;
 
