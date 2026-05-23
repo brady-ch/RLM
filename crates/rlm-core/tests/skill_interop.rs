@@ -1,3 +1,6 @@
+use rlm_core::application::execution::{
+    InMemoryRuntimeEventStore, RuntimeEventSeverity, RuntimeEventSink,
+};
 use rlm_core::interop::{
     discover_skill_candidates, SkillInteropConfig, SkillPathPolicy, SkillPathStrictness,
     SkillRuntime,
@@ -6,6 +9,94 @@ use rlm_core::persistence::LoadedProjectConfig;
 use rlm_core::plugins::{build_runtime_context, BuildRuntimeContextInput, PluginRegistryService};
 use serde_json::json;
 use std::fs;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+#[test]
+fn skill_parse_error_emits_lifecycle_event_lenient() {
+    let store = Arc::new(InMemoryRuntimeEventStore::new());
+    let runtime = SkillRuntime::with_event_sink(
+        SkillInteropConfig {
+            search_paths: vec![PathBuf::from("/a"), PathBuf::from("/b")],
+            cache: false,
+            path_policies: vec![SkillPathPolicy {
+                path: PathBuf::from("/a"),
+                strictness: SkillPathStrictness::Lenient,
+            }],
+        },
+        Arc::clone(&store) as Arc<dyn RuntimeEventSink>,
+        "run-1",
+    );
+
+    let resolved = runtime
+        .resolve_skill(
+            "narrate",
+            &[
+                rlm_core::interop::SkillCandidate {
+                    name: "narrate".into(),
+                    absolute_path: PathBuf::from("/a/narrate/SKILL.md"),
+                    valid: false,
+                    reason: Some("bad format".into()),
+                },
+                rlm_core::interop::SkillCandidate {
+                    name: "narrate".into(),
+                    absolute_path: PathBuf::from("/b/narrate/SKILL.md"),
+                    valid: true,
+                    reason: None,
+                },
+            ],
+        )
+        .expect("resolve")
+        .expect("found");
+
+    assert_eq!(
+        resolved.candidate.absolute_path,
+        PathBuf::from("/b/narrate/SKILL.md")
+    );
+
+    let events = store.events.lock().expect("lock");
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].code, "SKILL_PARSE_ERROR");
+    assert_eq!(events[0].severity, RuntimeEventSeverity::Warn);
+    assert_eq!(events[0].subject, "/a/narrate/SKILL.md");
+    assert_eq!(resolved.warnings[0].code, "SKILL_PARSE_ERROR");
+}
+
+#[test]
+fn skill_parse_error_emits_lifecycle_event_strict() {
+    let store = Arc::new(InMemoryRuntimeEventStore::new());
+    let runtime = SkillRuntime::with_event_sink(
+        SkillInteropConfig {
+            search_paths: vec![PathBuf::from("/strict")],
+            cache: false,
+            path_policies: vec![SkillPathPolicy {
+                path: PathBuf::from("/strict"),
+                strictness: SkillPathStrictness::Strict,
+            }],
+        },
+        Arc::clone(&store) as Arc<dyn RuntimeEventSink>,
+        "run-2",
+    );
+
+    let err = runtime
+        .resolve_skill(
+            "parse",
+            &[rlm_core::interop::SkillCandidate {
+                name: "parse".into(),
+                absolute_path: PathBuf::from("/strict/parse/SKILL.md"),
+                valid: false,
+                reason: None,
+            }],
+        )
+        .expect_err("strict path should fail");
+    assert!(err.contains("Skill parse error"));
+
+    let events = store.events.lock().expect("lock");
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].code, "SKILL_PARSE_ERROR");
+    assert_eq!(events[0].severity, RuntimeEventSeverity::Error);
+    assert_eq!(events[0].subject, "/strict/parse/SKILL.md");
+}
 
 #[test]
 fn build_runtime_context_registers_skill_tool() {

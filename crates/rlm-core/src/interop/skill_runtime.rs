@@ -6,6 +6,10 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use serde_json::Value;
 
+use crate::application::execution::{
+    create_runtime_event, runtime_event_occurred_at_now, NoopRuntimeEventSink, RuntimeEvent,
+    RuntimeEventInput, RuntimeEventSeverity, RuntimeEventSink,
+};
 use crate::domain::types::ToolExecutionResult;
 use crate::ports::Tool;
 
@@ -52,19 +56,33 @@ pub struct SkillCandidate {
 #[derive(Debug)]
 pub struct ResolvedSkill {
     pub candidate: SkillCandidate,
-    pub warnings: Vec<String>,
+    pub warnings: Vec<RuntimeEvent>,
 }
 
 pub struct SkillRuntime {
     config: SkillInteropConfig,
     cache: Mutex<HashMap<String, String>>,
+    event_sink: Arc<dyn RuntimeEventSink>,
+    run_id: String,
+    seq: Mutex<u64>,
 }
 
 impl SkillRuntime {
     pub fn new(config: SkillInteropConfig) -> Self {
+        Self::with_event_sink(config, Arc::new(NoopRuntimeEventSink), "")
+    }
+
+    pub fn with_event_sink(
+        config: SkillInteropConfig,
+        event_sink: Arc<dyn RuntimeEventSink>,
+        run_id: impl Into<String>,
+    ) -> Self {
         Self {
             config,
             cache: Mutex::new(HashMap::new()),
+            event_sink,
+            run_id: run_id.into(),
+            seq: Mutex::new(0),
         }
     }
 
@@ -95,16 +113,34 @@ impl SkillRuntime {
                     .reason
                     .clone()
                     .unwrap_or_else(|| format!("Invalid skill candidate for {name}"));
-                warnings.push(format!(
-                    "SKILL_PARSE_ERROR [{}]: {}",
-                    candidate.absolute_path.display(),
-                    message
-                ));
+                let severity = match strictness {
+                    SkillPathStrictness::Strict => RuntimeEventSeverity::Error,
+                    SkillPathStrictness::Lenient => RuntimeEventSeverity::Warn,
+                };
+                let seq = {
+                    let mut counter = self
+                        .seq
+                        .lock()
+                        .map_err(|err| format!("Event sequence lock poisoned: {err}"))?;
+                    *counter += 1;
+                    *counter
+                };
+                let subject = candidate.absolute_path.display().to_string();
+                let event = create_runtime_event(RuntimeEventInput {
+                    run_id: self.run_id.clone(),
+                    code: "SKILL_PARSE_ERROR".into(),
+                    severity,
+                    source: "skills".into(),
+                    subject: subject.clone(),
+                    occurred_at: runtime_event_occurred_at_now(),
+                    seq,
+                    message: message.clone(),
+                    metrics: None,
+                });
+                self.event_sink.emit(event.clone())?;
+                warnings.push(event);
                 if strictness == SkillPathStrictness::Strict {
-                    return Err(format!(
-                        "Skill parse error at {}: {message}",
-                        candidate.absolute_path.display()
-                    ));
+                    return Err(format!("Skill parse error at {subject}: {message}"));
                 }
                 continue;
             }
@@ -432,6 +468,7 @@ pub fn load_skill_interop(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::application::execution::RuntimeEventSeverity;
     use std::fs;
     use tempfile::tempdir;
 
@@ -472,7 +509,11 @@ mod tests {
             PathBuf::from("/b/narrate/SKILL.md")
         );
         assert_eq!(resolved.warnings.len(), 1);
-        assert!(resolved.warnings[0].contains("SKILL_PARSE_ERROR"));
+        assert_eq!(resolved.warnings[0].code, "SKILL_PARSE_ERROR");
+        assert_eq!(
+            resolved.warnings[0].severity,
+            RuntimeEventSeverity::Warn
+        );
     }
 
     #[test]
