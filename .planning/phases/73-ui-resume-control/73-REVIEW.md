@@ -27,7 +27,7 @@ findings:
   total: 4
 status: issues_found
 fix_applied: true
-fix_commits: pending
+fix_commits: 4d8378a
 ---
 
 # Phase 73: Code Review Report
