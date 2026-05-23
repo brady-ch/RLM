@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { FolderOpen, Sparkles } from "lucide-react";
 import type { SavedSessionSummary } from "../shared/types";
 import { post, runAction } from "../shared/api";
-import { rootComposerPrompt } from "../shared/session-utils";
 
 export type FirstRunLauncherProps = {
   sessions: SavedSessionSummary[];
