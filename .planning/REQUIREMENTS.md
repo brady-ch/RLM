@@ -8,19 +8,19 @@
 
 ### Memory Budget (MEM)
 
-- [ ] **MEM-01**: Rust control server enforces `memory.maxRamMb` before plan, run, resume, tier select, and model install (extends initial `ram_guard.rs`)
-- [ ] **MEM-02**: Available budget accounts for Ollama `/api/ps` loaded model VRAM on plan/run (not snapshot-only)
-- [ ] **MEM-03**: WSL environments apply conservative cap (`wslAutoCapMb`) when `maxRamMb` is `auto`; documented in operator runbook
-- [ ] **MEM-04**: Config validation fails fast when any configured tier `estimatedRamMb` exceeds `maxRamMb`
-- [ ] **MEM-05**: Session `resourceGuard` refreshes on poll/SSE with live Ollama loaded memory (not static zero)
-- [ ] **MEM-06**: TypeScript execution path (`RLM_RUNTIME=node`) uses equivalent RAM guard for model selection and agent reservation
+- [x] **MEM-01**: Rust control server enforces `memory.maxRamMb` before plan, run, resume, tier select, and model install (extends initial `ram_guard.rs`)
+- [x] **MEM-02**: Available budget accounts for Ollama `/api/ps` loaded model VRAM on plan/run (not snapshot-only)
+- [x] **MEM-03**: WSL environments apply conservative cap (`wslAutoCapMb`) when `maxRamMb` is `auto`; documented in operator runbook
+- [x] **MEM-04**: Config validation fails fast when any configured tier `estimatedRamMb` exceeds `maxRamMb`
+- [x] **MEM-05**: Session `resourceGuard` refreshes on poll/SSE with live Ollama loaded memory (not static zero)
+- [x] **MEM-06**: TypeScript execution path (`RLM_RUNTIME=node`) uses equivalent RAM guard for model selection and agent reservation
 
 ### Execution Safety (SAFE)
 
-- [ ] **SAFE-01**: Only one confirmed graph execution may run at a time; duplicate Run/Resume requests return conflict
-- [ ] **SAFE-02**: Ollama requests use `keep_alive: 0` (unload after call) — verified and ratcheted in tests
-- [ ] **SAFE-03**: Stop run unloads active Ollama models via explicit unload API where reachable
-- [ ] **SAFE-04**: UI surfaces memory guard state — Run/Resume disabled with actionable reason; overview shows budget summary
+- [x] **SAFE-01**: Only one confirmed graph execution may run at a time; duplicate Run/Resume requests return conflict
+- [x] **SAFE-02**: Ollama requests use `keep_alive: 0` (unload after call) — verified and ratcheted in tests
+- [x] **SAFE-03**: Stop run unloads active Ollama models via explicit unload API where reachable
+- [x] **SAFE-04**: UI surfaces memory guard state — Run/Resume disabled with actionable reason; overview shows budget summary
 
 ### Operator Verification (REG)
 
@@ -65,17 +65,17 @@ Deferred beyond v1.13.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MEM-01 | Phase 86 | Pending |
-| MEM-02 | Phase 86 | Pending |
-| MEM-03 | Phase 86 | Pending |
-| MEM-04 | Phase 86 | Pending |
-| MEM-05 | Phase 88 | Pending |
-| MEM-06 | Phase 86 | Pending |
-| SAFE-01 | Phase 87 | Pending |
-| SAFE-02 | Phase 87 | Pending |
-| SAFE-03 | Phase 87 | Pending |
-| SAFE-04 | Phase 88 | Pending |
-| REG-03 | Phase 89 | Pending |
+| MEM-01 | Phase 86 | Complete |
+| MEM-02 | Phase 86 | Complete |
+| MEM-03 | Phase 86 | Complete |
+| MEM-04 | Phase 86 | Complete |
+| MEM-05 | Phase 88 | Complete |
+| MEM-06 | Phase 86 | Complete |
+| SAFE-01 | Phase 87 | Complete |
+| SAFE-02 | Phase 87 | Complete |
+| SAFE-03 | Phase 87 | Complete |
+| SAFE-04 | Phase 88 | Complete |
+| REG-03 | Phase 89 | Pending operator |
 
 **Coverage:**
 - v1.13 requirements: 11 total

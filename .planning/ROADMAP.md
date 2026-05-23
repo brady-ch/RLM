@@ -2,7 +2,7 @@
 
 ## Milestones
 
-- 🚧 **v1.13 Runtime Safety & WSL Hardening** — Phases 86-89 (planning)
+- 🚧 **v1.13 Runtime Safety & WSL Hardening** — Phases 86-89 (implementation complete; REG-03 operator sign-off pending)
 - ✅ **v1.12 UI Canvas Visual Polish** — Phases 82-85 (shipped 2026-05-23; archive: `.planning/milestones/v1.12-phases/`)
 - ✅ **v1.11 UI Product Hardening** — Phases 77-81 (shipped 2026-05-23)
 - ✅ **v1.10 v1.9 Debt Closure** — Phases 72-76 (shipped 2026-05-23; archive: `.planning/milestones/v1.10-ROADMAP.md`)
@@ -21,10 +21,10 @@
 
 **Milestone Goal:** Operators can plan and run workflows on WSL without OOM-killing the VM — memory budget enforced end-to-end with visible UI feedback.
 
-- [ ] **Phase 86: RAM Guard Completion** — Live Ollama ps in guards, config validation, TS parity (MEM-*)
-- [ ] **Phase 87: Execution Concurrency & Model Lifecycle** — Single-run mutex, keep_alive ratchet, stop unload (SAFE-01–03)
-- [ ] **Phase 88: Memory Visibility & WSL Runbook** — Live resourceGuard in UI, budget panel, docs (SAFE-04, MEM-05)
-- [ ] **Phase 89: Operator Safety UAT** — WSL memory checklist; ratchet REG-03 (REG-03)
+- [x] **Phase 86: RAM Guard Completion** — Live Ollama ps in guards, config validation, TS parity (MEM-*)
+- [x] **Phase 87: Execution Concurrency & Model Lifecycle** — Single-run mutex, keep_alive ratchet, stop unload (SAFE-01–03)
+- [x] **Phase 88: Memory Visibility & WSL Runbook** — Live resourceGuard in UI, budget panel, docs (SAFE-04, MEM-05)
+- [ ] **Phase 89: Operator Safety UAT** — WSL memory checklist; ratchet REG-03 (REG-03) — checklist at `.planning/phases/89-operator-safety-uat/89-UAT.md`
 
 ## Phase Details
 
@@ -74,10 +74,10 @@
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 86. RAM Guard Completion | v1.13 | 0/0 | Not started | — |
-| 87. Execution Concurrency & Model Lifecycle | v1.13 | 0/0 | Not started | — |
-| 88. Memory Visibility & WSL Runbook | v1.13 | 0/0 | Not started | — |
-| 89. Operator Safety UAT | v1.13 | 0/0 | Not started | — |
+| 86. RAM Guard Completion | v1.13 | 1/1 | Complete | 2026-05-23 |
+| 87. Execution Concurrency & Model Lifecycle | v1.13 | 1/1 | Complete | 2026-05-23 |
+| 88. Memory Visibility & WSL Runbook | v1.13 | 1/1 | Complete | 2026-05-23 |
+| 89. Operator Safety UAT | v1.13 | 0/1 | Pending operator | — |
 
 ---
 *Roadmap created: 2026-05-23 — milestone v1.13 Runtime Safety & WSL Hardening*
