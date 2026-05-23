@@ -30,7 +30,7 @@ export function RunPanel({
   const waiting = selectedNode.status === "awaiting_approval";
 
   return (
-    <aside className="run-panel" aria-label="Run panel">
+    <aside className="run-panel" aria-label="Run panel" data-testid="run-panel">
       <header className="run-panel-header">
         <h2>
           {selectedNode.label} · {selectedNode.id} · {selectedNode.status}
