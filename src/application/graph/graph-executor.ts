@@ -1,4 +1,5 @@
 import type { AgentProfile } from "../../domain/agents.js";
+import { RunStatePersistence } from "../../domain/run-state-persistence.js";
 import type {
   ExecutionGraph,
   ExecutionGraphNode,
@@ -178,6 +179,69 @@ function shouldSkipExecutionStatus(status: ExecutionStatus): boolean {
   return status === "skipped" || status === "cancelled";
 }
 
+function createRunStatePersistence(input: GraphExecutorInput): RunStatePersistence | undefined {
+  if (!input.runState) {
+    return undefined;
+  }
+  return new RunStatePersistence(input.runState, () => {});
+}
+
+async function persistRunStateStatus(
+  persistence: RunStatePersistence | undefined,
+  nodeId: string,
+  status: string,
+): Promise<void> {
+  if (!persistence) {
+    return;
+  }
+  try {
+    await persistence.persistNodeStatus(nodeId, status);
+  } catch {
+    // Match Rust `_ =` — do not fail graph run on store rejection.
+  }
+}
+
+async function persistResumeCursorTransition(
+  persistence: RunStatePersistence | undefined,
+  activeNodeId: string,
+  completedNodeIds: string[],
+): Promise<void> {
+  if (!persistence) {
+    return;
+  }
+  try {
+    await persistence.persistResumeCursor({
+      activeNodeId,
+      completedNodeIds,
+      variant: "playbook",
+    });
+  } catch {
+    // Match Rust `_ =` — do not fail graph run on store rejection.
+  }
+}
+
+async function prepareFreshRunState(
+  input: GraphExecutorInput,
+  graph: ExecutionGraph,
+  persistence: RunStatePersistence | undefined,
+): Promise<void> {
+  if (!input.runState || !persistence) {
+    return;
+  }
+  const existing = await input.runState.store.getSnapshot(input.runState.runId);
+  if (existing) {
+    return;
+  }
+  const rootNode = graph.nodes.find((node) => node.parentId == null);
+  const prompt = rootNode?.prompt ?? rootNode?.label ?? "graph run";
+  const agentId = rootNode?.expertAgentId ?? "default";
+  try {
+    await persistence.initialize(prompt, agentId);
+  } catch {
+    // Match Rust `_ =` on fresh-run initialize.
+  }
+}
+
 export async function executeGraph(
   session: InteractiveExecutionSession,
   input: GraphExecutorInput,
@@ -190,6 +254,10 @@ export async function executeGraph(
   const order = topologicalExecutionOrder(graph);
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   const failedNodeIds = new Set<string>();
+  const persistence = createRunStatePersistence(input);
+  let completedNodeIds: string[] = [];
+
+  await prepareFreshRunState(input, graph, persistence);
 
   for (const nodeId of order) {
     const node = nodeById.get(nodeId);
@@ -202,6 +270,7 @@ export async function executeGraph(
         code: "blocked_by_failure",
         message: "Blocked: ancestor node failed",
       });
+      await persistRunStateStatus(persistence, nodeId, "failed");
       failedNodeIds.add(nodeId);
       continue;
     }
@@ -224,6 +293,7 @@ export async function executeGraph(
         code: "invalid_agent",
         message,
       });
+      await persistRunStateStatus(persistence, nodeId, "failed");
       failedNodeIds.add(nodeId);
       continue;
     }
@@ -233,6 +303,7 @@ export async function executeGraph(
         code: "invalid_runtime",
         message: "Runtime mode must be single-pass or rlm.",
       });
+      await persistRunStateStatus(persistence, nodeId, "failed");
       failedNodeIds.add(nodeId);
       continue;
     }
@@ -254,6 +325,7 @@ export async function executeGraph(
         const decision = await session.control.waitForNodeApproval(node);
         if (decision.status === "skipped" || decision.status === "cancelled") {
           session.control.updateNodeStatus?.(nodeId, decision.status);
+          await persistRunStateStatus(persistence, nodeId, decision.status);
           continue;
         }
       }
@@ -262,6 +334,8 @@ export async function executeGraph(
     session.control.updateNodeStatus?.(nodeId, "running", {
       message: `Running as ${agentId} (${runtime})`,
     });
+    await persistRunStateStatus(persistence, nodeId, "running");
+    await persistResumeCursorTransition(persistence, nodeId, completedNodeIds);
 
     const ancestors = collectAncestors(node, nodeById);
     const prompt = buildExecutionPrompt(node, ancestors);
@@ -322,12 +396,16 @@ export async function executeGraph(
       }
 
       session.control.updateNodeStatus?.(nodeId, "completed");
+      completedNodeIds.push(nodeId);
+      await persistRunStateStatus(persistence, nodeId, "completed");
+      await persistResumeCursorTransition(persistence, nodeId, completedNodeIds);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       session.control.updateNodeStatus?.(nodeId, "failed", {
         message,
         failureCategory: "model",
       });
+      await persistRunStateStatus(persistence, nodeId, "failed");
       failedNodeIds.add(nodeId);
     }
   }
