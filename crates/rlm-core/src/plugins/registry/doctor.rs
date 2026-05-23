@@ -12,7 +12,9 @@ use super::catalog::{
 };
 use super::service::PluginRegistryService;
 use super::types::{PluginDoctorIssue, PluginDoctorResult};
-use crate::interop::{parse_skill_config, resolve_config_path, validate_skill_search_paths};
+use super::super::extension_host::resolve_manifest_loader_path;
+use crate::interop::{parse_skill_config, validate_skill_search_paths};
+use crate::ports::{ManifestSkillLoader, SkillLoader};
 
 impl PluginRegistryService {
     pub async fn doctor(&self, fix: bool) -> Result<PluginDoctorResult, String> {
@@ -129,13 +131,15 @@ impl PluginRegistryService {
             let catalog = read_catalog(catalog_path)?;
             for entry in catalog.plugins {
                 if let Ok(manifest) = self.read_manifest_for_entry(&entry) {
-                    self.collect_skill_loader_issues(&entry.path, &manifest, &mut issues);
+                    self.collect_skill_loader_issues(&entry.path, &manifest, &mut issues)
+                        .await;
                 }
             }
         }
 
         for builtin in builtin_plugins() {
-            self.collect_skill_loader_issues(builtin.path, &builtin.manifest, &mut issues);
+            self.collect_skill_loader_issues(builtin.path, &builtin.manifest, &mut issues)
+                .await;
         }
 
         let has_errors = issues.iter().any(|issue| issue.severity == "error");
@@ -202,7 +206,7 @@ impl PluginRegistryService {
         read_and_validate_plugin_manifest(&root.join("rlm.plugin.json"))
     }
 
-    pub(crate) fn collect_skill_loader_issues(
+    pub(crate) async fn collect_skill_loader_issues(
         &self,
         plugin_path: &str,
         manifest: &PluginManifest,
@@ -218,14 +222,45 @@ impl PluginRegistryService {
             plugin_root
         };
         for loader_path in &manifest.contributes.skill_loaders {
-            let resolved = resolve_config_path(plugin_root, loader_path);
+            let resolved = match resolve_manifest_loader_path(plugin_root, loader_path) {
+                Ok(path) => path,
+                Err(err) => {
+                    issues.push(PluginDoctorIssue {
+                        code: "skill_loader_load_failed".into(),
+                        severity: "warn".into(),
+                        message: format!(
+                            "Plugin {} skill loader path rejected: {err}",
+                            manifest.id
+                        ),
+                        plugin_id: Some(manifest.id.clone()),
+                        path: Some(loader_path.clone()),
+                    });
+                    continue;
+                }
+            };
             if !resolved.is_dir() {
                 issues.push(PluginDoctorIssue {
                     code: "invalid_skill_loader_path".into(),
                     severity: "warn".into(),
                     message: format!(
                         "Plugin {} declares skill loader path that is missing or not a directory: {}",
-                        manifest.id, resolved.display()
+                        manifest.id,
+                        resolved.display()
+                    ),
+                    plugin_id: Some(manifest.id.clone()),
+                    path: Some(resolved.display().to_string()),
+                });
+                continue;
+            }
+            let loader = ManifestSkillLoader::new(loader_path.clone(), resolved.clone());
+            if let Err(err) = loader.load().await {
+                issues.push(PluginDoctorIssue {
+                    code: "skill_loader_load_failed".into(),
+                    severity: "warn".into(),
+                    message: format!(
+                        "Plugin {} skill loader failed at {}: {err}",
+                        manifest.id,
+                        resolved.display()
                     ),
                     plugin_id: Some(manifest.id.clone()),
                     path: Some(resolved.display().to_string()),

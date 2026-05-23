@@ -98,13 +98,18 @@ pub fn builtin_plugins() -> Vec<BuiltinPluginDefinition> {
     ]
 }
 
-pub fn load_builtins(host: &mut ExtensionHost, workspace_root: &Path) {
+pub fn load_builtins(host: &mut ExtensionHost, workspace_root: &Path) -> Vec<String> {
+    let mut warnings = Vec::new();
     for builtin in builtin_plugins() {
         (builtin.register)(host, workspace_root);
-        let _ = register_manifest_skill_loaders(
+        match register_manifest_skill_loaders(
             host,
             Path::new(builtin.path).parent().unwrap_or(workspace_root),
             &builtin.manifest.contributes.skill_loaders,
-        );
+        ) {
+            Ok(mut loader_warnings) => warnings.append(&mut loader_warnings),
+            Err(err) => warnings.push(err),
+        }
     }
+    warnings
 }

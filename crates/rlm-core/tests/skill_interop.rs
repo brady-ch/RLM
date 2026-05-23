@@ -7,6 +7,7 @@ use rlm_core::interop::{
 };
 use rlm_core::persistence::LoadedProjectConfig;
 use rlm_core::plugins::{build_runtime_context, BuildRuntimeContextInput, PluginRegistryService};
+use rlm_core::ports::SkillLoader;
 use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
@@ -212,18 +213,63 @@ fn plugin_doctor_warns_on_invalid_skill_search_path() {
 }
 
 #[test]
+fn manifest_skill_loader_load_succeeds_for_valid_directory() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let skill_dir = temp.path().join("demo").join("summarize");
+    fs::create_dir_all(&skill_dir).expect("mkdir");
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: summarize\ndescription: Summarize text\n---\nUse terse bullets.\n",
+    )
+    .expect("write");
+
+    let loader_root = temp.path().join("demo");
+    let loader = rlm_core::ports::ManifestSkillLoader::new("loaders/demo", loader_root.clone());
+    let runtime = tokio::runtime::Runtime::new().expect("runtime");
+    runtime.block_on(loader.load()).expect("load should succeed");
+
+    let paths = loader.search_paths();
+    assert_eq!(paths, vec![loader_root]);
+}
+
+#[test]
+fn manifest_skill_loader_load_fails_for_missing_directory() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let missing = temp.path().join("missing-loader");
+    let loader = rlm_core::ports::ManifestSkillLoader::new("loaders/missing", missing.clone());
+    let runtime = tokio::runtime::Runtime::new().expect("runtime");
+    let err = runtime
+        .block_on(loader.load())
+        .expect_err("missing directory should fail");
+    assert!(err.contains(&missing.display().to_string()));
+}
+
+#[test]
 fn manifest_skill_loaders_register_on_extension_host() {
     let temp = tempfile::tempdir().expect("tempdir");
     let loader_root = temp.path().join("loaders").join("demo");
-    fs::create_dir_all(&loader_root).expect("mkdir");
+    let skill_dir = loader_root.join("summarize");
+    fs::create_dir_all(&skill_dir).expect("mkdir");
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: summarize\ndescription: Summarize text\n---\nManifest-loaded skill body.\n",
+    )
+    .expect("write");
 
     let mut host = rlm_core::plugins::extension_host::ExtensionHost::new();
-    rlm_core::plugins::extension_host::register_manifest_skill_loaders(
+    let warnings = rlm_core::plugins::extension_host::register_manifest_skill_loaders(
         &mut host,
         temp.path(),
         &["loaders/demo".to_string()],
     )
     .expect("register loaders");
-
+    assert!(warnings.is_empty());
     assert!(host.get_skill_loader("loaders/demo").is_some());
+
+    let skill = rlm_core::interop::load_skill_interop(None, temp.path(), &mut host)
+        .expect("skill interop");
+    let runtime = tokio::runtime::Runtime::new().expect("runtime");
+    let result = runtime.block_on(skill.tool.execute(json!({ "name": "summarize" })));
+    assert!(!result.is_error, "{}", result.content);
+    assert!(result.content.contains("Manifest-loaded skill body"));
 }

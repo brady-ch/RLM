@@ -455,7 +455,8 @@ pub fn load_skill_interop(
     project_root: &Path,
     extension_host: &mut crate::plugins::extension_host::ExtensionHost,
 ) -> Result<SkillInteropResult, String> {
-    let skill_config = parse_skill_config(project_config, project_root);
+    let mut skill_config = parse_skill_config(project_config, project_root);
+    merge_manifest_loader_search_paths(extension_host, &mut skill_config.search_paths);
     let warnings = validate_skill_search_paths(&skill_config);
     let runtime = Arc::new(SkillRuntime::new(skill_config));
     let tool = create_skill_tool(Arc::clone(&runtime));
@@ -463,6 +464,22 @@ pub fn load_skill_interop(
         .register_tool(Arc::clone(&tool))
         .map_err(|err| format!("Failed to register skill tool: {err}"))?;
     Ok(SkillInteropResult { tool, warnings })
+}
+
+fn merge_manifest_loader_search_paths(
+    extension_host: &crate::plugins::extension_host::ExtensionHost,
+    search_paths: &mut Vec<PathBuf>,
+) {
+    for name in extension_host.skill_loader_names() {
+        let Some(loader) = extension_host.get_skill_loader(&name) else {
+            continue;
+        };
+        for path in loader.search_paths() {
+            if !search_paths.iter().any(|existing| existing == &path) {
+                search_paths.push(path);
+            }
+        }
+    }
 }
 
 #[cfg(test)]

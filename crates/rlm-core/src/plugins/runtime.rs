@@ -58,7 +58,7 @@ pub fn build_runtime_context(
     };
 
     let mut extension_host = ExtensionHost::new();
-    load_builtins(&mut extension_host, input.project_root);
+    let mut interop_warnings = load_builtins(&mut extension_host, input.project_root);
     record("plugins", &mut stages);
 
     let skill = crate::interop::load_skill_interop(
@@ -67,7 +67,7 @@ pub fn build_runtime_context(
         &mut extension_host,
     )?;
     let mcp = crate::interop::load_mcp_interop(input.project_config, &mut extension_host)?;
-    let mut interop_warnings = skill.warnings;
+    interop_warnings.extend(skill.warnings);
     interop_warnings.extend(mcp.warnings);
     record("interop", &mut stages);
 
