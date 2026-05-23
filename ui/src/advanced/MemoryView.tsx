@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { MemorySnapshot } from "../shared/types";
-import { MemoryPanel } from "../legacy/panels";
+import { MemoryPanel } from "./memory/MemoryPanel";
 
 export type MemoryViewProps = {
   memory: MemorySnapshot | undefined;

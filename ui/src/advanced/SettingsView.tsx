@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import type { ExecutionNode, GraphWorkflowSummary, SessionSnapshot } from "../shared/types";
-import { GraphWorkflowPanel, NodeInspector, RefineGraphPanel } from "../legacy/panels";
+import { GraphWorkflowPanel } from "./settings/GraphWorkflowPanel";
+import { NodeInspector } from "./settings/NodeInspector";
+import { RefineGraphPanel } from "./settings/RefineGraphPanel";
 
 export type SettingsViewProps = {
   snapshot: SessionSnapshot;

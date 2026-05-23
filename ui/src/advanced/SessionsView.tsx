@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { SavedSessionRecord, SavedSessionSummary } from "../shared/types";
-import { SavedSessionPanel } from "../legacy/panels";
+import { SavedSessionPanel } from "./sessions/SavedSessionPanel";
 
 export type SessionsViewProps = {
   sessions: SavedSessionSummary[];

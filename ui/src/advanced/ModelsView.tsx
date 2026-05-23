@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { ModelLibraryEntry, ModelLibrarySnapshot } from "../shared/types";
-import { ModelLibraryPanel } from "../legacy/panels";
+import { ModelLibraryPanel } from "./models/ModelLibraryPanel";
 
 export type ModelsViewProps = {
   library: ModelLibrarySnapshot | undefined;

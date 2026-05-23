@@ -3113,7 +3113,10 @@ test("approval mode contract is consistent across cli api and ui labels", async 
   assert.match(uiApiSource, /Full checkpoints/);
   assert.match(uiApiSource, /Initial plan/);
   assert.match(uiApiSource, /Initial plan \+ recursive/);
-  const uiPanelsSource = await readFile(join(process.cwd(), "ui/src/legacy/panels.tsx"), "utf8");
+  const uiPanelsSource = await readFile(
+    join(process.cwd(), "ui/src/advanced/settings/QualityLoopInspector.tsx"),
+    "utf8",
+  );
   assert.match(uiPanelsSource, /QualityLoopInspector/);
   assert.match(uiPanelsSource, /quality-loop\/accept/);
   assert.match(uiPanelsSource, /quality-loop\/stop/);

@@ -3,7 +3,7 @@ import { Handle, Position } from "@xyflow/react";
 import { AlertTriangle } from "lucide-react";
 import type { FlowNodeData } from "../shared/types";
 import { formatPlanningError, post, truncateFailureMessage } from "../shared/api";
-import { QualityLoopCardSummary } from "../legacy/panels";
+import { QualityLoopCardSummary } from "./QualityLoopCardSummary";
 import { NodeContextMenu } from "./NodeContextMenu";
 
 export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
