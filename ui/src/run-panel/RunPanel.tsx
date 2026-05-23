@@ -1,5 +1,7 @@
 import type { ExecutionNode, SessionSnapshot } from "../shared/types";
+import { uiRunStatusLabels } from "../shared/labels";
 import { post, runAction } from "../shared/api";
+import { WorkflowOverview } from "./WorkflowOverview";
 
 export type RunPanelProps = {
   selectedNode: ExecutionNode | undefined;
@@ -10,6 +12,8 @@ export type RunPanelProps = {
   readinessReason: string;
   refresh: () => Promise<void>;
   setErrorMessage: (message: string | undefined) => void;
+  onSelectNode: (nodeId: string | undefined) => void;
+  onFitGraph: () => void;
 };
 
 export function RunPanel({
@@ -21,21 +25,48 @@ export function RunPanel({
   readinessReason,
   refresh,
   setErrorMessage,
+  onSelectNode,
+  onFitGraph,
 }: RunPanelProps) {
   if (!selectedNode) {
-    return null;
+    return (
+      <aside className="run-panel" aria-label="Workflow overview" data-testid="run-panel">
+        <WorkflowOverview
+          snapshot={snapshot}
+          onSelectNode={onSelectNode}
+          onFitGraph={onFitGraph}
+        />
+      </aside>
+    );
   }
 
   const pendingClarification = snapshot.chat?.pendingClarification;
   const waiting = selectedNode.status === "awaiting_approval";
+  const nodePrompt = selectedNode.prompt?.trim();
 
   return (
     <aside className="run-panel" aria-label="Run panel" data-testid="run-panel">
       <header className="run-panel-header">
         <h2>
-          {selectedNode.label} · {selectedNode.id} · {selectedNode.status}
+          {selectedNode.label} · {selectedNode.id} ·{" "}
+          {uiRunStatusLabels[selectedNode.status] ?? selectedNode.status}
         </h2>
+        <button type="button" className="run-panel-back" onClick={() => onSelectNode(undefined)}>
+          Back to overview
+        </button>
       </header>
+      {nodePrompt ? (
+        <div className="run-panel-prompt">
+          <label>Prompt</label>
+          <p>{nodePrompt}</p>
+        </div>
+      ) : null}
+      {selectedNode.approvalReason ? (
+        <div className="run-panel-detail">
+          <label>{selectedNode.status === "failed" ? "Failure reason" : "Result note"}</label>
+          <p>{selectedNode.approvalReason}</p>
+        </div>
+      ) : null}
       {runDisabled ? (
         <div className="run-panel-readiness">
           <label>Readiness</label>

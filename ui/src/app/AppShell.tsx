@@ -6,6 +6,7 @@ import {
   type Node,
   type NodeChange,
   type OnConnect,
+  type ReactFlowInstance,
 } from "@xyflow/react";
 import type {
   FlowNodeData,
@@ -44,11 +45,10 @@ export function AppShell() {
   const draggingRef = useRef(false);
   const layoutFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingLayoutRef = useRef<Record<string, { x: number; y: number }>>({});
-  const lastGraphSyncKey = useRef<string>("");
+  const lastNodeDataSyncKey = useRef<string>("");
   const viewportFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const rfInstanceRef = useRef<{
-    setViewport: (v: { x: number; y: number; zoom: number }) => void;
-  } | null>(null);
+  const rfInstanceRef = useRef<ReactFlowInstance<Node<FlowNodeData>, Edge> | null>(null);
+  const prevGraphNodeIdsRef = useRef<string[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const [planningNodeId, setPlanningNodeId] = useState<string | undefined>();
@@ -81,6 +81,12 @@ export function AppShell() {
   };
   const runDisabled = readiness.state !== "ready_to_run";
   const graphHasPlannedNodes = snapshot.graph.nodes.length >= 2;
+
+  const fitGraphToView = useCallback(() => {
+    requestAnimationFrame(() => {
+      void rfInstanceRef.current?.fitView({ padding: 0.2, duration: 300 });
+    });
+  }, []);
 
   const refresh = useCallback(async () => {
     const response = await fetch("/api/session");
@@ -185,11 +191,19 @@ export function AppShell() {
     if (draggingRef.current) {
       return;
     }
-    const key = JSON.stringify({ nodes: snapshot.graph.nodes, edges: snapshot.graph.edges });
-    if (key === lastGraphSyncKey.current) {
+    const nodeUiStateKey = JSON.stringify({
+      nodes: snapshot.graph.nodes,
+      edges: snapshot.graph.edges,
+      planningNodeId,
+      planningError,
+      selectedNodeId,
+      activeNodeId: snapshot.activeNodeId,
+      runSummaryMessage: snapshot.runSummary?.message,
+    });
+    if (nodeUiStateKey === lastNodeDataSyncKey.current) {
       return;
     }
-    lastGraphSyncKey.current = key;
+    lastNodeDataSyncKey.current = nodeUiStateKey;
     const onlyRoot =
       snapshot.graph.nodes.length === 1 && snapshot.graph.nodes[0]?.id === "root-composer";
     setNodes(
@@ -240,6 +254,25 @@ export function AppShell() {
     }
     rfInstanceRef.current.setViewport(v);
   }, [snapshot.graph.viewport]);
+
+  useEffect(() => {
+    const currentIds = snapshot.graph.nodes.map((node) => node.id);
+    const prevIds = prevGraphNodeIdsRef.current;
+    const addedIds = currentIds.filter((id) => !prevIds.includes(id));
+    prevGraphNodeIdsRef.current = currentIds;
+
+    if (addedIds.length === 0 || prevIds.length === 0) {
+      return;
+    }
+
+    fitGraphToView();
+    if (!selectedNodeId && addedIds.length > 0) {
+      const firstChild = addedIds.find((id) => id !== "root-composer");
+      if (firstChild) {
+        setSelectedNodeId(firstChild);
+      }
+    }
+  }, [fitGraphToView, selectedNodeId, snapshot.graph.nodes]);
 
   const flushLayout = useCallback(() => {
     if (layoutFlushTimer.current) {
@@ -377,6 +410,8 @@ export function AppShell() {
               readinessReason={readiness.reason}
               refresh={refresh}
               setErrorMessage={setErrorMessage}
+              onSelectNode={setSelectedNodeId}
+              onFitGraph={fitGraphToView}
             />
           </div>
         </>

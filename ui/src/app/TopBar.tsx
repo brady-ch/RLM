@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Square } from "lucide-react";
+import { PauseCircle, Play, Settings, Square } from "lucide-react";
 import { GraphActionModal } from "../nodes/GraphActionModal";
 import type { ExecutionNode, SessionSnapshot } from "../shared/types";
 import { uiRunStatusLabels } from "../shared/labels";
@@ -40,88 +40,101 @@ export function TopBar({
 
   return (
     <header className="workflow-topbar">
-      <div className="run-status-block" aria-live="polite">
-        <span className={`status ${snapshot.status}`} title={snapshot.runSummary?.message}>
-          {uiRunStatusLabels[snapshot.status] ?? snapshot.status}
+      <div className="workflow-topbar-status">
+        <div className="run-status-block" aria-live="polite">
+          <span className={`status ${snapshot.status}`} title={snapshot.runSummary?.message}>
+            {uiRunStatusLabels[snapshot.status] ?? snapshot.status}
+          </span>
+          {snapshot.status === "running" ? (
+            <span className="meta-pill run-variant-pill">
+              Running {activeRunVariant ?? runVariant}
+            </span>
+          ) : null}
+          {activeNode ? (
+            <span className="run-active-node">
+              Running: {activeNode.label} ({activeNode.expertAgentId ?? "default"},{" "}
+              {activeNode.expertRuntime ?? "single-pass"})
+            </span>
+          ) : null}
+          {snapshot.status === "failed" && snapshot.runSummary?.message ? (
+            <span className="run-failure-hint">Run stopped: {snapshot.runSummary.message}</span>
+          ) : null}
+          {snapshot.status === "completed" && snapshot.runSummary?.message ? (
+            <span className="run-success-hint">{snapshot.runSummary.message}</span>
+          ) : null}
+        </div>
+        <span className="meta-pill approval-mode-pill">
+          {approvalModeLabel(snapshot.approvalMode)}
         </span>
-        {snapshot.status === "running" ? (
-          <span className="meta-pill run-variant-pill">
-            Running {activeRunVariant ?? runVariant}
-          </span>
-        ) : null}
-        {activeNode ? (
-          <span className="run-active-node">
-            Running: {activeNode.label} ({activeNode.expertAgentId ?? "default"},{" "}
-            {activeNode.expertRuntime ?? "single-pass"})
-          </span>
-        ) : null}
-        {snapshot.status === "failed" && snapshot.runSummary?.message ? (
-          <span className="run-failure-hint">Run stopped: {snapshot.runSummary.message}</span>
-        ) : null}
       </div>
-      <span className="meta-pill">{approvalModeLabel(snapshot.approvalMode)}</span>
-      {snapshot.status === "running" && snapshot.approvalMode === "initial-plan-recursive" ? (
+      <div className="workflow-topbar-actions" aria-label="Workflow actions">
+        {snapshot.status === "running" && snapshot.approvalMode === "initial-plan-recursive" ? (
+          <button
+            type="button"
+            className="btn-topbar-secondary"
+            disabled={snapshot.autoApprovalPaused}
+            aria-label="Pause future auto-approvals"
+            onClick={() =>
+              runAction(setErrorMessage, () => post("/api/pause-future-auto-approvals"), refresh)
+            }
+          >
+            <PauseCircle size={16} aria-hidden />
+            Pause future auto-approvals
+          </button>
+        ) : null}
+        {showResumeControl ? (
+          <button
+            type="button"
+            className="btn-topbar-secondary"
+            aria-label="Resume interrupted run"
+            data-testid="resume-run-button"
+            onClick={() => setResumeConfirmOpen(true)}
+          >
+            Resume run
+          </button>
+        ) : null}
         <button
           type="button"
-          className="secondary"
-          disabled={snapshot.autoApprovalPaused}
-          aria-label="Pause future auto-approvals"
+          className="btn-topbar-primary"
+          aria-label="Run workflow"
           onClick={() =>
-            runAction(setErrorMessage, () => post("/api/pause-future-auto-approvals"), refresh)
+            runAction(
+              setErrorMessage,
+              async () => {
+                setActiveRunVariant(runVariant);
+                await post("/api/chat/confirm-run", {
+                  variant: runVariant,
+                  input: runVariant === "pipeline" ? pipelineInput : undefined,
+                });
+              },
+              refresh,
+            )
           }
         >
-          Pause future auto-approvals
+          <Play size={16} aria-hidden />
+          Run workflow
         </button>
-      ) : null}
-      {showResumeControl ? (
         <button
           type="button"
-          className="secondary"
-          aria-label="Resume interrupted run"
-          data-testid="resume-run-button"
-          onClick={() => setResumeConfirmOpen(true)}
+          className="btn-topbar-danger"
+          title="Stop run"
+          aria-label="Stop run"
+          onClick={() =>
+            runAction(
+              setErrorMessage,
+              () => post("/api/stop", { reason: "stopped from UI" }),
+              refresh,
+            )
+          }
         >
-          Resume run
+          <Square size={16} aria-hidden />
+          Stop
         </button>
-      ) : null}
-      <button
-        type="button"
-        className="btn-run-primary"
-        aria-label="Run workflow"
-        onClick={() =>
-          runAction(
-            setErrorMessage,
-            async () => {
-              setActiveRunVariant(runVariant);
-              await post("/api/chat/confirm-run", {
-                variant: runVariant,
-                input: runVariant === "pipeline" ? pipelineInput : undefined,
-              });
-            },
-            refresh,
-          )
-        }
-      >
-        Run workflow
-      </button>
-      <button
-        className="icon danger"
-        title="Stop run"
-        aria-label="Stop run"
-        onClick={() =>
-          runAction(
-            setErrorMessage,
-            () => post("/api/stop", { reason: "stopped from UI" }),
-            refresh,
-          )
-        }
-      >
-        <Square size={16} aria-hidden />
-        Stop
-      </button>
-      <button type="button" className="secondary" onClick={onAdvanced}>
-        Advanced
-      </button>
+        <button type="button" className="btn-topbar-secondary" onClick={onAdvanced}>
+          <Settings size={16} aria-hidden />
+          Advanced
+        </button>
+      </div>
       <GraphActionModal
         open={resumeConfirmOpen}
         mode="confirm"

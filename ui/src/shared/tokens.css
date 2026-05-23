@@ -14,15 +14,19 @@
   --font-heading: 22px;
   --font-meta: 11px;
 
-  --color-bg: #eef2ef;
-  --color-surface: #f8faf8;
-  --color-card: #fbfcfd;
-  --color-accent: #2d6cdf;
-  --color-primary: #1f3d32;
-  --color-danger: #923b34;
-  --color-border: #d9e0db;
+  --color-bg: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-card: #f9fbff;
+  --color-accent: #2563eb;
+  --color-primary: #1d4ed8;
+  --color-primary-strong: #1e40af;
+  --color-danger: #dc2626;
+  --color-danger-strong: #b91c1c;
+  --color-border: #d8e0ea;
+  --color-text: #111827;
+  --color-text-muted: #5b6472;
 
-  color: #16201a;
+  color: var(--color-text);
   background: var(--color-bg);
   font-family: "Aptos", "Segoe UI", sans-serif;
 }

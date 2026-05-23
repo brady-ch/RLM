@@ -5,12 +5,12 @@ import { post, runAction } from "../../shared/api";
 export function tierModelOptions(library?: ModelLibrarySnapshot): string[] {
   const ids = new Set<string>();
   for (const entry of library?.installed ?? []) {
-    if (entry.status === "installed" && entry.ollamaModel) {
+    if (entry.status === "installed" && entry.ollamaModel && !entry.disabled) {
       ids.add(entry.ollamaModel);
     }
   }
   for (const entry of library?.curated ?? []) {
-    if (entry.status === "installed" && entry.ollamaModel) {
+    if (entry.status === "installed" && entry.ollamaModel && !entry.disabled) {
       ids.add(entry.ollamaModel);
     }
   }
@@ -159,7 +159,8 @@ export function ModelLibraryRow({
     (entry.source === "curated" || entry.source === "huggingface") &&
     entry.status !== "installed" &&
     entry.status !== "installing" &&
-    entry.status !== "unsupported";
+    entry.status !== "unsupported" &&
+    !entry.disabled;
   const onInstall = () => {
     if (entry.source === "huggingface") {
       return post("/api/model-library/download", { model: entry.id });
@@ -177,6 +178,9 @@ export function ModelLibraryRow({
           ))}
         </div>
         {entry.reason ? <div className="meta-row warning">{entry.reason}</div> : null}
+        {entry.disabledReason ? (
+          <div className="meta-row warning">{entry.disabledReason}</div>
+        ) : null}
       </div>
       <div className="actions model-actions">
         <button
@@ -186,7 +190,7 @@ export function ModelLibraryRow({
           <Download size={16} /> Install
         </button>
         <select
-          disabled={entry.status !== "installed" || !library}
+          disabled={entry.status !== "installed" || !library || entry.disabled}
           onChange={(event) => {
             if (!event.target.value) {
               return;

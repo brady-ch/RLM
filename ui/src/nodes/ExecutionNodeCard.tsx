@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, GitBranchPlus } from "lucide-react";
 import type { FlowNodeData } from "../shared/types";
 import { formatPlanningError, post, truncateFailureMessage } from "../shared/api";
 import { QualityLoopCardSummary } from "./QualityLoopCardSummary";
@@ -31,6 +31,28 @@ export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
   const openMenu = (clientX: number, clientY: number) => {
     setMenuPos({ x: clientX, y: clientY });
     setMenuOpen(true);
+  };
+
+  const planChildren = () => {
+    if (!data.setErrorMessage || !data.refresh || !data.setPlanningNodeId) {
+      return;
+    }
+    void (async () => {
+      data.setErrorMessage?.(undefined);
+      data.setPlanningError?.(undefined);
+      data.setPlanningNodeId?.(node.id);
+      try {
+        await post(`/api/nodes/${encodeURIComponent(node.id)}/edit`, { prompt });
+        await post(`/api/nodes/${encodeURIComponent(node.id)}/plan`, {});
+      } catch (error) {
+        const message = formatPlanningError(error instanceof Error ? error.message : String(error));
+        data.setErrorMessage?.(message);
+        data.setPlanningError?.({ nodeId: node.id, message });
+      } finally {
+        data.setPlanningNodeId?.(undefined);
+        await data.refresh?.();
+      }
+    })();
   };
 
   const chooseReplan = (choice: "replace" | "merge" | "cancel") => {
@@ -119,10 +141,7 @@ export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
       {data.onlyRoot && node.id === "root-composer" ? (
         <div className="empty root-empty">
           <b>Start here — plan from this node</b>
-          <span>
-            Describe your workflow above, then right-click → Plan children. Graph submit is the
-            default authoring path.
-          </span>
+          <span>Describe the workflow, then use Plan children to generate the graph.</span>
         </div>
       ) : null}
       {editable ? (
@@ -132,6 +151,19 @@ export function ExecutionNodeCard({ data }: { data: FlowNodeData }) {
           onChange={(event) => setPrompt(event.target.value)}
           aria-label={`Prompt for ${node.label || node.id}`}
         />
+      ) : null}
+      {composer && editable ? (
+        <div className="node-card-footer">
+          <button
+            type="button"
+            className="btn-primary-plan"
+            disabled={isPlanning || prompt.trim().length === 0}
+            onClick={planChildren}
+          >
+            <GitBranchPlus size={16} aria-hidden />
+            {isPlanning ? "Planning..." : "Plan children"}
+          </button>
+        </div>
       ) : null}
       {node.loop ? <QualityLoopCardSummary loop={node.loop} /> : null}
       {composer ? (

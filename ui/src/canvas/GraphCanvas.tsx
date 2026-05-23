@@ -8,6 +8,7 @@ import {
   type Node,
   type NodeChange,
   type OnConnect,
+  type ReactFlowInstance,
 } from "@xyflow/react";
 import type { FlowNodeData } from "../shared/types";
 
@@ -20,7 +21,7 @@ export type GraphCanvasProps = {
   onNodeDragStart: () => void;
   onNodeDragStop: () => void;
   onViewportMoveEnd: (event: unknown, viewport: { x: number; y: number; zoom: number }) => void;
-  onInit: (instance: { setViewport: (v: { x: number; y: number; zoom: number }) => void }) => void;
+  onInit: (instance: ReactFlowInstance<Node<FlowNodeData>, Edge>) => void;
   onNodeClick: (nodeId: string) => void;
   onPaneClick: () => void;
 };
