@@ -20,8 +20,8 @@ Requirements close documented v1.9 tech debt from `.planning/milestones/v1.9-MIL
 
 ### Skill Interop Depth (PLUG)
 
-- [ ] **PLUG-04**: Rust skill runtime emits structured `SKILL_PARSE_ERROR` lifecycle events (not warning strings only) when skill load/parse fails
-- [ ] **PLUG-05**: `ManifestSkillLoader` implements async `load()` for declarative skill paths (remove stub behavior)
+- [x] **PLUG-04**: Rust skill runtime emits structured `SKILL_PARSE_ERROR` lifecycle events (not warning strings only) when skill load/parse fails
+- [x] **PLUG-05**: `ManifestSkillLoader` implements async `load()` for declarative skill paths (remove stub behavior)
 
 ### Packaging & CI (PACK)
 
@@ -74,8 +74,8 @@ Deferred beyond v1.10 — not in this milestone roadmap.
 | RESU-01 | Phase 73 | Complete |
 | RESU-02 | Phase 73 | Complete |
 | PERS-04 | Phase 74 | Complete |
-| PLUG-04 | Phase 75 | Pending |
-| PLUG-05 | Phase 75 | Pending |
+| PLUG-04 | Phase 75 | Complete |
+| PLUG-05 | Phase 75 | Complete |
 | PACK-04 | Phase 76 | Complete |
 | ARCH-07 | Phase 76 | Complete |
 | ARCH-08 | Phase 76 | Complete |
