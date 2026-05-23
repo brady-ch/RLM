@@ -16,10 +16,10 @@
 
 ### Interaction Polish (UX)
 
-- [ ] **UX-01**: Canvas renders and interacts reliably on Rust-served UI — React Flow styles loaded, canvas height set, prompt textarea does not capture drag
-- [ ] **UX-02**: User assigns plan/exec tiers from installed Ollama models in Advanced → Models without editing YAML
-- [ ] **UX-03**: Run/Stop and tier changes reflect server state — plan/exec models refresh after tier select; stop aborts in-flight inference
-- [ ] **UX-04**: UI server lifecycle is operator-safe — single-instance lock, `--stop`/`--replace`, documented in UAT runbook
+- [x] **UX-01**: Canvas renders and interacts reliably on Rust-served UI
+- [x] **UX-02**: User assigns plan/exec tiers from installed Ollama models in Advanced → Models without editing YAML
+- [x] **UX-03**: Run/Stop and tier changes reflect server state — plan/exec models refresh after tier select; stop aborts in-flight inference
+- [x] **UX-04**: UI server lifecycle is operator-safe — single-instance lock, `--stop`/`--replace`, documented in UAT runbook
 
 ### First-Run & Launcher (LAUN)
 
@@ -65,10 +65,10 @@ Deferred beyond v1.11.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| UX-01 | Phase 77 | Pending |
-| UX-02 | Phase 77 | Pending |
-| UX-03 | Phase 77 | Pending |
-| UX-04 | Phase 77 | Pending |
+| UX-01 | Phase 77 | Complete |
+| UX-02 | Phase 77 | Complete |
+| UX-03 | Phase 77 | Complete |
+| UX-04 | Phase 77 | Complete |
 | SHEL-01 | Phase 78 | Pending |
 | SHEL-05 | Phase 78 | Pending |
 | SHEL-02 | Phase 79 | Pending |

@@ -27,7 +27,7 @@
 
 **Milestone Goal:** Deliver a reliable, complete UI product surface on the Rust control server — shell boundaries enforced, daily interactions polished, first-run guidance added, operator UAT signed.
 
-- [ ] **Phase 77: Interaction Polish** — Canvas, tier assignment, run/stop cancellation, UI server lifecycle (UX-01–04)
+- [x] **Phase 77: Interaction Polish** — Canvas, tier assignment, run/stop cancellation, UI server lifecycle (UX-01–04)
 - [ ] **Phase 78: Legacy Panel Extraction** — Move domain panels out of `legacy/panels.tsx` into `advanced/*` (SHEL-01, SHEL-05)
 - [ ] **Phase 79: Shell Boundaries & Context Menu** — Run panel scope, workflow-only view, context menu Variant B (SHEL-02–04)
 - [ ] **Phase 80: First-Run Launcher** — Guided composer and session picker entry flow (LAUN-01–03)
@@ -94,7 +94,7 @@
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 77. Interaction Polish | v1.11 | 0/? | Not Started | — |
+| 77. Interaction Polish | v1.11 | 1/1 | Complete | 2026-05-23 |
 | 78. Legacy Panel Extraction | v1.11 | 0/? | Not Started | — |
 | 79. Shell Boundaries & Context Menu | v1.11 | 0/? | Not Started | — |
 | 80. First-Run Launcher | v1.11 | 0/? | Not Started | — |

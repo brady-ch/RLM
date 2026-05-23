@@ -118,11 +118,14 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ `ManifestSkillLoader.load()` async declarative skill path discovery — v1.10
 - ✓ `test:packaging` in default `npm test` gate — v1.10
 - ✓ Architecture hygiene — 71-DECISION refresh, boundary ratchet table, wave todo archive — v1.10
+- ✓ Canvas renders and interacts reliably on Rust-served UI — v1.11 Phase 77
+- ✓ Tier assignment from installed Ollama models in Advanced → Models — v1.11 Phase 77
+- ✓ Run/Stop and tier refresh reflect server state — v1.11 Phase 77
+- ✓ UI server single-instance lock and `--stop`/`--replace` lifecycle — v1.11 Phase 77
 
 ### Active
 
 - **SHEL-01–05**: Shell architecture completion per `ui-shell-architecture.md`
-- **UX-01–04**: Canvas, tier, run/stop, and UI server interaction polish
 - **LAUN-01–03**: Guided composer and session launcher
 - **REG-01**: Operator browser UAT sign-off on Rust-served UI
 
