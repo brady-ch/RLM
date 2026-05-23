@@ -1,5 +1,15 @@
 # Recursive Language Model CLI
 
+## Current Milestone: v1.11 UI Product Hardening
+
+**Goal:** Make the Rust-served UI reliable, complete, and approachable — finish the Phase 61 shell vision, polish daily interactions, add first-run guidance, and close REG-01 operator sign-off.
+
+**Target features:**
+- Finish shell architecture — extract `legacy/panels.tsx`, enforce workflow vs Advanced boundaries, fully wire context menu (Variant B)
+- Interaction polish — canvas, tier assignment, run/stop, UI server lifecycle
+- First-run / session launcher — guided composer and project/session entry before graph workspace
+- Operator readiness — complete `72-UAT.md` browser checklist and ratchet verification to passed
+
 ## Current State
 
 **Latest shipped milestone:** v1.10 — v1.9 Debt Closure (2026-05-23)  
@@ -111,7 +121,10 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ### Active
 
-(None — start next milestone with `/gsd-new-milestone`)
+- **SHEL-01–05**: Shell architecture completion per `ui-shell-architecture.md`
+- **UX-01–04**: Canvas, tier, run/stop, and UI server interaction polish
+- **LAUN-01–03**: Guided composer and session launcher
+- **REG-01**: Operator browser UAT sign-off on Rust-served UI
 
 ### Candidate Future-Milestone Themes
 
@@ -168,16 +181,13 @@ Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` 
 
 ## Next Milestone Goals
 
-Planning next milestone via `/gsd-new-milestone`. Candidate themes:
+v1.11 UI Product Hardening — in planning. See `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md`.
 
-- Product shell convergence: guided composer, session launcher, graph workspace as primary surface (`ui-shell-architecture.md`)
-- REG-01 operator browser UAT sign-off (carry-forward from v1.10 tech_debt)
-- Managed llama.cpp runtime (INFR-01 seed)
-- Release hardening: signed artifacts, Windows/macOS packages, auto-update channel
+Deferred beyond v1.11: managed llama.cpp (INFR-01), multi-runner adapters, release hardening (REL-01/02).
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-23 after v1.10 milestone*
+*Last updated: 2026-05-23 after v1.11 milestone planning*

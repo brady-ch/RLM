@@ -1,13 +1,12 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.10
-milestone_name: v1.9 Debt Closure
-status: Awaiting next milestone
-stopped_at: Milestone v1.10 archived
-last_updated: "2026-05-23T00:30:00.000Z"
-last_activity: 2026-05-23 — Milestone v1.10 completed and archived (tech_debt close)
+milestone: v1.11
+milestone_name: UI Product Hardening
+status: planning
+last_updated: "2026-05-23T01:59:14.890Z"
+last_activity: 2026-05-23
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +20,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-23)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Planning next milestone (`/gsd-new-milestone`)
+**Current focus:** Milestone v1.11 UI Product Hardening — Phase 77 Interaction Polish
 
 ## Current Position
 
-Phase: —
+Phase: 77 — Interaction Polish (not started)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-05-23 — Milestone v1.10 shipped (tech_debt audit; REG-01 operator UAT deferred)
+Status: Roadmap approved — ready for discuss/plan
+Last activity: 2026-05-23 — Milestone v1.11 requirements and roadmap defined
 
 ## Performance Metrics
 
@@ -61,7 +60,7 @@ Items acknowledged and deferred at milestone close on 2026-05-23:
 
 | Category | Item | Status |
 |----------|------|--------|
-| verification | REG-01 operator browser UAT (`72-UAT.md` items 2–10; `72-VERIFICATION.md` human_needed) | deferred |
+| verification | REG-01 operator browser UAT | **active in v1.11 Phase 81** |
 | integration | PLUG-04 production event sink — `NoopRuntimeEventSink` in default bootstrap | deferred |
 | meta | Nyquist `*-VERIFICATION.md` missing for phases 73–76 (NYQT-01) | deferred |
 | todo | extract-runtime-composition-from-cli-entrypoint | pending |
@@ -69,8 +68,8 @@ Items acknowledged and deferred at milestone close on 2026-05-23:
 
 ## Operator Next Steps
 
-- Start the next milestone with `/gsd-new-milestone`
-- Optional carry-forward: complete `72-UAT.md` browser checklist and ratchet `72-VERIFICATION.md` to passed
+- `/gsd-discuss-phase 77` or `/gsd-plan-phase 77` to start Phase 77 Interaction Polish
+- Recent UX fixes (canvas, tier refresh, UI lock) partially satisfy UX-01–04 — Phase 77 should verify and ratchet
 
 ## Session Continuity
 
