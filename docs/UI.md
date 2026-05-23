@@ -29,7 +29,27 @@ cargo run -p rlm-cli -- ui --replace
 RLM_UI_DIST=$PWD/ui/dist cargo run -p rlm-cli -- ui --port 0
 ```
 
-**WSL memory:** Long-running Ollama + UI sessions can retain memory in WSL2. See `scripts/wslconfig.example` for an optional memory cap.
+**WSL memory:** Long-running Ollama + UI sessions can retain memory in WSL2. RLM applies conservative guardrails when WSL is detected (`/proc/version` contains `microsoft`):
+
+- Set `memory.maxRamMb` in `rlm.config.yaml` to cap model RAM (default in repo: `4096`).
+- Set `memory.wslAutoCapMb` when using `maxRamMb: auto` — the effective budget is capped even if WSL reports high free memory (Ollama on the Windows host is not reflected in WSL free RAM).
+- Set `memory.reserveSystemRamMb` to leave headroom for the OS and UI (default: `1024`).
+- Assign `estimatedRamMb` on each model tier so plan/run/resume can block before loading an oversized model.
+- The UI **Run workflow** and **Resume** buttons disable when `resourceGuard.runBlocked` is true; the workflow overview shows available/peak/Ollama-loaded memory.
+- **Stop** sends `keep_alive: 0` unload requests to Ollama for configured models.
+
+Optional host-level cap — copy [`scripts/wslconfig.example`](scripts/wslconfig.example) to `%UserProfile%\.wslconfig` on Windows:
+
+```ini
+[wsl2]
+memory=8GB
+swap=2GB
+localhostForwarding=true
+```
+
+After editing `.wslconfig`, run `wsl --shutdown` and reopen your distro.
+
+**Ollama on Windows host:** Point `models.ollama.baseUrl` at `http://127.0.0.1:11434`. RLM queries `/api/ps` to subtract loaded model VRAM from the available budget before plan/run.
 
 **Model tiers:** Assign plan/exec tiers in **Advanced → Models** to installed Ollama models before **Plan** or **Run**. Stale YAML tier names (e.g. models not installed locally) cause planning failures.
 
