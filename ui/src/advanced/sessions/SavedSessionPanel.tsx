@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { AlertTriangle, Check, Download, FolderOpen, RefreshCw, X } from "lucide-react";
 import type { SavedSessionRecord, SavedSessionSummary } from "../../shared/types";
 import { post, runAction } from "../../shared/api";

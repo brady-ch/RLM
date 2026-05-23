@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import type { SessionSnapshot } from "../../shared/types";
 import { deleteStrategyLabel, post, runAction } from "../../shared/api";
 export function RefineGraphPanel({

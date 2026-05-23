@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { AlertTriangle, Check, Download, Puzzle, RefreshCw, Trash2, X } from "lucide-react";
 import type {
   PluginDoctorIssue,

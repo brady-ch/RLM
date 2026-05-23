@@ -1,6 +1,7 @@
 ---
 status: pending
 phase: 72-human-uat-sign-off
+superseded_by: .planning/phases/81-operator-uat-sign-off/81-UAT.md
 sources:
   - .planning/milestones/v1.8-phases/61-ui-shell-rewrite/61-06-VERIFICATION.md
   - .planning/milestones/v1.9-phases/62-ui-regression-fixes/62-VERIFICATION.md

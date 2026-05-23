@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Check, Square } from "lucide-react";
 import type { ExecutionNode, QualityLoopMetadata } from "../../shared/types";
 import { phaseLabel, post, runAction, scoreFromSelection } from "../../shared/api";

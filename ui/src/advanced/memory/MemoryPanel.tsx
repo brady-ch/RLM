@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { RefreshCw, Trash2 } from "lucide-react";
 import type { MemorySnapshot } from "../../shared/types";
 import { del, formatPreferenceValue, post, runAction } from "../../shared/api";

@@ -47,7 +47,8 @@
     "depcruise:ci": "dependency-cruise src --config .dependency-cruiser.js --ignore-known dependency-cruiser-baseline.json",
     "depcruise:strict": "dependency-cruise src --config .dependency-cruiser.js",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test dist/tests && npm run test:packaging"
+    "test": "npm run build && node --test dist/tests && npm run test:packaging",
+    "test:uat:preflight": "npm run build:ui && npm run lint -- ui/src && cargo check -p rlm-cli -p rlm-core && cargo test -p rlm-core reg01_uat_smoke -- --nocapture && npm run build && node --test --test-name-pattern=\"reg01|approval mode contract\" dist/tests"
   },
   "keywords": [],
   "author": "",
