@@ -15,6 +15,16 @@ test("reg01 static wiring: TopBar posts pause-future-auto-approvals", () => {
   assert.match(source, /Pause future auto-approvals/);
 });
 
+test("reg01 static wiring: TopBar uses modern grouped action controls", () => {
+  const source = readUi("app/TopBar.tsx");
+  assert.match(source, /workflow-topbar-status/);
+  assert.match(source, /workflow-topbar-actions/);
+  assert.match(source, /Play/);
+  assert.match(source, /Settings/);
+  assert.match(source, /btn-topbar-primary/);
+  assert.match(source, /btn-topbar-danger/);
+});
+
 test("reg01 static wiring: ModelLibraryPanel posts HF download route", () => {
   const source = readUi("advanced/models/ModelLibraryPanel.tsx");
   assert.match(source, /\/api\/model-library\/download/);

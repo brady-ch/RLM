@@ -64,7 +64,15 @@ test("NodeContextMenu implements Variant B sections and API mutations", () => {
   for (const label of ["Plan", "Run", "Graph", "Advanced"]) {
     assert.match(source, new RegExp(label));
   }
-  for (const path of ["/plan", "/breakdown", "/extend-budget", "/approve", "/skip", "/connect", "/delete"]) {
+  for (const path of [
+    "/plan",
+    "/breakdown",
+    "/extend-budget",
+    "/approve",
+    "/skip",
+    "/connect",
+    "/delete",
+  ]) {
     assert.match(source, new RegExp(path));
   }
   assert.match(source, /\/api\/nodes\/add/);
@@ -77,6 +85,8 @@ test("ExecutionNodeCard exposes context menu via right-click, ⋮, and keyboard"
   assert.match(source, /node-actions-trigger/);
   assert.match(source, /ContextMenu|F10/);
   assert.match(source, /NodeContextMenu/);
+  assert.match(source, /btn-primary-plan/);
+  assert.match(source, /Plan children/);
   assert.doesNotMatch(source, /\/breakdown/);
   assert.doesNotMatch(source, /\/extend-budget/);
 });
@@ -93,6 +103,18 @@ test("AppShell workflow mode excludes AdvancedHub and domain panels", () => {
   assert.doesNotMatch(workflowBlock, /AdvancedHub/);
   assert.doesNotMatch(workflowBlock, /ModelsView/);
   assert.doesNotMatch(workflowBlock, /PluginsView/);
+});
+
+test("AppShell refreshes node UI data when planning and selection state changes", () => {
+  const source = readUi("app/AppShell.tsx");
+  assert.match(source, /nodeUiStateKey/);
+  assert.match(source, /planningNodeId/);
+  assert.match(source, /planningError/);
+  assert.match(source, /selectedNodeId/);
+  assert.doesNotMatch(
+    source,
+    /const key = JSON\.stringify\(\{ nodes: snapshot\.graph\.nodes, edges: snapshot\.graph\.edges \}\)/,
+  );
 });
 
 test("main.tsx is thin entry mounting AppShell only", () => {
