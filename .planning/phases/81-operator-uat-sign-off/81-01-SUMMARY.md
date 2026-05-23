@@ -100,13 +100,16 @@ None beyond pre-existing lint debt (fixed inline).
 
 ## User Setup Required
 
-Operator browser session required to complete `81-UAT.md` rows 2–13. Type `approved` after sign-off to ratchet REG-01.
+~~Operator browser session required to complete `81-UAT.md` rows 2–13. Type `approved` after sign-off to ratchet REG-01.~~
+
+**Update 2026-05-23:** Operator signed `81-UAT.md`; `81-VERIFICATION.md` ratcheted to `passed`; REG-01 complete.
 
 ## Next Phase Readiness
 
 - Preflight green via `npm run test:uat:preflight`
-- Operator can start browser UAT immediately using 81-UAT runbook
-- Plan 81-02 (checkpoint) blocked on operator sign-off
+- ~~Operator can start browser UAT immediately using 81-UAT runbook~~
+- ~~Plan 81-02 (checkpoint) blocked on operator sign-off~~
+- Milestone v1.11 complete — ready for `/gsd-complete-milestone`
 
 ## Self-Check: PASSED
 

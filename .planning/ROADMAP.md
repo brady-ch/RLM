@@ -2,7 +2,7 @@
 
 ## Milestones
 
-- 🚧 **v1.11 UI Product Hardening** — Phases 77-81 (planning)
+- ✅ **v1.11 UI Product Hardening** — Phases 77-81 (shipped 2026-05-23)
 - ✅ **v1.10 v1.9 Debt Closure** — Phases 72-76 (shipped 2026-05-23; archive: `.planning/milestones/v1.10-ROADMAP.md`)
 - ✅ **v1.9 Rust Runtime Hardening** — Phases 62-71 (shipped 2026-05-22; archive: `.planning/milestones/v1.9-ROADMAP.md`)
 - ✅ **v1.8 Rust Runtime Migration** — Phases 1, 52-61 (shipped 2026-05-22; archive: `.planning/milestones/v1.8-ROADMAP.md`)
@@ -17,13 +17,13 @@
 
 ## Overview
 
-**Current milestone:** v1.11 UI Product Hardening — Phases 77-81. Finish the Phase 61 shell vision (`ui-shell-architecture.md`), polish canvas/tier/run interactions, add first-run launcher, and close REG-01 operator browser UAT on the Rust-served UI.
+**Current milestone:** v1.11 UI Product Hardening — **shipped 2026-05-23**. Shell boundaries, interaction polish, first-run launcher, and REG-01 operator UAT complete on Rust-served UI.
 
 **v1.10 (shipped 2026-05-23)** closed v1.9 debt: UI resume wiring, TS resume cursor parity, skill interop depth, packaging gate, architecture hygiene. REG-01 operator UAT accepted as tech_debt at close.
 
 ## Phases
 
-### 🚧 v1.11 UI Product Hardening (Phases 77-81)
+### ✅ v1.11 UI Product Hardening (Phases 77-81)
 
 **Milestone Goal:** Deliver a reliable, complete UI product surface on the Rust control server — shell boundaries enforced, daily interactions polished, first-run guidance added, operator UAT signed.
 
@@ -31,7 +31,7 @@
 - [x] **Phase 78: Legacy Panel Extraction** — Move domain panels out of `legacy/panels.tsx` into `advanced/*` (SHEL-01, SHEL-05)
 - [x] **Phase 79: Shell Boundaries & Context Menu** — Run panel scope, workflow-only view, context menu Variant B (SHEL-02–04) (completed 2026-05-23)
 - [x] **Phase 80: First-Run Launcher** — Guided composer and session picker entry flow (LAUN-01–03)
-- [ ] **Phase 81: Operator UAT Sign-off** — Complete `81-UAT.md` browser checklist and ratchet verification (REG-01)
+- [x] **Phase 81: Operator UAT Sign-off** — Complete `81-UAT.md` browser checklist and ratchet verification (REG-01) (completed 2026-05-23)
 
 ## Phase Details
 
@@ -98,7 +98,7 @@
 | 78. Legacy Panel Extraction | v1.11 | 1/1 | Complete   | 2026-05-23 |
 | 79. Shell Boundaries & Context Menu | v1.11 | 1/1 | Complete   | 2026-05-23 |
 | 80. First-Run Launcher | v1.11 | 1/1 | Complete   | 2026-05-23 |
-| 81. Operator UAT Sign-off | v1.11 | 1/1 | Awaiting operator | — |
+| 81. Operator UAT Sign-off | v1.11 | 1/1 | Complete | 2026-05-23 |
 
 ---
 *Roadmap created: 2026-05-22 — milestone v1.11 UI Product Hardening*

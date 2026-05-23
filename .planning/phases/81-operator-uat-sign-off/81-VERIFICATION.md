@@ -1,9 +1,11 @@
 ---
-status: human_needed
+status: passed
 phase: 81-operator-uat-sign-off
 plan: 01
 automated: passed
-updated: "2026-05-22T12:00:00Z"
+operator: passed
+updated: "2026-05-23T12:00:00Z"
+operator_signed: "2026-05-23T12:00:00Z"
 ---
 
 # Phase 81 — Automated Preflight Verification
@@ -42,24 +44,12 @@ Targeted preflight per Phase 72 D-06 pattern (full `npm run check` deferred). Co
 | POST `/api/pause-future-auto-approvals` | PASS | 200; `autoApprovalPaused:true` on draft session |
 | POST `/api/model-library/download` (empty model) | PASS (wired) | Client/server error — endpoint reachable |
 | GET `/api/saved-sessions` (unconfigured) | PASS | 404 with golden unconfigured body |
-| Browser checklist items 2–13 | PENDING | Requires operator browser session |
+| Browser checklist items 2–13 | PASS | Operator signed [81-UAT.md](./81-UAT.md) 2026-05-23 |
 
 ## Human verification
 
-**Status:** `human_needed` — operator must complete PENDING rows in [81-UAT.md](./81-UAT.md) via browser.
+**Status:** `passed` — operator signed [81-UAT.md](./81-UAT.md) with PASS on applicable rows and documented SKIP on items 8–9 (D-04).
 
-**Do not** ratchet this file or REG-01 to `passed` until operator signs the checklist.
-
-**Resume signal:** Operator types `approved` after completing checklist items 1–13 with PASS or documented SKIP (Ollama-dependent items per D-04).
-
-**Operator start command:**
-
-```bash
-npm run test:uat:preflight
-npm run build:ui
-RLM_UI_DIST=$PWD/ui/dist cargo run -p rlm-cli -- ui --port 0
-```
-
-Open the URL printed to stderr (`RLM UI listening at http://127.0.0.1:{port}`).
-
-**First-run launcher rows (11–13):** Use a fresh session or clear sessionStorage; verify pristine graph shows launcher, dismiss paths, and non-pristine skip behavior.
+**Operator:** brady  
+**Signed:** 2026-05-23  
+**Notes:** Plan/Run workflow verified with Ollama; workflow overview panel and auto-fit viewport exercised post-preflight.

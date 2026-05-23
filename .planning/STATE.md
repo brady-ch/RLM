@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.11
 milestone_name: UI Product Hardening
-status: verifying
-stopped_at: Completed Phase 81 plan 01
-last_updated: "2026-05-23T02:12:07.842Z"
-last_activity: 2026-05-22 — Phase 81 preflight and smoke tests green
+status: complete
+stopped_at: Phase 81 operator UAT signed — milestone v1.11 complete
+last_updated: "2026-05-23T12:00:00Z"
+last_activity: 2026-05-23 — REG-01 operator sign-off; 81-UAT.md signed
 progress:
   total_phases: 5
   completed_phases: 5
@@ -21,67 +21,61 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-23)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone v1.11 UI Product Hardening — Phase 81 operator browser sign-off (REG-01)
+**Current focus:** Milestone v1.11 UI Product Hardening — **complete** (REG-01 signed 2026-05-23)
 
 ## Current Position
 
-Phase: 81 — Operator UAT Sign-off (preflight complete)  
-Plan: 01 complete — Plan 02 blocked on operator  
-Status: `81-VERIFICATION.md` human_needed; `81-UAT.md` rows 2–13 PENDING  
-Last activity: 2026-05-22 — Phase 81 preflight and smoke tests green
+Phase: 81 — Operator UAT Sign-off  
+Plan: 01 complete  
+Status: `81-VERIFICATION.md` passed; `81-UAT.md` operator_signed  
+Last activity: 2026-05-23 — operator confirmed workflow working; REG-01 ratcheted
 
 ## Performance Metrics
 
-**Velocity (v1.10):** 5 phases (72–76), 12 plans, 26 tasks; milestone-close gates green
+**Velocity (v1.11):** 5 phases (77–81), 5 plans; REG-01 closed with operator browser sign-off
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
-| 73 | 01-03 | — | — | — |
-| 74 | 01-02 | — | — | — |
-| 75 | 01-02 | — | — | — |
-| 76 | 01-03 | — | — | — |
+| 77 | 01 | — | — | — |
+| 78 | 01 | — | — | — |
 | 79 | 01 | 12min | 4 | 4 |
 | 80 | 01 | 18min | 4 | 6 |
 | 81 | 01 | 25min | 2 | 15 |
 
 ## Accumulated Context
 
-v1.10 v1.9 Debt Closure shipped 2026-05-23. REG-01 operator browser UAT active in v1.11 Phase 81 — preflight automated; browser checklist not ratcheted.
+v1.11 UI Product Hardening shipped 2026-05-23. All 13 requirements complete including REG-01 operator browser UAT.
 
 ### Decisions
 
-- REG-01 operator sign-off deferred at milestone close — no fake ratchet per T-72-03/T-72-04
+- REG-01 closed via `81-UAT.md` operator sign-off (supersedes deferred 72-UAT tech debt from v1.10)
 - 81-UAT.md supersedes 72-UAT.md for v1.11 operator runs; preflight via `npm run test:uat:preflight`
-- Production skill event sink remains noop until run-scoped wiring (PLUG-04 partial)
-- 7 transitional Rust boundary arcs documented with ratchet plan; strict mode opt-in
-- UI run-panel boundary enforced via ESLint no-restricted-imports (not depcruise)
+- Workflow overview panel always visible (post-UAT UX enhancement for result visualization)
 - First-run launcher shows on pristine root-composer graph; sessionStorage persists dismissal
 
 ### Blockers/Concerns
 
-- Operator browser UAT required to close REG-01 (rows 2–13 in 81-UAT.md)
+None — milestone complete.
 
 ## Deferred Items
 
-Items acknowledged and deferred at milestone close on 2026-05-23:
+Items acknowledged and deferred:
 
 | Category | Item | Status |
 |----------|------|--------|
-| verification | REG-01 operator browser UAT | **active — 81-UAT rows 2–13 PENDING** |
+| verification | REG-01 operator browser UAT | **complete — signed 2026-05-23** |
 | integration | PLUG-04 production event sink — `NoopRuntimeEventSink` in default bootstrap | deferred |
 | meta | Nyquist `*-VERIFICATION.md` missing for phases 73–76 (NYQT-01) | deferred |
 | todo | extract-runtime-composition-from-cli-entrypoint | pending |
 | todo | split-config-loader-resolver-validation | pending |
 
-## Operator Next Steps
+## Next Steps
 
-1. Run `npm run test:uat:preflight`
-2. Start UI: `RLM_UI_DIST=$PWD/ui/dist cargo run -p rlm-cli -- ui --port 0`
-3. Complete `.planning/phases/81-operator-uat-sign-off/81-UAT.md` rows 2–13 in browser
-4. Sign checklist and resume with `approved` for REG-01 ratchet
+1. Run `/gsd-complete-milestone` to archive v1.11 and start next milestone cycle
+2. Or `/gsd-new-milestone` to define v1.12 scope
 
 ## Session Continuity
 
-Last session: 2026-05-23T02:12:07.834Z
-Stopped at: Completed Phase 81 plan 01  
+Last session: 2026-05-23T12:00:00Z  
+Stopped at: Phase 81 operator UAT signed — milestone v1.11 complete  
 Resume file: None

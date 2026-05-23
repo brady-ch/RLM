@@ -29,7 +29,7 @@
 
 ### Verification (REG)
 
-- [ ] **REG-01**: Operator completes merged browser UAT checklist (`81-UAT.md` items 2–13) on Rust-served UI with live Ollama where applicable; evidence recorded; verification ratcheted to passed
+- [x] **REG-01**: Operator completes merged browser UAT checklist (`81-UAT.md` items 2–13) on Rust-served UI with live Ollama where applicable; evidence recorded; verification ratcheted to passed
 
 ## Future Requirements
 
@@ -77,7 +77,7 @@ Deferred beyond v1.11.
 | LAUN-01 | Phase 80 | Complete |
 | LAUN-02 | Phase 80 | Complete |
 | LAUN-03 | Phase 80 | Complete |
-| REG-01 | Phase 81 | Pending |
+| REG-01 | Phase 81 | Complete |
 
 **Coverage:**
 - v1.11 requirements: 13 total
