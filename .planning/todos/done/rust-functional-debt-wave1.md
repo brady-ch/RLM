@@ -5,7 +5,10 @@ area: rust-runtime
 priority: high
 source: "$gsd-explore rust architecture"
 resolves_phase: 76
+status: cancelled
 ---
+
+Superseded by v1.9 phases 62–71 shipped 2026-05-22; tracked in v1.10 Phases 72–76.
 
 ## Problem
 
