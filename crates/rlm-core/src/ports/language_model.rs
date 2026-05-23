@@ -30,6 +30,10 @@ impl<'a> LanguageModelCompleteOptions<'a> {
 
 #[async_trait]
 pub trait LanguageModel: Send + Sync {
+    fn model_label(&self) -> Option<&str> {
+        None
+    }
+
     async fn complete(
         &self,
         messages: &[ChatMessage],
@@ -61,6 +65,10 @@ impl QueueModel {
 
 #[async_trait]
 impl LanguageModel for QueueModel {
+    fn model_label(&self) -> Option<&str> {
+        Some("mock")
+    }
+
     async fn complete(
         &self,
         _messages: &[ChatMessage],
@@ -98,6 +106,10 @@ impl ToolRoundModel {
 
 #[async_trait]
 impl LanguageModel for ToolRoundModel {
+    fn model_label(&self) -> Option<&str> {
+        Some("mock")
+    }
+
     async fn complete(
         &self,
         _messages: &[ChatMessage],

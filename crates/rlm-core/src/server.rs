@@ -78,6 +78,10 @@ pub async fn start_server(config: ServerConfig) -> Result<ControlServer, std::io
 }
 
 impl ControlServer {
+    pub fn router_state(&self) -> &Arc<control_server::RouterState> {
+        &self.state
+    }
+
     pub async fn close(self) {
         self.state.shutdown("server close").await;
         let _ = self.shutdown.send(());

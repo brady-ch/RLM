@@ -234,6 +234,10 @@ fn merge_tool_calls(target: &mut Vec<ToolCallRequest>, incoming: Vec<OllamaToolC
 
 #[async_trait]
 impl LanguageModel for OllamaLanguageModel {
+    fn model_label(&self) -> Option<&str> {
+        Some(self.model_name())
+    }
+
     async fn complete(
         &self,
         messages: &[ChatMessage],

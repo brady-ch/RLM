@@ -1,4 +1,5 @@
 use rlm_core::control_server::RouterState;
+use rlm_core::ports::LanguageModel as _;
 use rlm_core::{start_server, ServerConfig};
 use serde_json::{json, Value};
 
@@ -71,6 +72,47 @@ async fn model_library_routes_support_catalog_and_tier_select() {
     assert_eq!(
         body.pointer("/tiers/medium").and_then(Value::as_str),
         Some("granite4.1:3b")
+    );
+
+    server.close().await;
+}
+
+#[tokio::test]
+async fn select_tier_refreshes_router_plan_model() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    write_project_config(temp.path(), &project_config());
+
+    let server = start_server(ServerConfig {
+        port: 0,
+        ui_dist_dir: None,
+        project_root: temp.path().to_path_buf(),
+        memory_session_id: None,
+        session: None,
+        ..Default::default()
+    })
+    .await
+    .expect("start server");
+
+    let state = server.router_state();
+    assert_eq!(
+        state.plan_model().model_label(),
+        Some("llama3.1:8b"),
+        "initial medium tier from config"
+    );
+
+    let client = reqwest::Client::new();
+    let select = client
+        .post(format!("{}/api/model-library/select-tier", server.url))
+        .json(&json!({ "tier": "medium", "model": "granite4.1:3b" }))
+        .send()
+        .await
+        .expect("select tier");
+    assert_eq!(select.status(), reqwest::StatusCode::OK);
+
+    assert_eq!(
+        state.plan_model().model_label(),
+        Some("granite4.1:3b"),
+        "plan model refreshed after tier select"
     );
 
     server.close().await;

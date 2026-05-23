@@ -28,6 +28,20 @@ npm run build:ui
 RLM_UI_DIST=$PWD/ui/dist cargo run -p rlm-cli -- ui --port 0
 ```
 
+**Stop a running UI server** (same project):
+
+```bash
+cargo run -p rlm-cli -- ui --stop
+```
+
+**Replace** if lock reports an existing instance:
+
+```bash
+RLM_UI_DIST=$PWD/ui/dist cargo run -p rlm-cli -- ui --replace --port 0
+```
+
+**Model tiers:** Before Plan/Run, open **Advanced → Models** and assign tiers to installed Ollama models (e.g. medium → `granite4.1:8b`).
+
 1. Run `npm run build:ui` from the repository root.
 2. Start the Rust control server with static UI assets (command above).
 3. Read the listen URL from stderr: `RLM UI listening at http://127.0.0.1:{port}`.

@@ -5,6 +5,36 @@ RLM includes a local React UI for graph-based workflow authoring. The UI is buil
 
 ## Run The UI
 
+### Rust control server (recommended)
+
+Build the UI bundle, then serve it from the Rust CLI:
+
+```bash
+npm run build:ui
+RLM_UI_DIST=$PWD/ui/dist cargo run -p rlm-cli -- ui --port 0
+```
+
+Open the URL printed to stderr (`RLM UI listening at http://127.0.0.1:{port}`).
+
+**Single instance:** Only one UI server should run per project. If a lock error appears, stop the existing server:
+
+```bash
+cargo run -p rlm-cli -- ui --stop
+```
+
+Or replace the running instance:
+
+```bash
+cargo run -p rlm-cli -- ui --replace
+RLM_UI_DIST=$PWD/ui/dist cargo run -p rlm-cli -- ui --port 0
+```
+
+**WSL memory:** Long-running Ollama + UI sessions can retain memory in WSL2. See `scripts/wslconfig.example` for an optional memory cap.
+
+**Model tiers:** Assign plan/exec tiers in **Advanced → Models** to installed Ollama models before **Plan** or **Run**. Stale YAML tier names (e.g. models not installed locally) cause planning failures.
+
+### Node CLI (legacy strangler)
+
 ```bash
 npm run build:ui
 npx rlm ui "Plan a workflow"
@@ -26,9 +56,9 @@ The packaged CLI serves built assets from the UI dist directory. `RLM_UI_DIST` c
 
 ## Runtime Shape
 
-The CLI starts the control server from `src/application/control-server.ts` when the parsed command is `ui`. Static assets are resolved by `src/cli/ui-dist-dir.ts`, and the browser client is implemented in `ui/src/main.tsx`.
+The Rust CLI (`cargo run -p rlm-cli -- ui`) starts the Axum control server and serves built UI assets from `RLM_UI_DIST` (defaults to packaged dist). The Node CLI path (`npx rlm ui`) remains for strangler parity tests.
 
-When you click **Run workflow** (or call `POST /api/chat/confirm-run`), the server validates the graph and starts agent execution in the same Node process through `createUiExecutionRunner` in `src/application/ui-execution-runner.ts`. The interactive session's `session.control` handle is passed to `runConfiguredAgent`, so quality-loop metadata, approvals, clarifications, and manual loop decisions share one session between the browser and the runtime engine.
+When you click **Run workflow** (or call `POST /api/chat/confirm-run`), the server validates the graph and starts agent execution in-process through the Rust recursive engine. Quality-loop metadata, approvals, clarifications, and manual loop decisions share one session between the browser and the runtime engine.
 
 The UI talks to the control server through endpoints such as:
 
