@@ -2,6 +2,7 @@
 
 ## Milestones
 
+- 🚧 **v1.11 UI Product Hardening** — Phases 77-81 (planning)
 - ✅ **v1.10 v1.9 Debt Closure** — Phases 72-76 (shipped 2026-05-23; archive: `.planning/milestones/v1.10-ROADMAP.md`)
 - ✅ **v1.9 Rust Runtime Hardening** — Phases 62-71 (shipped 2026-05-22; archive: `.planning/milestones/v1.9-ROADMAP.md`)
 - ✅ **v1.8 Rust Runtime Migration** — Phases 1, 52-61 (shipped 2026-05-22; archive: `.planning/milestones/v1.8-ROADMAP.md`)
@@ -16,79 +17,88 @@
 
 ## Overview
 
-**Latest shipped:** v1.10 v1.9 Debt Closure (2026-05-23) — closed v1.9 tech debt: UI resume wiring, TS resume cursor parity, skill interop depth, packaging in default test gate, architecture/meta hygiene. Audit closed as **tech_debt** — REG-01 operator browser UAT unsigned (automated gates green; accepted at close per v1.9 pattern).
+**Current milestone:** v1.11 UI Product Hardening — Phases 77-81. Finish the Phase 61 shell vision (`ui-shell-architecture.md`), polish canvas/tier/run interactions, add first-run launcher, and close REG-01 operator browser UAT on the Rust-served UI.
 
-**Next milestone:** Planning via `/gsd-new-milestone`.
+**v1.10 (shipped 2026-05-23)** closed v1.9 debt: UI resume wiring, TS resume cursor parity, skill interop depth, packaging gate, architecture hygiene. REG-01 operator UAT accepted as tech_debt at close.
 
 ## Phases
 
-<details>
-<summary>✅ v1.10 v1.9 Debt Closure (Phases 72-76) — SHIPPED 2026-05-23</summary>
+### 🚧 v1.11 UI Product Hardening (Phases 77-81)
 
-See `.planning/milestones/v1.10-ROADMAP.md`, `.planning/milestones/v1.10-REQUIREMENTS.md`, and `.planning/milestones/v1.10-MILESTONE-AUDIT.md`.
+**Milestone Goal:** Deliver a reliable, complete UI product surface on the Rust control server — shell boundaries enforced, daily interactions polished, first-run guidance added, operator UAT signed.
 
-- [x] **Phase 72: Human UAT Sign-off** — REG-01 automated preflight + smoke; operator browser sign-off deferred (1/2 plans) — 2026-05-23
-- [x] **Phase 73: UI Resume Control** — resume button, confirm gate, HTTP integration test (3/3 plans) — 2026-05-23
-- [x] **Phase 74: TS Resume Cursor Parity** — persistResumeCursor at node transitions (2/2 plans) — 2026-05-23
-- [x] **Phase 75: Skill Interop Depth** — SKILL_PARSE_ERROR events, ManifestSkillLoader async load (2/2 plans) — 2026-05-23
-- [x] **Phase 76: Packaging & Architecture Hygiene** — test:packaging in npm test; docs/baseline/meta cleanup (3/3 plans) — 2026-05-23
+- [ ] **Phase 77: Interaction Polish** — Canvas, tier assignment, run/stop cancellation, UI server lifecycle (UX-01–04)
+- [ ] **Phase 78: Legacy Panel Extraction** — Move domain panels out of `legacy/panels.tsx` into `advanced/*` (SHEL-01, SHEL-05)
+- [ ] **Phase 79: Shell Boundaries & Context Menu** — Run panel scope, workflow-only view, context menu Variant B (SHEL-02–04)
+- [ ] **Phase 80: First-Run Launcher** — Guided composer and session picker entry flow (LAUN-01–03)
+- [ ] **Phase 81: Operator UAT Sign-off** — Complete `72-UAT.md` browser checklist and ratchet verification (REG-01)
 
-</details>
+## Phase Details
 
-<details>
-<summary>✅ v1.9 Rust Runtime Hardening (Phases 62-71) — SHIPPED 2026-05-22</summary>
+### Phase 77: Interaction Polish
+**Goal:** Fix daily canvas and model interactions so the Rust-served UI is usable for planning and running workflows  
+**Depends on:** v1.10 complete  
+**Requirements:** UX-01, UX-02, UX-03, UX-04  
+**Success Criteria:**
+1. User opens Rust-served UI and sees a rendered, draggable graph canvas with editable node prompts
+2. User assigns medium/default tiers to installed Ollama models and Plan/Run uses those models without stale-config errors
+3. Stop aborts in-flight Ollama streams and background install jobs without server restart
+4. Operator runbook documents `rlm ui --stop`/`--replace` and single-instance lock behavior  
+**Plans:** TBD
 
-See `.planning/milestones/v1.9-ROADMAP.md`, `.planning/milestones/v1.9-REQUIREMENTS.md`, and `.planning/milestones/v1.9-MILESTONE-AUDIT.md`.
+### Phase 78: Legacy Panel Extraction
+**Goal:** Eliminate `legacy/panels.tsx` as the source of domain UI — panels live in dedicated advanced views  
+**Depends on:** Phase 77  
+**Requirements:** SHEL-01, SHEL-05  
+**Success Criteria:**
+1. Models, Plugins, Sessions, Memory, and Settings views import only from `advanced/*` modules — not `legacy/panels`
+2. Shared panel logic extracted to colocated components under `advanced/` or `shared/`
+3. `legacy/panels.tsx` deleted or reduced to re-exports with zero Advanced view imports
+4. `main.tsx` remains thin entry mounting AppShell only  
+**Plans:** TBD
 
-- [x] **Phase 62: UI Regression Fixes** — pause-auto-approvals, HF download wiring (1/1 plan) — 2026-05-22
-- [x] **Phase 63: Quality Loop Parity** — full TS quality loop in Rust with golden tests (1/1 plan) — 2026-05-22
-- [x] **Phase 64: Resume Consumer + Run-State Port** — cross-session resume, ARCH-01 boundary fix (1/1 plan) — 2026-05-22
-- [x] **Phase 65: Skill Interop** — skill tool, path policies, doctor warnings (1/1 plan) — 2026-05-22
-- [x] **Phase 66: CLI Full Parity** — all Node run modes in `rlm-cli` (1/1 plan) — 2026-05-22
-- [x] **Phase 67: PACK-03 CI Smoke** — headless `.deb` install smoke in CI (2/2 plans) — 2026-05-22
-- [x] **Phase 68: Application Layer + Handler Split** — `application/` grouping, handler modules (2/2 plans) — 2026-05-22
-- [x] **Phase 69: Large File Decomposition** — orchestrator, session_graph, registry, config splits (5/5 plans) — 2026-05-22
-- [x] **Phase 70: Rust Boundary Enforcement** — AGENTS.md concern map + `check-rust-boundaries` (2/2 plans) — 2026-05-22
-- [x] **Phase 71: Optional Crate Split** — measured baseline, evaluated defer (3/3 plans) — 2026-05-22
+### Phase 79: Shell Boundaries & Context Menu
+**Goal:** Enforce workflow vs Advanced separation and wire node context menu actions per Variant B  
+**Depends on:** Phase 78  
+**Requirements:** SHEL-02, SHEL-03, SHEL-04  
+**Success Criteria:**
+1. Workflow view shows top bar + canvas only — no sidebar domain panels
+2. Run panel appears on node select with approve/clarify only — no edit fields or plan buttons
+3. Right-click (or ⋮ / keyboard) context menu dispatches Plan children, Approve, Skip, Add child, Delete subtree, and Advanced expert link
+4. `run-panel/` has no imports from `advanced/`  
+**Plans:** TBD
 
-</details>
+### Phase 80: First-Run Launcher
+**Goal:** Guide new users into the graph workspace with a composer and session entry flow  
+**Depends on:** Phase 79  
+**Requirements:** LAUN-01, LAUN-02, LAUN-03  
+**Success Criteria:**
+1. User starting fresh sees guided composer with prompt input before or overlaying empty canvas
+2. User can open a saved session from a launcher list or start new workflow
+3. After launcher, graph workspace is primary; Advanced remains secondary via TopBar
+4. Existing deep-link / refresh restores session without losing graph state  
+**Plans:** TBD
 
-<details>
-<summary>✅ v1.8 Rust Runtime Migration (Phases 1, 52-61) — SHIPPED 2026-05-22</summary>
-
-See `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREMENTS.md`, and `.planning/milestones/v1.8-MILESTONE-AUDIT.md`.
-
-- [x] **Phase 1: Close v1.8 tech debt** — UI regressions, MCP client, CLI ask, resumeCursor (5/5 plans) — 2026-05-22
-- [x] **Phase 52: Rust Workspace + Control Server Strangler** — 2026-05-22
-- [x] **Phase 53: Persistence Ports** — 2026-05-22
-- [x] **Phase 54: Recursive Engine + ExecutionController** — 2026-05-22
-- [x] **Phase 55: Graph Executor + Node Routes** — 2026-05-22
-- [x] **Phase 56: Vector Index + Embeddings** — 2026-05-22
-- [x] **Phase 57: Model Hosts + Model Library** — 2026-05-22
-- [x] **Phase 58: Built-in Plugins + MCP + Registry** — 2026-05-22
-- [x] **Phase 59: Rust CLI + Parity CI** — 2026-05-22
-- [x] **Phase 60: Tauri In-Process + Packaging** — 2026-05-22
-- [x] **Phase 60.1: Close v1.8 milestone gaps** — 2026-05-22
-- [x] **Phase 61: UI Shell Rewrite** — 2026-05-22
-
-</details>
+### Phase 81: Operator UAT Sign-off
+**Goal:** Operator completes browser UAT on Rust-served UI and REG-01 verification ratchets to passed  
+**Depends on:** Phase 80  
+**Requirements:** REG-01  
+**Success Criteria:**
+1. Operator completes `72-UAT.md` items 2–10 in browser with live Ollama where applicable
+2. All rows signed PASS or documented SKIP with evidence
+3. `72-VERIFICATION.md` (or successor) status updated from `human_needed` to `passed`
+4. No FAIL rows at sign-off unless explicitly accepted  
+**Plans:** TBD
 
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 62. UI Regression Fixes | v1.9 | 1/1 | Complete | 2026-05-22 |
-| 63. Quality Loop Parity | v1.9 | 1/1 | Complete | 2026-05-22 |
-| 64. Resume Consumer + Run-State Port | v1.9 | 1/1 | Complete | 2026-05-22 |
-| 65. Skill Interop | v1.9 | 1/1 | Complete | 2026-05-22 |
-| 66. CLI Full Parity | v1.9 | 1/1 | Complete | 2026-05-22 |
-| 67. PACK-03 CI Smoke | v1.9 | 2/2 | Complete | 2026-05-22 |
-| 68. Application Layer + Handler Split | v1.9 | 2/2 | Complete | 2026-05-22 |
-| 69. Large File Decomposition | v1.9 | 5/5 | Complete | 2026-05-22 |
-| 70. Rust Boundary Enforcement | v1.9 | 2/2 | Complete | 2026-05-22 |
-| 71. Optional Crate Split | v1.9 | 3/3 | Complete | 2026-05-22 |
-| 72. Human UAT Sign-off | v1.10 | 1/2 | tech_debt — REG-01 unsigned | 2026-05-23 |
-| 73. UI Resume Control | v1.10 | 3/3 | Complete | 2026-05-23 |
-| 74. TS Resume Cursor Parity | v1.10 | 2/2 | Complete | 2026-05-23 |
-| 75. Skill Interop Depth | v1.10 | 2/2 | Complete | 2026-05-23 |
-| 76. Packaging & Architecture Hygiene | v1.10 | 3/3 | Complete | 2026-05-23 |
+| 77. Interaction Polish | v1.11 | 0/? | Not Started | — |
+| 78. Legacy Panel Extraction | v1.11 | 0/? | Not Started | — |
+| 79. Shell Boundaries & Context Menu | v1.11 | 0/? | Not Started | — |
+| 80. First-Run Launcher | v1.11 | 0/? | Not Started | — |
+| 81. Operator UAT Sign-off | v1.11 | 0/? | Not Started | — |
+
+---
+*Roadmap created: 2026-05-22 — milestone v1.11 UI Product Hardening*
