@@ -5,14 +5,18 @@ use async_trait::async_trait;
 use tokio::sync::{broadcast, oneshot};
 use uuid::Uuid;
 
+use crate::domain::recursion::preview;
 use crate::domain::recursive_language_model::ExecutionControl;
 use crate::domain::types::{
     approval_mode_label, ApprovalMode, ChatReadiness, ChatSnapshot, ClarificationQuestion,
     ClarificationRecord, DeleteStrategy, ExecutionEvent, ExecutionGraph, ExecutionGraphEdge,
-    ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail, GraphViewport,
-    GraphWorkflowMetadata, NodeApprovalDecision, NodeApprovalStatus, QualityLoopManualDecision,
-    RunModeSnapshot, RunSummary, SessionSnapshot,
+    ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail, ExpertRuntimeMode,
+    GraphPosition, GraphViewport, GraphWorkflowMetadata, NodeApprovalDecision,
+    NodeApprovalStatus, QualityLoopManualDecision, RunModeSnapshot, RunSummary, SessionSnapshot,
 };
+
+pub const DEFAULT_UI_BOOTSTRAP_PROMPT: &str =
+    "Create a concise two-step checklist for testing recursive prompting in this workspace.";
 
 use super::cancellation::CancellationController;
 
@@ -102,6 +106,29 @@ impl InteractiveExecutionSession {
         self.event_tx.subscribe()
     }
 
+    pub fn seed_root_composer(&self, prompt: &str) {
+        let normalized = prompt.trim();
+        let normalized = if normalized.is_empty() {
+            "Describe the workflow you want to build."
+        } else {
+            normalized
+        };
+        self.register_node_internal(ExecutionGraphNode {
+            id: "root-composer".into(),
+            kind: "task".into(),
+            label: preview(normalized, 80),
+            prompt: Some(normalized.to_string()),
+            original_prompt: Some(normalized.to_string()),
+            depth: 0,
+            status: ExecutionStatus::Planned,
+            position: Some(GraphPosition { x: 80.0, y: 120.0 }),
+            expert_agent_id: Some("default".into()),
+            expert_runtime: Some(ExpertRuntimeMode::SinglePass),
+            editable_fields: Some(vec!["prompt".into()]),
+            ..Default::default()
+        });
+    }
+
     pub fn snapshot(&self) -> SessionSnapshot {
         let nodes: Vec<_> = self
             .nodes
@@ -159,6 +186,8 @@ impl InteractiveExecutionSession {
                 None
             };
 
+        let readiness = self.confirm_graph_and_run();
+
         SessionSnapshot {
             graph: ExecutionGraph {
                 nodes,
@@ -175,8 +204,8 @@ impl InteractiveExecutionSession {
             run_summary,
             chat: ChatSnapshot {
                 readiness: ChatReadiness::Structured {
-                    state: "draft".into(),
-                    reason: "Draft graph: confirm graph and run to start execution.".into(),
+                    state: readiness.state,
+                    reason: readiness.reason,
                 },
                 pending_mutation: self
                     .pending_mutation
@@ -203,6 +232,7 @@ impl InteractiveExecutionSession {
     }
 
     pub fn begin_confirmed_execution(&self) {
+        self.cancellation.reset();
         *self.auto_approve_next_root.lock().expect("auto") = true;
         *self.run_lifecycle.lock().expect("lifecycle") = RunLifecycle::Running;
     }
@@ -210,6 +240,10 @@ impl InteractiveExecutionSession {
     pub fn finish_confirmed_execution(&self) {
         *self.run_lifecycle.lock().expect("lifecycle") = RunLifecycle::Idle;
         *self.auto_approve_next_root.lock().expect("auto") = false;
+    }
+
+    pub fn cancellation(&self) -> CancellationController {
+        self.cancellation.clone()
     }
 
     pub fn is_confirmed_execution_running(&self) -> bool {

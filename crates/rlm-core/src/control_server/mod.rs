@@ -3,14 +3,17 @@ pub mod routes;
 pub mod state;
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use serde_json::Value;
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::adapters::OllamaEmbeddingModel;
 use crate::adapters::OllamaLanguageModel;
-use crate::application::execution::{InteractiveExecutionSession, ProcessShutdown};
+use crate::application::execution::{
+    CancellationController, InteractiveExecutionSession, ProcessShutdown,
+    DEFAULT_UI_BOOTSTRAP_PROMPT,
+};
 use crate::application::memory::SemanticMemoryIndex;
 use crate::model_library::ModelLibraryService;
 use crate::persistence::{load_project_config, LoadedProjectConfig, ProjectPaths};
@@ -32,15 +35,24 @@ pub struct RouterState {
     pub runtime_context: Option<RuntimeContext>,
     pub lifecycle: ProcessShutdown,
     memory_index: Arc<AsyncMutex<Option<Arc<SemanticMemoryIndex>>>>,
-    plan_model: Arc<dyn LanguageModel>,
-    exec_model: Arc<dyn LanguageModel>,
+    language_models: Arc<RwLock<(Arc<dyn LanguageModel>, Arc<dyn LanguageModel>)>>,
 }
 
 impl RouterState {
     pub fn new(project_root: PathBuf) -> Self {
         let paths = ProjectPaths::from_root(project_root.clone());
         let project_config = load_project_config(&project_root, None).ok();
-        let (plan_model, exec_model) = resolve_language_models(project_config.as_ref());
+        let lifecycle = ProcessShutdown::default();
+        let session = {
+            let session = InteractiveExecutionSession::new(Default::default());
+            session.seed_root_composer(DEFAULT_UI_BOOTSTRAP_PROMPT);
+            session
+        };
+        let cancel = session.cancellation();
+        let language_models = Arc::new(RwLock::new(resolve_language_models(
+            project_config.as_ref(),
+            cancel.clone(),
+        )));
         let model_library = project_config.as_ref().and_then(|loaded| {
             loaded.path.as_ref()?;
             resolve_ollama_host(&loaded.config).map(|_| {
@@ -48,6 +60,7 @@ impl RouterState {
                     project_root.clone(),
                     loaded.config.clone(),
                     resolve_ollama_base_url(&loaded.config),
+                    Some(lifecycle.clone()),
                 ))
             })
         });
@@ -71,14 +84,13 @@ impl RouterState {
             paths,
             project_config,
             memory_session_id: Arc::new(Mutex::new("default".into())),
-            session: InteractiveExecutionSession::new(Default::default()),
+            session,
             model_library,
             plugin_registry,
             runtime_context,
-            lifecycle: ProcessShutdown::default(),
+            lifecycle,
             memory_index: Arc::new(AsyncMutex::new(None)),
-            plan_model,
-            exec_model,
+            language_models,
         }
     }
 
@@ -109,11 +121,16 @@ impl RouterState {
     }
 
     pub fn plan_model(&self) -> Arc<dyn LanguageModel> {
-        Arc::clone(&self.plan_model)
+        Arc::clone(&self.language_models.read().expect("language_models").0)
     }
 
     pub fn exec_model(&self) -> Arc<dyn LanguageModel> {
-        Arc::clone(&self.exec_model)
+        Arc::clone(&self.language_models.read().expect("language_models").1)
+    }
+
+    pub fn refresh_language_models(&self, config: &Value) {
+        let models = resolve_language_models_from_config(config, self.session.cancellation());
+        *self.language_models.write().expect("language_models") = models;
     }
 
     pub fn runtime_config(&self) -> crate::domain::types::RecursiveModelConfig {
@@ -146,13 +163,13 @@ impl RouterState {
         self
     }
 
-    pub fn with_plan_model(mut self, model: Arc<dyn LanguageModel>) -> Self {
-        self.plan_model = model;
+    pub fn with_plan_model(self, model: Arc<dyn LanguageModel>) -> Self {
+        self.language_models.write().expect("language_models").0 = model;
         self
     }
 
-    pub fn with_exec_model(mut self, model: Arc<dyn LanguageModel>) -> Self {
-        self.exec_model = model;
+    pub fn with_exec_model(self, model: Arc<dyn LanguageModel>) -> Self {
+        self.language_models.write().expect("language_models").1 = model;
         self
     }
 
@@ -198,27 +215,36 @@ pub fn runtime_config_from_config(
 
 pub fn resolve_language_models(
     project_config: Option<&LoadedProjectConfig>,
+    cancel: CancellationController,
 ) -> (Arc<dyn LanguageModel>, Arc<dyn LanguageModel>) {
-    let Some(loaded) = project_config else {
+    project_config
+        .map(|loaded| resolve_language_models_from_config(&loaded.config, cancel))
+        .unwrap_or_else(default_queue_models)
+}
+
+pub fn resolve_language_models_from_config(
+    config: &Value,
+    cancel: CancellationController,
+) -> (Arc<dyn LanguageModel>, Arc<dyn LanguageModel>) {
+    let Some((base_url, allow_unconstrained)) = resolve_ollama_host(config) else {
         return default_queue_models();
     };
-    let Some((base_url, allow_unconstrained)) = resolve_ollama_host(&loaded.config) else {
-        return default_queue_models();
-    };
-    let plan_name = tier_model_name(&loaded.config, "medium")
-        .or_else(|| default_model_name(&loaded.config))
+    let plan_name = tier_model_name(config, "medium")
+        .or_else(|| default_model_name(config))
         .unwrap_or_else(|| "granite4.1:3b".to_string());
-    let exec_name = default_model_name(&loaded.config).unwrap_or_else(|| plan_name.clone());
+    let exec_name = default_model_name(config).unwrap_or_else(|| plan_name.clone());
     (
-        Arc::new(OllamaLanguageModel::new(
+        Arc::new(OllamaLanguageModel::with_cancellation(
             Some(&base_url),
             Some(&plan_name),
             allow_unconstrained,
+            Some(cancel.clone()),
         )) as Arc<dyn LanguageModel>,
-        Arc::new(OllamaLanguageModel::new(
+        Arc::new(OllamaLanguageModel::with_cancellation(
             Some(&base_url),
             Some(&exec_name),
             allow_unconstrained,
+            Some(cancel),
         )) as Arc<dyn LanguageModel>,
     )
 }

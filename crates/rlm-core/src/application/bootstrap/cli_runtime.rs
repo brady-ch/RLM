@@ -2,6 +2,7 @@ use std::any::Any;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::application::execution::CancellationController;
 use crate::control_server::{
     default_queue_models, resolve_language_models, runtime_config_from_config,
 };
@@ -91,7 +92,7 @@ pub fn prepare_cli_runtime(
     let (plan_model, exec_model) = if force_queue_models() {
         default_queue_models()
     } else {
-        resolve_language_models(Some(&project_config))
+        resolve_language_models(Some(&project_config), CancellationController::new())
     };
     if !model_is_actionable(&project_config, &exec_model) {
         return Err(

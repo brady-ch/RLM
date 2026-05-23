@@ -7,6 +7,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use thiserror::Error;
 
+use crate::application::execution::CancellationController;
 use crate::domain::types::{ChatMessage, LanguageModelResponse, ToolCallRequest};
 use crate::ports::{LanguageModel, LanguageModelCompleteOptions};
 
@@ -29,6 +30,7 @@ pub struct OllamaLanguageModel {
     model: String,
     temperature: f32,
     allow_unconstrained_tool_calls: bool,
+    cancel: Option<CancellationController>,
 }
 
 impl Default for OllamaLanguageModel {
@@ -43,6 +45,15 @@ impl OllamaLanguageModel {
         model: Option<&str>,
         allow_unconstrained_tool_calls: bool,
     ) -> Self {
+        Self::with_cancellation(base_url, model, allow_unconstrained_tool_calls, None)
+    }
+
+    pub fn with_cancellation(
+        base_url: Option<&str>,
+        model: Option<&str>,
+        allow_unconstrained_tool_calls: bool,
+        cancel: Option<CancellationController>,
+    ) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(120))
             .build()
@@ -56,6 +67,7 @@ impl OllamaLanguageModel {
             model: model.unwrap_or("granite4.1:3b").to_string(),
             temperature: 0.2,
             allow_unconstrained_tool_calls,
+            cancel,
         }
     }
 
@@ -121,6 +133,15 @@ impl OllamaLanguageModel {
         let mut buffer = String::new();
 
         while let Some(chunk) = stream.next().await {
+            if self
+                .cancel
+                .as_ref()
+                .is_some_and(CancellationController::is_cancelled)
+            {
+                return Err(OllamaLanguageModelError::Unavailable {
+                    message: "Ollama inference cancelled.".into(),
+                });
+            }
             let chunk = chunk?;
             buffer.push_str(&String::from_utf8_lossy(&chunk));
             while let Some(line_end) = buffer.find('\n') {

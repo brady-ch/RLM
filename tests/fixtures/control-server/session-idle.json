@@ -1,6 +1,20 @@
 {
   "graph": {
-    "nodes": [],
+    "nodes": [
+      {
+        "id": "root-composer",
+        "kind": "task",
+        "label": "Create a concise two-step checklist for testing recursive prompting in this w...",
+        "prompt": "Create a concise two-step checklist for testing recursive prompting in this workspace.",
+        "originalPrompt": "Create a concise two-step checklist for testing recursive prompting in this workspace.",
+        "editableFields": ["prompt"],
+        "depth": 0,
+        "status": "planned",
+        "position": { "x": 80.0, "y": 120.0 },
+        "expertAgentId": "default",
+        "expertRuntime": "single-pass"
+      }
+    ],
     "edges": [],
     "viewport": { "x": 0.0, "y": 0.0, "zoom": 1.0 }
   },
@@ -12,8 +26,8 @@
   "autoApprovalPaused": false,
   "chat": {
     "readiness": {
-      "state": "draft",
-      "reason": "Draft graph: confirm graph and run to start execution."
+      "state": "ready_to_run",
+      "reason": "Graph confirmed. Run can start."
     },
     "clarificationHistory": []
   }

@@ -25,6 +25,12 @@ impl CancellationController {
             .store(true, std::sync::atomic::Ordering::SeqCst);
         *self.reason.lock().expect("cancel lock") = Some(reason.into());
     }
+
+    pub fn reset(&self) {
+        self.cancelled
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+        *self.reason.lock().expect("cancel lock") = None;
+    }
 }
 
 impl Default for CancellationController {

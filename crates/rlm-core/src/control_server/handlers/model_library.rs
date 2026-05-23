@@ -135,6 +135,8 @@ pub(crate) async fn model_library_select_tier(
         .await
     {
         Ok(tiers) => {
+            let config = library.config_snapshot().await;
+            state.refresh_language_models(&config);
             let library_snapshot = library.snapshot().await;
             Json(json!({ "tiers": tiers, "library": library_snapshot })).into_response()
         }

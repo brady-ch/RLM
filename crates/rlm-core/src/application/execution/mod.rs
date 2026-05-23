@@ -13,4 +13,6 @@ pub use runtime_events::{
     InMemoryRuntimeEventStore, NoopRuntimeEventSink, RuntimeEvent, RuntimeEventInput,
     RuntimeEventSeverity, RuntimeEventSink,
 };
-pub use session::{InteractiveExecutionSession, SessionExecutionControl};
+pub use session::{
+    InteractiveExecutionSession, SessionExecutionControl, DEFAULT_UI_BOOTSTRAP_PROMPT,
+};
