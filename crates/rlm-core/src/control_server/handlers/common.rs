@@ -7,10 +7,55 @@ use serde_json::{json, Value};
 
 use crate::application::execution::InteractiveExecutionSession;
 use crate::application::graph::{execute_graph, GraphExecutorInput};
+use crate::domain::run_state_types::ResumeCursor;
 use crate::domain::types::ReplanChoice;
-use crate::ports::LanguageModel;
+use crate::domain::RunStatePersistence;
+use crate::ports::{LanguageModel, RunStateStorePort};
 
 use crate::control_server::RouterState;
+
+pub(crate) fn session_snapshot_json(state: &Arc<RouterState>) -> Value {
+    let mut snap = serde_json::to_value(state.session.snapshot()).unwrap_or(json!({}));
+    let run_state = if state.session.is_confirmed_execution_running() {
+        json!({ "resumable": false })
+    } else {
+        run_state_resumable_json(state)
+    };
+    if let Some(obj) = snap.as_object_mut() {
+        obj.insert("runState".into(), run_state);
+    }
+    snap
+}
+
+fn run_state_resumable_json(state: &Arc<RouterState>) -> Value {
+    let run_state_dir = &state.paths.run_state_dir;
+    if !run_state_dir.is_dir() && fs::create_dir_all(run_state_dir).is_err() {
+        return json!({ "resumable": false });
+    }
+
+    let run_id = state.current_memory_session_id();
+    let store: Arc<dyn RunStateStorePort> = Arc::new(
+        crate::persistence::FileRunStateStore::new(run_state_dir.clone()),
+    );
+    let persistence = RunStatePersistence::new(run_id, store);
+
+    let Ok(Some(snapshot)) = persistence.get_snapshot() else {
+        return json!({ "resumable": false });
+    };
+    if snapshot.resume_cursor.is_none() {
+        return json!({ "resumable": false });
+    }
+
+    let mut run_state = json!({ "resumable": true });
+    if let Some(cursor_value) = snapshot.resume_cursor.as_ref() {
+        if let Ok(cursor) = serde_json::from_value::<ResumeCursor>(cursor_value.clone()) {
+            if let Some(obj) = run_state.as_object_mut() {
+                obj.insert("activeNodeId".into(), json!(cursor.active_node_id));
+            }
+        }
+    }
+    run_state
+}
 
 pub(crate) fn snapshot_with_extra(session: &InteractiveExecutionSession, extra: Value) -> Value {
     let mut snap = serde_json::to_value(session.snapshot()).unwrap_or(json!({}));

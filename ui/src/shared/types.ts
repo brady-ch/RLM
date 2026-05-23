@@ -221,6 +221,10 @@ export type SessionSnapshot = {
   graph: ExecutionGraph;
   status: ExecutionStatus;
   activeNodeId?: string;
+  runState?: {
+    resumable: boolean;
+    activeNodeId?: string;
+  };
   approvalMode: "full" | "initial-plan" | "initial-plan-recursive";
   autoApprovalPaused: boolean;
   runSummary?: { message?: string };

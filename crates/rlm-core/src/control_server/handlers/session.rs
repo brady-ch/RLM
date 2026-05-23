@@ -11,11 +11,11 @@ use crate::application::memory::{
 };
 use crate::domain::types::SessionSnapshot;
 
-use super::common::snapshot_with_extra;
+use super::common::{session_snapshot_json, snapshot_with_extra};
 use crate::control_server::RouterState;
 
 pub(crate) async fn session(State(state): State<Arc<RouterState>>) -> Json<Value> {
-    Json(json!(state.session.snapshot()))
+    Json(session_snapshot_json(&state))
 }
 
 pub(crate) async fn run_mode(State(state): State<Arc<RouterState>>) -> Json<Value> {
