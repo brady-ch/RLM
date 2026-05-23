@@ -1406,6 +1406,29 @@ select {
   font-weight: 600;
 }
 
+.memory-budget-summary {
+  display: grid;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.memory-budget-row {
+  display: flex;
+  font-size: var(--font-meta);
+  gap: var(--space-sm);
+  justify-content: space-between;
+}
+
+.memory-budget-row dt {
+  color: #5a6b60;
+  font-weight: 500;
+}
+
+.memory-budget-row dd {
+  color: #24352c;
+  margin: 0;
+}
+
 .workflow-status-counts {
   color: #5a6b60;
   display: flex;

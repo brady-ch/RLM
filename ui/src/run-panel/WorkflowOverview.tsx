@@ -35,6 +35,41 @@ export function WorkflowOverview({ snapshot, onSelectNode, onFitGraph }: Workflo
           {edges.length === 1 ? "" : "s"}
         </p>
         {runMessage ? <p className="workflow-overview-run-message">{runMessage}</p> : null}
+        {snapshot.resourceGuard ? (
+          <dl className="memory-budget-summary" aria-label="Memory budget">
+            {snapshot.resourceGuard.wslDetected ? (
+              <div className="memory-budget-row">
+                <dt>Environment</dt>
+                <dd>WSL (conservative cap applied)</dd>
+              </div>
+            ) : null}
+            {snapshot.resourceGuard.availableRamMb !== undefined ? (
+              <div className="memory-budget-row">
+                <dt>Available</dt>
+                <dd>{snapshot.resourceGuard.availableRamMb} MB</dd>
+              </div>
+            ) : null}
+            {snapshot.resourceGuard.peakModelRamMb !== undefined ? (
+              <div className="memory-budget-row">
+                <dt>Peak model</dt>
+                <dd>{snapshot.resourceGuard.peakModelRamMb} MB</dd>
+              </div>
+            ) : null}
+            {snapshot.resourceGuard.ollamaLoadedRamMb !== undefined &&
+            snapshot.resourceGuard.ollamaLoadedRamMb > 0 ? (
+              <div className="memory-budget-row">
+                <dt>Ollama loaded</dt>
+                <dd>{snapshot.resourceGuard.ollamaLoadedRamMb} MB</dd>
+              </div>
+            ) : null}
+            {snapshot.resourceGuard.configuredCapMb !== undefined ? (
+              <div className="memory-budget-row">
+                <dt>Configured cap</dt>
+                <dd>{snapshot.resourceGuard.configuredCapMb} MB</dd>
+              </div>
+            ) : null}
+          </dl>
+        ) : null}
         {snapshot.resourceGuard?.runBlocked && snapshot.resourceGuard.runBlockedReason ? (
           <p className="workflow-overview-run-message warning">
             {snapshot.resourceGuard.runBlockedReason}
