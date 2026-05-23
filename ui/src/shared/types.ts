@@ -228,6 +228,17 @@ export type SessionSnapshot = {
   approvalMode: "full" | "initial-plan" | "initial-plan-recursive";
   autoApprovalPaused: boolean;
   runSummary?: { message?: string };
+  resourceGuard?: {
+    wslDetected?: boolean;
+    availableRamMb?: number;
+    configuredCapMb?: number;
+    reserveRamMb?: number;
+    freeRamMb?: number;
+    ollamaLoadedRamMb?: number;
+    peakModelRamMb?: number;
+    runBlocked?: boolean;
+    runBlockedReason?: string;
+  };
   chat?: {
     readiness: {
       state: "draft" | "ready_to_run";

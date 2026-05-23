@@ -266,13 +266,7 @@ export function AppShell() {
     }
 
     fitGraphToView();
-    if (!selectedNodeId && addedIds.length > 0) {
-      const firstChild = addedIds.find((id) => id !== "root-composer");
-      if (firstChild) {
-        setSelectedNodeId(firstChild);
-      }
-    }
-  }, [fitGraphToView, selectedNodeId, snapshot.graph.nodes]);
+  }, [fitGraphToView, snapshot.graph.nodes]);
 
   const flushLayout = useCallback(() => {
     if (layoutFlushTimer.current) {

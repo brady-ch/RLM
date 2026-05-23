@@ -35,6 +35,11 @@ export function WorkflowOverview({ snapshot, onSelectNode, onFitGraph }: Workflo
           {edges.length === 1 ? "" : "s"}
         </p>
         {runMessage ? <p className="workflow-overview-run-message">{runMessage}</p> : null}
+        {snapshot.resourceGuard?.runBlocked && snapshot.resourceGuard.runBlockedReason ? (
+          <p className="workflow-overview-run-message warning">
+            {snapshot.resourceGuard.runBlockedReason}
+          </p>
+        ) : null}
         {Object.keys(statusCounts).length > 0 ? (
           <ul className="workflow-status-counts" aria-label="Node status counts">
             {(Object.entries(statusCounts) as Array<[ExecutionNode["status"], number]>).map(

@@ -34,6 +34,9 @@ export function TopBar({
     : undefined;
 
   const showResumeControl = snapshot.runState?.resumable === true && snapshot.status !== "running";
+  const isRunning = snapshot.status === "running";
+  const runBlocked = snapshot.resourceGuard?.runBlocked === true;
+  const runBlockedReason = snapshot.resourceGuard?.runBlockedReason;
 
   const resumeDescription = snapshot.runState?.activeNodeId
     ? `Incomplete nodes will continue from saved state. Active node: ${snapshot.runState.activeNodeId}.`
@@ -63,6 +66,11 @@ export function TopBar({
           {snapshot.status === "completed" && snapshot.runSummary?.message ? (
             <span className="run-success-hint">{snapshot.runSummary.message}</span>
           ) : null}
+          {runBlocked && runBlockedReason ? (
+            <span className="run-failure-hint" title={runBlockedReason}>
+              Memory guard: {runBlockedReason}
+            </span>
+          ) : null}
         </div>
         <span className="meta-pill approval-mode-pill">
           {approvalModeLabel(snapshot.approvalMode)}
@@ -89,6 +97,8 @@ export function TopBar({
             className="btn-topbar-secondary"
             aria-label="Resume interrupted run"
             data-testid="resume-run-button"
+            disabled={runBlocked}
+            title={runBlocked ? runBlockedReason : undefined}
             onClick={() => setResumeConfirmOpen(true)}
           >
             Resume run
@@ -98,6 +108,8 @@ export function TopBar({
           type="button"
           className="btn-topbar-primary"
           aria-label="Run workflow"
+          disabled={isRunning || runBlocked}
+          title={runBlocked ? runBlockedReason : undefined}
           onClick={() =>
             runAction(
               setErrorMessage,
@@ -115,22 +127,24 @@ export function TopBar({
           <Play size={16} aria-hidden />
           Run workflow
         </button>
-        <button
-          type="button"
-          className="btn-topbar-danger"
-          title="Stop run"
-          aria-label="Stop run"
-          onClick={() =>
-            runAction(
-              setErrorMessage,
-              () => post("/api/stop", { reason: "stopped from UI" }),
-              refresh,
-            )
-          }
-        >
-          <Square size={16} aria-hidden />
-          Stop
-        </button>
+        {isRunning ? (
+          <button
+            type="button"
+            className="btn-topbar-danger"
+            title="Stop run"
+            aria-label="Stop run"
+            onClick={() =>
+              runAction(
+                setErrorMessage,
+                () => post("/api/stop", { reason: "stopped from UI" }),
+                refresh,
+              )
+            }
+          >
+            <Square size={16} aria-hidden />
+            Stop
+          </button>
+        ) : null}
         <button type="button" className="btn-topbar-secondary" onClick={onAdvanced}>
           <Settings size={16} aria-hidden />
           Advanced

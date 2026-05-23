@@ -1401,6 +1401,11 @@ select {
   margin-top: var(--space-xs) !important;
 }
 
+.workflow-overview-run-message.warning {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
 .workflow-status-counts {
   color: #5a6b60;
   display: flex;
