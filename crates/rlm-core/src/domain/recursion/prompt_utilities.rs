@@ -154,10 +154,12 @@ mod tests {
             ChatMessage {
                 role: "assistant".into(),
                 content: "hi".into(),
+            ..Default::default()
             },
             ChatMessage {
                 role: "user".into(),
                 content: "last".into(),
+            ..Default::default()
             },
         ];
         assert_eq!(fallback_from_messages(&msgs), "last");

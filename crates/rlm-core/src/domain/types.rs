@@ -734,6 +734,16 @@ pub struct TraceEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ToolCallRecord {
+    pub id: String,
+    pub name: String,
+    pub args: Value,
+    pub status: String,
+    pub output: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecursivePromptMetadata {
     pub depth: DepthMetadata,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -744,6 +754,8 @@ pub struct RecursivePromptMetadata {
     pub budget: Option<ExecutionBudget>,
     pub model_calls: u32,
     pub errors: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tool_calls: Vec<ToolCallRecord>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quality_loop: Option<QualityLoopMetadata>,
 }
@@ -783,14 +795,28 @@ pub struct ExecutionStatusUpdateDetail {
     pub message: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
+    pub tool_call_id: Option<String>,
+    pub tool_calls: Option<Vec<ToolCallRequest>>,
+}
+
+impl ChatMessage {
+    pub fn text(role: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            role: role.into(),
+            content: content.into(),
+            tool_call_id: None,
+            tool_calls: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct ToolCallRequest {
+    pub id: Option<String>,
     pub name: String,
     pub arguments: Value,
 }

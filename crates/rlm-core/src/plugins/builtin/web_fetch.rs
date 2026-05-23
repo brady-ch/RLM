@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use reqwest::Client;
 
 use crate::domain::types::ToolExecutionResult;
+use crate::plugins::tool_schemas;
 use crate::ports::Tool;
 
 pub struct WebFetchTool {
@@ -32,6 +33,14 @@ impl Default for WebFetchTool {
 impl Tool for WebFetchTool {
     fn name(&self) -> &str {
         "web_fetch"
+    }
+
+    fn description(&self) -> &str {
+        "Fetch a web page, strip HTML and fluff words, build a content tree, and return the highest-scoring sections for a query."
+    }
+
+    fn schema(&self) -> serde_json::Value {
+        tool_schemas::web_fetch_schema()
     }
 
     async fn execute(&self, arguments: serde_json::Value) -> ToolExecutionResult {

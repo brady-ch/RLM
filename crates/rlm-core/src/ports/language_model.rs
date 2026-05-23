@@ -122,6 +122,7 @@ impl LanguageModel for ToolRoundModel {
                 content: String::new(),
                 model: Some("mock".into()),
                 tool_calls: vec![ToolCallRequest {
+                    id: Some("tool-call-1".into()),
                     name: self.tool_name.clone(),
                     arguments: serde_json::json!({}),
                 }],

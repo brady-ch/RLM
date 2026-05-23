@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use tokio::process::Command;
 
 use crate::domain::types::ToolExecutionResult;
+use crate::plugins::tool_schemas;
 use crate::ports::Tool;
 
 const DEFAULT_ALLOWED: &[&str] = &["pwd", "ls", "rg", "sed", "cat"];
@@ -56,6 +57,14 @@ impl GuardedShellTool {
 impl Tool for GuardedShellTool {
     fn name(&self) -> &str {
         "shell"
+    }
+
+    fn description(&self) -> &str {
+        "Run an allowlisted, read-only shell command in the workspace. Use for inspecting files and searching text."
+    }
+
+    fn schema(&self) -> serde_json::Value {
+        tool_schemas::shell_schema()
     }
 
     async fn execute(&self, arguments: serde_json::Value) -> ToolExecutionResult {

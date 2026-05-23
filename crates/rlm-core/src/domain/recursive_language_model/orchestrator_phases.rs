@@ -124,10 +124,12 @@ impl RecursiveLanguageModel {
                         content: format!(
                             "Classify whether a prompt needs recursive decomposition. Respond with exactly {DIRECT} or {RECURSIVE}, then one short reason."
                         ),
+            ..Default::default()
                     },
                     ChatMessage {
                         role: "user".into(),
                         content: task.prompt.clone(),
+            ..Default::default()
                     },
                 ],
                 false,
@@ -160,10 +162,12 @@ impl RecursiveLanguageModel {
                             "Break the user prompt into at most {} independent subtasks. Return one subtask per line. Do not number the lines. Keep each line concrete.",
                             config.max_branches
                         ),
+            ..Default::default()
                     },
                     ChatMessage {
                         role: "user".into(),
                         content: task.prompt.clone(),
+            ..Default::default()
                     },
                 ],
                 false,
@@ -215,6 +219,7 @@ impl RecursiveLanguageModel {
             return Ok(fallback_from_messages_slice(&[ChatMessage {
                 role: "user".into(),
                 content: task.prompt.clone(),
+            ..Default::default()
             }]));
         }
         let output = self
@@ -227,10 +232,12 @@ impl RecursiveLanguageModel {
                         content: format!(
                             "Answer the user task directly and concisely. {reason} Prefer actionable, specific language over broad commentary."
                         ),
+            ..Default::default()
                     },
                     ChatMessage {
                         role: "user".into(),
                         content: task.prompt.clone(),
+            ..Default::default()
                     },
                 ],
                 true,
@@ -255,10 +262,12 @@ impl RecursiveLanguageModel {
                     ChatMessage {
                         role: "system".into(),
                         content: "Compress this solved subtask into the shortest useful summary for a parent synthesis step.".into(),
+            ..Default::default()
                     },
                     ChatMessage {
                         role: "user".into(),
                         content: format!("Subtask:\n{}\n\nAnswer:\n{answer}", task.prompt),
+            ..Default::default()
                     },
                 ],
                 false,
@@ -296,6 +305,7 @@ impl RecursiveLanguageModel {
                     ChatMessage {
                         role: "system".into(),
                         content: "Synthesize the child task summaries into one final answer for the original prompt. Resolve conflicts directly and do not mention the recursion process unless it is relevant.".into(),
+            ..Default::default()
                     },
                     ChatMessage {
                         role: "user".into(),
@@ -303,6 +313,7 @@ impl RecursiveLanguageModel {
                             "Original prompt:\n{}\n\nChild summaries:\n{child_context}",
                             task.prompt
                         ),
+            ..Default::default()
                     },
                 ],
                 true,
@@ -389,10 +400,12 @@ impl RecursiveLanguageModel {
                         content: format!(
                             "Choose a recursion depth from 0 to {max_dynamic_depth} for the user's task complexity. Return only the integer."
                         ),
+            ..Default::default()
                     },
                     ChatMessage {
                         role: "user".into(),
                         content: task.prompt.clone(),
+            ..Default::default()
                     },
                 ],
                 false,

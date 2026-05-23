@@ -217,14 +217,31 @@ struct OllamaFunctionCall {
 }
 
 fn chat_message_to_ollama(message: &ChatMessage) -> Value {
-    json!({
+    let mut payload = json!({
         "role": message.role,
         "content": message.content,
-    })
+    });
+    if let Some(tool_call_id) = &message.tool_call_id {
+        payload["tool_call_id"] = json!(tool_call_id);
+    }
+    if let Some(tool_calls) = &message.tool_calls {
+        payload["tool_calls"] = json!(
+            tool_calls
+                .iter()
+                .map(|call| json!({
+                    "function": {
+                        "name": call.name,
+                        "arguments": call.arguments,
+                    }
+                }))
+                .collect::<Vec<_>>()
+        );
+    }
+    payload
 }
 
 fn merge_tool_calls(target: &mut Vec<ToolCallRequest>, incoming: Vec<OllamaToolCall>) {
-    for call in incoming {
+    for (index, call) in incoming.into_iter().enumerate() {
         let Some(function) = call.function else {
             continue;
         };
@@ -232,6 +249,7 @@ fn merge_tool_calls(target: &mut Vec<ToolCallRequest>, incoming: Vec<OllamaToolC
             continue;
         };
         target.push(ToolCallRequest {
+            id: Some(format!("tool-call-{}", target.len() + index + 1)),
             name,
             arguments: function.arguments.unwrap_or_else(|| json!({})),
         });
@@ -263,12 +281,16 @@ impl LanguageModel for OllamaLanguageModel {
             let first = self.chat_stream(messages, None).await;
             match first {
                 Ok(first_response) => {
-                    if !first_response.tool_calls.is_empty() || first_response.content.is_empty() {
+                        if !first_response.tool_calls.is_empty() || first_response.content.is_empty() {
                         let mut extended = messages.to_vec();
                         if !first_response.content.is_empty() {
+                            extended.push(ChatMessage::text("assistant", first_response.content.clone()));
+                        } else if !first_response.tool_calls.is_empty() {
                             extended.push(ChatMessage {
                                 role: "assistant".into(),
-                                content: first_response.content.clone(),
+                                content: String::new(),
+                                tool_call_id: None,
+                                tool_calls: Some(first_response.tool_calls.clone()),
                             });
                         }
                         match self.chat_stream(&extended, tools.as_deref()).await {
@@ -329,10 +351,7 @@ mod tests {
     fn chat_request_unloads_model_after_response() {
         let model = OllamaLanguageModel::new(None, Some("llama3.1:8b"), false);
         let body = model.build_chat_body(
-            &[ChatMessage {
-                role: "user".into(),
-                content: "hello".into(),
-            }],
+            &[ChatMessage::text("user", "hello")],
             None,
         );
 

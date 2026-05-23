@@ -7,7 +7,7 @@ use crate::domain::recursion::{ModelCompletionHost, QualityLoopHost};
 use crate::domain::types::{
     ChatMessage, ExecutionEvent, ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail,
     QualityLoopManualDecision, QualityLoopMetadata, QualityLoopUsageSummary, RecursiveModelConfig,
-    TaskNode, TokenUsageTrace,
+    TaskNode, TokenUsageTrace, ToolCallRecord,
 };
 use crate::ports::{LanguageModel, Tool};
 
@@ -146,10 +146,7 @@ impl QualityLoopHost for QualityLoopHostAdapter<'_> {
         if prompt.is_empty() {
             messages
         } else {
-            let mut out = vec![ChatMessage {
-                role: "system".into(),
-                content: prompt,
-            }];
+            let mut out = vec![ChatMessage::text("system", prompt)];
             out.extend(messages);
             out
         }
@@ -221,6 +218,16 @@ impl ModelCompletionHost for EngineHost<'_> {
             .push(message.into());
     }
 
+    fn append_tool_call_record(&self, record: ToolCallRecord) {
+        let mut state = self.engine.state.lock().expect("engine lock");
+        state.tool_calls_len += 1;
+        state.metadata.tool_calls.push(record);
+    }
+
+    async fn resolve_memory_packet(&self, _task: &TaskNode) -> Option<String> {
+        None
+    }
+
     fn mark_execution_node_failed(
         &self,
         node_id: &str,
@@ -286,10 +293,7 @@ impl ModelCompletionHost for EngineHost<'_> {
         if prompt.is_empty() {
             messages
         } else {
-            let mut out = vec![ChatMessage {
-                role: "system".into(),
-                content: prompt,
-            }];
+            let mut out = vec![ChatMessage::text("system", prompt)];
             out.extend(messages);
             out
         }

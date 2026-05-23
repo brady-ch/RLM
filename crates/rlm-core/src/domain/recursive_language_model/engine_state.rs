@@ -37,6 +37,7 @@ pub(crate) fn empty_metadata() -> RecursivePromptMetadata {
         budget: None,
         model_calls: 0,
         errors: Vec::new(),
+        tool_calls: Vec::new(),
         quality_loop: None,
     }
 }

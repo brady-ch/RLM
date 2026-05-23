@@ -16,6 +16,8 @@ pub struct McpInteropResult {
 
 struct McpTool {
     name: String,
+    description: String,
+    schema: Value,
     client: Arc<StdioMcpClient>,
     tool_name: String,
 }
@@ -24,6 +26,14 @@ struct McpTool {
 impl Tool for McpTool {
     fn name(&self) -> &str {
         &self.name
+    }
+
+    fn description(&self) -> &str {
+        &self.description
+    }
+
+    fn schema(&self) -> Value {
+        self.schema.clone()
     }
 
     async fn execute(&self, arguments: Value) -> ToolExecutionResult {
@@ -45,8 +55,14 @@ pub async fn create_mcp_tools(servers: Vec<McpServerConfig>) -> Result<McpIntero
                         Ok(listed) => {
                             for tool in listed {
                                 let full_name = format!("{}.{}", server.id, tool.name);
+                                let description = tool
+                                    .description
+                                    .clone()
+                                    .unwrap_or_else(|| format!("MCP tool {} from {}", tool.name, server.id));
                                 tools.push(Arc::new(McpTool {
                                     name: full_name,
+                                    description,
+                                    schema: tool.input_schema,
                                     client: Arc::clone(&client),
                                     tool_name: tool.name,
                                 }) as Arc<dyn Tool>);

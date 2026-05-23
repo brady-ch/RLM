@@ -5,6 +5,7 @@ use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
 use crate::domain::types::ToolExecutionResult;
+use crate::plugins::tool_schemas;
 use crate::ports::Tool;
 
 pub struct WorkspaceFileWriteTool {
@@ -51,6 +52,14 @@ impl WorkspaceFileWriteTool {
 impl Tool for WorkspaceFileWriteTool {
     fn name(&self) -> &str {
         "write_file"
+    }
+
+    fn description(&self) -> &str {
+        "Write content to a file inside the open workspace directory. Use relative paths only. Supports overwrite and append."
+    }
+
+    fn schema(&self) -> serde_json::Value {
+        tool_schemas::write_file_schema()
     }
 
     async fn execute(&self, arguments: serde_json::Value) -> ToolExecutionResult {

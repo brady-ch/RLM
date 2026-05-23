@@ -11,6 +11,7 @@ use crate::application::execution::{
     RuntimeEventInput, RuntimeEventSeverity, RuntimeEventSink,
 };
 use crate::domain::types::ToolExecutionResult;
+use crate::plugins::tool_schemas;
 use crate::ports::Tool;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -386,6 +387,14 @@ pub fn create_skill_tool(runtime: Arc<SkillRuntime>) -> Arc<dyn Tool> {
 impl Tool for SkillTool {
     fn name(&self) -> &str {
         "skill"
+    }
+
+    fn description(&self) -> &str {
+        "Load an on-disk skill by name from the configured skill search paths."
+    }
+
+    fn schema(&self) -> serde_json::Value {
+        tool_schemas::skill_schema()
     }
 
     async fn execute(&self, arguments: Value) -> ToolExecutionResult {

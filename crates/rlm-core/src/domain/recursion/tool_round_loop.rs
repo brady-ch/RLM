@@ -6,7 +6,10 @@ use crate::domain::recursion::{
     can_spend_any_model_call, fallback_from_messages, max_tool_rounds_from_limit,
     parse_clarification_request, preview, to_model_purpose,
 };
-use crate::domain::types::{ChatMessage, ExecutionStatusUpdateDetail, TaskNode, ToolCallRequest};
+use crate::domain::types::{
+    ChatMessage, ExecutionStatusUpdateDetail, TaskNode, ToolCallRecord, ToolCallRequest,
+    ToolExecutionResult,
+};
 use crate::ports::{
     LanguageModel, LanguageModelCompleteOptions, LanguageModelToolDefinition, Tool,
 };
@@ -21,6 +24,7 @@ pub trait ModelCompletionHost: Send + Sync {
     fn record_limit(&self, task: &TaskNode, message: &str);
     fn record(&self, task: &TaskNode, kind: &str, prompt: &str, output: &str);
     fn push_metadata_error(&self, message: &str);
+    fn append_tool_call_record(&self, record: ToolCallRecord);
     fn mark_execution_node_failed(
         &self,
         node_id: &str,
@@ -29,6 +33,7 @@ pub trait ModelCompletionHost: Send + Sync {
     );
     fn tools_for_task(&self, task: &TaskNode) -> Vec<Arc<dyn Tool>>;
     fn get_tool_by_name(&self, name: &str) -> Option<Arc<dyn Tool>>;
+    async fn resolve_memory_packet(&self, task: &TaskNode) -> Option<String>;
     async fn request_clarification(
         &self,
         task: &TaskNode,
@@ -36,6 +41,30 @@ pub trait ModelCompletionHost: Send + Sync {
     ) -> Result<String, String>;
     fn model(&self) -> &dyn LanguageModel;
     fn with_agent_system_prompt(&self, messages: Vec<ChatMessage>) -> Vec<ChatMessage>;
+}
+
+fn tool_definitions(tools: &[Arc<dyn Tool>]) -> Vec<LanguageModelToolDefinition> {
+    tools
+        .iter()
+        .map(|tool| LanguageModelToolDefinition {
+            name: tool.name().to_string(),
+            description: tool.description().to_string(),
+            schema: tool.schema(),
+        })
+        .collect()
+}
+
+fn assign_tool_call_ids(calls: Vec<ToolCallRequest>) -> Vec<ToolCallRequest> {
+    calls
+        .into_iter()
+        .enumerate()
+        .map(|(index, mut call)| {
+            if call.id.is_none() {
+                call.id = Some(format!("tool-call-{}", index + 1));
+            }
+            call
+        })
+        .collect()
 }
 
 pub async fn run_completion_with_tool_rounds(
@@ -51,7 +80,15 @@ pub async fn run_completion_with_tool_rounds(
         return Ok(fallback_from_messages(&messages));
     }
 
-    let mut conversation = messages;
+    let memory_packet = host.resolve_memory_packet(task).await;
+    let mut conversation = if let Some(text) = memory_packet {
+        let mut prefixed = vec![ChatMessage::text("system", text)];
+        prefixed.extend(messages);
+        prefixed
+    } else {
+        messages
+    };
+
     let tool_round_limit = host.get_tool_round_limit();
     for round in 0..=max_tool_rounds_from_limit(tool_round_limit as i32) {
         host.consume_model_call();
@@ -62,14 +99,7 @@ pub async fn run_completion_with_tool_rounds(
             Vec::new()
         };
         let tools_enabled = allow_tools && !tools.is_empty();
-        let tool_definitions = tools
-            .iter()
-            .map(|tool| LanguageModelToolDefinition {
-                name: tool.name().to_string(),
-                description: format!("Execute the {} tool", tool.name()),
-                schema: serde_json::json!({"type": "object", "properties": {}}),
-            })
-            .collect();
+        let tool_definitions = tool_definitions(&tools);
         let response = host
             .model()
             .complete(
@@ -83,17 +113,13 @@ pub async fn run_completion_with_tool_rounds(
             )
             .await;
 
-        if response.tool_calls.is_empty() {
+        let tool_calls = assign_tool_call_ids(response.tool_calls);
+
+        if tool_calls.is_empty() {
             if let Some(clarify) = parse_clarification_request(&response.content) {
                 let answer = host.request_clarification(task, &clarify).await?;
-                conversation.push(ChatMessage {
-                    role: "assistant".into(),
-                    content: response.content,
-                });
-                conversation.push(ChatMessage {
-                    role: "user".into(),
-                    content: answer,
-                });
+                conversation.push(ChatMessage::text("assistant", response.content));
+                conversation.push(ChatMessage::text("user", answer));
                 continue;
             }
             return Ok(response.content);
@@ -123,27 +149,69 @@ pub async fn run_completion_with_tool_rounds(
 
         if round >= max_tool_rounds_from_limit(tool_round_limit as i32) {
             host.record_limit(task, &format!("tool round limit reached during {kind}"));
+            if !response.content.is_empty() {
+                return Ok(response.content);
+            }
+
+            return if can_spend_any_model_call(host.get_model_calls(), host.get_max_model_calls()) {
+                run_completion_without_tools(
+                    host,
+                    task,
+                    kind,
+                    vec![
+                        conversation,
+                        vec![
+                            ChatMessage {
+                                role: "assistant".into(),
+                                content: response.content.clone(),
+                                tool_call_id: None,
+                                tool_calls: Some(tool_calls),
+                            },
+                            ChatMessage::text(
+                                "system",
+                                "Tool use is no longer available. Answer directly from the conversation and tool context already present.",
+                            ),
+                        ],
+                    ]
+                    .concat(),
+                )
+                .await
+            } else {
+                Ok(fallback_from_messages(&conversation))
+            };
+        }
+
+        conversation.push(ChatMessage {
+            role: "assistant".into(),
+            content: response.content.clone(),
+            tool_call_id: None,
+            tool_calls: Some(tool_calls.clone()),
+        });
+
+        for tool_call in tool_calls {
+            let result = execute_tool(host, task, kind, &tool_call).await;
+            conversation.push(ChatMessage {
+                role: "tool".into(),
+                content: result.content.clone(),
+                tool_call_id: tool_call.id.clone(),
+                tool_calls: None,
+            });
+        }
+
+        if !can_spend_any_model_call(host.get_model_calls(), host.get_max_model_calls()) {
+            host.record_limit(
+                task,
+                &format!("model call budget reached after tool calls during {kind}"),
+            );
             return Ok(if response.content.is_empty() {
                 fallback_from_messages(&conversation)
             } else {
                 response.content
             });
         }
-
-        conversation.push(ChatMessage {
-            role: "assistant".into(),
-            content: response.content.clone(),
-        });
-
-        for tool_call in response.tool_calls {
-            let result = execute_tool(host, task, kind, &tool_call).await;
-            conversation.push(ChatMessage {
-                role: "user".into(),
-                content: format!("Tool {} result: {}", tool_call.name, result),
-            });
-        }
     }
 
+    host.record_limit(task, &format!("tool round limit reached during {kind}"));
     Ok(fallback_from_messages(&conversation))
 }
 
@@ -152,20 +220,50 @@ async fn execute_tool(
     task: &TaskNode,
     kind: &str,
     tool_call: &ToolCallRequest,
-) -> String {
+) -> ToolExecutionResult {
+    let tool_call_id = tool_call
+        .id
+        .clone()
+        .unwrap_or_else(|| format!("tool-call-{}", tool_call.name));
+
+    host.throw_if_cancelled(task).ok();
+    host.record(
+        task,
+        "tool-call",
+        &serde_json::to_string(&tool_call.arguments).unwrap_or_default(),
+        &tool_call.name,
+    );
+
     let Some(tool) = host.get_tool_by_name(&tool_call.name) else {
         let msg = format!("Unknown tool: {}", tool_call.name);
         host.record(task, "error", &task.prompt, &msg);
-        return msg;
+        host.append_tool_call_record(ToolCallRecord {
+            id: tool_call_id,
+            name: tool_call.name.clone(),
+            args: tool_call.arguments.clone(),
+            status: "error".into(),
+            output: msg.clone(),
+        });
+        return ToolExecutionResult {
+            content: msg,
+            is_error: true,
+        };
     };
+
     let result = tool.execute(tool_call.arguments.clone()).await;
+    let status = if result.is_error { "error" } else { "success" };
+
+    host.append_tool_call_record(ToolCallRecord {
+        id: tool_call_id.clone(),
+        name: tool_call.name.clone(),
+        args: tool_call.arguments.clone(),
+        status: status.into(),
+        output: result.content.clone(),
+    });
+
     host.record(
         task,
-        if result.is_error {
-            "error"
-        } else {
-            "tool-result"
-        },
+        if result.is_error { "error" } else { "tool-result" },
         &format!(
             "{} ({})",
             tool_call.name,
@@ -173,14 +271,25 @@ async fn execute_tool(
         ),
         &result.content,
     );
+
     if result.is_error {
         let msg = format!(
             "Tool {} failed during {kind}: {}",
             tool_call.name, result.content
         );
         host.push_metadata_error(&msg);
+        host.mark_execution_node_failed(
+            &task.id,
+            "failed",
+            Some(ExecutionStatusUpdateDetail {
+                failure_category: Some("tool".into()),
+                code: Some("tool".into()),
+                message: Some(result.content.clone()),
+            }),
+        );
     }
-    result.content
+
+    result
 }
 
 pub async fn run_completion_without_tools(
@@ -189,5 +298,241 @@ pub async fn run_completion_without_tools(
     kind: &str,
     messages: Vec<ChatMessage>,
 ) -> Result<String, String> {
-    run_completion_with_tool_rounds(host, task, kind, messages, false).await
+    if !can_spend_any_model_call(host.get_model_calls(), host.get_max_model_calls()) {
+        host.record_limit(
+            task,
+            &format!("model call budget reached before direct {kind} follow-up"),
+        );
+        return Ok(fallback_from_messages(&messages));
+    }
+
+    host.consume_model_call();
+    let purpose = to_model_purpose(kind);
+    let response = host
+        .model()
+        .complete(
+            &host.with_agent_system_prompt(messages.clone()),
+            LanguageModelCompleteOptions {
+                purpose,
+                tools_enabled: false,
+                tools: Vec::new(),
+                constrained_tool_calling: false,
+            },
+        )
+        .await;
+
+    if !response.tool_calls.is_empty() {
+        host.record_limit(
+            task,
+            &format!("ignored tool requests during direct {kind} follow-up"),
+        );
+    }
+
+    Ok(if response.content.is_empty() {
+        fallback_from_messages(&messages)
+    } else {
+        response.content
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+
+    use super::*;
+    use crate::domain::types::LanguageModelResponse;
+    use crate::ports::{EchoTool, ToolRoundModel};
+
+    struct TestHost {
+        model: Arc<dyn LanguageModel>,
+        tools: HashMap<String, Arc<dyn Tool>>,
+        model_calls: Mutex<u32>,
+        max_model_calls: u32,
+        tool_round_limit: u32,
+        records: Mutex<Vec<ToolCallRecord>>,
+    }
+
+    #[async_trait]
+    impl ModelCompletionHost for TestHost {
+        fn get_model_calls(&self) -> u32 {
+            *self.model_calls.lock().expect("lock")
+        }
+
+        fn get_max_model_calls(&self) -> u32 {
+            self.max_model_calls
+        }
+
+        fn get_tool_round_limit(&self) -> u32 {
+            self.tool_round_limit
+        }
+
+        fn consume_model_call(&self) {
+            *self.model_calls.lock().expect("lock") += 1;
+        }
+
+        fn throw_if_cancelled(&self, _task: &TaskNode) -> Result<(), String> {
+            Ok(())
+        }
+
+        fn record_limit(&self, _task: &TaskNode, _message: &str) {}
+
+        fn record(&self, _task: &TaskNode, _kind: &str, _prompt: &str, _output: &str) {}
+
+        fn push_metadata_error(&self, _message: &str) {}
+
+        fn append_tool_call_record(&self, record: ToolCallRecord) {
+            self.records.lock().expect("lock").push(record);
+        }
+
+        fn mark_execution_node_failed(
+            &self,
+            _node_id: &str,
+            _status: &str,
+            _detail: Option<ExecutionStatusUpdateDetail>,
+        ) {
+        }
+
+        fn tools_for_task(&self, _task: &TaskNode) -> Vec<Arc<dyn Tool>> {
+            self.tools.values().cloned().collect()
+        }
+
+        fn get_tool_by_name(&self, name: &str) -> Option<Arc<dyn Tool>> {
+            self.tools.get(name).cloned()
+        }
+
+        async fn resolve_memory_packet(&self, _task: &TaskNode) -> Option<String> {
+            None
+        }
+
+        async fn request_clarification(
+            &self,
+            _task: &TaskNode,
+            _prompt_text: &str,
+        ) -> Result<String, String> {
+            Ok(String::new())
+        }
+
+        fn model(&self) -> &dyn LanguageModel {
+            self.model.as_ref()
+        }
+
+        fn with_agent_system_prompt(&self, messages: Vec<ChatMessage>) -> Vec<ChatMessage> {
+            messages
+        }
+    }
+
+    fn test_task() -> TaskNode {
+        TaskNode {
+            id: "task-1".into(),
+            parent_id: None,
+            prompt: "test".into(),
+            depth: 0,
+            kind: None,
+            model_override: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn executes_tool_round_and_records_result() {
+        let echo = Arc::new(EchoTool::new("echo")) as Arc<dyn Tool>;
+        let mut tools = HashMap::new();
+        tools.insert("echo".into(), Arc::clone(&echo));
+        let host = TestHost {
+            model: Arc::new(ToolRoundModel::new("echo", "done")),
+            tools,
+            model_calls: Mutex::new(0),
+            max_model_calls: 8,
+            tool_round_limit: 2,
+            records: Mutex::new(Vec::new()),
+        };
+        let answer = run_completion_with_tool_rounds(
+            &host,
+            &test_task(),
+            "answer",
+            vec![ChatMessage::text("user", "run echo")],
+            true,
+        )
+        .await
+        .expect("completion");
+
+        assert_eq!(answer, "done");
+        let records = host.records.lock().expect("lock");
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].name, "echo");
+        assert_eq!(records[0].status, "success");
+    }
+
+    #[tokio::test]
+    async fn passes_tool_schema_to_model() {
+        struct SchemaCapturingModel {
+            captured: Mutex<Option<Vec<LanguageModelToolDefinition>>>,
+        }
+
+        #[async_trait]
+        impl LanguageModel for SchemaCapturingModel {
+            fn model_label(&self) -> Option<&str> {
+                Some("mock")
+            }
+
+            async fn complete(
+                &self,
+                _messages: &[ChatMessage],
+                options: LanguageModelCompleteOptions<'_>,
+            ) -> LanguageModelResponse {
+                *self.captured.lock().expect("lock") = Some(
+                    options
+                        .tools
+                        .iter()
+                        .map(|tool| LanguageModelToolDefinition {
+                            name: tool.name.clone(),
+                            description: tool.description.clone(),
+                            schema: tool.schema.clone(),
+                        })
+                        .collect(),
+                );
+                LanguageModelResponse {
+                    content: "ok".into(),
+                    model: Some("mock".into()),
+                    tool_calls: Vec::new(),
+                }
+            }
+        }
+
+        let echo = Arc::new(EchoTool::new("echo")) as Arc<dyn Tool>;
+        let mut tools = HashMap::new();
+        tools.insert("echo".into(), echo);
+        let model = Arc::new(SchemaCapturingModel {
+            captured: Mutex::new(None),
+        });
+        let captured = Arc::clone(&model);
+        let host = TestHost {
+            model,
+            tools,
+            model_calls: Mutex::new(0),
+            max_model_calls: 4,
+            tool_round_limit: 0,
+            records: Mutex::new(Vec::new()),
+        };
+
+        run_completion_with_tool_rounds(
+            &host,
+            &test_task(),
+            "answer",
+            vec![ChatMessage::text("user", "hello")],
+            true,
+        )
+        .await
+        .expect("completion");
+
+        let defs = captured
+            .captured
+            .lock()
+            .expect("lock")
+            .clone()
+            .expect("captured schemas");
+        assert_eq!(defs.len(), 1);
+        assert_eq!(defs[0].name, "echo");
+        assert!(defs[0].schema.get("type").is_some());
+    }
 }

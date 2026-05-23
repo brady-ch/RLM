@@ -1,5 +1,6 @@
 pub mod builtin;
 pub mod extension_host;
+pub mod tool_schemas;
 pub mod manifest;
 pub mod paths;
 pub mod registry;

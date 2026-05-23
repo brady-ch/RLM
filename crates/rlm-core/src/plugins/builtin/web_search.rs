@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use reqwest::Client;
 
 use crate::domain::types::ToolExecutionResult;
+use crate::plugins::tool_schemas;
 use crate::ports::Tool;
 
 const DDG_LITE_SEARCH: &str = "https://lite.duckduckgo.com/lite/";
@@ -37,6 +38,14 @@ impl Default for WebSearchTool {
 impl Tool for WebSearchTool {
     fn name(&self) -> &str {
         "web_search"
+    }
+
+    fn description(&self) -> &str {
+        "Search the web using DuckDuckGo Lite and return ranked result snippets."
+    }
+
+    fn schema(&self) -> serde_json::Value {
+        tool_schemas::web_search_schema()
     }
 
     async fn execute(&self, arguments: serde_json::Value) -> ToolExecutionResult {

@@ -407,10 +407,12 @@ pub async fn execute_graph(
                             crate::domain::types::ChatMessage {
                                 role: "system".into(),
                                 content: filtered.system_prompt.clone(),
+            ..Default::default()
                             },
                             crate::domain::types::ChatMessage {
                                 role: "user".into(),
                                 content: prompt,
+            ..Default::default()
                             },
                         ],
                         LanguageModelCompleteOptions::simple(Some("answer"), false),

@@ -675,10 +675,12 @@ fn quality_loop_messages(
         ChatMessage {
             role: "system".into(),
             content: format!("{instruction} Do not call tools."),
+            ..Default::default()
         },
         ChatMessage {
             role: "user".into(),
             content: user_content,
+            ..Default::default()
         },
     ]
 }

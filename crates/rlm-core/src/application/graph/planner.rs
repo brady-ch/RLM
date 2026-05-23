@@ -58,10 +58,12 @@ pub async fn plan_children(
                 crate::domain::types::ChatMessage {
                     role: "system".into(),
                     content: system,
+            ..Default::default()
                 },
                 crate::domain::types::ChatMessage {
                     role: "user".into(),
                     content: user,
+            ..Default::default()
                 },
             ],
             LanguageModelCompleteOptions::simple(Some("plan"), false),

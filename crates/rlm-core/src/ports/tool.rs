@@ -1,10 +1,20 @@
 use async_trait::async_trait;
+use serde_json::{json, Value};
 
 use crate::domain::types::ToolExecutionResult;
 
 #[async_trait]
 pub trait Tool: Send + Sync {
     fn name(&self) -> &str;
+
+    fn description(&self) -> &str {
+        "Execute tool"
+    }
+
+    fn schema(&self) -> Value {
+        json!({"type": "object", "properties": {}})
+    }
+
     async fn execute(&self, arguments: serde_json::Value) -> ToolExecutionResult;
 }
 
