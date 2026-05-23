@@ -50,3 +50,21 @@ export function validateConfigReferences(config: ProjectConfig): void {
     }
   }
 }
+
+export function validateMemoryBudget(config: ProjectConfig): void {
+  if (config.memory.maxRamMb === "auto") {
+    return;
+  }
+  const cap = config.memory.maxRamMb;
+  const violations: string[] = [];
+  for (const [tierId, tier] of Object.entries(config.models.tiers)) {
+    if (tier.estimatedRamMb > cap) {
+      violations.push(
+        `models.tiers.${tierId}.estimatedRamMb (${tier.estimatedRamMb} MB) exceeds memory.maxRamMb (${cap} MB)`,
+      );
+    }
+  }
+  if (violations.length > 0) {
+    throw new Error(violations.join("; "));
+  }
+}

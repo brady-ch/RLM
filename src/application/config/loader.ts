@@ -6,7 +6,7 @@ import { parse as parseYaml } from "yaml";
 import { DEFAULT_PROJECT_PLAIN } from "./defaults.js";
 import { configSchema } from "./schema.js";
 import type { LoadedProjectConfig, ProjectConfig } from "./types.js";
-import { validateConfigReferences } from "./validation.js";
+import { validateConfigReferences, validateMemoryBudget } from "./validation.js";
 import { isPlainRecord, mergeYamlLayers } from "./yaml-merge.js";
 
 export async function safeStat(pathLike: string) {
@@ -122,6 +122,7 @@ export async function loadProjectConfig(path?: string): Promise<LoadedProjectCon
 
     const config = configSchema.parse(mergedYaml) as ProjectConfig;
     validateConfigReferences(config);
+    validateMemoryBudget(config);
 
     return {
       config,
@@ -180,6 +181,7 @@ export async function loadProjectConfig(path?: string): Promise<LoadedProjectCon
 
   const config = configSchema.parse(mergedYaml) as ProjectConfig;
   validateConfigReferences(config);
+  validateMemoryBudget(config);
 
   return {
     config,

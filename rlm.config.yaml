@@ -8,8 +8,8 @@ models:
       name: granite4.1:3b
       estimatedRamMb: 2048
     large:
-      name: granite4.1:30b
-      estimatedRamMb: 16000
+      name: granite4.1:3b
+      estimatedRamMb: 4096
 
 memory:
   maxRamMb: 4096

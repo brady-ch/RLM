@@ -29,15 +29,15 @@ export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
     tiers: {
       small: {
         name: "granite4.1:3b",
-        estimatedRamMb: 4096,
+        estimatedRamMb: 1024,
       },
       medium: {
-        name: "llama3.1:8b",
-        estimatedRamMb: 8192,
+        name: "granite4.1:3b",
+        estimatedRamMb: 2048,
       },
       large: {
-        name: "qwen2.5-coder:14b",
-        estimatedRamMb: 16000,
+        name: "granite4.1:3b",
+        estimatedRamMb: 4096,
       },
     },
   },
