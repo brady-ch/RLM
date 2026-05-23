@@ -62,4 +62,21 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ["ui/src/run-panel/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/advanced/**", "../advanced/*", "../../advanced/*"],
+              message:
+                "run-panel/ must not import from advanced/ (ui-shell-architecture.md boundary)",
+            },
+          ],
+        },
+      ],
+    },
+  },
 );
