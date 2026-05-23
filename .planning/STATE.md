@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.11
 milestone_name: UI Product Hardening
-status: planning
-last_updated: "2026-05-23T01:59:14.890Z"
-last_activity: 2026-05-23
+status: completed
+stopped_at: Completed Phase 78 plan 01
+last_updated: "2026-05-23T02:06:16.267Z"
+last_activity: 2026-05-22 — Phase 78 Legacy Panel Extraction complete
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 20
+  completed_phases: 2
+  total_plans: 2
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-23)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.  
-**Current focus:** Milestone v1.11 UI Product Hardening — Phase 77 Interaction Polish
+**Current focus:** Milestone v1.11 UI Product Hardening — Phase 79 Shell Boundaries
 
 ## Current Position
 
-Phase: 78 — Legacy Panel Extraction (not started)
+Phase: 79 — Shell Boundaries & Context Menu (not started)
 Plan: —
-Status: Phase 77 complete — ready for Phase 78
-Last activity: 2026-05-23 — Phase 77 Interaction Polish verified (UX-01–04)
+Status: Phase 78 complete — legacy panels extracted (SHEL-01, SHEL-05)
+Last activity: 2026-05-22 — Phase 78 Legacy Panel Extraction complete
 
 ## Performance Metrics
 
@@ -68,11 +69,10 @@ Items acknowledged and deferred at milestone close on 2026-05-23:
 
 ## Operator Next Steps
 
-- `/gsd-discuss-phase 77` or `/gsd-plan-phase 77` to start Phase 77 Interaction Polish
-- Recent UX fixes (canvas, tier refresh, UI lock) partially satisfy UX-01–04 — Phase 77 should verify and ratchet
+- `/gsd-plan-phase 79` for shell boundaries and context menu (SHEL-02–04)
 
 ## Session Continuity
 
 Last session: 2026-05-23
-Stopped at: Milestone v1.10 archived
+Stopped at: Completed Phase 78 plan 01
 Resume file: None

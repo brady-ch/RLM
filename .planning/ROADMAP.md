@@ -28,7 +28,7 @@
 **Milestone Goal:** Deliver a reliable, complete UI product surface on the Rust control server — shell boundaries enforced, daily interactions polished, first-run guidance added, operator UAT signed.
 
 - [x] **Phase 77: Interaction Polish** — Canvas, tier assignment, run/stop cancellation, UI server lifecycle (UX-01–04)
-- [ ] **Phase 78: Legacy Panel Extraction** — Move domain panels out of `legacy/panels.tsx` into `advanced/*` (SHEL-01, SHEL-05)
+- [x] **Phase 78: Legacy Panel Extraction** — Move domain panels out of `legacy/panels.tsx` into `advanced/*` (SHEL-01, SHEL-05)
 - [ ] **Phase 79: Shell Boundaries & Context Menu** — Run panel scope, workflow-only view, context menu Variant B (SHEL-02–04)
 - [ ] **Phase 80: First-Run Launcher** — Guided composer and session picker entry flow (LAUN-01–03)
 - [ ] **Phase 81: Operator UAT Sign-off** — Complete `72-UAT.md` browser checklist and ratchet verification (REG-01)
@@ -55,7 +55,7 @@
 2. Shared panel logic extracted to colocated components under `advanced/` or `shared/`
 3. `legacy/panels.tsx` deleted or reduced to re-exports with zero Advanced view imports
 4. `main.tsx` remains thin entry mounting AppShell only  
-**Plans:** TBD
+**Plans:** 1/1 complete (`78-01-SUMMARY.md`)
 
 ### Phase 79: Shell Boundaries & Context Menu
 **Goal:** Enforce workflow vs Advanced separation and wire node context menu actions per Variant B  
