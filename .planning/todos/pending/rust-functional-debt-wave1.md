@@ -4,7 +4,7 @@ title: Rust functional debt — Wave 1
 area: rust-runtime
 priority: high
 source: "$gsd-explore rust architecture"
-resolves_phase: 62
+resolves_phase: 76
 ---
 
 ## Problem

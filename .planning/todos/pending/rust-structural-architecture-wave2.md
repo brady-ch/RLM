@@ -5,7 +5,7 @@ area: rust-runtime
 priority: medium
 source: "$gsd-explore rust architecture"
 depends_on: rust-functional-debt-wave1.md
-resolves_phase: 68
+resolves_phase: 76
 ---
 
 ## Problem
