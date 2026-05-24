@@ -59,7 +59,7 @@ Full details: `.planning/milestones/v1.17-ROADMAP.md`
 - [x] **Phase 114: Control Server and UI Bootstrap Removal** (2026-05-24)
 - [x] **Phase 115: CLI Entry and Runtime Composition Removal** (2026-05-24)
 - [x] **Phase 116: Application Layer Removal**
-- [ ] **Phase 117: Domain and Ports Removal**
+- [x] **Phase 117: Domain and Ports Removal** (2026-05-24)
 - [ ] **Phase 118: Adapters, Plugins, and TS Tests Removal**
 - [ ] **Phase 119: npm Toolchain and CI Rust-Only Cleanup**
 - [ ] **Phase 120: Constrained Ollama Tool Envelope (Rust)**
@@ -244,12 +244,12 @@ Plans:
 2. `tests/domain/` deleted
 3. No imports from deleted paths in `ui/` or `scripts/`
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 117-01-PLAN.md — Delete src/domain/ and src/ports/ trees; update AGENTS.md
-- [ ] 117-02-PLAN.md — Delete tests/domain/ mirrored test tree
-- [ ] 117-03-PLAN.md — Prune domain/ports orphans and run Phase 117 gates
+- [x] 117-01-PLAN.md — Delete src/domain/ and src/ports/ trees; update AGENTS.md
+- [x] 117-02-PLAN.md — Delete tests/domain/ mirrored test tree
+- [x] 117-03-PLAN.md — Prune domain/ports orphans and run Phase 117 gates (completed 2026-05-24)
 
 ### Phase 118: Adapters, Plugins, and TS Tests Removal
 

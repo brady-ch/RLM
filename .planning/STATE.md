@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Node Runtime Retirement
 status: ready_for_verification
-last_updated: "2026-05-24T15:24:00Z"
+last_updated: "2026-05-24T15:36:00Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 32
-  completed_phases: 7
-  total_plans: 15
-  completed_plans: 18
+  completed_phases: 8
+  total_plans: 21
+  completed_plans: 21
   percent: 100
 ---
 
 # Project State
 
-**Current focus:** Phase 117 — domain-and-ports-removal (next)
+**Current focus:** Phase 118 — adapters-plugins-removal (next)
 
 ## Project Reference
 
@@ -25,7 +25,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-24)
 
 ## Current Position
 
-Phase: 116
+Phase: 117
 Plan: 3 of 3 complete
 Status: Phase complete — ready for verification
 Last activity: 2026-05-24
@@ -89,6 +89,9 @@ Items acknowledged and deferred at milestone close on 2026-05-24:
 - Phase 116: src/application/ and tests/application/ deleted; Rust application layer sole implementation
 - Phase 116: agent-safe-verify light/reg03 use cargo test -p rlm-core loader smoke
 - Phase 116: model_library_routes fixture uses explicit memory.maxRamMb for host-independent tests
+- Phase 117: src/domain/, src/ports/, tests/domain/ deleted; Rust crates/rlm-core canonical for domain and ports
+- Phase 117: UI labels comment references crates/rlm-core/src/domain/types.rs ExecutionStatus
+- Phase 117: Legacy Phase 40 peel/stitch scripts removed; orphan test helpers pruned
 
 ## Milestone Goal
 
@@ -96,8 +99,8 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Next Steps
 
-1. Phase 117: Domain and ports removal
-2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (116 complete)
+1. Phase 118: Adapters, plugins, and TS tests removal
+2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (117 complete)
 3. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
 4. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
 5. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
@@ -111,4 +114,4 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Operator Next Steps
 
-- Execute Phase 117 with `/gsd-execute-phase 117` or `/gsd-plan-phase 117` if not yet planned
+- Execute Phase 118 with `/gsd-execute-phase 118` or `/gsd-plan-phase 118` if not yet planned
