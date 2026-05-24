@@ -24,8 +24,8 @@
 - [ ] **Phase 98: Persistence Util Test Extraction**
 - [ ] **Phase 99: File Vector Index Test Extraction**
 - [x] **Phase 100: ANN Vector Index Architecture & Test Extraction**
-- [ ] **Phase 101: Run State Store Architecture & Test Extraction**
-- [ ] **Phase 102: Session Store Architecture & Test Extraction**
+- [x] **Phase 101: Run State Store Architecture & Test Extraction**
+- [x] **Phase 102: Session Store Architecture & Test Extraction**
 - [ ] **Phase 103: Memory Store Architecture & Test Extraction**
 
 **Adapters block**
@@ -137,6 +137,11 @@ Plans:
 **Success Criteria:**
 1. Inline tests extracted to `tests/persistence/`
 2. `cargo test -p rlm-core` passes
+
+**Plans:** 1 plan
+
+Plans:
+- [x] 102-01-PLAN.md — extract session_store.rs inline tests to tests/persistence/session_store.rs with #[path] stub; split into persist/verify submodules if >300 lines
 
 ### Phase 103: Memory Store Architecture & Test Extraction
 
