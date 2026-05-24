@@ -58,6 +58,26 @@ Outer transport and composition first, inner policy last:
 | 119 | `npm run check:rust` + `npm run build:ui` | `test:agent:verify:light` |
 | 120 | `cargo test -p rlm-core` | envelope tests per TOOL-CALLING doc |
 
+Use `node scripts/cargo-with-ram-gate.mjs --` prefix for golden fixture runs in agent/autonomous mode (RAM gate).
+
+### HTTP contract (post-114)
+
+- Golden fixtures in Rust only — `control_server_matches_golden_fixtures`
+- TS fixture test deleted Phase 114 — do not boot TS server in CI
+- Target `check:parity` after 114: `node scripts/cargo-with-ram-gate.mjs -- cargo test -p rlm-core control_server_matches_golden_fixtures`
+
+Detailed checklist: `.planning/phases/113-node-runtime-retirement-audit-and-cutover-gates/113-GATES.md`
+
+### Per-phase commands
+
+| Phase | Primary gate | Secondary smoke |
+|-------|-------------|-----------------|
+| 113 | `npm run test:rlm-runtime` | Audit docs exist (`113-AUDIT.md`, `113-GATES.md`) |
+| 114 | `cargo test ... control_server_matches_golden_fixtures` | `RLM_UI_DIST=ui/dist cargo run -p rlm-cli -- ui` |
+| 115–118 | `cargo test -p rlm-core` | `npm run rlm -- --help` |
+| 119 | `npm run check:rust` + `npm run build:ui` | `test:agent:verify:light` |
+| 120 | `cargo test -p rlm-core` | envelope tests per TOOL-CALLING doc |
+
 ### HTTP contract (post-114)
 
 - Golden fixtures in Rust only — `control_server_matches_golden_fixtures`
