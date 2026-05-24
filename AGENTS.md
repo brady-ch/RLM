@@ -1,25 +1,26 @@
 # Agents and architecture
 
-This repository is a **recursive language model CLI**: Rust `rlm-cli` is the sole CLI (Phase 115); application orchestration is Rust-only in `crates/rlm-core/src/application/`. TypeScript retains `domain/`, `ports/`, `adapters/`, and `plugins/` until Phase 117+. Recursion policy lives in `src/domain/` (orchestrator + `domain/recursion/` helpers), boundaries in `src/ports/`, infrastructure adapters under `src/adapters/` (`persistence/`, `models/`), plugin packages under `src/plugins/`. Rust counterparts: `crates/rlm-cli/` (CLI), `crates/rlm-core/` (plugins, interop, control server).
+This repository is a **recursive language model CLI**: Rust `rlm-cli` is the sole CLI (Phase 115); application orchestration, domain policy, and port contracts are Rust-only in `crates/rlm-core/`. TypeScript retains `adapters/` and `plugins/` until Phase 118+. Infrastructure adapters under `src/adapters/` (`persistence/`, `models/`), plugin packages under `src/plugins/`. Rust counterparts: `crates/rlm-cli/` (CLI), `crates/rlm-core/` (domain, ports, plugins, interop, control server).
 
 ## Concern map
 
 Canonical layer boundaries for `src/` and how supporting directories relate. **Dependency direction flows inward:** outer layers (CLI, application) orchestrate; inner layers (domain, ports) define policy and contracts; runtime and plugins wire capabilities at the composition root; adapters implement port contracts for I/O.
 
 ```
-~~application~~ ──► domain
- (Removed Phase 116)     ▲
-     │                   │ (types only)
-     ▼                   │
-  plugins/builtin ├── ports ◄── adapters (persistence, models)
+~~application~~ ──► ~~domain~~
+ (Removed Phase 116)  (Removed Phase 117)
+     │                   ▲
+     ▼                   │ (types only)
+  plugins/builtin ├── ~~ports~~ ◄── adapters (persistence, models)
+                    (Removed Phase 117)
 ```
 
 | Concern | Path | Role | May import |
 |---------|------|------|------------|
 | **cli** | `crates/rlm-cli/` | **Removed Phase 115** — Rust CLI only; was `src/cli/` | `rlm_core` public re-exports |
 | ~~**application**~~ | ~~`src/application/`~~ | **Removed Phase 116** — use cases in `crates/rlm-core/src/application/` | — |
-| **domain** | `src/domain/` | Recursion policy, agent profiles, shared result types | ports (interfaces), domain/recursion helpers only |
-| **ports** | `src/ports/` | Interface contracts (models, tools, stores, extension host) | nothing in `src/` except other ports |
+| ~~**domain**~~ | ~~`src/domain/`~~ | **Removed Phase 117** — recursion policy in `crates/rlm-core/src/domain/` | — |
+| ~~**ports**~~ | ~~`src/ports/`~~ | **Removed Phase 117** — port contracts in `crates/rlm-core/src/ports/` | — |
 | **runtime** | `crates/rlm-core/` (plugins, interop) | **Removed Phase 115** from TS — was `src/runtime/` | Rust composition in `rlm-core` |
 | **plugins** | `src/plugins/` | Manifest schema, loader, builtin/external packages | ports, adapters (tool impl), other plugins/builtin only |
 | **adapters** | `src/adapters/` | Infrastructure: persistence stores, model hosts, tracing | ports, domain (types), plugins/builtin re-exports for transitional imports |
@@ -37,7 +38,7 @@ Canonical layer boundaries for `src/` and how supporting directories relate. **D
 | `src/` concern | `tests/` path |
 |----------------|---------------|
 | ~~`application/*`~~ | **Removed Phase 116** — Rust tests in `crates/rlm-core/tests/application/` |
-| `domain/` | `tests/domain/` |
+| ~~`domain/`~~ | **Removed Phase 117** — Rust tests in `crates/rlm-core/tests/domain/` |
 | ~~`runtime/composition/`~~ | **Removed Phase 115** |
 | ~~`runtime/interop/`~~ | **Removed Phase 115** |
 | `plugins/` | `tests/plugins/` |
@@ -139,13 +140,11 @@ Run `npm run check:rust:boundaries` or `bash scripts/check-rust-boundaries.sh` t
 | ~~`src/runtime/`~~ | **Removed Phase 115** — composition/interop in `crates/rlm-core/` |
 | [`src/plugins/`](src/plugins/) | Plugin taxonomy: manifest schema, categories, builtin packages, legacy YAML compat, installed catalog discovery. |
 | [`src/plugins/builtin/`](src/plugins/builtin/) | First-party plugins (`shell/`, `files/`, `web/`) each with `rlm.plugin.json` + `register(host)`. |
-| [`src/domain/recursive-language-model.ts`](src/domain/recursive-language-model.ts) | Core recursion orchestrator: depth, classify, decompose, solve, summarize, synthesize, quality loop, tool rounds; enforces `maxModelCalls`. |
-| [`src/domain/recursion/`](src/domain/recursion/) | Pure helpers: [`prompt-utilities.ts`](src/domain/recursion/prompt-utilities.ts), [`budget-guard.ts`](src/domain/recursion/budget-guard.ts), [`execution-graph-sync.ts`](src/domain/recursion/execution-graph-sync.ts). |
-| [`src/domain/types.ts`](src/domain/types.ts) | Shared config and result types. |
-| [`src/ports/`](src/ports/) | Interfaces: language model, tools, trace, runtime logger, stores, extension host, etc. |
+| ~~`src/domain/`~~ | **Removed Phase 117** — recursion policy in [`crates/rlm-core/src/domain/`](crates/rlm-core/src/domain/) |
+| ~~`src/ports/`~~ | **Removed Phase 117** — port contracts in [`crates/rlm-core/src/ports/`](crates/rlm-core/src/ports/) |
 | [`src/adapters/`](src/adapters/) | Infrastructure only: persistence stores, model hosts, tracing; barrel [`src/adapters/index.ts`](src/adapters/index.ts) re-exports builtin tool classes from `plugins/builtin/` for tests and transitional imports. |
 | [`tests/helpers/`](tests/helpers/) | Shared mocks and fixtures for engine and integration tests. |
-| [`tests/domain/`](tests/domain/) | Domain and recursion tests mirroring `src/domain/`. |
+| ~~`tests/domain/`~~ | **Removed Phase 117** — Rust domain tests in `crates/rlm-core/tests/domain/` |
 | ~~`tests/application/`~~ | **Removed Phase 116** — Rust tests in `crates/rlm-core/tests/application/` |
 | ~~`tests/runtime/`~~ | **Removed Phase 115** |
 | [`tests/plugins/`](tests/plugins/) | Plugin manifest validation, loader discovery, and builtin tool tests. |
@@ -172,6 +171,8 @@ MCP/skill interop tools are registered separately under `src/runtime/interop/` a
 
 - **New built-in tools**: add under `src/plugins/builtin/<category>/` with `rlm.plugin.json`, tool implementation, and `register.ts`; register the package in `src/plugins/builtin/index.ts`. Do **not** add new tool implementations under `src/adapters/tools/`.
 - **New external plugins**: ship `rlm.plugin.json` + `register` export; enable via legacy `extensions.load` (compat shim) or installed catalog; allowlist approval still applies before `import()`.
+- **New recursion policy or domain helpers**: add under `crates/rlm-core/src/domain/` (orchestrator in `recursive_language_model.rs`, pure helpers in `domain/recursion/`).
+- **New port traits**: add under `crates/rlm-core/src/ports/`; keep domain free of concrete I/O.
 - **New persistence or model hosts**: add under `src/adapters/persistence/` or `src/adapters/models/` (TS transitional) or `crates/rlm-core/src/adapters/` / `persistence/` (Rust canonical); wire through bootstrap composition.
 - **New config fields**: extend schema/types in `crates/rlm-core/src/persistence/config/` and `crates/rlm-core/src/application/config/`; preserve validation messages with path context.
 - **New control-server endpoints**: add a handler module under `crates/rlm-core/src/control_server/handlers/`; keep session/graph authority in execution services.
