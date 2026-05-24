@@ -3,7 +3,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use reqwest::Client;
 
-use crate::domain::types::ToolExecutionResult;
+use crate::ports::ToolExecutionResult;
 use crate::plugins::tool_schemas;
 use crate::ports::Tool;
 

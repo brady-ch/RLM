@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use super::mcp_stdio_client::{block_on_async, parse_mcp_servers, McpServerConfig, StdioMcpClient};
-use crate::domain::types::ToolExecutionResult;
+use crate::ports::ToolExecutionResult;
 use crate::plugins::extension_host::ExtensionHost;
 use crate::ports::Tool;
 

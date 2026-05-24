@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use tokio::process::Command;
 
-use crate::domain::types::ToolExecutionResult;
+use crate::ports::ToolExecutionResult;
 use crate::plugins::tool_schemas;
 use crate::ports::Tool;
 

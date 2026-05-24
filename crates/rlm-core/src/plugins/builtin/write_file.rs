@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
-use crate::domain::types::ToolExecutionResult;
+use crate::ports::ToolExecutionResult;
 use crate::plugins::tool_schemas;
 use crate::ports::Tool;
 

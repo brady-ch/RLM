@@ -10,7 +10,7 @@ use crate::application::execution::{
     create_runtime_event, runtime_event_occurred_at_now, NoopRuntimeEventSink, RuntimeEvent,
     RuntimeEventInput, RuntimeEventSeverity, RuntimeEventSink,
 };
-use crate::domain::types::ToolExecutionResult;
+use crate::ports::ToolExecutionResult;
 use crate::plugins::tool_schemas;
 use crate::ports::Tool;
 

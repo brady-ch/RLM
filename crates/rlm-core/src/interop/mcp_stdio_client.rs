@@ -7,7 +7,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
-use crate::domain::types::ToolExecutionResult;
+use crate::ports::ToolExecutionResult;
 
 #[derive(Debug, Clone)]
 pub struct McpServerConfig {

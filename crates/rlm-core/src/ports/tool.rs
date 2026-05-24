@@ -1,7 +1,11 @@
 use async_trait::async_trait;
 use serde_json::{json, Value};
 
-use crate::domain::types::ToolExecutionResult;
+#[derive(Debug, Clone)]
+pub struct ToolExecutionResult {
+    pub content: String,
+    pub is_error: bool,
+}
 
 #[async_trait]
 pub trait Tool: Send + Sync {

@@ -885,10 +885,4 @@ pub struct LanguageModelResponse {
     pub tool_calls: Vec<ToolCallRequest>,
 }
 
-#[derive(Debug, Clone)]
-pub struct ToolExecutionResult {
-    pub content: String,
-    pub is_error: bool,
-}
-
 pub type SamplingOverride = HashMap<String, Value>;
