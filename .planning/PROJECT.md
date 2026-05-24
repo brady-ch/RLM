@@ -2,13 +2,13 @@
 
 ## Current State
 
-**Latest shipped milestone:** v1.17 — Rust Infrastructure Layer (2026-05-24)  
-**Requirements:** 73/75 satisfied (2 partial: PLUG-106-04, PLUG-107-05 — env RAM golden fixture)  
-**Audit status:** tech_debt accepted — `.planning/milestones/v1.17-MILESTONE-AUDIT.md`
+**Latest shipped milestone:** v1.18 — Node Runtime Retirement (2026-05-24)  
+**Requirements:** 33/33 satisfied (from PLAN/SUMMARY frontmatter; no REQUIREMENTS.md at close)  
+**Audit status:** tech_debt accepted — `.planning/milestones/v1.18-MILESTONE-AUDIT.md`
 
-v1.17 delivered Rust infrastructure decomposition: config moved to `persistence/config/`, inline tests extracted to mirrored `tests/{persistence,adapters,plugins}/` trees (16 `#[path]` stubs), oversized modules split (memory/run_state/session/ollama LM stores), ports consolidation (`ToolExecutionResult`, `AgentProfile`, `PluginRegistryConfig`), and empty `rust-boundary-baseline.json` with strict boundary checks passing. 60/60 lib unit tests pass; `control_server_matches_golden_fixtures` env-sensitive on low-RAM hosts.
+v1.18 delivered full TypeScript runtime retirement: entire `src/` tree deleted, `npm rlm` dispatches exclusively to Rust CLI, Tauri embeds Axum control server in-process, Vite dev proxy targets Rust APIs, npm toolchain is UI-only (`npm run check` = lint/format + `check:rust`), and Phase 120 constrained Ollama tool envelope (`useToolEnvelope`) wired through config → adapter → tool_round_loop. Process debt accepted: 6/8 phases lack formal VERIFICATION.md; Nyquist validation artifacts absent.
 
-**Prior shipped:** v1.16 Application Memory & Config; v1.15 Application Layer Architecture; v1.14 Rust Architecture & Test Layout (2026-05-23–24); v1.13 Runtime Safety & WSL Hardening (2026-05-24).
+**Prior shipped:** v1.17 Rust Infrastructure Layer (2026-05-24); v1.16 Application Memory & Config; v1.15 Application Layer Architecture; v1.14 Rust Architecture & Test Layout (2026-05-23–24); v1.13 Runtime Safety & WSL Hardening (2026-05-24).
 
 <details>
 <summary>Prior milestone context (v1.0–v1.16)</summary>
@@ -35,7 +35,7 @@ v1.3 shipped desktop product foundation: Tauri shell, model library, release sta
 
 ## What This Is
 
-A local recursive language model CLI and desktop app for developers. It accepts a prompt, plans a typed node graph for recursive execution via model-driven plan-from-node, lets users review and modify that graph through direct node controls (with optional chat refinement), binds planner-assigned expert presets per node, and executes approved topology through a shared graph executor — with visible execution state, explicit model routing, replayable graph workflow sidecars, artifact/run-state continuity, and hard stops for approvals or clarification. **v1.8:** the orchestration runtime is Rust (`rlm-core`); the React/Vite UI runs in Tauri against the Rust Axum control server.
+A local recursive language model CLI and desktop app for developers. It accepts a prompt, plans a typed node graph for recursive execution via model-driven plan-from-node, lets users review and modify that graph through direct node controls (with optional chat refinement), binds planner-assigned expert presets per node, and executes approved topology through a shared graph executor — with visible execution state, explicit model routing, replayable graph workflow sidecars, artifact/run-state continuity, and hard stops for approvals or clarification. **Production runtime is Rust-only** (`rlm-core` + `rlm-cli`); the React/Vite UI runs in Tauri against the Rust Axum control server.
 
 ## Core Value
 
@@ -135,10 +135,14 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Oversized infrastructure modules split (memory_store, run_state_store, session_store, ollama_language_model) — v1.17
 - ✓ `ToolExecutionResult`, `AgentProfile`, `PluginRegistryConfig` consolidated under ports — v1.17
 - ✓ Rust boundary baseline empty; strict `check-rust-boundaries.sh` passes — v1.17
+- ✓ TypeScript runtime tree (`src/`) fully deleted; Rust-only orchestration — v1.18
+- ✓ npm rlm dispatches exclusively to Rust CLI; Tauri in-process Axum server — v1.18
+- ✓ npm toolchain UI-only; `npm run check` = lint/format + check:rust — v1.18
+- ✓ Constrained Ollama tool envelope (`useToolEnvelope`) config-gated in Rust — v1.18
 
 ### Active
 
-(No active requirements — v1.18 Node Runtime Retirement queued in ROADMAP.md)
+(No active requirements — v1.19 UI Product Simplification queued in ROADMAP.md)
 
 ### Recently Validated (v1.12)
 
@@ -160,9 +164,9 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ## Context
 
-The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI in `ui/`, a Tauri shell under `src-tauri/`, and a Rust workspace under `crates/` (`rlm-core`). **Production desktop uses Rust-only runtime** — Tauri embeds the Axum control server in-process. TypeScript runtime layers remain for strangler parity (`RLM_RUNTIME=node|rust`) until v1.18 retirement.
+The repository is **Rust-only for orchestration** (`crates/rlm-core`, `crates/rlm-cli`) with a React/Vite UI in `ui/` and Tauri shell under `src-tauri/`. **Production desktop uses Rust-only runtime** — Tauri embeds the Axum control server in-process; no TypeScript runtime layers remain.
 
-**v1.17 state:** Zero inline tests in `src/persistence/`, `src/adapters/`, `src/plugins/`; 16 mirrored test stubs; `scripts/rust-boundary-baseline.json` empty. Primary verification: `npm run check:rust` (fmt, clippy, boundaries, test) plus `npm run test:agent:verify:light`.
+**v1.18 state:** Entire `src/` absent; npm toolchain is UI-only; primary verification: `npm run check` (lint/format + `check:rust`) and `npm run test:agent:verify:light`.
 
 ## Constraints
 
@@ -189,7 +193,7 @@ The repository has a layered TypeScript architecture (`src/application`, `src/do
 | v1.6 strangler extractions behind stable façades | Avoids flag-day breakage while shrinking hotspots | ✓ Good — v1.6 |
 | Dependency-cruiser ratcheted to error with empty baseline | Strict boundary enforcement after v1.7 taxonomy | ✓ Good — v1.7 |
 | v1.7 treats plugins as registration packages distinct from adapters | Enables auditable capability taxonomy | ✓ Good — v1.7 |
-| Rust runtime replaces Node for orchestration via HTTP/SSE strangler | Remove bundled Node; UI stays TS/React | ✓ Good — v1.8; v1.9 closed partial ports |
+| Rust runtime replaces Node for orchestration via HTTP/SSE strangler | Remove bundled Node; UI stays TS/React | ✓ Good — v1.8; v1.18 completed full TS runtime deletion |
 | Ollama remains default inference host during Rust migration | Avoid day-one llama.cpp bundling | ✓ Good — v1.8 |
 | Canvas-first UI shell (Phase 61) preserves HTTP/SSE contract | Frontend restructure only; Rust backend unchanged | ✓ Good — v1.8/v1.9 |
 | v1.9 Wave 1 before Wave 2 structural cleanup | Close functional debt before architecture refactors | ✓ Good — v1.9 |
@@ -201,17 +205,19 @@ The repository has a layered TypeScript architecture (`src/application`, `src/do
 | Rust boundary baseline ratcheted to zero deferrals | Infrastructure layers must not depend upward | ✓ Good — v1.17 Phase 107 |
 | Config resolution owned by persistence facade | Eliminate persistence→application baseline | ✓ Good — v1.17 Phase 97 |
 | `#[path]` stub pattern for mirrored Rust tests | Private access without pub test hooks | ✓ Good — v1.14–v1.17 |
+| v1.18 incremental TS layer deletion with per-phase gates | Avoid flag-day breakage during runtime cutover | ✓ Good — v1.18 Phases 113–119 |
+| Constrained tool envelope via Ollama JSON Schema format (Option A) | Small-model tool calling reliability post-cutover | ✓ Good — v1.18 Phase 120; default off |
 | Fine-tuning / LoRA explicitly out of scope | Compute and ecosystem cost | — Deferred |
 
 ## Next Milestone Goals
 
-**v1.18 Node Runtime Retirement** (Phases 113–120): delete TypeScript control server, CLI, application, domain, ports, adapters, and plugins; flip default runtime to Rust; npm toolchain cleanup; constrained Ollama tool envelope.
+**v1.19 UI Product Simplification** (Phases 121–128): audit UI surfaces, prune Advanced hub, simplify workflow view, consolidate styles/tokens, decompose AppShell, lazy-load routes, operator UAT sign-off.
 
-Queued after v1.18: v1.19 UI simplification, v1.20 desktop/run outcome, v1.21 inference expansion, v1.22 agent primitives, v1.23 docs audit.
+Queued after v1.19: v1.20 desktop/run outcome, v1.21 inference expansion, v1.22 agent primitives, v1.23 docs audit.
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-24 after v1.17 milestone archive*
+*Last updated: 2026-05-24 after v1.18 milestone archive*

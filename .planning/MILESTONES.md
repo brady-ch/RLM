@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.18 Node Runtime Retirement (Shipped: 2026-05-24)
+
+**Phases completed:** 8 phases (113–120), 24 plans  
+**Requirements:** 33/33 satisfied (from PLAN/SUMMARY frontmatter; no REQUIREMENTS.md at close)  
+**Audit status:** tech_debt accepted — `.planning/milestones/v1.18-MILESTONE-AUDIT.md`  
+**Known deferred items at close:** 6 (see STATE.md Deferred Items)
+
+**Key accomplishments:**
+
+- Entire TypeScript runtime tree (`src/`) deleted; Rust `crates/rlm-core` is sole orchestration layer
+- `npm rlm` dispatches exclusively to Rust CLI; Tauri embeds Axum control server in-process
+- Vite dev proxy targets Rust APIs; `check:parity` runs Rust golden fixtures only
+- npm toolchain Rust-only: `npm run check` = UI lint/format + `check:rust`; tsconfig/depcruise removed
+- Constrained Ollama tool envelope (`useToolEnvelope`) with JSON Schema format path wired through config → adapter → tool_round_loop
+
+**Archive:** `.planning/milestones/v1.18-ROADMAP.md`, `.planning/milestones/v1.18-REQUIREMENTS.md`, `.planning/milestones/v1.18-MILESTONE-AUDIT.md`
+
+---
+
 ## v1.17 Rust Infrastructure Layer (Shipped: 2026-05-24)
 
 **Phases completed:** 16 phases (97–112), 20 plans  

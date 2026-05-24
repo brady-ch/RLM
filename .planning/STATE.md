@@ -1,21 +1,21 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.18
-milestone_name: Node Runtime Retirement
-status: ready_for_verification
-last_updated: "2026-05-24T16:30:00Z"
-last_activity: 2026-05-24
+milestone: v1.19
+milestone_name: UI Product Simplification
+status: Awaiting next milestone
+last_updated: "2026-05-24T16:00:00Z"
+last_activity: 2026-05-24 — Milestone v1.18 completed and archived
 progress:
-  total_phases: 32
-  completed_phases: 11
-  total_plans: 27
-  completed_plans: 30
+  total_phases: 8
+  completed_phases: 8
+  total_plans: 24
+  completed_plans: 24
   percent: 100
 ---
 
 # Project State
 
-**Current focus:** Phase 120 — Constrained Ollama Tool Envelope (execution complete)
+**Current focus:** Planning v1.19 UI Product Simplification (Phase 121 next)
 
 ## Project Reference
 
@@ -23,26 +23,34 @@ See: `.planning/PROJECT.md` (updated 2026-05-24)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.
 
+**Current focus:** v1.19 UI Product Simplification — run `/gsd-new-milestone` or begin Phase 121
+
 ## Current Position
 
-Phase: 120
-Plan: 3 of 3 complete
-Status: Execution complete — ready for verification
-Last activity: 2026-05-24
+Phase: Milestone v1.18 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-05-24 — Milestone v1.18 archived
 
 ## Deferred Items
 
-Items acknowledged and deferred at milestone close on 2026-05-24:
+Items acknowledged and deferred at v1.18 milestone close on 2026-05-24:
+
+| Category | Item | Status |
+|----------|------|--------|
+| verification | Phases 114, 116–120 lack VERIFICATION.md | deferred |
+| nyquist | Zero *-VALIDATION.md across v1.18 phases (8 phases) | deferred |
+| uat | Tauri interactive dev window smoke (Phase 115) | deferred |
+| todo | 55+ pending backlog todos (architecture, rust-architecture) | deferred |
+
+Items from prior milestones (v1.17):
 
 | Category | Item | Status |
 |----------|------|--------|
 | verification | Phases 100–105, 107 lack VERIFICATION.md | deferred |
-| test_env | model_library_routes tier-select RAM flake on low-RAM hosts | resolved in 116-03 (explicit memory cap in fixture) |
-| cosmetic | Config loader tests at crates/rlm-core/tests/application/config/ (TS mirror removed Phase 116) | deferred |
+| cosmetic | Config loader tests at crates/rlm-core/tests/application/config/ | deferred |
 | nyquist | Zero *-VALIDATION.md across v1.17 phases (16 phases) | deferred |
 | requirement | PLUG-106-04, PLUG-107-05 partial (full cargo test env-dependent) | deferred |
-| todo | 56 pending backlog todos (architecture, rust-architecture) | deferred |
-| uat | Phase 89 UAT operator_signed (0 open scenarios) | acknowledged |
 
 ## Decisions
 
@@ -104,17 +112,16 @@ Items acknowledged and deferred at milestone close on 2026-05-24:
 
 ## Milestone Goal
 
-Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control server.
+Score UI surfaces, execute cut list, simplify workflow shell on Rust-only stack.
 
 ## Next Steps
 
-1. Phase 121: UI Vision Audit and Cut List
-2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (120 execution complete)
-3. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
-4. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
-5. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
-6. **v1.22 queued:** Phases 141–144 Agent Primitives (after v1.21)
-7. **v1.23 queued:** Phase 145 Documentation & Architecture Audit (after v1.22)
+1. Run `/gsd-new-milestone` to define v1.19 requirements, or begin Phase 121 directly
+2. **v1.19 queued:** Phases 121–128 UI Product Simplification
+3. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
+4. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
+5. **v1.22 queued:** Phases 141–144 Agent Primitives (after v1.21)
+6. **v1.23 queued:** Phase 145 Documentation & Architecture Audit (after v1.22)
 
 ## Roadmap Evolution
 
@@ -123,4 +130,6 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Operator Next Steps
 
-- Phase 120 executed 2026-05-24; gates green via test:agent:verify:light and cargo test -p rlm-core
+- Start v1.19 with `/gsd-new-milestone` or begin Phase 121: UI Vision Audit
+- Optional: run `/gsd-verifier` on phases 114, 116–120 to close verification debt
+- Optional: run `npm run tauri:dev` for Tauri interactive smoke (Phase 115 UAT)
