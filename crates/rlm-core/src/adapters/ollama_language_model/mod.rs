@@ -12,7 +12,7 @@ use thiserror::Error;
 use crate::domain::types::{ChatMessage, LanguageModelResponse, ToolCallRequest};
 use crate::ports::{CancellationController, LanguageModel, LanguageModelCompleteOptions};
 
-use response::apply_stream_line;
+use response::{apply_stream_line, map_envelope_content};
 
 #[derive(Debug, Error)]
 pub enum OllamaLanguageModelError {
@@ -33,12 +33,13 @@ pub struct OllamaLanguageModel {
     model: String,
     temperature: f32,
     allow_unconstrained_tool_calls: bool,
+    use_tool_envelope: bool,
     cancel: Option<CancellationController>,
 }
 
 impl Default for OllamaLanguageModel {
     fn default() -> Self {
-        Self::new(None, None, false)
+        Self::new(None, None, false, false)
     }
 }
 
@@ -47,14 +48,22 @@ impl OllamaLanguageModel {
         base_url: Option<&str>,
         model: Option<&str>,
         allow_unconstrained_tool_calls: bool,
+        use_tool_envelope: bool,
     ) -> Self {
-        Self::with_cancellation(base_url, model, allow_unconstrained_tool_calls, None)
+        Self::with_cancellation(
+            base_url,
+            model,
+            allow_unconstrained_tool_calls,
+            use_tool_envelope,
+            None,
+        )
     }
 
     pub fn with_cancellation(
         base_url: Option<&str>,
         model: Option<&str>,
         allow_unconstrained_tool_calls: bool,
+        use_tool_envelope: bool,
         cancel: Option<CancellationController>,
     ) -> Self {
         let client = Client::builder()
@@ -70,6 +79,7 @@ impl OllamaLanguageModel {
             model: model.unwrap_or("granite4.1:3b").to_string(),
             temperature: 0.2,
             allow_unconstrained_tool_calls,
+            use_tool_envelope,
             cancel,
         }
     }
@@ -107,9 +117,11 @@ impl OllamaLanguageModel {
         &self,
         messages: &[ChatMessage],
         tools: Option<&[Value]>,
+        format: Option<&Value>,
+        temperature: Option<f32>,
     ) -> Result<LanguageModelResponse, OllamaLanguageModelError> {
         let url = format!("{}/api/chat", self.base_url);
-        let body = self.build_chat_body(messages, tools);
+        let body = self.build_chat_body(messages, tools, format, temperature);
 
         let response = self.client.post(url).json(&body).send().await?;
         if !response.status().is_success() {
@@ -156,11 +168,41 @@ impl LanguageModel for OllamaLanguageModel {
         Some(self.model_name())
     }
 
+    fn use_tool_envelope(&self) -> bool {
+        self.use_tool_envelope
+    }
+
     async fn complete(
         &self,
         messages: &[ChatMessage],
         options: LanguageModelCompleteOptions<'_>,
     ) -> LanguageModelResponse {
+        if options.response_format.is_some()
+            && options.tools_enabled
+            && !options.tools.is_empty()
+        {
+            let schema = options.response_format.as_ref().unwrap();
+            match self
+                .chat_stream(messages, None, Some(schema), Some(0.0))
+                .await
+            {
+                Ok(response) => {
+                    return map_envelope_content(
+                        &response.content,
+                        &options.tools,
+                        &self.model,
+                    )
+                }
+                Err(err) => {
+                    return LanguageModelResponse {
+                        content: format!("Ollama inference failed: {err}"),
+                        model: Some(self.model.clone()),
+                        tool_calls: Vec::new(),
+                    };
+                }
+            }
+        }
+
         let tools = if options.tools_enabled && !options.tools.is_empty() {
             Some(Self::build_tool_definitions(&options))
         } else {
@@ -172,7 +214,7 @@ impl LanguageModel for OllamaLanguageModel {
             && tools.as_ref().is_some_and(|t| !t.is_empty());
 
         let result = if constrained {
-            let first = self.chat_stream(messages, None).await;
+            let first = self.chat_stream(messages, None, None, None).await;
             match first {
                 Ok(first_response) => {
                     if !first_response.tool_calls.is_empty() || first_response.content.is_empty() {
@@ -190,7 +232,10 @@ impl LanguageModel for OllamaLanguageModel {
                                 tool_calls: Some(first_response.tool_calls.clone()),
                             });
                         }
-                        match self.chat_stream(&extended, tools.as_deref()).await {
+                        match self
+                            .chat_stream(&extended, tools.as_deref(), None, None)
+                            .await
+                        {
                             Ok(second) => Ok(second),
                             Err(_) => Ok(first_response),
                         }
@@ -201,7 +246,8 @@ impl LanguageModel for OllamaLanguageModel {
                 Err(err) => Err(err),
             }
         } else {
-            self.chat_stream(messages, tools.as_deref()).await
+            self.chat_stream(messages, tools.as_deref(), None, None)
+                .await
         };
 
         match result {

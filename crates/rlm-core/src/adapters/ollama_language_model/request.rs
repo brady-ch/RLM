@@ -32,17 +32,22 @@ impl OllamaLanguageModel {
         &self,
         messages: &[ChatMessage],
         tools: Option<&[Value]>,
+        format: Option<&Value>,
+        temperature: Option<f32>,
     ) -> Value {
+        let temp = temperature.unwrap_or(self.temperature);
         let mut body = json!({
             "model": self.model,
             "messages": messages.iter().map(chat_message_to_ollama).collect::<Vec<_>>(),
             "stream": true,
             "keep_alive": 0,
             "options": {
-                "temperature": self.temperature,
+                "temperature": temp,
             },
         });
-        if let Some(tools) = tools {
+        if let Some(format) = format {
+            body["format"] = format.clone();
+        } else if let Some(tools) = tools {
             if !tools.is_empty() {
                 body["tools"] = json!(tools);
             }
