@@ -63,7 +63,7 @@ completed: 2026-05-24
 1. **Task 1: Create mirrored tests/adapters/ollama_embedding.rs** - `c248ad9` (feat)
 2. **Task 2: Replace inline tests with #[path] stub** - `87c1590` (feat)
 
-**Plan metadata:** pending (docs commit)
+**Plan metadata:** `f7264ce` (docs: complete plan)
 
 ## Files Created/Modified
 
