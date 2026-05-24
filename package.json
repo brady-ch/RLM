@@ -24,6 +24,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "dev:ui": "vite --config ui/vite.config.ts",
+    "dev:ui:full": "node -e \"console.log('Two-terminal UI dev (Rust API):\\\\n  Terminal 1: RLM_UI_DIST= cargo run -p rlm-cli -- ui --port 8787\\\\n  Terminal 2: RLM_CONTROL_PORT=8787 npm run dev:ui')\"",
     "build": "tsc -p tsconfig.json",
     "build:ui": "vite build --config ui/vite.config.ts",
     "tauri:dev": "tauri dev",
