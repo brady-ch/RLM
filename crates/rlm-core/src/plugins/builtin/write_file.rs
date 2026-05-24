@@ -129,16 +129,5 @@ impl Tool for WorkspaceFileWriteTool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn rejects_path_outside_workspace() {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let tool = WorkspaceFileWriteTool::new(temp.path());
-        let result = tool
-            .execute(serde_json::json!({ "path": "../outside.txt", "content": "x" }))
-            .await;
-        assert!(result.is_error);
-    }
-}
+#[path = "../../../tests/plugins/builtin/write_file.rs"]
+mod write_file_tests;
