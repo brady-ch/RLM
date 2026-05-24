@@ -2,6 +2,52 @@
 
 *A living document updated after each milestone. Lessons feed forward into future planning.*
 
+## Milestone: v1.13 — Runtime Safety & WSL Hardening
+
+**Shipped:** 2026-05-24  
+**Phases:** 4 | **Plans:** 4 | **Requirements:** 11/11 (REG-03 signed; WSL item 7 SKIP D-05)
+
+### What Was Built
+
+- RAM guard completion — live Ollama `/api/ps`, config validation, WSL auto cap, TypeScript parity (`ram_guard.rs`, `validateMemoryBudget`).
+- Execution concurrency — duplicate Run/Resume returns HTTP 409; `keep_alive: 0` ratchet; stop-triggered model unload.
+- Memory visibility — live `resourceGuard` on session poll/SSE, workflow overview budget panel, WSL operator runbook in `docs/UI.md`.
+- Agent-safe verification — adaptive RAM gates (`ram-gate.mjs`), sequential verify profiles, `test:reg03:preflight`.
+- REG-03 operator sign-off — items 1–6 PASS on native Linux; item 7 WSL stability SKIP (operator not on WSL).
+
+### What Worked
+
+- Building on v1.12 initial RAM guards (`8680496`) kept Phase 86 scope focused on completion, not greenfield.
+- RAM-gated test runners prevented OOM during autonomous verification on constrained hosts.
+- Operator UAT with explicit SKIP policy (D-05) avoided fake WSL verification while closing 6/7 checklist items.
+- Same-day concentrated execution across 4 phases after v1.12 close.
+
+### What Was Inefficient
+
+- Full chained preflight (`npm run test:reg03:preflight` before RAM gates) OOM'd during early autonomous runs — required mid-milestone script work.
+- No formal milestone audit before close — relied on requirements traceability and operator sign-off.
+- REG-02 visual UAT still unsigned from v1.12 — carried forward as optional.
+
+### Patterns Established
+
+- Adaptive RAM gates tiered by operation (minimal/compile/build) from host `MemAvailable`.
+- Agent verify profiles (`light`, `reg01`, `reg03`) run sequentially, not in parallel.
+- Operator checklist items can be SKIP with documented decision ID when environment unavailable.
+
+### Key Lessons
+
+1. Autonomous executors need memory-safe verification defaults before running full CI-equivalent preflight.
+2. WSL-specific UAT items need environment availability policy at plan time, not at sign-off.
+3. Live Ollama ps integration belongs in both guard enforcement and UI visibility — not one or the other.
+
+### Cost Observations
+
+- Model mix: autonomous `--auto` executor with RAM-gated verification after OOM incident.
+- Sessions: single-day close (2026-05-23) after v1.13 planning.
+- Notable: mid-milestone RAM gate scripts unblocked verification without reducing coverage.
+
+---
+
 ## Milestone: v1.10 — v1.9 Debt Closure
 
 **Shipped:** 2026-05-23  

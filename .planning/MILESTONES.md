@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.13 Runtime Safety & WSL Hardening (Shipped: 2026-05-24)
+
+**Phases completed:** 4 phases (86–89), 4 plans  
+**Requirements:** 11/11 (MEM-01–06, SAFE-01–04, REG-03)  
+**Audit status:** no formal milestone audit; REG-03 operator signed 2026-05-23 (item 7 WSL SKIP D-05)  
+**Known deferred items at close:** 3 backlog todos (see STATE.md Deferred Items)
+
+**Key accomplishments:**
+
+- RAM guard completion — live Ollama `/api/ps`, config validation, WSL auto cap, TypeScript parity
+- Execution concurrency — single-run mutex (409), `keep_alive: 0` ratchet, stop-triggered model unload
+- Memory visibility — live `resourceGuard` on session poll/SSE, workflow overview budget panel, WSL runbook
+- Agent-safe verification — adaptive RAM gates, `test:reg03:preflight`, sequential verify profiles
+- REG-03 operator sign-off — items 1–6 PASS on native Linux; WSL stability item SKIP
+
+**Archive:** `.planning/milestones/v1.13-ROADMAP.md`, `.planning/milestones/v1.13-REQUIREMENTS.md`
+
+---
+
 ## v1.12 UI Canvas Visual Polish (Shipped: 2026-05-23)
 
 **Phases completed:** 4 phases (82–85), 4 plans  

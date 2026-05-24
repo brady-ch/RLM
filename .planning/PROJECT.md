@@ -1,27 +1,21 @@
 # Recursive Language Model CLI
 
-## Current Milestone: v1.13 Runtime Safety & WSL Hardening
-
-**Goal:** Prevent OOM crashes on WSL when Ollama runs on the Windows host — enforce memory budgets end-to-end, serialize execution, and give operators visible guardrails plus runbooks.
-
-**Target features:**
-- Complete RAM guard on Rust + TypeScript paths (plan/run/tier/install with live Ollama `/api/ps`)
-- WSL conservative memory caps and config validation (`estimatedRamMb` vs `maxRamMb`)
-- Single-run concurrency and model unload on stop
-- UI memory visibility and WSL operator runbook
-- REG-03 operator safety UAT checklist
-
 ## Current State
 
-**Latest shipped milestone:** v1.12 — UI Canvas Visual Polish (2026-05-23)  
-**Audit status:** implementation complete — REG-02 visual UAT checklist archived unsigned
+**Latest shipped milestone:** v1.13 — Runtime Safety & WSL Hardening (2026-05-24)  
+**Requirements:** 11/11 (MEM-01–06, SAFE-01–04, REG-03)  
+**Audit status:** no formal milestone audit; REG-03 operator signed 2026-05-23 (item 7 WSL SKIP D-05)
 
-v1.12 delivered theme system (light/dark/system), high-contrast edges, dot-grid canvas, light node cards, Radix context menu, initial RAM guards (`ram_guard.rs`), and workflow overview/run-control fixes. v1.11 REG-01 remains the baseline operator sign-off for shell workflows.
+v1.13 delivered end-to-end memory guardrails: live Ollama `/api/ps` in Rust and TypeScript guards, config validation, WSL auto cap, single-run concurrency (409), stop-triggered model unload, UI `resourceGuard` with budget panel, WSL operator runbook, and agent-safe verification (`test:reg03:preflight`).
 
-**Prior shipped:** v1.11 UI Product Hardening (2026-05-23); v1.10 v1.9 Debt Closure; v1.9 Rust Runtime Hardening; v1.8 Rust Runtime Migration.
+**Prior shipped:** v1.12 UI Canvas Visual Polish (2026-05-23); v1.11 UI Product Hardening; v1.10 v1.9 Debt Closure; v1.9 Rust Runtime Hardening; v1.8 Rust Runtime Migration.
 
 <details>
-<summary>Prior milestone context (v1.0–v1.7)</summary>
+<summary>Prior milestone context (v1.0–v1.12)</summary>
+
+**v1.12** delivered theme system (light/dark/system), high-contrast edges, dot-grid canvas, light node cards, Radix context menu, initial RAM guards (`ram_guard.rs`), and workflow overview/run-control fixes. REG-02 visual UAT checklist archived unsigned.
+
+**v1.11** REG-01 operator browser UAT signed; shell architecture, first-run launcher, workflow overview, model RAM guards.
 
 v1.7 shipped concern-first taxonomy and full plugin manager UX: ARCH-02 boundary fixes and `ExtensionHostPort`; composition and interop wiring under `src/runtime/`; `application/` grouped by execution/graph/memory/plugins/control-server; unified plugin manifest schema with builtin migration to `src/plugins/builtin/`; canonical concern map in AGENTS.md with mirrored tests and strict dependency-cruiser enforcement; shared `PluginRegistryService` for CLI and control-server; remote HTTPS/git fetch-to-local install; UI plugin panel with CLI-aligned vocabulary. Milestone audit: 38/38 requirements.
 
@@ -124,12 +118,15 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Shell architecture — domain panels in `advanced/*`, workflow vs Advanced boundaries, context menu Variant B — v1.11 Phases 78–79
 - ✓ First-run launcher — guided composer and session picker — v1.11 Phase 80
 - ✓ REG-01 operator browser UAT signed on Rust-served UI — v1.11 Phase 81
+- ✓ Theme system, canvas visual polish, initial RAM guards — v1.12 Phases 82–85
+- ✓ Memory budget enforcement with live Ollama ps, config validation, WSL auto cap, TS parity — v1.13
+- ✓ Execution concurrency — single-run mutex, keep_alive ratchet, stop unload — v1.13
+- ✓ UI memory visibility — live resourceGuard, budget panel, WSL runbook — v1.13
+- ✓ REG-03 operator safety UAT signed (native Linux; WSL item 7 SKIP) — v1.13 Phase 89
 
 ### Active
 
-- **MEM-01–06**: Memory budget enforcement, WSL caps, Ollama ps integration, TS parity
-- **SAFE-01–04**: Execution concurrency, model lifecycle, UI memory visibility
-- **REG-03**: Operator WSL safety UAT checklist
+(No active requirements — start next milestone with `/gsd-new-milestone`)
 
 ### Recently Validated (v1.12)
 
@@ -153,7 +150,7 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI in `ui/`, a Tauri shell under `src-tauri/`, and a Rust workspace under `crates/` (`rlm-core` ~15k LOC). **Production desktop uses Rust-only runtime** — Tauri embeds the Axum control server in-process; Node is no longer bundled. TypeScript remains for UI, tooling, and strangler parity tests (`RLM_RUNTIME=node|rust`).
 
-Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` (fmt, clippy, boundary check, test). **471+** TS tests and **67+** Rust integration tests green at v1.10 close. Rust workspace has `application/`, decomposed handlers, boundary enforcement, UI resume wiring, and skill lifecycle events matching TypeScript depcruise rules.
+Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` (fmt, clippy, boundary check, test). Agent-safe verification: `npm run test:agent:verify:light` or `npm run test:reg03:preflight`. **471+** TS tests and **67+** Rust integration tests green at v1.10 close; v1.13 added RAM-gated preflight smoke.
 
 ## Constraints
 
@@ -187,17 +184,19 @@ Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` 
 | ARCH-06 evaluated defer over mandatory crate split | Measured compile iteration acceptable (7s/8s) | ✓ Good — v1.9 |
 | Rust boundary check baseline mode with strict opt-in | Transitional arcs documented; ratchet path preserved | ✓ Good — v1.9/v1.10 |
 | REG-01 operator UAT accepted as tech_debt at milestone close | Autonomous executor cannot substitute browser sign-off; automated gates green | ✓ Resolved — v1.11 operator signed `81-UAT.md` |
+| Adaptive RAM gates for agent verification | Full chained preflight OOM'd on WSL/desktop during autonomous runs | ✓ Good — v1.13 `ram-gate.mjs` + sequential verify profiles |
+| REG-03 WSL item 7 SKIP when operator not on WSL | Cannot verify WSL stability without WSL host | ✓ Accepted — D-05; items 1–6 signed on native Linux |
 | Fine-tuning / LoRA explicitly out of scope | Compute and ecosystem cost | — Deferred |
 
 ## Next Milestone Goals
 
-v1.12 UI Canvas Visual Polish — in planning. See `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md`.
+Not yet defined. Run `/gsd-new-milestone` to set scope.
 
-Deferred beyond v1.12: managed llama.cpp (INFR-01), multi-runner adapters, release hardening (REL-01/02), execution trace/output panel.
+Candidate themes from prior planning: managed llama.cpp (INFR-01), multi-runner adapters, release hardening (REL-01/02), execution trace/output panel, REG-02 visual re-verification.
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-23 after v1.12 milestone planning*
+*Last updated: 2026-05-24 after v1.13 milestone archive*
