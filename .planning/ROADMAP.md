@@ -40,7 +40,7 @@
 **Plugins block**
 - [ ] **Phase 106: Tool Result Type Ports Consolidation** — Move tool result to `ports/`; drop 4× `no-plugins-to-domain`
 - [x] **Phase 107: Plugin Runtime & Registry Boundary Cleanup**
-- [ ] **Phase 108: Plugin Manifest Test Extraction**
+- [x] **Phase 108: Plugin Manifest Test Extraction** (2026-05-24)
 - [ ] **Phase 109: Plugin Remote Fetch Test Extraction**
 - [ ] **Phase 110: Builtin Write File Test Extraction**
 - [ ] **Phase 111: Builtin Shell Test Extraction**

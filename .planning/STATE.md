@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Rust Infrastructure Layer
-status: verifying
-last_updated: "2026-05-24T07:26:30.270Z"
+status: ready_to_plan
+last_updated: "2026-05-24T12:00:00.000Z"
 progress:
   total_phases: 46
-  completed_phases: 16
+  completed_phases: 18
   total_plans: 21
-  completed_plans: 23
-  percent: 100
+  completed_plans: 24
+  percent: 39
 ---
 
 # Project State
 
-**Current focus:** Phase 99 — File Vector Index Test Extraction (verified 2026-05-24)
+**Current focus:** Phase 108 — Plugin Manifest Test Extraction (verified 2026-05-24)
 
 ## Current Position
 
-Phase: 99
-Plan: 01 complete
-Status: Complete (verified)
+Phase: 107
+Plan: Not started
+Status: Ready to plan
 
 ## Decisions
 
@@ -54,8 +54,8 @@ Extract inline tests to mirrored `tests/{persistence,adapters,plugins}/` trees, 
 
 ## Next Steps
 
-1. Phase 108: Plugin manifest test extraction
-2. Phases 109–112: Remaining plugin test extraction
+1. Phase 109: Plugin remote fetch test extraction
+2. Phases 110–112: Remaining builtin plugin test extraction
 3. **v1.18 queued:** Phases 113–120 Node Runtime Retirement (after v1.17)
 4. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
 5. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
