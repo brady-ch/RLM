@@ -26,8 +26,8 @@
 
 **Persistence block**
 - [ ] **Phase 97: Persistence Config Facade** — Move config loaders behind facade/port; drop `no-persistence-to-application` baseline — in progress
-- [ ] **Phase 98: Persistence Util Test Extraction**
-- [ ] **Phase 99: File Vector Index Test Extraction**
+- [x] **Phase 98: Persistence Util Test Extraction**
+- [x] **Phase 99: File Vector Index Test Extraction** (2026-05-24)
 - [x] **Phase 100: ANN Vector Index Architecture & Test Extraction**
 - [x] **Phase 101: Run State Store Architecture & Test Extraction**
 - [x] **Phase 102: Session Store Architecture & Test Extraction**
