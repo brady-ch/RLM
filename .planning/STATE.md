@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Node Runtime Retirement
 status: ready_to_plan
-last_updated: "2026-05-24T14:59:32.211Z"
+last_updated: "2026-05-24T14:59:43.359Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 32
