@@ -261,6 +261,13 @@ Plans:
 3. Entire `src/` directory absent
 4. `cargo test -p rlm-core` passes
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 118-01-PLAN.md — Delete src/adapters/ and src/plugins/ trees; update AGENTS.md
+- [ ] 118-02-PLAN.md — Delete mirrored TS adapter/plugin/runtime test trees
+- [ ] 118-03-PLAN.md — Prune orphans, remove src/, and run Phase 118 gates
+
 ### Phase 119: npm Toolchain and CI Rust-Only Cleanup
 
 **Goal:** Strip Node runtime from package.json and CI; keep Vite/UI build toolchain
