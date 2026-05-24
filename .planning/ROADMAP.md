@@ -319,6 +319,11 @@ Plans:
 2. Tests under `crates/rlm-core/tests/plugins/`
 3. `cargo test -p rlm-core` passes
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 110-01-PLAN.md — Extract write_file inline tests to tests/plugins/builtin/write_file.rs with 3-level #[path] stub
+
 ### Phase 111: Builtin Shell Test Extraction
 
 **Goal:** Extract inline tests from `builtin/shell.rs` to mirrored test tree
