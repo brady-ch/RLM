@@ -2,6 +2,7 @@
 
 ## Milestones
 
+- 📋 **v1.18 Node Runtime Retirement** — Phases 113–120 (planned; starts after v1.17)
 - 🚧 **v1.17 Rust Infrastructure Layer** — Phases 97–112 (in progress)
 - ✅ **v1.16 Rust Application Memory & Config** — Phases 92–96 (shipped 2026-05-24)
 - ✅ **v1.15 Rust Application Layer Architecture** — Phase 91 (shipped 2026-05-24)
@@ -41,6 +42,21 @@
 - [ ] **Phase 112: Builtin Web Tools Test Extraction** — `web_fetch` + `web_search`
 
 **Reference:** `.planning/notes/rust-infrastructure-layer-decomposition.md`
+
+### v1.18 Node Runtime Retirement (Phases 113–120)
+
+**Depends on:** v1.17 complete (Phase 112)
+
+- [ ] **Phase 113: Node Runtime Retirement Audit and Cutover Gates**
+- [ ] **Phase 114: Control Server and UI Bootstrap Removal**
+- [ ] **Phase 115: CLI Entry and Runtime Composition Removal**
+- [ ] **Phase 116: Application Layer Removal**
+- [ ] **Phase 117: Domain and Ports Removal**
+- [ ] **Phase 118: Adapters, Plugins, and TS Tests Removal**
+- [ ] **Phase 119: npm Toolchain and CI Rust-Only Cleanup**
+- [ ] **Phase 120: Constrained Ollama Tool Envelope (Rust)**
+
+**Reference:** `.planning/notes/rust-only-runtime-migration-decisions.md`
 
 ## Phase Details
 
@@ -109,6 +125,11 @@ Plans:
 1. Inline tests extracted to `tests/persistence/`
 2. Split applied only if post-extraction file exceeds readability threshold
 3. `cargo test -p rlm-core` passes
+
+**Plans:** 1 plan
+
+Plans:
+- [x] 101-01-PLAN.md — extract run_state_store.rs inline tests to tests/persistence/run_state_store.rs with #[path] stub; split into persist/mutation submodules if >300 lines
 
 ### Phase 102: Session Store Architecture & Test Extraction
 
@@ -229,5 +250,85 @@ Full details: `.planning/milestones/v1.15-ROADMAP.md`
 
 </details>
 
+### Phase 113: Node Runtime Retirement Audit and Cutover Gates
+
+**Goal:** Inventory TS-only paths; define per-layer verification gates; flip default runtime to Rust
+**Depends on:** Phase 112
+**Success Criteria:**
+1. TS-only path inventory documented with deletion order
+2. Default `npm rlm` dispatches to Rust binary (`RLM_RUNTIME=rust` or equivalent)
+3. Per-phase verification gates written in migration note
+4. Rust golden fixtures identified as sole HTTP contract gate post-114
+
+### Phase 114: Control Server and UI Bootstrap Removal
+
+**Goal:** Delete TypeScript control server; Rust Axum server is sole HTTP transport for UI
+**Depends on:** Phase 113
+**Success Criteria:**
+1. `src/application/control-server/` deleted
+2. `RLM_UI_DIST=ui/dist cargo run -p rlm-cli -- ui` serves all UI API routes
+3. `cargo test -p rlm-core control_server_matches_golden_fixtures` passes
+4. Parity scripts no longer boot TS server
+
+### Phase 115: CLI Entry and Runtime Composition Removal
+
+**Goal:** Delete Node CLI entry and runtime composition; Rust `rlm-cli` is sole CLI
+**Depends on:** Phase 114
+**Success Criteria:**
+1. `src/index.ts`, `src/cli/`, `src/runtime/` deleted
+2. `npm rlm ask` invokes Rust CLI end-to-end
+3. Tauri launches Rust server without Node child process
+4. All shipped subcommands available via `rlm-cli`
+
+### Phase 116: Application Layer Removal
+
+**Goal:** Delete `src/application/` after Rust application layer confirmed complete
+**Depends on:** Phase 115
+**Success Criteria:**
+1. `src/application/` deleted
+2. `tests/application/` deleted
+3. Ask, UI, graph workflow paths work via Rust only
+4. No remaining imports from deleted application modules
+
+### Phase 117: Domain and Ports Removal
+
+**Goal:** Delete TS domain orchestrator and port interfaces; Rust is canonical
+**Depends on:** Phase 116
+**Success Criteria:**
+1. `src/domain/` and `src/ports/` deleted
+2. `tests/domain/` deleted
+3. No imports from deleted paths in `ui/` or `scripts/`
+
+### Phase 118: Adapters, Plugins, and TS Tests Removal
+
+**Goal:** Delete remaining TS infrastructure and mirrored runtime tests
+**Depends on:** Phase 117
+**Success Criteria:**
+1. `src/adapters/`, `src/plugins/` deleted
+2. TS runtime test trees deleted (`tests/adapters/`, `tests/plugins/`, `tests/runtime/`, TS integration)
+3. Entire `src/` directory absent
+4. `cargo test -p rlm-core` passes
+
+### Phase 119: npm Toolchain and CI Rust-Only Cleanup
+
+**Goal:** Strip Node runtime from package.json and CI; keep Vite/UI build toolchain
+**Depends on:** Phase 118
+**Success Criteria:**
+1. No `bin.rlm` pointing at `dist/src/index.js`
+2. LangChain/runtime deps removed; UI deps retained
+3. `npm run check` = UI lint/format + `npm run check:rust`
+4. AGENTS.md updated for Rust-only runtime architecture
+
+### Phase 120: Constrained Ollama Tool Envelope (Rust)
+
+**Goal:** Post-cutover tool-call hardening via Ollama JSON-schema envelope (Option A from research doc)
+**Depends on:** Phase 119
+**Success Criteria:**
+1. `response_format` on `LanguageModelCompleteOptions`
+2. Envelope builder from registered tool schemas with closed name enum
+3. Ollama adapter uses `format` not `tools` when envelope mode enabled
+4. Config-gated; existing two-phase path unchanged when off
+5. Tests cover valid envelope parse and unknown-tool rejection
+
 ---
-*Roadmap updated: 2026-05-24 — v1.17 Phases 97–112 from /gsd-explore*
+*Roadmap updated: 2026-05-24 — v1.18 Phases 113–120 from /gsd-explore*
