@@ -31,7 +31,7 @@
 
 **Adapters block**
 - [x] **Phase 104: Ollama Embedding Test Extraction**
-- [ ] **Phase 105: Ollama Language Model Architecture & Test Extraction**
+- [x] **Phase 105: Ollama Language Model Architecture & Test Extraction**
 
 **Plugins block**
 - [ ] **Phase 106: Tool Result Type Ports Consolidation** — Move tool result to `ports/`; drop 4× `no-plugins-to-domain`
@@ -193,6 +193,12 @@ Plans:
 1. Inline tests extracted to `tests/adapters/`
 2. Split only if post-extraction readability requires it
 3. `cargo test -p rlm-core` passes
+
+**Plans:** 2 plans
+
+Plans:
+- [x] 105-01-PLAN.md — move CancellationController to ports; extract 3 inline tests to tests/adapters/ with #[path] stub
+- [x] 105-02-PLAN.md — split post-extraction source into request/response submodules (~320 lines exceeds 300 threshold)
 
 ### Phase 106: Tool Result Type Ports Consolidation
 
