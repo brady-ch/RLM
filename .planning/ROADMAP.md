@@ -55,7 +55,7 @@ Full details: `.planning/milestones/v1.17-ROADMAP.md`
 
 **Depends on:** v1.17 complete (Phase 112)
 
-- [ ] **Phase 113: Node Runtime Retirement Audit and Cutover Gates**
+- [x] **Phase 113: Node Runtime Retirement Audit and Cutover Gates** (2026-05-24)
 - [ ] **Phase 114: Control Server and UI Bootstrap Removal**
 - [ ] **Phase 115: CLI Entry and Runtime Composition Removal**
 - [ ] **Phase 116: Application Layer Removal**
