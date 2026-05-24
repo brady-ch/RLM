@@ -2,23 +2,23 @@
 gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Rust Infrastructure Layer
-status: verified
-last_updated: "2026-05-24T07:36:00Z"
+status: ready_to_plan
+last_updated: "2026-05-24T12:30:00.000Z"
 progress:
   total_phases: 46
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 21
   completed_plans: 24
-  percent: 39
+  percent: 41
 ---
 
 # Project State
 
-**Current focus:** Phase 106 — Tool Result Type Ports Consolidation (verified 2026-05-24)
+**Current focus:** Phase 109 — Plugin Remote Fetch Test Extraction (verified 2026-05-24)
 
 ## Current Position
 
-Phase: 106
+Phase: 109
 Plan: 01 complete
 Status: Complete (verified)
 
@@ -47,6 +47,8 @@ Status: Complete (verified)
 - PluginRegistryConfig injected at composition boundary; transitional baseline empty as of Phase 107
 - manifest.rs #[path] stub uses `../../tests/plugins/manifest.rs` (2 levels from src/plugins/)
 - manifest.rs post-extraction: 126 lines — no split needed (threshold 300)
+- remote_fetch.rs #[path] stub uses `../../tests/plugins/remote_fetch.rs` (2 levels from src/plugins/)
+- remote_fetch.rs post-extraction: 187 lines — no split needed (threshold 300)
 
 ## Milestone Goal
 
@@ -54,8 +56,8 @@ Extract inline tests to mirrored `tests/{persistence,adapters,plugins}/` trees, 
 
 ## Next Steps
 
-1. Phase 109: Plugin remote fetch test extraction
-2. Phases 110–112: Remaining builtin plugin test extraction
+1. Phase 110: Builtin write file test extraction
+2. Phases 111–112: Remaining builtin plugin test extraction
 3. **v1.18 queued:** Phases 113–120 Node Runtime Retirement (after v1.17)
 4. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
 5. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)

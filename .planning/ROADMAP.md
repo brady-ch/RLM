@@ -41,7 +41,7 @@
 - [x] **Phase 106: Tool Result Type Ports Consolidation** (2026-05-24)
 - [x] **Phase 107: Plugin Runtime & Registry Boundary Cleanup**
 - [x] **Phase 108: Plugin Manifest Test Extraction** (2026-05-24)
-- [ ] **Phase 109: Plugin Remote Fetch Test Extraction**
+- [x] **Phase 109: Plugin Remote Fetch Test Extraction** (2026-05-24)
 - [ ] **Phase 110: Builtin Write File Test Extraction**
 - [ ] **Phase 111: Builtin Shell Test Extraction**
 - [ ] **Phase 112: Builtin Web Tools Test Extraction** — `web_fetch` + `web_search`
