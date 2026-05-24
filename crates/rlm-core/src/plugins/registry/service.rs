@@ -14,7 +14,7 @@ use super::catalog::{
     LegacyExtensionEntry,
 };
 use super::types::{PluginListItem, PluginListSource, PluginMutationResult};
-use crate::persistence::LoadedProjectConfig;
+use crate::ports::PluginRegistryConfig;
 
 pub struct PluginRegistryService {
     pub(crate) project_root: PathBuf,
@@ -29,14 +29,11 @@ pub struct PluginRegistryService {
 }
 
 impl PluginRegistryService {
-    pub fn new(project_root: PathBuf, loaded_config: &LoadedProjectConfig) -> Self {
-        let config_file_path = loaded_config
-            .path
-            .clone()
-            .unwrap_or_else(|| project_root.join("rlm.config.yaml"));
-        let legacy_extensions = legacy_extensions_from_config(&loaded_config.config);
-        let allowlist_path = loaded_config
-            .config
+    pub fn new(project_root: PathBuf, config: &PluginRegistryConfig) -> Self {
+        let config_file_path = config.config_file_path.clone();
+        let legacy_extensions = legacy_extensions_from_config(&config.project_config);
+        let allowlist_path = config
+            .project_config
             .get("extensions")
             .and_then(|ext| ext.get("allowlist"))
             .and_then(|v| v.as_str())
@@ -58,7 +55,7 @@ impl PluginRegistryService {
             });
         Self {
             project_root: project_root.clone(),
-            project_config: loaded_config.config.clone(),
+            project_config: config.project_config.clone(),
             config_file_path,
             allowlist_path,
             legacy_extensions,

@@ -17,6 +17,7 @@ use crate::application::execution::{
 use crate::application::memory::SemanticMemoryIndex;
 use crate::model_library::ModelLibraryService;
 use crate::persistence::{load_project_config, LoadedProjectConfig, ProjectPaths};
+use crate::ports::PluginRegistryConfig;
 use crate::plugins::{
     build_runtime_context, BuildRuntimeContextInput, PluginRegistryService, RuntimeContext,
 };
@@ -68,7 +69,17 @@ impl RouterState {
             .as_ref()
             .and_then(|loaded| {
                 loaded.path.as_ref()?;
-                let registry = Arc::new(PluginRegistryService::new(project_root.clone(), loaded));
+                let registry_config = PluginRegistryConfig {
+                    project_config: loaded.config.clone(),
+                    config_file_path: loaded
+                        .path
+                        .clone()
+                        .unwrap_or_else(|| project_root.join("rlm.config.yaml")),
+                };
+                let registry = Arc::new(PluginRegistryService::new(
+                    project_root.clone(),
+                    &registry_config,
+                ));
                 let runtime = build_runtime_context(BuildRuntimeContextInput {
                     project_root: &project_root,
                     project_config: Some(&loaded.config),

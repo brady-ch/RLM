@@ -7,7 +7,7 @@ use rlm_core::interop::{
 };
 use rlm_core::persistence::LoadedProjectConfig;
 use rlm_core::plugins::{build_runtime_context, BuildRuntimeContextInput, PluginRegistryService};
-use rlm_core::ports::SkillLoader;
+use rlm_core::ports::{PluginRegistryConfig, SkillLoader};
 use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
@@ -200,7 +200,14 @@ fn plugin_doctor_warns_on_invalid_skill_search_path() {
         config,
         path: Some(temp.path().join("rlm.config.yaml")),
     };
-    let service = PluginRegistryService::new(temp.path().to_path_buf(), &loaded);
+    let registry_config = PluginRegistryConfig {
+        project_config: loaded.config.clone(),
+        config_file_path: loaded
+            .path
+            .clone()
+            .unwrap_or_else(|| temp.path().join("rlm.config.yaml")),
+    };
+    let service = PluginRegistryService::new(temp.path().to_path_buf(), &registry_config);
     let runtime = tokio::runtime::Runtime::new().expect("runtime");
     let result = runtime
         .block_on(service.doctor(false))

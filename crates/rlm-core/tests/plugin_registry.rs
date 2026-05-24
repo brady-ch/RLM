@@ -1,5 +1,6 @@
 use rlm_core::persistence::load_project_config;
 use rlm_core::plugins::PluginRegistryService;
+use rlm_core::ports::PluginRegistryConfig;
 
 fn sample_manifest(id: &str) -> serde_json::Value {
     serde_json::json!({
@@ -43,7 +44,14 @@ async fn registry_lists_builtins_and_installs_local_plugin() {
     std::fs::create_dir_all(&user_root).unwrap();
 
     let loaded = load_project_config(temp.path(), None).expect("config");
-    let registry = PluginRegistryService::new(temp.path().to_path_buf(), &loaded)
+    let registry_config = PluginRegistryConfig {
+        project_config: loaded.config.clone(),
+        config_file_path: loaded
+            .path
+            .clone()
+            .unwrap_or_else(|| temp.path().join("rlm.config.yaml")),
+    };
+    let registry = PluginRegistryService::new(temp.path().to_path_buf(), &registry_config)
         .with_catalog_overrides(user_catalog, user_root.clone());
 
     let source = write_sample_plugin(temp.path(), "demo.test.plugin");
