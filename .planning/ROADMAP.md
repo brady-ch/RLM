@@ -62,7 +62,7 @@ Full details: `.planning/milestones/v1.17-ROADMAP.md`
 - [x] **Phase 117: Domain and Ports Removal** (2026-05-24)
 - [x] **Phase 118: Adapters, Plugins, and TS Tests Removal** (2026-05-24)
 - [x] **Phase 119: npm Toolchain and CI Rust-Only Cleanup** (2026-05-24)
-- [ ] **Phase 120: Constrained Ollama Tool Envelope (Rust)**
+- [x] **Phase 120: Constrained Ollama Tool Envelope (Rust)**
 
 **Reference:** `.planning/notes/rust-only-runtime-migration-decisions.md`
 
@@ -296,12 +296,12 @@ Plans:
 4. Config-gated; existing two-phase path unchanged when off
 5. Tests cover valid envelope parse and unknown-tool rejection
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 120-01-PLAN.md — Port response_format + envelope builder (TDD)
-- [ ] 120-02-PLAN.md — Ollama adapter format-only envelope path
-- [ ] 120-03-PLAN.md — Config gate + tool_round_loop wiring + integration tests
+- [x] 120-01-PLAN.md — Port response_format + envelope builder (TDD)
+- [x] 120-02-PLAN.md — Ollama adapter format-only envelope path
+- [x] 120-03-PLAN.md — Config gate + tool_round_loop wiring + integration tests
 
 ### Phase 121: UI Vision Audit and Cut List
 

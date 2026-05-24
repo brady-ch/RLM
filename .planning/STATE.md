@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Node Runtime Retirement
 status: ready_for_verification
-last_updated: "2026-05-24T15:46:00Z"
+last_updated: "2026-05-24T16:30:00Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 32
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 27
-  completed_plans: 27
+  completed_plans: 30
   percent: 100
 ---
 
 # Project State
 
-**Current focus:** Phase 119 — npm toolchain cleanup (execution complete)
+**Current focus:** Phase 120 — Constrained Ollama Tool Envelope (execution complete)
 
 ## Project Reference
 
@@ -25,7 +25,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-24)
 
 ## Current Position
 
-Phase: 119
+Phase: 120
 Plan: 3 of 3 complete
 Status: Execution complete — ready for verification
 Last activity: 2026-05-24
@@ -97,6 +97,10 @@ Items acknowledged and deferred at milestone close on 2026-05-24:
 - Phase 118: npm run build/typecheck expected fail until Phase 119; depcruise src/ refs deferred to Phase 119
 - Phase 119: npm toolchain Rust-only; npm run check = UI lint/format + check:rust; tsc/depcruise removed
 - Phase 119: tests/depcruise removed; tests/ui/ and tests/fixtures/ are kept Node test paths
+- Phase 120: Per-tool const branches in envelope oneOf for args discrimination (Option A)
+- Phase 120: useToolEnvelope default false; two-phase constrained path unchanged when off
+- Phase 120: Ollama format and tools mutually exclusive per ollama#8095
+- Phase 120: Envelope requests use temperature 0; parse errors surface as inference failure content
 
 ## Milestone Goal
 
@@ -104,8 +108,8 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Next Steps
 
-1. Phase 120: Constrained Ollama Tool Envelope (Rust)
-2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (119 execution complete)
+1. Phase 121: UI Vision Audit and Cut List
+2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (120 execution complete)
 3. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
 4. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
 5. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
@@ -119,4 +123,4 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Operator Next Steps
 
-- Phase 119 executed 2026-05-24; gates green via test:agent:verify:light
+- Phase 120 executed 2026-05-24; gates green via test:agent:verify:light and cargo test -p rlm-core
