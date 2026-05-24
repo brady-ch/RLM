@@ -5,7 +5,7 @@ pub mod runtime_events;
 pub mod session;
 mod session_graph;
 
-pub use agent_registry::{resolve_agent, AgentProfile};
+pub use agent_registry::{filter_agent_tools, resolve_agent, AgentProfile};
 pub use cancellation::CancellationController;
 pub use process_shutdown::ProcessShutdown;
 pub use runtime_events::{

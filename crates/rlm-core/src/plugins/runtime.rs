@@ -6,8 +6,7 @@ use serde_json::Value;
 
 use super::builtin::load_builtins;
 use super::extension_host::ExtensionHost;
-use crate::application::execution::agent_registry::{filter_agent_tools, AgentProfile};
-use crate::ports::Tool;
+use crate::ports::{filter_agent_tools, AgentProfile, Tool};
 
 pub const COMPOSITION_INIT_ORDER: &[&str] = &[
     "plugins",

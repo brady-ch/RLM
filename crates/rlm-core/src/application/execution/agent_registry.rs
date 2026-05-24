@@ -1,15 +1,8 @@
-use std::collections::HashSet;
-
 use serde_json::Value;
 
-const KNOWN_AGENTS: &[&str] = &["default", "coding", "qa", "product_designer", "research"];
+pub use crate::ports::{filter_agent_tools, AgentProfile};
 
-#[derive(Debug, Clone)]
-pub struct AgentProfile {
-    pub id: String,
-    pub system_prompt: String,
-    pub tool_names: Vec<String>,
-}
+const KNOWN_AGENTS: &[&str] = &["default", "coding", "qa", "product_designer", "research"];
 
 pub fn is_known_expert_agent(agent_id: &str) -> bool {
     KNOWN_AGENTS.contains(&agent_id.trim())
@@ -52,27 +45,4 @@ pub fn resolve_agent(
         system_prompt,
         tool_names,
     })
-}
-
-pub fn filter_agent_tools(agent: &AgentProfile, allowlist: Option<&[String]>) -> AgentProfile {
-    let Some(allowlist) = allowlist else {
-        return agent.clone();
-    };
-    if allowlist.is_empty() {
-        return agent.clone();
-    }
-    let allowed: HashSet<_> = allowlist
-        .iter()
-        .map(|t| t.trim())
-        .filter(|t| !t.is_empty())
-        .collect();
-    AgentProfile {
-        tool_names: agent
-            .tool_names
-            .iter()
-            .filter(|name| allowed.contains(name.as_str()))
-            .cloned()
-            .collect(),
-        ..agent.clone()
-    }
 }

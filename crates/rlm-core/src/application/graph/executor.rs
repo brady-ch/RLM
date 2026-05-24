@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::application::execution::agent_registry::{filter_agent_tools, resolve_agent};
+use crate::application::execution::agent_registry::resolve_agent;
 use crate::application::execution::{InteractiveExecutionSession, SessionExecutionControl};
 use crate::domain::recursive_language_model::ExecutionControl;
 use crate::domain::run_state_persistence::RunStatePersistence;
@@ -11,7 +11,7 @@ use crate::domain::types::{
 };
 use crate::domain::RecursiveLanguageModel;
 use crate::plugins::resolve_tools_for_agent;
-use crate::ports::{LanguageModel, LanguageModelCompleteOptions};
+use crate::ports::{filter_agent_tools, LanguageModel, LanguageModelCompleteOptions};
 
 use super::execution_order::topological_execution_order;
 use super::run_state_sync::{persist_resume_cursor, persist_run_state_status, prepare_run_state};
