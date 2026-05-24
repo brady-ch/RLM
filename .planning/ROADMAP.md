@@ -22,7 +22,7 @@
 - [ ] **Phase 97: Persistence Config Facade** — Move config loaders behind facade/port; drop `no-persistence-to-application` baseline — in progress
 - [ ] **Phase 98: Persistence Util Test Extraction**
 - [ ] **Phase 99: File Vector Index Test Extraction**
-- [ ] **Phase 100: ANN Vector Index Architecture & Test Extraction**
+- [x] **Phase 100: ANN Vector Index Architecture & Test Extraction**
 - [ ] **Phase 101: Run State Store Architecture & Test Extraction**
 - [ ] **Phase 102: Session Store Architecture & Test Extraction**
 - [ ] **Phase 103: Memory Store Architecture & Test Extraction**
@@ -100,7 +100,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 100-01-PLAN.md — extract ann_vector_index.rs inline tests to tests/persistence/ann_vector_index.rs with #[path] stub; conditional split if >300 lines
+- [x] 100-01-PLAN.md — extract ann_vector_index.rs inline tests to tests/persistence/ann_vector_index.rs with #[path] stub; conditional split if >300 lines
 
 ### Phase 101: Run State Store Architecture & Test Extraction
 
