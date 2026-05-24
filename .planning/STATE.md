@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Rust Infrastructure Layer
-status: planning
-last_updated: "2026-05-24T07:36:39.712Z"
+status: ready_to_plan
+last_updated: "2026-05-24T14:35:00Z"
 progress:
   total_phases: 48
-  completed_phases: 19
+  completed_phases: 20
   total_plans: 24
-  completed_plans: 27
-  percent: 100
+  completed_plans: 29
+  percent: 42
 ---
 
 # Project State
 
-**Current focus:** Phase 112 — Builtin Web Tools Test Extraction (complete 2026-05-24)
+**Current focus:** Phase 113 — Node Runtime Retirement Audit and Cutover Gates (ready to plan)
 
 ## Current Position
 

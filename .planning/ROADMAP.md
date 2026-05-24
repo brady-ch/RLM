@@ -340,11 +340,16 @@ Plans:
 ### Phase 112: Builtin Web Tools Test Extraction
 
 **Goal:** Extract inline tests from `web_fetch.rs` and `web_search.rs` to mirrored test tree
+**Plans:** 2 plans
 **Success Criteria:**
 1. Zero inline test bodies in both web tool modules
 2. Tests under `crates/rlm-core/tests/plugins/`
 3. `cargo test -p rlm-core` passes
 4. `scripts/rust-boundary-baseline.json` empty (strict mode passes)
+
+Plans:
+- [x] 112-01-PLAN.md — Extract web_fetch inline tests to tests/plugins/builtin/web_fetch.rs with 3-level #[path] stub
+- [x] 112-02-PLAN.md — Extract web_search inline tests to tests/plugins/builtin/web_search.rs with 3-level #[path] stub
 
 <details>
 <summary>✅ v1.16 Rust Application Memory & Config (Phases 92–96) — SHIPPED 2026-05-24</summary>
