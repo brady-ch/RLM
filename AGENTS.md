@@ -1,22 +1,23 @@
 # Agents and architecture
 
-This repository is a **recursive language model CLI**: Rust `rlm-cli` is the sole CLI (Phase 115); TypeScript retains application/domain/adapters/plugins layers until Phase 116+. Orchestration lives in `src/application/`, recursion policy in `src/domain/` (orchestrator + `domain/recursion/` helpers), boundaries in `src/ports/`, infrastructure adapters under `src/adapters/` (`persistence/`, `models/`), plugin packages under `src/plugins/`. Rust counterparts: `crates/rlm-cli/` (CLI), `crates/rlm-core/` (plugins, interop, control server).
+This repository is a **recursive language model CLI**: Rust `rlm-cli` is the sole CLI (Phase 115); application orchestration is Rust-only in `crates/rlm-core/src/application/`. TypeScript retains `domain/`, `ports/`, `adapters/`, and `plugins/` until Phase 117+. Recursion policy lives in `src/domain/` (orchestrator + `domain/recursion/` helpers), boundaries in `src/ports/`, infrastructure adapters under `src/adapters/` (`persistence/`, `models/`), plugin packages under `src/plugins/`. Rust counterparts: `crates/rlm-cli/` (CLI), `crates/rlm-core/` (plugins, interop, control server).
 
 ## Concern map
 
 Canonical layer boundaries for `src/` and how supporting directories relate. **Dependency direction flows inward:** outer layers (CLI, application) orchestrate; inner layers (domain, ports) define policy and contracts; runtime and plugins wire capabilities at the composition root; adapters implement port contracts for I/O.
 
 ```
-application ──► domain
-     │              ▲
-     ▼              │ (types only)
+~~application~~ ──► domain
+ (Removed Phase 116)     ▲
+     │                   │ (types only)
+     ▼                   │
   plugins/builtin ├── ports ◄── adapters (persistence, models)
 ```
 
 | Concern | Path | Role | May import |
 |---------|------|------|------------|
 | **cli** | `crates/rlm-cli/` | **Removed Phase 115** — Rust CLI only; was `src/cli/` | `rlm_core` public re-exports |
-| **application** | `src/application/` | Use cases: execution, graph, memory, config, plugin manager facade | domain, ports |
+| ~~**application**~~ | ~~`src/application/`~~ | **Removed Phase 116** — use cases in `crates/rlm-core/src/application/` | — |
 | **domain** | `src/domain/` | Recursion policy, agent profiles, shared result types | ports (interfaces), domain/recursion helpers only |
 | **ports** | `src/ports/` | Interface contracts (models, tools, stores, extension host) | nothing in `src/` except other ports |
 | **runtime** | `crates/rlm-core/` (plugins, interop) | **Removed Phase 115** from TS — was `src/runtime/` | Rust composition in `rlm-core` |
@@ -35,11 +36,7 @@ application ──► domain
 
 | `src/` concern | `tests/` path |
 |----------------|---------------|
-| `application/config/` | `tests/application/config/` |
-| `application/bootstrap/` | `tests/application/bootstrap/` |
-| `application/graph/` | `tests/application/graph/` |
-| `application/memory/` | `tests/application/memory/` |
-| `application/execution/` | `tests/application/execution/` |
+| ~~`application/*`~~ | **Removed Phase 116** — Rust tests in `crates/rlm-core/tests/application/` |
 | `domain/` | `tests/domain/` |
 | ~~`runtime/composition/`~~ | **Removed Phase 115** |
 | ~~`runtime/interop/`~~ | **Removed Phase 115** |
@@ -68,7 +65,7 @@ Boundary rules live in `.dependency-cruiser.js` at **error** severity. Rule name
 | `no-runtime-to-cli` | runtime → cli | Runtime composition stays below CLI; CLI logger/shutdown injected at bootstrap |
 | `no-builtin-plugin-to-external-loader` | plugins/builtin → plugins/external | Built-ins must not depend on external install machinery |
 
-**Optional follow-on (not enforced):** `no-application-to-adapters` — application modules should reach concrete stores and model hosts through `application/bootstrap/adapters.ts` (composition root) rather than importing `src/adapters/` directly. Documented exceptions until a later phase centralizes remaining call sites: `application/execution/agent-runner.ts` (`InMemoryTrace`), `application/memory/*` (vector index types), and `application/control-server/types.ts` (store type references for handler wiring).
+**Optional follow-on (not enforced):** `no-application-to-adapters` — Rust application modules should reach concrete stores and model hosts through bootstrap composition rather than importing adapters directly.
 
 Run `npm run depcruise:strict` (or `dependency-cruise src --config .dependency-cruiser.js`) to verify. `npm run check` uses strict depcruise without `--ignore-known`; `dependency-cruiser-baseline.json` remains empty.
 
@@ -138,12 +135,7 @@ Run `npm run check:rust:boundaries` or `bash scripts/check-rust-boundaries.sh` t
 |------|------|
 | ~~`src/index.ts`~~ | **Removed Phase 115** — CLI is `crates/rlm-cli/` |
 | ~~`src/cli/`~~ | **Removed Phase 115** — args/render in Rust CLI |
-| [`src/application/config/`](src/application/config/) | Project YAML: types/schema, defaults, loader, validation, runtime resolution, model override, starter seed; [`project-config.ts`](src/application/project-config.ts) re-exports the public facade. |
-| [`src/application/bootstrap/`](src/application/bootstrap/) | Transitional bootstrap facade (broken imports until Phase 116). |
-| [`src/application/execution/`](src/application/execution/) | Agent/workflow runners, execution control, model provider/library, runtime events. |
-| [`src/application/graph/`](src/application/graph/) | Graph planner, executor, workflow store/serializer/types. |
-| [`src/application/memory/`](src/application/memory/) | Memory manager, resolver, semantic index. |
-| [`src/application/plugins/`](src/application/plugins/) | Plugin manager application facade (list/doctor UX in later phases); re-exports discovery types from `src/plugins/`. |
+| ~~`src/application/`~~ | **Removed Phase 116** — use cases in [`crates/rlm-core/src/application/`](crates/rlm-core/src/application/) |
 | ~~`src/runtime/`~~ | **Removed Phase 115** — composition/interop in `crates/rlm-core/` |
 | [`src/plugins/`](src/plugins/) | Plugin taxonomy: manifest schema, categories, builtin packages, legacy YAML compat, installed catalog discovery. |
 | [`src/plugins/builtin/`](src/plugins/builtin/) | First-party plugins (`shell/`, `files/`, `web/`) each with `rlm.plugin.json` + `register(host)`. |
@@ -154,7 +146,7 @@ Run `npm run check:rust:boundaries` or `bash scripts/check-rust-boundaries.sh` t
 | [`src/adapters/`](src/adapters/) | Infrastructure only: persistence stores, model hosts, tracing; barrel [`src/adapters/index.ts`](src/adapters/index.ts) re-exports builtin tool classes from `plugins/builtin/` for tests and transitional imports. |
 | [`tests/helpers/`](tests/helpers/) | Shared mocks and fixtures for engine and integration tests. |
 | [`tests/domain/`](tests/domain/) | Domain and recursion tests mirroring `src/domain/`. |
-| [`tests/application/`](tests/application/) | Application concern tests (config, bootstrap, graph, memory, execution). |
+| ~~`tests/application/`~~ | **Removed Phase 116** — Rust tests in `crates/rlm-core/tests/application/` |
 | ~~`tests/runtime/`~~ | **Removed Phase 115** |
 | [`tests/plugins/`](tests/plugins/) | Plugin manifest validation, loader discovery, and builtin tool tests. |
 | [`tests/adapters/`](tests/adapters/) | Adapter infrastructure tests (persistence stores, etc.). |
@@ -180,10 +172,10 @@ MCP/skill interop tools are registered separately under `src/runtime/interop/` a
 
 - **New built-in tools**: add under `src/plugins/builtin/<category>/` with `rlm.plugin.json`, tool implementation, and `register.ts`; register the package in `src/plugins/builtin/index.ts`. Do **not** add new tool implementations under `src/adapters/tools/`.
 - **New external plugins**: ship `rlm.plugin.json` + `register` export; enable via legacy `extensions.load` (compat shim) or installed catalog; allowlist approval still applies before `import()`.
-- **New persistence or model hosts**: add under `src/adapters/persistence/` or `src/adapters/models/` and wire through bootstrap composition.
-- **New config fields**: extend schema/types in `src/application/config/`, preserve validation messages with path context, and re-export through `project-config` if public.
-- **New control-server endpoints**: add a handler module under `control-server/handlers/`; keep session/graph authority in execution services.
-- **New agents**: add a block under `agents` in `rlm.config.yaml` (models + tools) and extend [`agent-registry.ts`](src/application/agent-registry.ts) if you need a dedicated profile constructor.
+- **New persistence or model hosts**: add under `src/adapters/persistence/` or `src/adapters/models/` (TS transitional) or `crates/rlm-core/src/adapters/` / `persistence/` (Rust canonical); wire through bootstrap composition.
+- **New config fields**: extend schema/types in `crates/rlm-core/src/persistence/config/` and `crates/rlm-core/src/application/config/`; preserve validation messages with path context.
+- **New control-server endpoints**: add a handler module under `crates/rlm-core/src/control_server/handlers/`; keep session/graph authority in execution services.
+- **New agents**: add a block under `agents` in `rlm.config.yaml` (models + tools); extend Rust agent registry in `crates/rlm-core/src/application/execution/` if you need a dedicated profile constructor.
 - **New workflows**: add under `workflows` in YAML; ensure agent ids exist in the registry.
 
 For install, usage, and configuration fields, start with [`README.md`](README.md).
