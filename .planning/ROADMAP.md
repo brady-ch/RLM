@@ -206,11 +206,17 @@ Plans:
 
 **Goal:** Delete Node CLI entry and runtime composition; Rust `rlm-cli` is sole CLI
 **Depends on:** Phase 114
+**Plans:** 3 plans
 **Success Criteria:**
 1. `src/index.ts`, `src/cli/`, `src/runtime/` deleted
 2. `npm rlm ask` invokes Rust CLI end-to-end
 3. Tauri launches Rust server without Node child process
 4. All shipped subcommands available via `rlm-cli`
+
+Plans:
+- [ ] 115-01-PLAN.md — Rust-only rlm-runtime dispatcher + package.json Node script removal
+- [ ] 115-02-PLAN.md — Delete src/index.ts, src/cli/, src/runtime/, tests/runtime/
+- [ ] 115-03-PLAN.md — Prune cli-dependent tests, verification gates, Tauri smoke checkpoint
 
 ### Phase 116: Application Layer Removal
 
