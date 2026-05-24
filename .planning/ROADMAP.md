@@ -30,7 +30,7 @@
 - [x] **Phase 103: Memory Store Architecture & Test Extraction**
 
 **Adapters block**
-- [ ] **Phase 104: Ollama Embedding Test Extraction**
+- [x] **Phase 104: Ollama Embedding Test Extraction**
 - [ ] **Phase 105: Ollama Language Model Architecture & Test Extraction**
 
 **Plugins block**
@@ -180,6 +180,11 @@ Plans:
 1. Zero inline test bodies in `ollama_embedding.rs`
 2. Tests mirrored under `crates/rlm-core/tests/adapters/`
 3. `cargo test -p rlm-core` passes
+
+**Plans:** 1 plan
+
+Plans:
+- [x] 104-01-PLAN.md — extract ollama_embedding.rs inline test to tests/adapters/ with #[path] stub; establishes adapters test mirror
 
 ### Phase 105: Ollama Language Model Architecture & Test Extraction
 

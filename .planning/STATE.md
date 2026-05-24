@@ -3,23 +3,23 @@ gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Rust Infrastructure Layer
 status: in_progress
-last_updated: "2026-05-24T09:25:00.000Z"
+last_updated: "2026-05-24T09:38:00.000Z"
 progress:
-  total_phases: 29
-  completed_phases: 10
-  total_plans: 13
-  completed_plans: 13
-  percent: 34
+  total_phases: 30
+  completed_phases: 11
+  total_plans: 14
+  completed_plans: 14
+  percent: 38
 ---
 
 # Project State
 
-**Current focus:** Phase 103 — Memory Store Architecture & Test Extraction
+**Current focus:** Phase 104 — Ollama Embedding Test Extraction
 
 ## Current Position
 
-Phase: 103
-Plan: 02 complete
+Phase: 104
+Plan: 01 complete
 Status: Complete
 
 ## Decisions
@@ -35,6 +35,8 @@ Status: Complete
 - FileSessionStore post-extraction: 403 lines — split into persist/verify submodules
 - memory_store/mod.rs #[path] stub uses `../../../tests/persistence/memory_store.rs` (3 levels from subdirectory)
 - FileMemoryStore split into scope/episodic/audit submodules (scope.rs 279 lines)
+- ollama_embedding.rs #[path] stub uses `../../tests/adapters/ollama_embedding.rs` (2 levels from src/adapters/)
+- tests/adapters/ mirror tree established for adapters block (first adapters phase)
 
 ## Milestone Goal
 
@@ -42,8 +44,8 @@ Extract inline tests to mirrored `tests/{persistence,adapters,plugins}/` trees, 
 
 ## Next Steps
 
-1. Phase 104: Ollama embedding test extraction
-2. Phases 105–112: Adapters + plugin boundary cleanup + test extraction
+1. Phase 105: Ollama language model architecture & test extraction
+2. Phases 106–112: Adapters + plugin boundary cleanup + test extraction
 3. **v1.18 queued:** Phases 113–120 Node Runtime Retirement (after v1.17)
 4. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
 
