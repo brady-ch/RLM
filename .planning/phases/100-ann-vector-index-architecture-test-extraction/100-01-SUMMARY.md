@@ -67,7 +67,7 @@ Each task was committed atomically:
 2. **Task 2: Replace inline tests with #[path] stub** - `6bbebb5` (refactor)
 3. **Task 3: Evaluate readability threshold** - no code commit (262 lines ≤ 300; no split)
 
-**Plan metadata:** `b0884b6` (docs: complete plan)
+**Plan metadata:** `b872285` (docs: complete plan)
 
 ## Files Created/Modified
 - `crates/rlm-core/tests/persistence/ann_vector_index.rs` - Extracted helpers and 2 ANN index tests
@@ -99,4 +99,4 @@ None - no external service configuration required.
 - FOUND: crates/rlm-core/tests/persistence/ann_vector_index.rs
 - FOUND: f3f616b
 - FOUND: 6bbebb5
-- FOUND: b0884b6
+- FOUND: b872285
