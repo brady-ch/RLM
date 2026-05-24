@@ -3,7 +3,9 @@ title: Save Graph as Fixed Workflow
 planted_date: 2026-05-19
 updated_date: 2026-05-19
 trigger_condition: "When node-centric dynamic planning (Phase 18 / PLAN-01..07) is shippable in UI and API"
-status: active
+status: archived
+archived_date: 2026-05-24
+shipped_in: "Phase 34 (v1.6 Graph Workflow Export/Import)"
 ---
 
 ## Intent

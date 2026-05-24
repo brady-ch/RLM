@@ -3,6 +3,9 @@ title: Loop Controller for Structured Artifacts and Implementation
 planted_date: 2026-05-14
 trigger_condition: "After answer-quality refinement loop nodes prove useful and the project is ready to extend the loop primitive beyond natural-language answers"
 status: active
+updated: 2026-05-24
+resolves_milestone: v1.22
+resolves_phases: "141–142"
 ---
 
 ## Intent

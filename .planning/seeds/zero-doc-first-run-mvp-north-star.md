@@ -2,7 +2,9 @@
 title: Zero-Doc First Run MVP North Star
 planted_date: 2026-05-11
 trigger_condition: "Any MVP planning or tradeoff decision that could add setup friction for first-time users"
-status: active
+status: archived
+archived_date: 2026-05-24
+shipped_in: "North-star principle; v1.1 Phase 10 packaging + v1.20 Phase 135 UAT criterion"
 ---
 
 ## Intent

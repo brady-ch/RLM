@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Rust Infrastructure Layer
 status: in_progress
-last_updated: "2026-05-24T07:30:00.000Z"
+last_updated: "2026-05-24T12:00:00.000Z"
 progress:
-  total_phases: 34
+  total_phases: 44
   completed_phases: 15
   total_plans: 19
   completed_plans: 22
-  percent: 100
+  percent: 34
 ---
 
 # Project State
@@ -58,8 +58,12 @@ Extract inline tests to mirrored `tests/{persistence,adapters,plugins}/` trees, 
 2. Phases 109–112: Remaining plugin test extraction
 3. **v1.18 queued:** Phases 113–120 Node Runtime Retirement (after v1.17)
 4. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
+5. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
+6. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
+7. **v1.22 queued:** Phases 141–144 Agent Primitives (after v1.21)
+8. **v1.23 queued:** Phase 145 Documentation & Architecture Audit (after v1.22)
 
 ## Roadmap Evolution
 
-- Phases 113–120 added: **v1.18 Node Runtime Retirement** — incremental TS deletion, Rust-only runtime, constrained tool envelope post-cutover (from /gsd-explore 2026-05-24)
-- Phases 121–128 added: **v1.19 UI Product Simplification** — audit-first prune, canvas-first shell, code/bundle lightening (from /gsd-explore 2026-05-24)
+- Phases 136–145 added: **v1.21 Inference**, **v1.22 Agent Primitives**, **v1.23 Docs Audit** — seed backlog resolution (from /gsd-explore 2026-05-24)
+- Nine seeds archived as shipped; four active seeds linked to v1.21–v1.22 phases

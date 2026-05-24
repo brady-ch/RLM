@@ -3,6 +3,9 @@ title: Managed llama.cpp Runtime
 planted_date: 2026-05-14
 trigger_condition: "After local Hugging Face GGUF model browsing, installation, registry, and external-runtime handoff are stable"
 status: active
+updated: 2026-05-24
+resolves_milestone: v1.21
+resolves_phases: "137–138"
 ---
 
 ## Intent

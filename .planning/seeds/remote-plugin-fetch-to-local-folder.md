@@ -2,7 +2,9 @@
 title: Remote Plugin Fetch to Local Folder
 planted_date: 2026-05-14
 trigger_condition: "After local folder plugin install, enable, disable, list, and doctor flows are stable"
-status: active
+status: archived
+archived_date: 2026-05-24
+shipped_in: "Rust plugins/remote_fetch.rs + registry install; Phase 109 test extraction"
 ---
 
 ## Intent

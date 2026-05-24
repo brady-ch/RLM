@@ -2,7 +2,9 @@
 title: First-Class Plugin Taxonomy for Future Tools
 planted_date: 2026-05-22
 trigger_condition: "Before adding the next batch of built-in tools or formalizing external tool plugin APIs"
-status: active
+status: archived
+archived_date: 2026-05-24
+shipped_in: "Phase 46 (v1.7 Adapter & Plugin Taxonomy)"
 ---
 
 ## Intent

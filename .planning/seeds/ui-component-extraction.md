@@ -2,7 +2,9 @@
 title: UI Component Extraction
 planted_date: 2026-05-22
 trigger_condition: "When v1.8 milestone audit/archive completes, or when UI sidebar breakage blocks REG-01 / desktop UAT sign-off on the Rust runtime"
-status: active
+status: archived
+archived_date: 2026-05-24
+shipped_in: "Phase 61 (v1.8 UI Shell Rewrite); continued in v1.19 Phases 121–128"
 ---
 
 ## Intent

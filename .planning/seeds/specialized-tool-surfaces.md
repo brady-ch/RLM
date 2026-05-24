@@ -3,6 +3,9 @@ title: Specialized Tool Surfaces per Expert Role
 planted_date: 2026-05-19
 trigger_condition: "When expert-team v1 (allowlist-only shared tools) shows repeated constrained-tool-call or task failures for a specific role on small models"
 status: active
+updated: 2026-05-24
+resolves_milestone: v1.22
+resolves_phases: "143–144"
 ---
 
 ## Intent

@@ -2,7 +2,9 @@
 title: Rust Crate Split
 planted_date: 2026-05-22
 trigger_condition: "When Wave 2 structural work (A1–A4) stabilizes module boundaries AND cargo test/check iteration routinely exceeds team tolerance — e.g. full rlm-core test suite >2–3 min on dev machines, or frequent merge conflicts on unrelated modules due to single-crate rebuild fan-out"
-status: active
+status: archived
+archived_date: 2026-05-24
+shipped_in: "Phase 71 (v1.9 Optional Crate Split); re-eval triggers remain in seed body"
 ---
 
 ## Intent

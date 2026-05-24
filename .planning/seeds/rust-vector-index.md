@@ -2,7 +2,9 @@
 title: Rust Vector Index
 planted_date: 2026-05-22
 trigger_condition: "When migrating runtime to Rust or when session memory retrieval latency/degraded states indicate JSON linear scan is insufficient — e.g. thousands of indexed records, slow reopen, or UI-visible search timeouts"
-status: active
+status: archived
+archived_date: 2026-05-24
+shipped_in: "AnnVectorIndex + USEARCH in Rust; Phase 100 test extraction"
 ---
 
 ## Intent

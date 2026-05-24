@@ -2,7 +2,9 @@
 title: Vector Memory Retrieval
 planted_date: 2026-05-20
 trigger_condition: "When Phase 24 session memory store and MemoryResolver are shipped, stable, and covered by tests — and nodes with 'relevant memory entries' in contextPolicy need semantic retrieval beyond structured scopes and episodic summaries"
-status: active
+status: archived
+archived_date: 2026-05-24
+shipped_in: "v1.4 session memory block (Phases 25–28)"
 ---
 
 ## Intent

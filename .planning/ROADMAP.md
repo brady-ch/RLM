@@ -2,6 +2,9 @@
 
 ## Milestones
 
+- 📋 **v1.23 Documentation & Architecture Audit** — Phase 145 (planned; starts after v1.22)
+- 📋 **v1.22 Agent Primitives** — Phases 141–144 (planned; starts after v1.21)
+- 📋 **v1.21 Inference Expansion** — Phases 136–140 (planned; starts after v1.20)
 - 📋 **v1.20 Product Desktop & Run Outcome** — Phases 129–135 (planned; starts after v1.19)
 - 📋 **v1.19 UI Product Simplification** — Phases 121–128 (planned; starts after v1.18)
 - 📋 **v1.18 Node Runtime Retirement** — Phases 113–120 (planned; starts after v1.17)
@@ -74,6 +77,41 @@
 - [ ] **Phase 128: UI Simplification UAT and Sign Off**
 
 **Reference:** `.planning/notes/ui-product-simplification-decisions.md`
+
+### v1.21 Inference Expansion (Phases 136–140)
+
+**Depends on:** v1.20 complete (Phase 135)
+
+**Seeds:** `managed-llama-cpp-runtime`, `multi-runner-adapters`
+
+- [ ] **Phase 136: HF GGUF Install UX Hardening** — Stable browse/install/doctor; registry records tagged with `runnerKind`
+- [ ] **Phase 137: Managed llama.cpp Process Supervisor** — Start/stop/restart, crash detection, idle unload, port selection, readiness
+- [ ] **Phase 138: llama.cpp LanguageModelPort Adapter** — OpenAI-compatible HTTP to supervised server; constrained tool flags
+- [ ] **Phase 139: Multi-Runner Registry and Cloud API Adapters** — Cloud APIs + vLLM optional; uniform sampling cascade
+- [ ] **Phase 140: Inference Milestone UAT** — GPU backend matrix smoke, install size doc, runner parity verification
+
+**Reference:** `.planning/seeds/managed-llama-cpp-runtime.md`, `.planning/seeds/multi-runner-adapters.md`
+
+### v1.22 Agent Primitives (Phases 141–144)
+
+**Depends on:** v1.21 complete (Phase 140)
+
+**Seeds:** `loop-controller-structured-artifacts-and-implementation`, `specialized-tool-surfaces`
+
+- [ ] **Phase 141: Loop Controller — Structured Artifact Refinement** — Schema-valid outputs, pluggable gate policies, audit trail
+- [ ] **Phase 142: Loop Controller — Implementation Refinement** — Draft/critique/refine cycle with explicit completion gates
+- [ ] **Phase 143: Specialized Tool Surfaces — Failure Audit** — Expert-team regression fixtures; role failure measurement
+- [ ] **Phase 144: Specialized Tool Surfaces — Role Wrappers** — Built-in role-specific tools (`web_fetch_docs`, `grep_repo`, etc.)
+
+**Reference:** `.planning/seeds/loop-controller-structured-artifacts-and-implementation.md`, `.planning/seeds/specialized-tool-surfaces.md`
+
+### v1.23 Documentation & Architecture Audit (Phase 145)
+
+**Depends on:** v1.22 complete (Phase 144)
+
+- [ ] **Phase 145: Documentation and Architecture Audit** — Refresh AGENTS.md, PROJECT.md, research docs; codebase boundary eval; seed backlog review
+
+**Reference:** `.planning/notes/seed-backlog-resolution-2026-05-24.md`
 
 ### v1.20 Product Desktop & Run Outcome (Phases 129–135)
 
@@ -267,6 +305,11 @@ Plans:
 1. Zero inline test bodies in `remote_fetch.rs`
 2. Tests under `crates/rlm-core/tests/plugins/`
 3. `cargo test -p rlm-core` passes
+
+**Plans:** 1 plan
+
+Plans:
+- [ ] 109-01-PLAN.md — Extract remote_fetch inline tests to tests/plugins/remote_fetch.rs with #[path] stub
 
 ### Phase 110: Builtin Write File Test Extraction
 
@@ -546,5 +589,105 @@ Full details: `.planning/milestones/v1.15-ROADMAP.md`
 3. Builtin plugins bundled; external install path documented in UI
 4. REG-style UAT: install → pick folder → run → see Outcome panel result
 
+### Phase 136: HF GGUF Install UX Hardening
+
+**Goal:** Stable HF GGUF browse/install/doctor flows; registry records ready for runner binding
+**Depends on:** Phase 135
+**Success Criteria:**
+1. Model library UI covers search, install progress, failure states, and doctor for HF GGUF entries
+2. Registry records include `runnerKind` and local artifact path metadata
+3. Install size and RAM suitability surfaced before download
+4. `cargo test -p rlm-core` model_library tests pass
+
+### Phase 137: Managed llama.cpp Process Supervisor
+
+**Goal:** Supervised llama.cpp child process with lifecycle management
+**Depends on:** Phase 136
+**Success Criteria:**
+1. Start, stop, restart, crash detection, and idle unload implemented
+2. Port selection and readiness checks with visible status in UI/API
+3. Log capture available for operator diagnostics
+4. Platform GPU backend selection documented (CUDA/Metal/Vulkan matrix)
+
+### Phase 138: llama.cpp LanguageModelPort Adapter
+
+**Goal:** Route agent completions through supervised llama.cpp server
+**Depends on:** Phase 137
+**Success Criteria:**
+1. `LanguageModelPort` adapter targets supervised llama.cpp OpenAI-compatible endpoint
+2. `constrainedToolCalling` and degraded-mode flags honored
+3. Model library entries bind GGUF registry records to running supervisor instance
+4. Integration tests cover readiness failure and recovery paths
+
+### Phase 139: Multi-Runner Registry and Cloud API Adapters
+
+**Goal:** Extend runner registry beyond Ollama and llama.cpp
+**Depends on:** Phase 138
+**Success Criteria:**
+1. Cloud API adapters (OpenAI/Anthropic/OpenRouter) wired via HTTP adapter pattern
+2. Optional vLLM adapter behind advanced settings
+3. Sampling cascade (global → model → node) applies uniformly; unsupported params surfaced in UI
+4. `runnerKind` + `runnerModelId` metadata on model library entries
+
+### Phase 140: Inference Milestone UAT
+
+**Goal:** Operator sign-off on inference expansion milestone
+**Depends on:** Phase 139
+**Success Criteria:**
+1. UAT: HF install → llama.cpp supervise → complete via adapter → cloud API fallback
+2. GPU backend smoke tests documented per platform
+3. Install size and test matrix documented (Ollama + llama.cpp coexistence decision recorded)
+4. VERIFICATION.md signed
+
+### Phase 141: Loop Controller — Structured Artifact Refinement
+
+**Goal:** Extend loop primitive for schema-valid structured outputs
+**Depends on:** Phase 140
+**Success Criteria:**
+1. Loop cycles improve schema-valid artifacts until validation passes or cap reached
+2. Pluggable gate policies combine model judgment with deterministic schema validation
+3. Append-only iteration history, stop reason, and best-of-progress selection preserved
+4. Phase-specific model overrides (draft/critique/refine/gate) supported
+
+### Phase 142: Loop Controller — Implementation Refinement
+
+**Goal:** Code-change refinement loop with explicit completion gates
+**Depends on:** Phase 141
+**Success Criteria:**
+1. Draft → critique → refine cycle for implementation changes
+2. Completion gates require explicit pass criteria (tests, lint, or operator accept)
+3. Audit trail matches answer-quality loop model
+4. `cargo test -p rlm-core` loop parity tests pass
+
+### Phase 143: Specialized Tool Surfaces — Failure Audit
+
+**Goal:** Measure expert-team tool failures before adding role-specific surfaces
+**Depends on:** Phase 142
+**Success Criteria:**
+1. Regression fixtures for small-model constrained calling per expert role
+2. Documented failure modes: schema errors, wrong tool selection, argument parse failures
+3. Go/no-go criteria for Phase 144 wrappers defined from fixture results
+4. Allowlist tightening alone evaluated as alternative
+
+### Phase 144: Specialized Tool Surfaces — Role Wrappers
+
+**Goal:** Role-specific built-in tool surfaces where audit proves need
+**Depends on:** Phase 143
+**Success Criteria:**
+1. At least one role wrapper shipped (e.g. `web_fetch_docs` or `grep_repo`) behind allowlist
+2. Thin wrappers over shared core adapters; no forked execution stacks
+3. Reduced tool-round count or parse failures in regression fixtures vs baseline
+4. New tools map to `agents.*.tools` allowlists
+
+### Phase 145: Documentation and Architecture Audit
+
+**Goal:** Refresh project docs and evaluate codebase against current architecture
+**Depends on:** Phase 144
+**Success Criteria:**
+1. AGENTS.md, PROJECT.md, and `.planning/research/ARCHITECTURE.md` updated for post-v1.22 state
+2. Boundary rules re-evaluated (`depcruise`, `check-rust-boundaries`); stale baseline entries removed
+3. Seed backlog reviewed — archived seeds confirmed, active seeds have trigger conditions
+4. Codebase eval report: dead code, doc drift, and deferred-debt items catalogued with disposition
+
 ---
-*Roadmap updated: 2026-05-24 — v1.20 Phases 129–135 from /gsd-explore*
+*Roadmap updated: 2026-05-24 — v1.21–v1.23 Phases 136–145 from /gsd-explore*

@@ -2,8 +2,9 @@
 title: Rust Application Layer Architecture Pass
 planted_date: 2026-05-23
 trigger_condition: "When Phase 90 (domain layer test extraction + boundary ratchet) completes AND cargo test -p rlm-core domain/* is green with mirrored tests/domain/ layout"
-status: active
-updated: 2026-05-24
+status: archived
+archived_date: 2026-05-24
+shipped_in: "Phases 91–96 (v1.15–16)"
 ---
 
 ## Intent

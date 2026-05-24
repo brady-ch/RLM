@@ -3,6 +3,9 @@ title: Multi-Runner Adapters Beyond Bundled Ollama
 planted_date: 2026-05-20
 trigger_condition: "When v1.3 desktop product (bundled Ollama) ships and users request direct GGUF control, llama.cpp server, vLLM, or cloud API runners without Ollama as intermediary"
 status: active
+updated: 2026-05-24
+resolves_milestone: v1.21
+resolves_phases: "139–140"
 ---
 
 ## Intent
