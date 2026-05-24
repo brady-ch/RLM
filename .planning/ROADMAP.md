@@ -223,11 +223,17 @@ Plans:
 
 **Goal:** Delete `src/application/` after Rust application layer confirmed complete
 **Depends on:** Phase 115
+**Plans:** 3 plans
 **Success Criteria:**
 1. `src/application/` deleted
 2. `tests/application/` deleted
 3. Ask, UI, graph workflow paths work via Rust only
 4. No remaining imports from deleted application modules
+
+Plans:
+- [ ] 116-01-PLAN.md — Delete src/application/ tree and update AGENTS.md
+- [ ] 116-02-PLAN.md — Delete tests/application/ and update agent-safe-verify light profile
+- [ ] 116-03-PLAN.md — Prune orphaned application imports and run Phase 116 gates
 
 ### Phase 117: Domain and Ports Removal
 
