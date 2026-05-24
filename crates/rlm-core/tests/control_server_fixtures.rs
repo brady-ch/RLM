@@ -18,6 +18,9 @@ fn normalize_session_snapshot(mut body: Value) -> Value {
             guard.remove("freeRamMb");
             guard.remove("availableRamMb");
             guard.remove("wslDetected");
+            // Host RAM varies; contract shape is tested elsewhere (reg03_uat_smoke).
+            guard.remove("runBlocked");
+            guard.remove("runBlockedReason");
         }
     }
     body
@@ -55,7 +58,7 @@ async fn control_server_matches_golden_fixtures() {
     assert_eq!(status, reqwest::StatusCode::OK);
     assert_eq!(
         normalize_session_snapshot(body),
-        fixture("session-idle.json")
+        normalize_session_snapshot(fixture("session-idle.json"))
     );
 
     let (status, body) = get_json(&base, "/api/run-mode").await;
