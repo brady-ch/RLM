@@ -67,11 +67,15 @@ Plans:
 ### Phase 98: Persistence Util Test Extraction
 
 **Goal:** Extract inline tests from `persistence/util.rs` to mirrored `tests/persistence/` tree
+**Plans:** 1 plan
 **Success Criteria:**
 1. Zero inline test bodies in `util.rs`
 2. Tests mirrored under `crates/rlm-core/tests/persistence/`
 3. `#[path]` stub pattern used where private access needed
 4. `cargo test -p rlm-core` passes
+
+Plans:
+- [ ] 98-01-PLAN.md — extract util.rs inline tests to tests/persistence/util.rs with #[path] stub
 
 ### Phase 99: File Vector Index Test Extraction
 
