@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use rlm_core::persistence::load_project_config;
 use rlm_core::plugins::{PluginListItem, PluginRegistryService};
+use rlm_core::ports::PluginRegistryConfig;
 use serde_json::Value;
 
 use super::PluginCommands;
@@ -14,7 +15,14 @@ pub async fn run(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let loaded = load_project_config(&project_root, config_path.as_deref())
         .map_err(|err| format!("Failed to load project config: {err}"))?;
-    let registry = PluginRegistryService::new(project_root, &loaded);
+    let registry_config = PluginRegistryConfig {
+        project_config: loaded.config.clone(),
+        config_file_path: loaded
+            .path
+            .clone()
+            .unwrap_or_else(|| project_root.join("rlm.config.yaml")),
+    };
+    let registry = PluginRegistryService::new(project_root, &registry_config);
 
     match sub {
         PluginCommands::List => run_list(&registry, json).await,

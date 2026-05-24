@@ -131,11 +131,7 @@ Boundary rules live in `scripts/rust-boundary-rules.toml` and are enforced by `s
 
 ### Transitional boundary baseline (ratchet plan)
 
-Default CI runs `scripts/check-rust-boundaries.sh` in **baseline mode** (known transitional arcs in `scripts/rust-boundary-baseline.json` are suppressed). Strict mode (`--strict` or `npm run check:rust:boundaries:strict`) fails on any arc; use only when baseline count reaches zero. **`no-domain-to-persistence` must never appear in the baseline.**
-
-| Rule | From module | Rationale for defer | Removal condition |
-|------|-------------|---------------------|-------------------|
-| `no-plugins-to-persistence` | `plugins/registry/service.rs` | Registry service reads `LoadedProjectConfig` for install/doctor | Inject config through port at composition root; registry depends on ports only |
+Transitional baseline empty as of Phase 107 — strict mode (`npm run check:rust:boundaries:strict`) passes.
 
 Run `npm run check:rust:boundaries` or `bash scripts/check-rust-boundaries.sh` to verify. `npm run check:rust` includes the boundary check after fmt/clippy.
 

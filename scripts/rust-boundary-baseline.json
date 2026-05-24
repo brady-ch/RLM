@@ -1,7 +1,1 @@
-[
-  {
-    "rule": "no-plugins-to-persistence",
-    "from": "crates/rlm-core/src/plugins/registry/service.rs",
-    "import": "use crate::persistence::LoadedProjectConfig;"
-  }
-]
+[]
