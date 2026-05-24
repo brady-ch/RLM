@@ -80,10 +80,14 @@ Plans:
 ### Phase 99: File Vector Index Test Extraction
 
 **Goal:** Extract inline tests from `file_vector_index.rs` to mirrored test tree
+**Plans:** 1 plan
 **Success Criteria:**
 1. Zero inline test bodies in `file_vector_index.rs`
 2. Tests under `crates/rlm-core/tests/persistence/`
 3. `cargo test -p rlm-core` passes
+
+Plans:
+- [ ] 99-01-PLAN.md — extract file_vector_index.rs inline tests to tests/persistence/file_vector_index.rs with #[path] stub
 
 ### Phase 100: ANN Vector Index Architecture & Test Extraction
 
