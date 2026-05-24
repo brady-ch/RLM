@@ -189,6 +189,13 @@ Plans:
 
 **Goal:** Delete TypeScript control server; Rust Axum server is sole HTTP transport for UI
 **Depends on:** Phase 113
+**Plans:** 3 plans
+
+Plans:
+- [ ] 114-01-PLAN.md — Retire TS parity scripts; narrow check:parity to Rust golden fixtures
+- [ ] 114-02-PLAN.md — Delete TS control-server and ui bootstrap; clean consumers
+- [ ] 114-03-PLAN.md — Vite dev proxy to Rust; run Phase 114 verification gates
+
 **Success Criteria:**
 1. `src/application/control-server/` deleted
 2. `RLM_UI_DIST=ui/dist cargo run -p rlm-cli -- ui` serves all UI API routes
