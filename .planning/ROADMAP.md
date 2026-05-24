@@ -58,7 +58,7 @@ Full details: `.planning/milestones/v1.17-ROADMAP.md`
 - [x] **Phase 113: Node Runtime Retirement Audit and Cutover Gates** (2026-05-24)
 - [x] **Phase 114: Control Server and UI Bootstrap Removal** (2026-05-24)
 - [x] **Phase 115: CLI Entry and Runtime Composition Removal** (2026-05-24)
-- [ ] **Phase 116: Application Layer Removal**
+- [x] **Phase 116: Application Layer Removal**
 - [ ] **Phase 117: Domain and Ports Removal**
 - [ ] **Phase 118: Adapters, Plugins, and TS Tests Removal**
 - [ ] **Phase 119: npm Toolchain and CI Rust-Only Cleanup**
@@ -223,7 +223,7 @@ Plans:
 
 **Goal:** Delete `src/application/` after Rust application layer confirmed complete
 **Depends on:** Phase 115
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 **Success Criteria:**
 1. `src/application/` deleted
 2. `tests/application/` deleted
@@ -231,9 +231,9 @@ Plans:
 4. No remaining imports from deleted application modules
 
 Plans:
-- [ ] 116-01-PLAN.md — Delete src/application/ tree and update AGENTS.md
-- [ ] 116-02-PLAN.md — Delete tests/application/ and update agent-safe-verify light profile
-- [ ] 116-03-PLAN.md — Prune orphaned application imports and run Phase 116 gates
+- [x] 116-01-PLAN.md — Delete src/application/ tree and update AGENTS.md
+- [x] 116-02-PLAN.md — Delete tests/application/ and update agent-safe-verify light profile
+- [x] 116-03-PLAN.md — Prune orphaned application imports and run Phase 116 gates (completed 2026-05-24)
 
 ### Phase 117: Domain and Ports Removal
 

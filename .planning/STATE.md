@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Node Runtime Retirement
-status: verifying
-last_updated: "2026-05-24T15:18:05.019Z"
+status: ready_for_verification
+last_updated: "2026-05-24T15:24:00Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 32
-  completed_phases: 6
-  total_plans: 12
-  completed_plans: 15
+  completed_phases: 7
+  total_plans: 15
+  completed_plans: 18
   percent: 100
 ---
 
 # Project State
 
-**Current focus:** Phase 116 — application-layer-removal (next)
+**Current focus:** Phase 117 — domain-and-ports-removal (next)
 
 ## Project Reference
 
@@ -25,9 +25,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-24)
 
 ## Current Position
 
-Phase: 115
+Phase: 116
 Plan: 3 of 3 complete
-Status: Phase complete — verified (115-VERIFICATION.md passed)
+Status: Phase complete — ready for verification
 Last activity: 2026-05-24
 
 ## Deferred Items
@@ -37,8 +37,8 @@ Items acknowledged and deferred at milestone close on 2026-05-24:
 | Category | Item | Status |
 |----------|------|--------|
 | verification | Phases 100–105, 107 lack VERIFICATION.md | deferred |
-| test_env | control_server_matches_golden_fixtures RAM flake on low-RAM hosts | resolved in 114-03 (normalize runBlocked) |
-| cosmetic | Config loader tests at tests/application/config/ vs tests/persistence/ | deferred |
+| test_env | model_library_routes tier-select RAM flake on low-RAM hosts | resolved in 116-03 (explicit memory cap in fixture) |
+| cosmetic | Config loader tests at crates/rlm-core/tests/application/config/ (TS mirror removed Phase 116) | deferred |
 | nyquist | Zero *-VALIDATION.md across v1.17 phases (16 phases) | deferred |
 | requirement | PLUG-106-04, PLUG-107-05 partial (full cargo test env-dependent) | deferred |
 | todo | 56 pending backlog todos (architecture, rust-architecture) | deferred |
@@ -86,6 +86,9 @@ Items acknowledged and deferred at milestone close on 2026-05-24:
 - Phase 115: npm rlm is Rust-only; src/cli/, src/runtime/, src/index.ts deleted
 - Phase 115: Tauri uses rlm_core::start_server in-process (no Node RLM child)
 - Phase 115: Tauri interactive dev smoke deferred to operator UAT
+- Phase 116: src/application/ and tests/application/ deleted; Rust application layer sole implementation
+- Phase 116: agent-safe-verify light/reg03 use cargo test -p rlm-core loader smoke
+- Phase 116: model_library_routes fixture uses explicit memory.maxRamMb for host-independent tests
 
 ## Milestone Goal
 
@@ -93,8 +96,8 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Next Steps
 
-1. Phase 116: Application layer removal
-2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (115 complete)
+1. Phase 117: Domain and ports removal
+2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (116 complete)
 3. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
 4. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
 5. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
@@ -108,4 +111,4 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Operator Next Steps
 
-- Execute Phase 116 with `/gsd-execute-phase 116` or `/gsd-plan-phase 116` if not yet planned
+- Execute Phase 117 with `/gsd-execute-phase 117` or `/gsd-plan-phase 117` if not yet planned
