@@ -244,6 +244,13 @@ Plans:
 2. `tests/domain/` deleted
 3. No imports from deleted paths in `ui/` or `scripts/`
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 117-01-PLAN.md — Delete src/domain/ and src/ports/ trees; update AGENTS.md
+- [ ] 117-02-PLAN.md — Delete tests/domain/ mirrored test tree
+- [ ] 117-03-PLAN.md — Prune domain/ports orphans and run Phase 117 gates
+
 ### Phase 118: Adapters, Plugins, and TS Tests Removal
 
 **Goal:** Delete remaining TS infrastructure and mirrored runtime tests
