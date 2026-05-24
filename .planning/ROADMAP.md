@@ -255,6 +255,11 @@ Plans:
 2. Tests under `crates/rlm-core/tests/plugins/`
 3. `cargo test -p rlm-core` passes
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 108-01-PLAN.md — Extract manifest inline tests to tests/plugins/manifest.rs with #[path] stub
+
 ### Phase 109: Plugin Remote Fetch Test Extraction
 
 **Goal:** Extract inline tests from `remote_fetch.rs` to mirrored test tree
