@@ -14,11 +14,12 @@ The CLI, workflow runner, and browser UI all converge on the same domain executi
 
 ## Layering
 
-- CLI layer: `src/cli/*` and `src/index.ts`.
-- Application orchestration: `src/application/*`.
-- Domain policy: recursion and types under `src/domain/*`.
-- Ports: interfaces in `src/ports/*`.
-- Adapters: implementations in `src/adapters/*` and extension tool modules.
+- CLI layer: `crates/rlm-cli/` (Rust-only; TS `src/` retired Phases 115–118).
+- Application orchestration: `crates/rlm-core/src/application/`.
+- Domain policy: recursion and types under `crates/rlm-core/src/domain/`.
+- Ports: interfaces in `crates/rlm-core/src/ports/`.
+- Adapters and persistence: `crates/rlm-core/src/adapters/` and `crates/rlm-core/src/persistence/`.
+- Plugins: manifest, registry, and builtins in `crates/rlm-core/src/plugins/`.
 - UI: React client in `ui/src/main.tsx`, styles in `ui/src/styles.css`, Vite config in `ui/vite.config.ts`.
 
 ## Agent + Model Routing

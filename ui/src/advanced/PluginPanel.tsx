@@ -6,8 +6,8 @@ import type {
   PluginListItem,
   PluginMutationResult,
   PluginSnapshot,
-} from "../../shared/types";
-import { postJson, runAction } from "../../shared/api";
+} from "../shared/types";
+import { postJson, runAction } from "../shared/api";
 export function formatPluginLine(plugin: PluginListItem): string {
   const tools = plugin.tools.join(", ") || "(none)";
   return `${plugin.id} [${plugin.category}] source=${plugin.source} enabled=${plugin.enabled} tools=${tools}`;

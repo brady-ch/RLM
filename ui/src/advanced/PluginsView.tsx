@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { PluginSnapshot } from "../shared/types";
-import { PluginPanel } from "./plugins/PluginPanel";
+import { PluginPanel } from "./PluginPanel";
 
 export type PluginsViewProps = {
   snapshot: PluginSnapshot;

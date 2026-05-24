@@ -1,6 +1,6 @@
 import type { ExecutionStatus } from "./types";
 
-/** Mirror `ExecutionStatus` display strings in `crates/rlm-core/src/domain/types.rs` for header copy. */
+/** Mirror `ExecutionStatus` display strings in rlm-core domain types for header copy. */
 export const uiRunStatusLabels: Record<ExecutionStatus, string> = {
   planned: "Planned",
   ready: "Ready",

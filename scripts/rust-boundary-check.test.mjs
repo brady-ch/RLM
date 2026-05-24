@@ -23,11 +23,11 @@ test("fails with no-domain-to-persistence on domain fixture import", () => {
   const rules = path.join(REPO_ROOT, "scripts", "rust-boundary-rules.toml");
   const baseline = path.join(REPO_ROOT, "scripts", "rust-boundary-baseline.json");
   fs.mkdirSync(path.join(tmp, "scripts"), { recursive: true });
-  fs.mkdirSync(path.join(tmp, "crates/rlm-core/src/domain"), { recursive: true });
+  fs.mkdirSync(path.join(tmp, "crates", "rlm-core", "src", "domain"), { recursive: true });
   fs.copyFileSync(rules, path.join(tmp, "scripts/rust-boundary-rules.toml"));
   fs.copyFileSync(baseline, path.join(tmp, "scripts/rust-boundary-baseline.json"));
   fs.writeFileSync(
-    path.join(tmp, "crates/rlm-core/src/domain/violation_fixture.rs"),
+    path.join(tmp, "crates", "rlm-core", "src", "domain", "violation_fixture.rs"),
     "use crate::persistence::FileRunStateStore;\n",
   );
   const result = runScript(tmp, ["--strict"]);
