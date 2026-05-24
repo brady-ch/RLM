@@ -3,8 +3,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 use crate::domain::recursion::{
-    can_spend_any_model_call, fallback_from_messages, max_tool_rounds_from_limit,
-    parse_clarification_request, preview, to_model_purpose,
+    build_tool_envelope_schema, can_spend_any_model_call, fallback_from_messages,
+    max_tool_rounds_from_limit, parse_clarification_request, preview, to_model_purpose,
 };
 use crate::domain::types::{
     ChatMessage, ExecutionStatusUpdateDetail, TaskNode, ToolCallRecord, ToolCallRequest,
@@ -41,6 +41,9 @@ pub trait ModelCompletionHost: Send + Sync {
     ) -> Result<String, String>;
     fn model(&self) -> &dyn LanguageModel;
     fn with_agent_system_prompt(&self, messages: Vec<ChatMessage>) -> Vec<ChatMessage>;
+    fn use_tool_envelope(&self) -> bool {
+        false
+    }
 }
 
 fn tool_definitions(tools: &[Arc<dyn Tool>]) -> Vec<LanguageModelToolDefinition> {
@@ -100,6 +103,12 @@ pub async fn run_completion_with_tool_rounds(
         };
         let tools_enabled = allow_tools && !tools.is_empty();
         let tool_definitions = tool_definitions(&tools);
+        let envelope_enabled = host.use_tool_envelope();
+        let response_format = if envelope_enabled && tools_enabled {
+            Some(build_tool_envelope_schema(&tool_definitions))
+        } else {
+            None
+        };
         let response = host
             .model()
             .complete(
@@ -108,7 +117,8 @@ pub async fn run_completion_with_tool_rounds(
                     purpose,
                     tools_enabled,
                     tools: tool_definitions,
-                    constrained_tool_calling: tools_enabled,
+                    constrained_tool_calling: tools_enabled && !envelope_enabled,
+                    response_format,
                 },
             )
             .await;
@@ -321,6 +331,7 @@ pub async fn run_completion_without_tools(
                 tools_enabled: false,
                 tools: Vec::new(),
                 constrained_tool_calling: false,
+                response_format: None,
             },
         )
         .await;

@@ -361,4 +361,8 @@ impl ModelCompletionHost for EngineHost<'_> {
             out
         }
     }
+
+    fn use_tool_envelope(&self) -> bool {
+        self.engine.model.use_tool_envelope()
+    }
 }

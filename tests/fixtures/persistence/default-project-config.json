@@ -175,7 +175,8 @@
       "kind": "ollama",
       "baseUrl": "http://127.0.0.1:11434",
       "available": true,
-      "allowUnconstrainedToolCalls": false
+      "allowUnconstrainedToolCalls": false,
+      "useToolEnvelope": false
     }
   },
   "runtimeHost": "local_ollama"

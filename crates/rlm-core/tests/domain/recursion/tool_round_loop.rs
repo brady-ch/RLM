@@ -19,6 +19,7 @@ struct TestHost {
     max_model_calls: u32,
     tool_round_limit: u32,
     records: Mutex<Vec<ToolCallRecord>>,
+    use_tool_envelope: bool,
 }
 
 #[async_trait]
@@ -88,6 +89,10 @@ impl ModelCompletionHost for TestHost {
     fn with_agent_system_prompt(&self, messages: Vec<ChatMessage>) -> Vec<ChatMessage> {
         messages
     }
+
+    fn use_tool_envelope(&self) -> bool {
+        self.use_tool_envelope
+    }
 }
 
 fn test_task() -> TaskNode {
@@ -114,6 +119,7 @@ async fn executes_tool_round_and_records_result() {
         max_model_calls: 8,
         tool_round_limit: 2,
         records: Mutex::new(Vec::new()),
+        use_tool_envelope: false,
     };
     let answer = run_completion_with_tool_rounds(
         &host,
@@ -182,6 +188,7 @@ async fn passes_tool_schema_to_model() {
         max_model_calls: 4,
         tool_round_limit: 0,
         records: Mutex::new(Vec::new()),
+        use_tool_envelope: false,
     };
 
     run_completion_with_tool_rounds(
@@ -203,4 +210,191 @@ async fn passes_tool_schema_to_model() {
     assert_eq!(defs.len(), 1);
     assert_eq!(defs[0].name, "echo");
     assert!(defs[0].schema.get("type").is_some());
+}
+
+#[tokio::test]
+async fn envelope_enabled_sets_response_format_and_disables_two_phase() {
+    struct OptionsCapturingModel {
+        captured: Mutex<Option<(bool, bool)>>,
+    }
+
+    #[async_trait]
+    impl LanguageModel for OptionsCapturingModel {
+        fn model_label(&self) -> Option<&str> {
+            Some("mock")
+        }
+
+        async fn complete(
+            &self,
+            _messages: &[ChatMessage],
+            options: LanguageModelCompleteOptions<'_>,
+        ) -> LanguageModelResponse {
+            *self.captured.lock().expect("lock") = Some((
+                options.response_format.is_some(),
+                options.constrained_tool_calling,
+            ));
+            LanguageModelResponse {
+                content: "ok".into(),
+                model: Some("mock".into()),
+                tool_calls: Vec::new(),
+            }
+        }
+    }
+
+    let echo = Arc::new(EchoTool::new("echo")) as Arc<dyn Tool>;
+    let mut tools = HashMap::new();
+    tools.insert("echo".into(), echo);
+    let model = Arc::new(OptionsCapturingModel {
+        captured: Mutex::new(None),
+    });
+    let captured = Arc::clone(&model);
+    let host = TestHost {
+        model,
+        tools,
+        model_calls: Mutex::new(0),
+        max_model_calls: 4,
+        tool_round_limit: 0,
+        records: Mutex::new(Vec::new()),
+        use_tool_envelope: true,
+    };
+
+    run_completion_with_tool_rounds(
+        &host,
+        &test_task(),
+        "answer",
+        vec![ChatMessage::text("user", "hello")],
+        true,
+    )
+    .await
+    .expect("completion");
+
+    let (has_format, constrained) = captured
+        .captured
+        .lock()
+        .expect("lock")
+        .clone()
+        .expect("captured options");
+    assert!(has_format);
+    assert!(!constrained);
+}
+
+#[tokio::test]
+async fn envelope_disabled_keeps_two_phase_constrained() {
+    struct OptionsCapturingModel {
+        captured: Mutex<Option<(bool, bool)>>,
+    }
+
+    #[async_trait]
+    impl LanguageModel for OptionsCapturingModel {
+        fn model_label(&self) -> Option<&str> {
+            Some("mock")
+        }
+
+        async fn complete(
+            &self,
+            _messages: &[ChatMessage],
+            options: LanguageModelCompleteOptions<'_>,
+        ) -> LanguageModelResponse {
+            *self.captured.lock().expect("lock") = Some((
+                options.response_format.is_some(),
+                options.constrained_tool_calling,
+            ));
+            LanguageModelResponse {
+                content: "ok".into(),
+                model: Some("mock".into()),
+                tool_calls: Vec::new(),
+            }
+        }
+    }
+
+    let echo = Arc::new(EchoTool::new("echo")) as Arc<dyn Tool>;
+    let mut tools = HashMap::new();
+    tools.insert("echo".into(), echo);
+    let model = Arc::new(OptionsCapturingModel {
+        captured: Mutex::new(None),
+    });
+    let captured = Arc::clone(&model);
+    let host = TestHost {
+        model,
+        tools,
+        model_calls: Mutex::new(0),
+        max_model_calls: 4,
+        tool_round_limit: 0,
+        records: Mutex::new(Vec::new()),
+        use_tool_envelope: false,
+    };
+
+    run_completion_with_tool_rounds(
+        &host,
+        &test_task(),
+        "answer",
+        vec![ChatMessage::text("user", "hello")],
+        true,
+    )
+    .await
+    .expect("completion");
+
+    let (has_format, constrained) = captured
+        .captured
+        .lock()
+        .expect("lock")
+        .clone()
+        .expect("captured options");
+    assert!(!has_format);
+    assert!(constrained);
+}
+
+#[tokio::test]
+async fn envelope_unknown_tool_does_not_execute() {
+    struct UnknownToolModel;
+
+    #[async_trait]
+    impl LanguageModel for UnknownToolModel {
+        fn model_label(&self) -> Option<&str> {
+            Some("mock")
+        }
+
+        async fn complete(
+            &self,
+            _messages: &[ChatMessage],
+            _options: LanguageModelCompleteOptions<'_>,
+        ) -> LanguageModelResponse {
+            LanguageModelResponse {
+                content: String::new(),
+                model: Some("mock".into()),
+                tool_calls: vec![crate::domain::types::ToolCallRequest {
+                    id: Some("tool-call-1".into()),
+                    name: "evil".into(),
+                    arguments: serde_json::json!({}),
+                }],
+            }
+        }
+    }
+
+    let echo = Arc::new(EchoTool::new("echo")) as Arc<dyn Tool>;
+    let mut tools = HashMap::new();
+    tools.insert("echo".into(), echo);
+    let host = TestHost {
+        model: Arc::new(UnknownToolModel),
+        tools,
+        model_calls: Mutex::new(0),
+        max_model_calls: 4,
+        tool_round_limit: 2,
+        records: Mutex::new(Vec::new()),
+        use_tool_envelope: true,
+    };
+
+    let _answer = run_completion_with_tool_rounds(
+        &host,
+        &test_task(),
+        "answer",
+        vec![ChatMessage::text("user", "hello")],
+        true,
+    )
+    .await
+    .expect("completion");
+
+    let records = host.records.lock().expect("lock");
+    assert!(records.iter().any(|r| r.name == "evil" && r.status == "error"));
+    assert!(!records.iter().any(|r| r.name == "evil" && r.status == "success"));
 }

@@ -239,7 +239,7 @@ pub fn resolve_language_models_from_config(
     config: &Value,
     cancel: CancellationController,
 ) -> (Arc<dyn LanguageModel>, Arc<dyn LanguageModel>) {
-    let Some((base_url, allow_unconstrained)) = resolve_ollama_host(config) else {
+    let Some((base_url, allow_unconstrained, use_tool_envelope)) = resolve_ollama_host(config) else {
         return default_queue_models();
     };
     let plan_name = tier_model_name(config, "medium")
@@ -251,12 +251,14 @@ pub fn resolve_language_models_from_config(
             Some(&base_url),
             Some(&plan_name),
             allow_unconstrained,
+            use_tool_envelope,
             Some(cancel.clone()),
         )) as Arc<dyn LanguageModel>,
         Arc::new(OllamaLanguageModel::with_cancellation(
             Some(&base_url),
             Some(&exec_name),
             allow_unconstrained,
+            use_tool_envelope,
             Some(cancel),
         )) as Arc<dyn LanguageModel>,
     )
@@ -271,7 +273,7 @@ pub fn default_queue_models() -> (Arc<dyn LanguageModel>, Arc<dyn LanguageModel>
     )
 }
 
-fn resolve_ollama_host(config: &Value) -> Option<(String, bool)> {
+fn resolve_ollama_host(config: &Value) -> Option<(String, bool, bool)> {
     let host_id = config.get("runtimeHost").and_then(Value::as_str)?;
     let host = config.get("hosts")?.get(host_id)?;
     if host.get("kind").and_then(Value::as_str) != Some("ollama") {
@@ -286,12 +288,16 @@ fn resolve_ollama_host(config: &Value) -> Option<(String, bool)> {
         .get("allowUnconstrainedToolCalls")
         .and_then(Value::as_bool)
         .unwrap_or(false);
-    Some((base_url, allow_unconstrained))
+    let use_tool_envelope = host
+        .get("useToolEnvelope")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    Some((base_url, allow_unconstrained, use_tool_envelope))
 }
 
 pub fn resolve_ollama_base_url(config: &Value) -> String {
     resolve_ollama_host(config)
-        .map(|(base, _)| base)
+        .map(|(base, _, _)| base)
         .unwrap_or_else(|| "http://127.0.0.1:11434".to_string())
 }
 
