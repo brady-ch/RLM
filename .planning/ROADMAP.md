@@ -278,6 +278,13 @@ Plans:
 3. `npm run check` = UI lint/format + `npm run check:rust`
 4. AGENTS.md updated for Rust-only runtime architecture
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 119-01-PLAN.md — Remove runtime deps; rewrite check/lint/format scripts
+- [ ] 119-02-PLAN.md — Delete tsconfig/depcruise; UI-only eslint and test runner
+- [ ] 119-03-PLAN.md — Update AGENTS.md; run Phase 119 gates
+
 ### Phase 120: Constrained Ollama Tool Envelope (Rust)
 
 **Goal:** Post-cutover tool-call hardening via Ollama JSON-schema envelope (Option A from research doc)
@@ -288,6 +295,13 @@ Plans:
 3. Ollama adapter uses `format` not `tools` when envelope mode enabled
 4. Config-gated; existing two-phase path unchanged when off
 5. Tests cover valid envelope parse and unknown-tool rejection
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 120-01-PLAN.md — Port response_format + envelope builder (TDD)
+- [ ] 120-02-PLAN.md — Ollama adapter format-only envelope path
+- [ ] 120-03-PLAN.md — Config gate + tool_round_loop wiring + integration tests
 
 ### Phase 121: UI Vision Audit and Cut List
 
