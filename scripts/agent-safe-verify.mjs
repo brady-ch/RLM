@@ -42,9 +42,9 @@ const PROFILES = {
       tier: "compile",
     },
     {
-      label: "config validation (tsx, no full build)",
-      cmd: `node --import ${PRELOAD} --import tsx --test tests/application/config/validation.unit.test.ts`,
-      tier: "minimal",
+      label: "rust config loader smoke",
+      cmd: "node scripts/cargo-with-ram-gate.mjs -- cargo test -p rlm-core loader -- --nocapture",
+      tier: "compile",
     },
     {
       label: "reg03 static wiring (tsx)",
@@ -110,9 +110,9 @@ const PROFILES = {
       tier: "minimal",
     },
     {
-      label: "config validation (tsx)",
-      cmd: `node --import ${PRELOAD} --import tsx --test tests/application/config/validation.unit.test.ts`,
-      tier: "minimal",
+      label: "rust config loader smoke",
+      cmd: "node scripts/cargo-with-ram-gate.mjs -- cargo test -p rlm-core loader -- --nocapture",
+      tier: "compile",
     },
   ],
 };
