@@ -55,8 +55,8 @@
 4. Existing config load behavior unchanged; tests pass
 
 Plans:
-- [ ] 97-01-PLAN.md — Move config modules to persistence/config/; resolve memory-budget dependency
-- [ ] 97-02-PLAN.md — Remove application/config; drop baseline entry; verify boundaries
+- [x] 97-01-PLAN.md — Move config modules to persistence/config/; resolve memory-budget dependency
+- [x] 97-02-PLAN.md — Remove application/config; drop baseline entry; verify boundaries
 
 **Wave 1** *(parallel-safe)*
 - 97-01 — persistence/config/ submodule tree with loader, validation, defaults, yaml_merge, budget
