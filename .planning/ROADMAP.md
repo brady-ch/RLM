@@ -309,7 +309,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 109-01-PLAN.md — Extract remote_fetch inline tests to tests/plugins/remote_fetch.rs with #[path] stub
+- [x] 109-01-PLAN.md — Extract remote_fetch inline tests to tests/plugins/remote_fetch.rs with #[path] stub
 
 ### Phase 110: Builtin Write File Test Extraction
 
