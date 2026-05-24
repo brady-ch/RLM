@@ -25,7 +25,7 @@
 ### v1.17 Rust Infrastructure Layer (Phases 97–112)
 
 **Persistence block**
-- [ ] **Phase 97: Persistence Config Facade** — Move config loaders behind facade/port; drop `no-persistence-to-application` baseline — in progress
+- [x] **Phase 97: Persistence Config Facade** — Move config loaders behind facade/port; drop `no-persistence-to-application` baseline (2026-05-24)
 - [x] **Phase 98: Persistence Util Test Extraction**
 - [x] **Phase 99: File Vector Index Test Extraction** (2026-05-24)
 - [x] **Phase 100: ANN Vector Index Architecture & Test Extraction**
