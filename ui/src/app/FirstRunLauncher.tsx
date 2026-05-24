@@ -82,7 +82,13 @@ export function FirstRunLauncher({
   };
 
   return (
-    <div className="first-run-overlay" data-testid="first-run-launcher" role="dialog" aria-modal="true" aria-labelledby="first-run-title">
+    <div
+      className="first-run-overlay"
+      data-testid="first-run-launcher"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="first-run-title"
+    >
       <div className="first-run-card">
         <header className="first-run-header">
           <Sparkles size={20} aria-hidden />

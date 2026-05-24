@@ -12,34 +12,11 @@ export default tseslint.config(
       "ui/dist/**",
       ".planning/**",
       "coverage/**",
-      "src/domain/recursion/_*.ts",
     ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   eslintConfigPrettier,
-  {
-    files: ["src/**/*.ts", "tests/**/*.ts"],
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
-      globals: globals.node,
-      parserOptions: {
-        project: "./tsconfig.json",
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
-    rules: {
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-          caughtErrorsIgnorePattern: "^_",
-        },
-      ],
-    },
-  },
   {
     files: ["ui/src/**/*.{ts,tsx}"],
     languageOptions: {

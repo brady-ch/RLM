@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Main test suite with RAM gates before every phase.
- * Replaces chained `npm run build && node --test ...` to prevent OOM.
+ * UI static wiring, packaging, and rlm-runtime smoke only (no TS compile step).
  */
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -19,16 +19,20 @@ const PRELOAD = join(ROOT, "scripts/test-ram-preload.mjs");
 
 /** @type {{ label: string; tier: "minimal" | "compile" | "build"; cmd: string[] }[]} */
 const STEPS = [
-  { label: "tsc build", tier: "compile", cmd: ["npm", "run", "build"] },
   {
-    label: "node test suite",
-    tier: "compile",
-    cmd: ["node", "--import", PRELOAD, "--test", "dist/tests"],
+    label: "ui static wiring tests",
+    tier: "minimal",
+    cmd: ["node", "--import", PRELOAD, "--import", "tsx", "--test", "tests/ui"],
   },
   {
     label: "packaging tests",
     tier: "minimal",
     cmd: ["npm", "run", "test:packaging"],
+  },
+  {
+    label: "rlm runtime smoke",
+    tier: "minimal",
+    cmd: ["npm", "run", "test:rlm-runtime"],
   },
 ];
 

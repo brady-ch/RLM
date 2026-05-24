@@ -13,7 +13,9 @@ import {
 
 export function ThemeToggle() {
   const [preference, setPreference] = useState<ThemePreference>(() => getStoredThemePreference());
-  const [resolved, setResolved] = useState<ResolvedTheme>(() => resolveTheme(getStoredThemePreference()));
+  const [resolved, setResolved] = useState<ResolvedTheme>(() =>
+    resolveTheme(getStoredThemePreference()),
+  );
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");

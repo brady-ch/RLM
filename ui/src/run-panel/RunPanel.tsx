@@ -31,11 +31,7 @@ export function RunPanel({
   if (!selectedNode) {
     return (
       <aside className="run-panel" aria-label="Workflow overview" data-testid="run-panel">
-        <WorkflowOverview
-          snapshot={snapshot}
-          onSelectNode={onSelectNode}
-          onFitGraph={onFitGraph}
-        />
+        <WorkflowOverview snapshot={snapshot} onSelectNode={onSelectNode} onFitGraph={onFitGraph} />
       </aside>
     );
   }

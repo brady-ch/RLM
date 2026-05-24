@@ -79,7 +79,9 @@ export function NodeContextMenuShell({
             <ContextMenu.Item
               className="radix-context-menu-item"
               disabled={!editable}
-              onSelect={() => run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/breakdown`, {}))}
+              onSelect={() =>
+                run(() => post(`/api/nodes/${encodeURIComponent(node.id)}/breakdown`, {}))
+              }
             >
               Break down
             </ContextMenu.Item>
