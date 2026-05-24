@@ -187,14 +187,5 @@ fn strip_tags(html: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn extracts_title_from_html() {
-        assert_eq!(
-            extract_title("<html><title>Hello</title></html>").as_deref(),
-            Some("Hello")
-        );
-    }
-}
+#[path = "../../../tests/plugins/builtin/web_fetch.rs"]
+mod web_fetch_tests;
