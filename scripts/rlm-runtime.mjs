@@ -2,8 +2,8 @@
 /**
  * RLM runtime dispatcher — selects Node or Rust CLI based on RLM_RUNTIME.
  *
- *   RLM_RUNTIME=node  (default) — Node dist/src/index.js
- *   RLM_RUNTIME=rust            — cargo-built rlm binary (release preferred)
+ *   RLM_RUNTIME=rust  (default) — cargo-built rlm binary (release preferred)
+ *   RLM_RUNTIME=node            — Node dist/src/index.js (escape hatch until Phase 115)
  *
  * Usage: node scripts/rlm-runtime.mjs [rlm args...]
  */
@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const runtime = (process.env.RLM_RUNTIME ?? "node").toLowerCase();
+const runtime = (process.env.RLM_RUNTIME ?? "rust").toLowerCase();
 const forwarded = process.argv.slice(2);
 
 function runNode() {
