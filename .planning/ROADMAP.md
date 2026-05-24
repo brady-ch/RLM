@@ -75,7 +75,7 @@ Plans:
 4. `cargo test -p rlm-core` passes
 
 Plans:
-- [ ] 98-01-PLAN.md — extract util.rs inline tests to tests/persistence/util.rs with #[path] stub
+- [x] 98-01-PLAN.md — extract util.rs inline tests to tests/persistence/util.rs with #[path] stub
 
 ### Phase 99: File Vector Index Test Extraction
 
