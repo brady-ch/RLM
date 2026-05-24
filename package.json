@@ -19,7 +19,7 @@
   "description": "",
   "main": "dist/src/index.js",
   "bin": {
-    "rlm": "dist/src/index.js"
+    "rlm": "scripts/rlm-runtime.mjs"
   },
   "scripts": {
     "dev": "tsx src/index.ts",
@@ -49,6 +49,7 @@
     "depcruise:strict": "dependency-cruise src --config .dependency-cruiser.js",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/run-test-suite.mjs",
+    "test:rlm-runtime": "node --import ./scripts/test-ram-preload.mjs --test scripts/rlm-runtime.test.mjs",
     "test:agent:verify": "node scripts/agent-safe-verify.mjs --profile reg01",
     "test:agent:verify:light": "node scripts/agent-safe-verify.mjs --profile light",
     "test:uat:preflight": "node scripts/agent-safe-verify.mjs --profile reg01",
