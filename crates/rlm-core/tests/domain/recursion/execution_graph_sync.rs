@@ -28,8 +28,7 @@ fn mirrors_nodes_and_budget() {
         max_tool_rounds: 0,
         quality_loop: None,
     };
-    let (graph, budget) =
-        build_live_execution_metadata(&nodes, &[], 2, 50, 0, 0, Some(&config));
+    let (graph, budget) = build_live_execution_metadata(&nodes, &[], 2, 50, 0, 0, Some(&config));
     assert_eq!(graph.nodes.len(), 1);
     assert_eq!(budget.model_calls_used, 2);
     assert_eq!(budget.model_calls_remaining, 48);

@@ -7,8 +7,8 @@ use serde_json::Value;
 
 use crate::domain::types::MemoryPacketMetadata;
 
-use super::FileMemoryStore;
 use super::super::util::read_json_array;
+use super::FileMemoryStore;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -41,10 +41,9 @@ impl FileMemoryStore {
         let lines: Vec<String> = entries
             .into_iter()
             .filter(|entry| {
-                entry
-                    .scope_ids
-                    .as_ref()
-                    .is_none_or(|scopes| scopes.is_empty() || scopes.iter().any(|s| allowed.contains(s)))
+                entry.scope_ids.as_ref().is_none_or(|scopes| {
+                    scopes.is_empty() || scopes.iter().any(|s| allowed.contains(s))
+                })
             })
             .rev()
             .take(12)
@@ -76,9 +75,10 @@ impl FileMemoryStore {
                 .and_then(Value::as_str)
                 .is_none_or(|id| id != metadata.node_id)
         });
-        packets.push(serde_json::to_value(metadata).map_err(|err| {
-            io::Error::new(io::ErrorKind::InvalidData, err.to_string())
-        })?);
+        packets.push(
+            serde_json::to_value(metadata)
+                .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err.to_string()))?,
+        );
         let trimmed: Vec<_> = packets.into_iter().rev().take(200).rev().collect();
         self.write_json(
             &self.packet_path(&session_id),
@@ -115,5 +115,8 @@ fn truncate_text(text: &str, max_chars: usize) -> String {
         return text.to_string();
     }
     let keep = max_chars.saturating_sub(15);
-    format!("{}\n[truncated]", text.chars().take(keep).collect::<String>().trim_end())
+    format!(
+        "{}\n[truncated]",
+        text.chars().take(keep).collect::<String>().trim_end()
+    )
 }

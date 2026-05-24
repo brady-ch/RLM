@@ -7,7 +7,9 @@ use serde_json::{json, Map, Value};
 use crate::persistence::ProjectPaths;
 
 use super::defaults::default_project_plain;
-use super::validation::{validate_config_references, validate_config_shape, validate_memory_budget};
+use super::validation::{
+    validate_config_references, validate_config_shape, validate_memory_budget,
+};
 use super::yaml_merge::{is_plain_record, merge_yaml_layers};
 
 #[derive(Debug, Clone)]

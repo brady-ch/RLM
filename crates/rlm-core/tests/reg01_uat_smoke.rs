@@ -48,11 +48,7 @@ async fn reg01_uat_smoke_serves_ui_and_core_api_routes() {
     let base = server.url.clone();
     let client = reqwest::Client::new();
 
-    let index = client
-        .get(format!("{base}/"))
-        .send()
-        .await
-        .expect("GET /");
+    let index = client.get(format!("{base}/")).send().await.expect("GET /");
     assert_eq!(index.status(), reqwest::StatusCode::OK);
     let html = index.text().await.expect("html body");
     assert!(
@@ -71,12 +67,18 @@ async fn reg01_uat_smoke_serves_ui_and_core_api_routes() {
         post_json(&base, "/api/pause-future-auto-approvals", json!({})).await;
     assert_eq!(pause_status, reqwest::StatusCode::OK);
     assert_eq!(
-        pause_body.pointer("/autoApprovalPaused").and_then(Value::as_bool),
+        pause_body
+            .pointer("/autoApprovalPaused")
+            .and_then(Value::as_bool),
         Some(true)
     );
 
-    let (download_status, _) =
-        post_json(&base, "/api/model-library/download", json!({ "model": "  " })).await;
+    let (download_status, _) = post_json(
+        &base,
+        "/api/model-library/download",
+        json!({ "model": "  " }),
+    )
+    .await;
     assert!(
         download_status.is_client_error() || download_status.is_server_error(),
         "download with empty model should fail fast, got {download_status}"

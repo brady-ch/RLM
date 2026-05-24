@@ -2,8 +2,7 @@ use super::*;
 use std::fs;
 
 fn temp_path(name: &str) -> PathBuf {
-    let path =
-        std::env::temp_dir().join(format!("rlm-vector-json-{name}-{}", std::process::id()));
+    let path = std::env::temp_dir().join(format!("rlm-vector-json-{name}-{}", std::process::id()));
     let _ = fs::remove_file(&path);
     path
 }

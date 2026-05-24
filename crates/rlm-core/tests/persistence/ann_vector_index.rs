@@ -1,4 +1,4 @@
-use super::super::file_vector_index::{FileVectorIndex, VectorRecordSource, VectorIndexRecord};
+use super::super::file_vector_index::{FileVectorIndex, VectorIndexRecord, VectorRecordSource};
 use super::*;
 use std::fs;
 

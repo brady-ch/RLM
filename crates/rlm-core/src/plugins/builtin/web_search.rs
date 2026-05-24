@@ -3,9 +3,9 @@ use std::time::Duration;
 use async_trait::async_trait;
 use reqwest::Client;
 
-use crate::ports::ToolExecutionResult;
 use crate::plugins::tool_schemas;
 use crate::ports::Tool;
+use crate::ports::ToolExecutionResult;
 
 const DDG_LITE_SEARCH: &str = "https://lite.duckduckgo.com/lite/";
 const ACCESS_BLOCKED_MARKER: &str = "anomaly-modal__title";

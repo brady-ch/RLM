@@ -1,4 +1,4 @@
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use crate::domain::types::ChatMessage;
 use crate::ports::LanguageModelCompleteOptions;
@@ -14,23 +14,25 @@ pub(super) fn chat_message_to_ollama(message: &ChatMessage) -> Value {
         payload["tool_call_id"] = json!(tool_call_id);
     }
     if let Some(tool_calls) = &message.tool_calls {
-        payload["tool_calls"] = json!(
-            tool_calls
-                .iter()
-                .map(|call| json!({
-                    "function": {
-                        "name": call.name,
-                        "arguments": call.arguments,
-                    }
-                }))
-                .collect::<Vec<_>>()
-        );
+        payload["tool_calls"] = json!(tool_calls
+            .iter()
+            .map(|call| json!({
+                "function": {
+                    "name": call.name,
+                    "arguments": call.arguments,
+                }
+            }))
+            .collect::<Vec<_>>());
     }
     payload
 }
 
 impl OllamaLanguageModel {
-    pub(super) fn build_chat_body(&self, messages: &[ChatMessage], tools: Option<&[Value]>) -> Value {
+    pub(super) fn build_chat_body(
+        &self,
+        messages: &[ChatMessage],
+        tools: Option<&[Value]>,
+    ) -> Value {
         let mut body = json!({
             "model": self.model,
             "messages": messages.iter().map(chat_message_to_ollama).collect::<Vec<_>>(),

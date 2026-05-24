@@ -3,9 +3,9 @@ use std::time::Duration;
 use async_trait::async_trait;
 use reqwest::Client;
 
-use crate::ports::ToolExecutionResult;
 use crate::plugins::tool_schemas;
 use crate::ports::Tool;
+use crate::ports::ToolExecutionResult;
 
 pub struct WebFetchTool {
     client: Client,
@@ -151,7 +151,7 @@ fn analyze_html(html: &str, query: &str, max_sections: usize) -> HtmlAnalysis {
             (score, p.clone())
         })
         .collect();
-    scored.sort_by(|a, b| b.0.cmp(&a.0));
+    scored.sort_by_key(|b| std::cmp::Reverse(b.0));
     let selected: Vec<String> = scored
         .iter()
         .take(max_sections)

@@ -1,6 +1,8 @@
 use serde_json::Value;
 
-use super::ram_budget::{available_model_ram_mb, configured_cap_mb, peak_runtime_model_ram_mb, reserve_system_ram_mb};
+use super::ram_budget::{
+    available_model_ram_mb, configured_cap_mb, peak_runtime_model_ram_mb, reserve_system_ram_mb,
+};
 use super::ram_probe::{current_free_ram_mb, is_wsl};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,10 +88,7 @@ pub fn assert_model_ram_eligible(
     Ok(())
 }
 
-pub fn assert_runtime_ram_eligible(
-    config: &Value,
-    ollama_loaded_mb: u32,
-) -> Result<(), String> {
+pub fn assert_runtime_ram_eligible(config: &Value, ollama_loaded_mb: u32) -> Result<(), String> {
     let peak = peak_runtime_model_ram_mb(config).ok_or_else(|| {
         "No model RAM estimates configured; set models.tiers.*.estimatedRamMb.".to_string()
     })?;

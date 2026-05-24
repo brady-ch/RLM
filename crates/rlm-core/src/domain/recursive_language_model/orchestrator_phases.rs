@@ -38,7 +38,7 @@ impl RecursiveLanguageModel {
                 depth: 0,
                 kind: None,
                 model_override: None,
-                context_policy: None
+                context_policy: None,
             }
         };
 
@@ -196,7 +196,7 @@ impl RecursiveLanguageModel {
                     depth: task.depth + 1,
                     kind: None,
                     model_override: None,
-                context_policy: None
+                    context_policy: None,
                 }
             })
             .collect();
@@ -221,7 +221,7 @@ impl RecursiveLanguageModel {
             return Ok(fallback_from_messages_slice(&[ChatMessage {
                 role: "user".into(),
                 content: task.prompt.clone(),
-            ..Default::default()
+                ..Default::default()
             }]));
         }
         let output = self
@@ -375,7 +375,7 @@ impl RecursiveLanguageModel {
                 depth: 0,
                 kind: None,
                 model_override: None,
-                context_policy: None
+                context_policy: None,
             }
         };
         self.ensure_execution_node(&task, "task", prompt);

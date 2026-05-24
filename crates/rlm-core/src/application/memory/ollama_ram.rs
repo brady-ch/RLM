@@ -56,12 +56,7 @@ pub async fn assert_model_ram_eligible_async(
     client: &Client,
 ) -> Result<(), String> {
     let loaded = ollama_loaded_ram_mb(ollama_base_url, client).await;
-    assert_model_ram_eligible(
-        model,
-        estimate_model_ram_mb(config, model),
-        config,
-        loaded,
-    )
+    assert_model_ram_eligible(model, estimate_model_ram_mb(config, model), config, loaded)
 }
 
 pub async fn assert_runtime_ram_eligible_async(

@@ -4,8 +4,13 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 
 use super::*;
-use crate::domain::types::{ChatMessage, ExecutionStatusUpdateDetail, LanguageModelResponse, TaskNode, ToolCallRecord};
-use crate::ports::{EchoTool, LanguageModel, LanguageModelCompleteOptions, LanguageModelToolDefinition, Tool, ToolRoundModel};
+use crate::domain::types::{
+    ChatMessage, ExecutionStatusUpdateDetail, LanguageModelResponse, TaskNode, ToolCallRecord,
+};
+use crate::ports::{
+    EchoTool, LanguageModel, LanguageModelCompleteOptions, LanguageModelToolDefinition, Tool,
+    ToolRoundModel,
+};
 
 struct TestHost {
     model: Arc<dyn LanguageModel>,

@@ -5,17 +5,19 @@ use async_trait::async_trait;
 use crate::domain::recursion::preview;
 use crate::domain::recursion::{ModelCompletionHost, QualityLoopHost};
 use crate::domain::types::{
-    ChatMessage, ComposerContextPolicy, ExecutionEvent, ExecutionGraphNode, ExecutionStatus,
-    ExecutionStatusUpdateDetail, QualityLoopManualDecision, QualityLoopMetadata,
+    default_memory_policy, ChatMessage, ComposerContextPolicy, ExecutionEvent, ExecutionGraphNode,
+    ExecutionStatus, ExecutionStatusUpdateDetail, QualityLoopManualDecision, QualityLoopMetadata,
     QualityLoopUsageSummary, RecursiveModelConfig, TaskNode, TokenUsageTrace, ToolCallRecord,
-    default_memory_policy,
 };
 use crate::ports::{LanguageModel, Tool};
 
 use super::execution_control::ExecutionControl;
 use super::RecursiveLanguageModel;
 
-fn resolve_context_policy(engine: &RecursiveLanguageModel, task: &TaskNode) -> ComposerContextPolicy {
+fn resolve_context_policy(
+    engine: &RecursiveLanguageModel,
+    task: &TaskNode,
+) -> ComposerContextPolicy {
     if let Some(policy) = &task.context_policy {
         return policy.clone();
     }
@@ -248,10 +250,7 @@ impl ModelCompletionHost for EngineHost<'_> {
     async fn resolve_memory_packet(&self, task: &TaskNode) -> Option<String> {
         let memory = self.engine.memory.as_ref()?;
         let policy = resolve_context_policy(self.engine, task);
-        match memory
-            .build_packet(&task.id, &task.prompt, &policy)
-            .await
-        {
+        match memory.build_packet(&task.id, &task.prompt, &policy).await {
             Ok(Some(packet)) => {
                 {
                     let mut state = self.engine.state.lock().expect("engine lock");

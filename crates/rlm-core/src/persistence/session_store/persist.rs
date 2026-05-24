@@ -4,9 +4,7 @@ use std::path::PathBuf;
 
 use serde_json::{json, Value};
 
-use super::{
-    FileSessionStore, SavedSessionManifest, SectionEnvelope, SECTION_VERSION,
-};
+use super::{FileSessionStore, SavedSessionManifest, SectionEnvelope, SECTION_VERSION};
 
 pub(crate) fn envelope(data: Value) -> Value {
     json!({ "version": SECTION_VERSION, "data": data })

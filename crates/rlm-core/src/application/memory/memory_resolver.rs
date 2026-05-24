@@ -57,8 +57,7 @@ impl MemoryResolver {
                     });
                     chunks.push(format!(
                         "Scope {scope_id} v{}:\n{}",
-                        scope.version,
-                        scope.content
+                        scope.version, scope.content
                     ));
                 }
                 Ok(None) => {
@@ -93,11 +92,13 @@ impl MemoryResolver {
         }
 
         let mut retrieval_hits = None;
-        if policy.reads.iter().any(|read| read.to_lowercase().contains("relevant memory")) {
+        if policy
+            .reads
+            .iter()
+            .any(|read| read.to_lowercase().contains("relevant memory"))
+        {
             if let Some(index) = &self.retrieval {
-                let result = index
-                    .search(prompt, &policy.memory_scopes, 4)
-                    .await;
+                let result = index.search(prompt, &policy.memory_scopes, 4).await;
                 if result.status == RetrievalStatus::Ready && !result.hits.is_empty() {
                     retrieval_hits = Some(
                         result

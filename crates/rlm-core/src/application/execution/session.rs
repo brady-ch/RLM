@@ -11,8 +11,8 @@ use crate::domain::types::{
     approval_mode_label, ApprovalMode, ChatReadiness, ChatSnapshot, ClarificationQuestion,
     ClarificationRecord, DeleteStrategy, ExecutionEvent, ExecutionGraph, ExecutionGraphEdge,
     ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail, ExpertRuntimeMode,
-    GraphPosition, GraphViewport, GraphWorkflowMetadata, NodeApprovalDecision,
-    NodeApprovalStatus, QualityLoopManualDecision, RunModeSnapshot, RunSummary, SessionSnapshot,
+    GraphPosition, GraphViewport, GraphWorkflowMetadata, NodeApprovalDecision, NodeApprovalStatus,
+    QualityLoopManualDecision, RunModeSnapshot, RunSummary, SessionSnapshot,
 };
 
 pub const DEFAULT_UI_BOOTSTRAP_PROMPT: &str =

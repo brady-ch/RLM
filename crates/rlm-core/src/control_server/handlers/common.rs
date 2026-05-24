@@ -8,20 +8,18 @@ use serde_json::{json, Value};
 use crate::application::execution::InteractiveExecutionSession;
 use crate::application::graph::{execute_graph, GraphExecutorInput};
 use crate::application::memory::MemoryResolver;
-use crate::persistence::FileMemoryStore;
-use crate::ports::MemoryContextPort;
-use crate::application::memory::{ollama_loaded_ram_mb, resource_guard_json, unload_ollama_models, configured_model_names};
+use crate::application::memory::{
+    configured_model_names, ollama_loaded_ram_mb, resource_guard_json, unload_ollama_models,
+};
 use crate::control_server::resolve_ollama_base_url;
 use crate::domain::run_state_types::ResumeCursor;
 use crate::domain::types::ReplanChoice;
 use crate::domain::RunStatePersistence;
+use crate::persistence::FileMemoryStore;
+use crate::ports::MemoryContextPort;
 use crate::ports::{LanguageModel, RunStateStorePort};
 
 use crate::control_server::RouterState;
-
-pub(crate) fn session_snapshot_json(state: &Arc<RouterState>) -> Value {
-    session_snapshot_json_with_loaded_mb(state, None)
-}
 
 pub(crate) async fn session_snapshot_json_async(state: &Arc<RouterState>) -> Value {
     let loaded_mb = if let Some(loaded) = state.project_config.as_ref() {
@@ -34,7 +32,10 @@ pub(crate) async fn session_snapshot_json_async(state: &Arc<RouterState>) -> Val
     session_snapshot_json_with_loaded_mb(state, Some(loaded_mb))
 }
 
-fn session_snapshot_json_with_loaded_mb(state: &Arc<RouterState>, ollama_loaded_mb: Option<u32>) -> Value {
+fn session_snapshot_json_with_loaded_mb(
+    state: &Arc<RouterState>,
+    ollama_loaded_mb: Option<u32>,
+) -> Value {
     let mut snap = serde_json::to_value(state.session.snapshot()).unwrap_or(json!({}));
     let run_state = if state.session.is_confirmed_execution_running() {
         json!({ "resumable": false })
@@ -136,18 +137,18 @@ pub(crate) fn spawn_graph_execution(state: &Arc<RouterState>, resume: bool) {
         if lifecycle.is_shutdown() {
             return;
         }
-        let memory: Option<Arc<dyn MemoryContextPort>> =
-            if state_for_task.paths.memory_configured() {
-                let session_id = state_for_task.current_memory_session_id();
-                let index = state_for_task.memory_index(&session_id).await;
-                Some(Arc::new(MemoryResolver::new(
-                    FileMemoryStore::new(state_for_task.paths.memory_dir.clone()),
-                    session_id,
-                    Some(index),
-                )) as Arc<dyn MemoryContextPort>)
-            } else {
-                None
-            };
+        let memory: Option<Arc<dyn MemoryContextPort>> = if state_for_task.paths.memory_configured()
+        {
+            let session_id = state_for_task.current_memory_session_id();
+            let index = state_for_task.memory_index(&session_id).await;
+            Some(Arc::new(MemoryResolver::new(
+                FileMemoryStore::new(state_for_task.paths.memory_dir.clone()),
+                session_id,
+                Some(index),
+            )) as Arc<dyn MemoryContextPort>)
+        } else {
+            None
+        };
         let input = GraphExecutorInput {
             runtime_config,
             project_config,

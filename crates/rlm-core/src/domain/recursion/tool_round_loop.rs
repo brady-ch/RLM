@@ -158,7 +158,7 @@ pub async fn run_completion_with_tool_rounds(
                     host,
                     task,
                     kind,
-                    vec![
+                    [
                         conversation,
                         vec![
                             ChatMessage {
@@ -263,7 +263,11 @@ async fn execute_tool(
 
     host.record(
         task,
-        if result.is_error { "error" } else { "tool-result" },
+        if result.is_error {
+            "error"
+        } else {
+            "tool-result"
+        },
         &format!(
             "{} ({})",
             tool_call.name,

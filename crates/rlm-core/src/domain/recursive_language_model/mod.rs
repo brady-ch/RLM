@@ -103,7 +103,7 @@ impl RecursiveLanguageModel {
                 depth: 0,
                 kind: None,
                 model_override: None,
-                context_policy: None
+                context_policy: None,
             }
         };
 

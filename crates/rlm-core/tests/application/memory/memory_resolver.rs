@@ -26,9 +26,11 @@ async fn build_packet_includes_scope_and_rolling_summary() {
 
     let resolver = MemoryResolver::new(store, "run-1", None);
     resolver
-        .append_node_summary("task-1", "Implemented the scope document store.", &[
-            "project-facts".into(),
-        ])
+        .append_node_summary(
+            "task-1",
+            "Implemented the scope document store.",
+            &["project-facts".into()],
+        )
         .expect("append summary");
 
     let packet = resolver
@@ -48,7 +50,9 @@ async fn build_packet_includes_scope_and_rolling_summary() {
 
     assert!(packet.text.contains("<memory_context>"));
     assert!(packet.text.contains("persist structured memory"));
-    assert!(packet.text.contains("Implemented the scope document store."));
+    assert!(packet
+        .text
+        .contains("Implemented the scope document store."));
     assert!(!packet.metadata.degraded);
     assert!(!packet.metadata.truncated);
 }

@@ -41,10 +41,9 @@ pub(super) fn persist_resume_cursor(
 }
 
 fn apply_resume_to_session(session: &Arc<InteractiveExecutionSession>, resume: &LoadedResumeState) {
-    let control: Arc<dyn ExecutionControl> =
-        Arc::new(crate::application::execution::SessionExecutionControl::new(Arc::clone(
-            session,
-        )));
+    let control: Arc<dyn ExecutionControl> = Arc::new(
+        crate::application::execution::SessionExecutionControl::new(Arc::clone(session)),
+    );
     for node_id in &resume.completed_node_ids {
         if session
             .snapshot()

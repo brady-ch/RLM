@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use tokio::process::Command;
 
-use crate::ports::ToolExecutionResult;
 use crate::plugins::tool_schemas;
 use crate::ports::Tool;
+use crate::ports::ToolExecutionResult;
 
 const DEFAULT_ALLOWED: &[&str] = &["pwd", "ls", "rg", "sed", "cat"];
 const BLOCKED_TOKENS: &[&str] = &["|", "&&", "||", ";", ">", ">>", "<", "$(", "`"];

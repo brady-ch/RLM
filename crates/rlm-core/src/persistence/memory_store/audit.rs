@@ -3,8 +3,11 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use super::{iso_now, unique_suffix, EpisodicMemoryEntry, FileMemoryStore, MemoryScopePatchRequest, MemoryScopePatchResult};
 use super::super::util::read_json_array;
+use super::{
+    iso_now, unique_suffix, EpisodicMemoryEntry, FileMemoryStore, MemoryScopePatchRequest,
+    MemoryScopePatchResult,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -4,9 +4,9 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use super::mcp_stdio_client::{block_on_async, parse_mcp_servers, McpServerConfig, StdioMcpClient};
-use crate::ports::ToolExecutionResult;
 use crate::plugins::extension_host::ExtensionHost;
 use crate::ports::Tool;
+use crate::ports::ToolExecutionResult;
 
 pub struct McpInteropResult {
     pub tools: Vec<Arc<dyn Tool>>,
@@ -55,10 +55,9 @@ pub async fn create_mcp_tools(servers: Vec<McpServerConfig>) -> Result<McpIntero
                         Ok(listed) => {
                             for tool in listed {
                                 let full_name = format!("{}.{}", server.id, tool.name);
-                                let description = tool
-                                    .description
-                                    .clone()
-                                    .unwrap_or_else(|| format!("MCP tool {} from {}", tool.name, server.id));
+                                let description = tool.description.clone().unwrap_or_else(|| {
+                                    format!("MCP tool {} from {}", tool.name, server.id)
+                                });
                                 tools.push(Arc::new(McpTool {
                                     name: full_name,
                                     description,

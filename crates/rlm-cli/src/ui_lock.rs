@@ -42,8 +42,11 @@ impl UiServerLock {
             "port": port,
             "url": url,
         });
-        fs::write(&path, serde_json::to_string_pretty(&payload).unwrap_or_default())
-            .map_err(|err| err.to_string())?;
+        fs::write(
+            &path,
+            serde_json::to_string_pretty(&payload).unwrap_or_default(),
+        )
+        .map_err(|err| err.to_string())?;
         Ok(Self { path })
     }
 
@@ -59,10 +62,7 @@ impl UiServerLock {
         };
         Ok(Some(UiLockRecord {
             pid: pid as u32,
-            port: value
-                .get("port")
-                .and_then(Value::as_u64)
-                .unwrap_or(0) as u16,
+            port: value.get("port").and_then(Value::as_u64).unwrap_or(0) as u16,
             url: value
                 .get("url")
                 .and_then(Value::as_str)

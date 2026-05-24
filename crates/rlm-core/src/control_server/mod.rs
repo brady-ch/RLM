@@ -17,11 +17,13 @@ use crate::application::execution::{
 use crate::application::memory::SemanticMemoryIndex;
 use crate::model_library::ModelLibraryService;
 use crate::persistence::{load_project_config, LoadedProjectConfig, ProjectPaths};
-use crate::ports::PluginRegistryConfig;
 use crate::plugins::{
     build_runtime_context, BuildRuntimeContextInput, PluginRegistryService, RuntimeContext,
 };
+use crate::ports::PluginRegistryConfig;
 use crate::ports::{LanguageModel, QueueModel};
+
+type LanguageModelPair = (Arc<dyn LanguageModel>, Arc<dyn LanguageModel>);
 
 #[derive(Clone)]
 pub struct RouterState {
@@ -36,7 +38,7 @@ pub struct RouterState {
     pub runtime_context: Option<RuntimeContext>,
     pub lifecycle: ProcessShutdown,
     memory_index: Arc<AsyncMutex<Option<Arc<SemanticMemoryIndex>>>>,
-    language_models: Arc<RwLock<(Arc<dyn LanguageModel>, Arc<dyn LanguageModel>)>>,
+    language_models: Arc<RwLock<LanguageModelPair>>,
 }
 
 impl RouterState {

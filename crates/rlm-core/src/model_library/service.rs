@@ -62,11 +62,9 @@ impl ModelLibraryService {
                 let model = entry.ollama_model.as_deref().unwrap_or(&entry.id);
                 if let Some(estimate) = estimate_model_ram_mb(&config_snapshot, model) {
                     entry.estimated_ram_mb.get_or_insert(estimate);
-                    let disabled_reason = model_ram_eligibility(
-                        Some(estimate),
-                        &ram_snapshot(&config_snapshot, 0),
-                    )
-                    .disabled_reason;
+                    let disabled_reason =
+                        model_ram_eligibility(Some(estimate), &ram_snapshot(&config_snapshot, 0))
+                            .disabled_reason;
                     entry.disabled = Some(disabled_reason.is_some()).filter(|disabled| *disabled);
                     entry.disabled_reason = disabled_reason;
                 }
@@ -85,11 +83,9 @@ impl ModelLibraryService {
             .map(|(id, label, description, ram, tags)| {
                 let ollama_model = (*id).to_string();
                 let job = active_jobs.get(&ollama_model);
-                let disabled_reason = model_ram_eligibility(
-                    Some(*ram),
-                    &ram_snapshot(&config_snapshot, 0),
-                )
-                .disabled_reason;
+                let disabled_reason =
+                    model_ram_eligibility(Some(*ram), &ram_snapshot(&config_snapshot, 0))
+                        .disabled_reason;
                 let status = if installed_ids.contains(&ollama_model) {
                     "installed"
                 } else if job.is_some_and(|job| job.status == "failed") {

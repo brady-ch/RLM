@@ -48,13 +48,8 @@ pub async fn run(
     })
     .await?;
 
-    let lock = UiServerLock::acquire(
-        &project_root,
-        std::process::id(),
-        server.port,
-        &server.url,
-    )
-    .map_err(|err| -> Box<dyn std::error::Error> { err.into() })?;
+    let lock = UiServerLock::acquire(&project_root, std::process::id(), server.port, &server.url)
+        .map_err(|err| -> Box<dyn std::error::Error> { err.into() })?;
 
     eprintln!("RLM UI listening at {}", server.url);
     eprintln!("Press Ctrl+C to stop, or run `rlm ui --stop` from another terminal.");
