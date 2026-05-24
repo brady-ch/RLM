@@ -170,11 +170,20 @@ Full details: `.planning/milestones/v1.15-ROADMAP.md`
 
 **Goal:** Inventory TS-only paths; define per-layer verification gates; flip default runtime to Rust
 **Depends on:** Phase 112
+**Plans:** 3 plans
 **Success Criteria:**
 1. TS-only path inventory documented with deletion order
 2. Default `npm rlm` dispatches to Rust binary (`RLM_RUNTIME=rust` or equivalent)
 3. Per-phase verification gates written in migration note
 4. Rust golden fixtures identified as sole HTTP contract gate post-114
+
+Plans:
+**Wave 1**
+- [ ] 113-01-PLAN.md — TS-only path inventory audit (src/, tests/, scripts, CI)
+- [ ] 113-02-PLAN.md — Flip default runtime to Rust + package.json bin alignment
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 113-03-PLAN.md — Per-phase verification gates and HTTP contract policy
 
 ### Phase 114: Control Server and UI Bootstrap Removal
 
