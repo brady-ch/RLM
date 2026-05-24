@@ -56,8 +56,8 @@ Full details: `.planning/milestones/v1.17-ROADMAP.md`
 **Depends on:** v1.17 complete (Phase 112)
 
 - [x] **Phase 113: Node Runtime Retirement Audit and Cutover Gates** (2026-05-24)
-- [ ] **Phase 114: Control Server and UI Bootstrap Removal**
-- [ ] **Phase 115: CLI Entry and Runtime Composition Removal**
+- [x] **Phase 114: Control Server and UI Bootstrap Removal** (2026-05-24)
+- [x] **Phase 115: CLI Entry and Runtime Composition Removal** (2026-05-24)
 - [ ] **Phase 116: Application Layer Removal**
 - [ ] **Phase 117: Domain and Ports Removal**
 - [ ] **Phase 118: Adapters, Plugins, and TS Tests Removal**
@@ -202,11 +202,12 @@ Plans:
 3. `cargo test -p rlm-core control_server_matches_golden_fixtures` passes
 4. Parity scripts no longer boot TS server
 
-### Phase 115: CLI Entry and Runtime Composition Removal
+### Phase 115: CLI Entry and Runtime Composition Removal ✅
 
 **Goal:** Delete Node CLI entry and runtime composition; Rust `rlm-cli` is sole CLI
 **Depends on:** Phase 114
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
+**Verification:** `115-VERIFICATION.md` — passed (Tauri interactive dev smoke deferred to UAT)
 **Success Criteria:**
 1. `src/index.ts`, `src/cli/`, `src/runtime/` deleted
 2. `npm rlm ask` invokes Rust CLI end-to-end
@@ -214,9 +215,9 @@ Plans:
 4. All shipped subcommands available via `rlm-cli`
 
 Plans:
-- [ ] 115-01-PLAN.md — Rust-only rlm-runtime dispatcher + package.json Node script removal
-- [ ] 115-02-PLAN.md — Delete src/index.ts, src/cli/, src/runtime/, tests/runtime/
-- [ ] 115-03-PLAN.md — Prune cli-dependent tests, verification gates, Tauri smoke checkpoint
+- [x] 115-01-PLAN.md — Rust-only rlm-runtime dispatcher + package.json Node script removal
+- [x] 115-02-PLAN.md — Delete src/index.ts, src/cli/, src/runtime/, tests/runtime/
+- [x] 115-03-PLAN.md — Prune cli-dependent tests, verification gates, Tauri smoke checkpoint
 
 ### Phase 116: Application Layer Removal
 

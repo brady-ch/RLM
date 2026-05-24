@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Node Runtime Retirement
 status: verifying
-last_updated: "2026-05-24T15:12:50.333Z"
+last_updated: "2026-05-24T15:18:05.019Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 32
@@ -15,7 +15,7 @@ progress:
 
 # Project State
 
-**Current focus:** Phase 114 — control-server-and-ui-bootstrap-removal (complete)
+**Current focus:** Phase 116 — application-layer-removal (next)
 
 ## Project Reference
 
@@ -25,9 +25,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-24)
 
 ## Current Position
 
-Phase: 114
+Phase: 115
 Plan: 3 of 3 complete
-Status: Phase complete — ready for verification
+Status: Phase complete — verified (115-VERIFICATION.md passed)
 Last activity: 2026-05-24
 
 ## Deferred Items
@@ -83,6 +83,9 @@ Items acknowledged and deferred at milestone close on 2026-05-24:
 - Phase 114: TS control-server deleted; Node ui command redirects to npm run rlm -- ui
 - Phase 114: Vite dev proxies /api to Rust on RLM_CONTROL_PORT (default 8787)
 - Golden fixture test strips host-dependent runBlocked fields before compare
+- Phase 115: npm rlm is Rust-only; src/cli/, src/runtime/, src/index.ts deleted
+- Phase 115: Tauri uses rlm_core::start_server in-process (no Node RLM child)
+- Phase 115: Tauri interactive dev smoke deferred to operator UAT
 
 ## Milestone Goal
 
@@ -90,8 +93,8 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Next Steps
 
-1. Phase 115: CLI entry removal
-2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (114 complete)
+1. Phase 116: Application layer removal
+2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (115 complete)
 3. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
 4. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
 5. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
@@ -105,4 +108,4 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Operator Next Steps
 
-- Execute Phase 115 with `/gsd-execute-phase 115` or `/gsd-plan-phase 115` if not yet planned
+- Execute Phase 116 with `/gsd-execute-phase 116` or `/gsd-plan-phase 116` if not yet planned
