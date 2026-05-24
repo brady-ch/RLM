@@ -1,15 +1,18 @@
+mod request;
+mod response;
+
 use std::time::Duration;
 
 use async_trait::async_trait;
 use futures::StreamExt;
 use reqwest::Client;
-use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::Value;
 use thiserror::Error;
 
-use crate::ports::CancellationController;
 use crate::domain::types::{ChatMessage, LanguageModelResponse, ToolCallRequest};
-use crate::ports::{LanguageModel, LanguageModelCompleteOptions};
+use crate::ports::{CancellationController, LanguageModel, LanguageModelCompleteOptions};
+
+use response::apply_stream_line;
 
 #[derive(Debug, Error)]
 pub enum OllamaLanguageModelError {
@@ -135,19 +138,7 @@ impl OllamaLanguageModel {
             while let Some(line_end) = buffer.find('\n') {
                 let line = buffer[..line_end].trim().to_string();
                 buffer = buffer[line_end + 1..].to_string();
-                if line.is_empty() {
-                    continue;
-                }
-                if let Ok(payload) = serde_json::from_str::<StreamChunk>(&line) {
-                    if let Some(message) = payload.message {
-                        if let Some(part) = message.content {
-                            content.push_str(&part);
-                        }
-                        if let Some(calls) = message.tool_calls {
-                            merge_tool_calls(&mut tool_calls, calls);
-                        }
-                    }
-                }
+                apply_stream_line(&line, &mut content, &mut tool_calls);
             }
         }
 
@@ -156,103 +147,6 @@ impl OllamaLanguageModel {
             model: Some(self.model.clone()),
             tool_calls,
         })
-    }
-
-    fn build_chat_body(&self, messages: &[ChatMessage], tools: Option<&[Value]>) -> Value {
-        let mut body = json!({
-            "model": self.model,
-            "messages": messages.iter().map(chat_message_to_ollama).collect::<Vec<_>>(),
-            "stream": true,
-            "keep_alive": 0,
-            "options": {
-                "temperature": self.temperature,
-            },
-        });
-        if let Some(tools) = tools {
-            if !tools.is_empty() {
-                body["tools"] = json!(tools);
-            }
-        }
-        body
-    }
-
-    fn build_tool_definitions(options: &LanguageModelCompleteOptions<'_>) -> Vec<Value> {
-        options
-            .tools
-            .iter()
-            .map(|tool| {
-                json!({
-                    "type": "function",
-                    "function": {
-                        "name": tool.name,
-                        "description": tool.description,
-                        "parameters": tool.schema,
-                    }
-                })
-            })
-            .collect()
-    }
-}
-
-#[derive(Debug, Deserialize)]
-struct StreamChunk {
-    message: Option<StreamMessage>,
-}
-
-#[derive(Debug, Deserialize)]
-struct StreamMessage {
-    content: Option<String>,
-    tool_calls: Option<Vec<OllamaToolCall>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct OllamaToolCall {
-    function: Option<OllamaFunctionCall>,
-}
-
-#[derive(Debug, Deserialize)]
-struct OllamaFunctionCall {
-    name: Option<String>,
-    arguments: Option<Value>,
-}
-
-fn chat_message_to_ollama(message: &ChatMessage) -> Value {
-    let mut payload = json!({
-        "role": message.role,
-        "content": message.content,
-    });
-    if let Some(tool_call_id) = &message.tool_call_id {
-        payload["tool_call_id"] = json!(tool_call_id);
-    }
-    if let Some(tool_calls) = &message.tool_calls {
-        payload["tool_calls"] = json!(
-            tool_calls
-                .iter()
-                .map(|call| json!({
-                    "function": {
-                        "name": call.name,
-                        "arguments": call.arguments,
-                    }
-                }))
-                .collect::<Vec<_>>()
-        );
-    }
-    payload
-}
-
-fn merge_tool_calls(target: &mut Vec<ToolCallRequest>, incoming: Vec<OllamaToolCall>) {
-    for (index, call) in incoming.into_iter().enumerate() {
-        let Some(function) = call.function else {
-            continue;
-        };
-        let Some(name) = function.name.filter(|name| !name.is_empty()) else {
-            continue;
-        };
-        target.push(ToolCallRequest {
-            id: Some(format!("tool-call-{}", target.len() + index + 1)),
-            name,
-            arguments: function.arguments.unwrap_or_else(|| json!({})),
-        });
     }
 }
 
@@ -281,10 +175,13 @@ impl LanguageModel for OllamaLanguageModel {
             let first = self.chat_stream(messages, None).await;
             match first {
                 Ok(first_response) => {
-                        if !first_response.tool_calls.is_empty() || first_response.content.is_empty() {
+                    if !first_response.tool_calls.is_empty() || first_response.content.is_empty() {
                         let mut extended = messages.to_vec();
                         if !first_response.content.is_empty() {
-                            extended.push(ChatMessage::text("assistant", first_response.content.clone()));
+                            extended.push(ChatMessage::text(
+                                "assistant",
+                                first_response.content.clone(),
+                            ));
                         } else if !first_response.tool_calls.is_empty() {
                             extended.push(ChatMessage {
                                 role: "assistant".into(),
@@ -319,5 +216,5 @@ impl LanguageModel for OllamaLanguageModel {
 }
 
 #[cfg(test)]
-#[path = "../../tests/adapters/ollama_language_model.rs"]
+#[path = "../../../tests/adapters/ollama_language_model.rs"]
 mod ollama_language_model_tests;
