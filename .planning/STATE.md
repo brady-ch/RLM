@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Node Runtime Retirement
-status: ready_to_plan
-last_updated: "2026-05-24T14:59:43.359Z"
+status: executing
+last_updated: "2026-05-24T15:10:00.000Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 32
   completed_phases: 5
-  total_plans: 6
-  completed_plans: 9
-  percent: 16
+  total_plans: 9
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
 
-**Current focus:** Phase 113 — node-runtime-retirement-audit-and-cutover-gates
+**Current focus:** Phase 114 — control-server-and-ui-bootstrap-removal (complete)
 
 ## Project Reference
 
@@ -23,13 +23,11 @@ See: `.planning/PROJECT.md` (updated 2026-05-24)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.
 
-**Current focus:** v1.18 Node Runtime Retirement (Phase 113)
-
 ## Current Position
 
 Phase: 114
-Plan: Not started
-Status: Ready to plan
+Plan: 3 of 3 complete
+Status: Phase complete
 Last activity: 2026-05-24
 
 ## Deferred Items
@@ -39,7 +37,7 @@ Items acknowledged and deferred at milestone close on 2026-05-24:
 | Category | Item | Status |
 |----------|------|--------|
 | verification | Phases 100–105, 107 lack VERIFICATION.md | deferred |
-| test_env | control_server_matches_golden_fixtures RAM flake on low-RAM hosts | deferred |
+| test_env | control_server_matches_golden_fixtures RAM flake on low-RAM hosts | resolved in 114-03 (normalize runBlocked) |
 | cosmetic | Config loader tests at tests/application/config/ vs tests/persistence/ | deferred |
 | nyquist | Zero *-VALIDATION.md across v1.17 phases (16 phases) | deferred |
 | requirement | PLUG-106-04, PLUG-107-05 partial (full cargo test env-dependent) | deferred |
@@ -81,6 +79,10 @@ Items acknowledged and deferred at milestone close on 2026-05-24:
 - web_fetch.rs post-extraction: 191 lines — no split needed (threshold 300)
 - web_search.rs #[path] stub uses `../../../tests/plugins/builtin/web_search.rs` (3 levels from src/plugins/builtin/)
 - web_search.rs post-extraction: 225 lines — no split needed (threshold 300)
+- Phase 114: check:parity is Rust-only via control_server_matches_golden_fixtures
+- Phase 114: TS control-server deleted; Node ui command redirects to npm run rlm -- ui
+- Phase 114: Vite dev proxies /api to Rust on RLM_CONTROL_PORT (default 8787)
+- Golden fixture test strips host-dependent runBlocked fields before compare
 
 ## Milestone Goal
 
@@ -88,8 +90,8 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Next Steps
 
-1. Phase 113: Node runtime retirement audit and cutover gates
-2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement
+1. Phase 115: CLI entry removal
+2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (114 complete)
 3. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
 4. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
 5. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
@@ -103,5 +105,4 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Operator Next Steps
 
-- Plan Phase 113 with `/gsd-discuss-phase 113` or `/gsd-plan-phase 113`
-- Or run `/gsd-new-milestone` to redefine scope before v1.18 execution
+- Execute Phase 115 with `/gsd-execute-phase 115` or `/gsd-plan-phase 115` if not yet planned

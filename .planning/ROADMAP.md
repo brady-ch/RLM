@@ -189,12 +189,12 @@ Plans:
 
 **Goal:** Delete TypeScript control server; Rust Axum server is sole HTTP transport for UI
 **Depends on:** Phase 113
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 114-01-PLAN.md — Retire TS parity scripts; narrow check:parity to Rust golden fixtures
-- [ ] 114-02-PLAN.md — Delete TS control-server and ui bootstrap; clean consumers
-- [ ] 114-03-PLAN.md — Vite dev proxy to Rust; run Phase 114 verification gates
+- [x] 114-01-PLAN.md — Retire TS parity scripts; narrow check:parity to Rust golden fixtures
+- [x] 114-02-PLAN.md — Delete TS control-server and ui bootstrap; clean consumers
+- [x] 114-03-PLAN.md — Vite dev proxy to Rust; run Phase 114 verification gates (completed 2026-05-24)
 
 **Success Criteria:**
 1. `src/application/control-server/` deleted
