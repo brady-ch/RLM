@@ -209,6 +209,11 @@ Plans:
 3. Four `no-plugins-to-domain` baseline entries removed
 4. `cargo test -p rlm-core` passes
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 106-01-PLAN.md — move ToolExecutionResult to ports/tool.rs; repoint builtins, interop, domain; ratchet baseline 6→2
+
 ### Phase 107: Plugin Runtime & Registry Boundary Cleanup
 
 **Goal:** Extract runtime/registry tests; inject config and tool filter via port/bootstrap
