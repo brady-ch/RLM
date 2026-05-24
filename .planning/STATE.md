@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Rust Infrastructure Layer
 status: in_progress
-last_updated: "2026-05-24T07:17:00.000Z"
+last_updated: "2026-05-24T07:30:00.000Z"
 progress:
-  total_phases: 33
-  completed_phases: 14
+  total_phases: 34
+  completed_phases: 15
   total_plans: 19
-  completed_plans: 19
-  percent: 42
+  completed_plans: 22
+  percent: 100
 ---
 
 # Project State
@@ -45,6 +45,8 @@ Status: Complete
 - Boundary baseline ratcheted to 2 entries (runtime.rs, registry/service.rs only)
 - AgentProfile and filter_agent_tools live in ports/agent.rs with application re-export shim
 - PluginRegistryConfig injected at composition boundary; transitional baseline empty as of Phase 107
+- manifest.rs #[path] stub uses `../../tests/plugins/manifest.rs` (2 levels from src/plugins/)
+- manifest.rs post-extraction: 126 lines — no split needed (threshold 300)
 
 ## Milestone Goal
 

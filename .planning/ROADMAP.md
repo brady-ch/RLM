@@ -258,7 +258,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 108-01-PLAN.md — Extract manifest inline tests to tests/plugins/manifest.rs with #[path] stub
+- [x] 108-01-PLAN.md — Extract manifest inline tests to tests/plugins/manifest.rs with #[path] stub
 
 ### Phase 109: Plugin Remote Fetch Test Extraction
 
