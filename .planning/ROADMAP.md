@@ -97,6 +97,11 @@ Plans:
 2. Module split only if file remains hard to scan post-extraction
 3. `cargo test -p rlm-core` passes
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 100-01-PLAN.md — extract ann_vector_index.rs inline tests to tests/persistence/ann_vector_index.rs with #[path] stub; conditional split if >300 lines
+
 ### Phase 101: Run State Store Architecture & Test Extraction
 
 **Goal:** Extract tests from `run_state_store.rs`; split read/write or snapshot vs persist if needed
