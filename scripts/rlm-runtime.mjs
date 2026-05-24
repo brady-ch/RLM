@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * RLM runtime dispatcher — selects Node or Rust CLI based on RLM_RUNTIME.
+ * RLM runtime dispatcher — Rust-only CLI (Phase 115).
  *
- *   RLM_RUNTIME=rust  (default) — cargo-built rlm binary (release preferred)
- *   RLM_RUNTIME=node            — Node dist/src/index.js (escape hatch until Phase 115)
+ * Sole path: cargo-built rlm binary (release preferred, debug fallback).
+ * RLM_RUNTIME env is ignored with a stderr warning if set (stale shell env).
  *
  * Usage: node scripts/rlm-runtime.mjs [rlm args...]
  */
@@ -15,26 +15,18 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const runtime = (process.env.RLM_RUNTIME ?? "rust").toLowerCase();
 const forwarded = process.argv.slice(2);
 
-function runNode() {
-  const entry = join(ROOT, "dist", "src", "index.js");
-  if (!existsSync(entry)) {
-    console.error("Node CLI entry missing. Run `npm run build` first.");
-    process.exit(1);
-  }
-  const result = spawnSync(process.execPath, [entry, ...forwarded], {
-    cwd: process.cwd(),
-    stdio: "inherit",
-    env: process.env,
-  });
-  process.exit(result.status ?? 1);
+if (process.env.RLM_RUNTIME?.trim()) {
+  console.error(
+    `RLM_RUNTIME="${process.env.RLM_RUNTIME}" is ignored — Rust CLI is the sole runtime (Phase 115).`,
+  );
 }
 
 function resolveRustBinary() {
-  const release = join(ROOT, "target", "release", "rlm");
-  const debug = join(ROOT, "target", "debug", "rlm");
+  const binaryName = process.platform === "win32" ? "rlm.exe" : "rlm";
+  const release = join(ROOT, "target", "release", binaryName);
+  const debug = join(ROOT, "target", "debug", binaryName);
   if (existsSync(release)) {
     return release;
   }
@@ -68,11 +60,4 @@ function runRust() {
   process.exit(result.status ?? 1);
 }
 
-if (runtime === "rust") {
-  runRust();
-} else if (runtime === "node") {
-  runNode();
-} else {
-  console.error(`Unknown RLM_RUNTIME="${process.env.RLM_RUNTIME}". Use node or rust.`);
-  process.exit(1);
-}
+runRust();
