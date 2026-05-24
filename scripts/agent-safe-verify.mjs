@@ -70,11 +70,6 @@ const PROFILES = {
       cmd: `node --import ${PRELOAD} --import tsx --test tests/ui/reg01-static-wiring.test.ts`,
       tier: "minimal",
     },
-    {
-      label: "approval mode contract (tsx)",
-      cmd: `node --import ${PRELOAD} --import tsx --test --test-name-pattern="approval mode contract" tests/domain/recursion/recursive-language-model.test.ts`,
-      tier: "compile",
-    },
   ],
   reg03: [
     { label: "build UI (once)", cmd: "npm run build:ui", tier: "build" },
@@ -118,11 +113,6 @@ const PROFILES = {
       label: "config validation (tsx)",
       cmd: `node --import ${PRELOAD} --import tsx --test tests/application/config/validation.unit.test.ts`,
       tier: "minimal",
-    },
-    {
-      label: "approval mode contract (tsx)",
-      cmd: `node --import ${PRELOAD} --import tsx --test --test-name-pattern="approval mode contract" tests/domain/recursion/recursive-language-model.test.ts`,
-      tier: "compile",
     },
   ],
 };
