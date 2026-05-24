@@ -17,12 +17,10 @@
   "name": "recursive-language-modelv1",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/src/index.js",
   "bin": {
     "rlm": "scripts/rlm-runtime.mjs"
   },
   "scripts": {
-    "dev": "tsx src/index.ts",
     "dev:ui": "vite --config ui/vite.config.ts",
     "dev:ui:full": "node -e \"console.log('Two-terminal UI dev (Rust API):\\\\n  Terminal 1: RLM_UI_DIST= cargo run -p rlm-cli -- ui --port 8787\\\\n  Terminal 2: RLM_CONTROL_PORT=8787 npm run dev:ui')\"",
     "build": "tsc -p tsconfig.json",
@@ -33,13 +31,11 @@
     "package:smoke": "npm run package:build && node scripts/packaging/smoke-release.mjs",
     "package:smoke:deb": "node scripts/packaging/smoke-deb.mjs",
     "test:packaging": "node --import ./scripts/test-ram-preload.mjs --test scripts/packaging/deb-smoke-lib.test.mjs",
-    "start": "node dist/src/index.js",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run depcruise:strict && npm test",
     "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && npm run check:rust:boundaries && cargo check -p rlm-core -p rlm-cli",
     "check:rust:boundaries": "node --import ./scripts/test-ram-preload.mjs --test scripts/rust-boundary-check.test.mjs && bash scripts/check-rust-boundaries.sh",
     "check:rust:boundaries:strict": "bash scripts/check-rust-boundaries.sh --strict",
     "check:parity": "node scripts/cargo-with-ram-gate.mjs -- cargo test -p rlm-core control_server_matches_golden_fixtures -- --nocapture",
-    "rlm:node": "node dist/src/index.js",
     "rlm:rust": "cargo run -p rlm-cli --",
     "rlm": "node scripts/rlm-runtime.mjs",
     "lint": "eslint src tests ui/src",
