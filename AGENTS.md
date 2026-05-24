@@ -1,6 +1,6 @@
 # Agents and architecture
 
-This repository is a **recursive language model CLI**: Rust `rlm-cli` is the sole CLI (Phase 115); no TypeScript runtime layers remain in `src/` after Phase 118. All orchestration, domain, ports, adapters, and plugins are Rust-only in `crates/rlm-core/`. Rust counterparts: `crates/rlm-cli/` (CLI), `crates/rlm-core/` (domain, ports, plugins, interop, control server).
+This repository is a **recursive language model CLI**: Rust `rlm-cli` is the sole CLI (Phase 115); the TypeScript `src/` tree is fully retired (Phases 115–118). All orchestration, domain, ports, adapters, and plugins are Rust-only in `crates/rlm-core/`. **Phase 119:** npm toolchain is UI-only (Vite/Tauri/scripts); `npm run check` = UI lint/format + Rust gates. Rust counterparts: `crates/rlm-cli/` (CLI), `crates/rlm-core/` (domain, ports, plugins, interop, control server).
 
 ## Concern map
 
@@ -29,7 +29,7 @@ The TypeScript `src/` tree is fully retired (Phases 115–118). **Dependency dir
 
 | Path | Relates to | Notes |
 |------|------------|-------|
-| `tests/` | Rust runtime concerns | `tests/ui/` static UI wiring; `tests/depcruise/` boundary probes until Phase 119 |
+| `tests/` | Rust runtime concerns | `tests/ui/` static UI wiring; `tests/fixtures/` shared fixtures |
 | `ui/` | Rust control server (Phase 114+) | React UI; talks to Rust HTTP API, not domain directly |
 | `scripts/` | cli packaging, desktop, dev tooling | Build/release helpers; no production import from deleted `src/` |
 
@@ -46,29 +46,13 @@ The TypeScript `src/` tree is fully retired (Phases 115–118). **Dependency dir
 | ~~cross-cutting~~ | ~~`tests/integration/`~~ — **Removed Phase 116** |
 | ~~shared~~ | ~~`tests/helpers/`~~ — **Removed Phase 118** |
 
-### Dependency-cruiser rules
+### TypeScript dependency-cruiser (removed Phase 119)
 
-Boundary rules live in `.dependency-cruiser.js` at **error** severity. Rule names reference this concern map:
+The TypeScript `src/` tree and `.dependency-cruiser.js` were removed in Phase 119. Layer boundaries for the Rust runtime are enforced by `scripts/rust-boundary-rules.toml` and `scripts/check-rust-boundaries.sh` (see Rust boundary rules below). The former TS depcruise rule names are preserved in the Rust rules table for continuity.
 
-| Rule | Forbidden arc | Concern map rationale |
-|------|---------------|----------------------|
-| `no-domain-to-application` | domain → application | Domain holds policy, not orchestration |
-| `no-domain-to-adapters` | domain → adapters | Domain stays free of concrete I/O |
-| `no-domain-to-cli` | domain → cli | Domain stays free of CLI surface |
-| `no-ports-to-application` | ports → application | Ports are interfaces only |
-| `no-ports-to-adapters` | ports → adapters | Ports must not reference implementations |
-| `no-ports-to-cli` | ports → cli | Ports stay transport-agnostic |
-| `no-adapters-to-application` | adapters → application | Adapters implement ports, not use cases |
-| `no-adapters-to-cli` | adapters → cli | Adapters stay below CLI |
-| `no-plugins-to-application` | plugins → application | Plugins register via `ExtensionHostPort`, not orchestration |
-| `no-plugins-to-cli` | plugins → cli | Plugins never import CLI |
-| `no-plugins-to-domain` | plugins → domain | Plugins register tools; domain policy stays separate |
-| `no-runtime-to-cli` | runtime → cli | Runtime composition stays below CLI; CLI logger/shutdown injected at bootstrap |
-| `no-builtin-plugin-to-external-loader` | plugins/builtin → plugins/external | Built-ins must not depend on external install machinery |
+### npm verification (Phase 119)
 
-**Optional follow-on (not enforced):** `no-application-to-adapters` — Rust application modules should reach concrete stores and model hosts through bootstrap composition rather than importing adapters directly.
-
-Run `npm run depcruise:strict` (or `dependency-cruise src --config .dependency-cruiser.js`) to verify. `npm run check` uses strict depcruise without `--ignore-known`; `dependency-cruiser-baseline.json` remains empty.
+Run `npm run check` for the default contributor gate: `lint ui/src` → `format:check ui/src` → `check:rust` (fmt, clippy, Rust boundaries, cargo check). UI builds use `npm run build:ui`. Agent verification uses `npm run test:agent:verify:light`.
 
 ## Rust workspace (`crates/`)
 
@@ -149,6 +133,8 @@ Run `npm run check:rust:boundaries` or `bash scripts/check-rust-boundaries.sh` t
 | ~~`tests/plugins/`~~ | **Removed Phase 118** — Rust plugin tests in `crates/rlm-core/tests/plugins/` |
 | ~~`tests/adapters/`~~ | **Removed Phase 118** — Rust adapter tests in `crates/rlm-core/tests/adapters/` |
 | ~~`tests/integration/`~~ | **Removed Phase 116** |
+| `tests/ui/` | Static UI wiring tests (Node; Phase 119) |
+| `tests/fixtures/` | Shared test fixtures |
 
 ## Plugin taxonomy
 
@@ -182,13 +168,13 @@ For install, usage, and configuration fields, start with [`README.md`](README.md
 
 ## Autonomous agent verification (OOM prevention)
 
-Chained `npm run build` + `cargo test` + parallel GSD agents can OOM the desktop even on 32 GB machines (Cursor + compile + Vite stack concurrently).
+Chained `cargo test` + Vite build + parallel GSD agents can OOM the desktop even on 32 GB machines (Cursor + compile + Vite stack concurrently).
 
 **All test entry points check MemAvailable before running** via [`scripts/lib/ram-gate.mjs`](scripts/lib/ram-gate.mjs):
 
 | Layer | Behavior |
 |-------|----------|
-| `npm test` | RAM gate before build, test suite, and packaging (`run-test-suite.mjs`) |
+| `npm test` | RAM gate before UI tests, packaging, and rlm-runtime smoke (`run-test-suite.mjs`) |
 | `node --test` | `test-ram-preload.mjs` checks RAM **before every test case** (`beforeEach`) |
 | `cargo test` | Use `node scripts/cargo-with-ram-gate.mjs -- cargo test ...` |
 | Agent verify | `agent-safe-verify.mjs` gates **every** step (minimal / compile / build tiers) |

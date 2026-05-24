@@ -94,10 +94,10 @@ See [CONFIGURATION](docs/CONFIGURATION.md), [ARCHITECTURE](docs/ARCHITECTURE.md)
 ## Development
 
 ```bash
-npm run build
-npm run typecheck
-npm test
+npm run check
 npm run build:ui
+npm test
+npm run test:agent:verify:light
 ```
 
 ## Current Project Planning Context
