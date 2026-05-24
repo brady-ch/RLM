@@ -3,23 +3,23 @@ gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Rust Infrastructure Layer
 status: in_progress
-last_updated: "2026-05-24T08:38:00.000Z"
+last_updated: "2026-05-24T09:25:00.000Z"
 progress:
-  total_phases: 20
-  completed_phases: 9
-  total_plans: 11
-  completed_plans: 11
-  percent: 45
+  total_phases: 29
+  completed_phases: 10
+  total_plans: 13
+  completed_plans: 13
+  percent: 34
 ---
 
 # Project State
 
-**Current focus:** Phase 102 — Session Store Architecture & Test Extraction
+**Current focus:** Phase 103 — Memory Store Architecture & Test Extraction
 
 ## Current Position
 
-Phase: 102
-Plan: 01 complete
+Phase: 103
+Plan: 02 complete
 Status: Complete
 
 ## Decisions
@@ -33,6 +33,8 @@ Status: Complete
 - PersistedRunState defined in mod.rs for sibling submodule field access
 - session_store/mod.rs #[path] stub uses `../../../tests/persistence/session_store.rs` (3 levels from subdirectory)
 - FileSessionStore post-extraction: 403 lines — split into persist/verify submodules
+- memory_store/mod.rs #[path] stub uses `../../../tests/persistence/memory_store.rs` (3 levels from subdirectory)
+- FileMemoryStore split into scope/episodic/audit submodules (scope.rs 279 lines)
 
 ## Milestone Goal
 
@@ -40,11 +42,12 @@ Extract inline tests to mirrored `tests/{persistence,adapters,plugins}/` trees, 
 
 ## Next Steps
 
-1. Phase 103: Memory store architecture & test extraction
-2. Phases 104–105: Adapters test extraction
-3. Phases 106–112: Plugin boundary cleanup + test extraction
-4. **v1.18 queued:** Phases 113–120 Node Runtime Retirement (after v1.17)
+1. Phase 104: Ollama embedding test extraction
+2. Phases 105–112: Adapters + plugin boundary cleanup + test extraction
+3. **v1.18 queued:** Phases 113–120 Node Runtime Retirement (after v1.17)
+4. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
 
 ## Roadmap Evolution
 
 - Phases 113–120 added: **v1.18 Node Runtime Retirement** — incremental TS deletion, Rust-only runtime, constrained tool envelope post-cutover (from /gsd-explore 2026-05-24)
+- Phases 121–128 added: **v1.19 UI Product Simplification** — audit-first prune, canvas-first shell, code/bundle lightening (from /gsd-explore 2026-05-24)

@@ -2,6 +2,7 @@
 
 ## Milestones
 
+- 📋 **v1.19 UI Product Simplification** — Phases 121–128 (planned; starts after v1.18)
 - 📋 **v1.18 Node Runtime Retirement** — Phases 113–120 (planned; starts after v1.17)
 - 🚧 **v1.17 Rust Infrastructure Layer** — Phases 97–112 (in progress)
 - ✅ **v1.16 Rust Application Memory & Config** — Phases 92–96 (shipped 2026-05-24)
@@ -26,7 +27,7 @@
 - [x] **Phase 100: ANN Vector Index Architecture & Test Extraction**
 - [x] **Phase 101: Run State Store Architecture & Test Extraction**
 - [x] **Phase 102: Session Store Architecture & Test Extraction**
-- [ ] **Phase 103: Memory Store Architecture & Test Extraction**
+- [x] **Phase 103: Memory Store Architecture & Test Extraction**
 
 **Adapters block**
 - [ ] **Phase 104: Ollama Embedding Test Extraction**
@@ -57,6 +58,21 @@
 - [ ] **Phase 120: Constrained Ollama Tool Envelope (Rust)**
 
 **Reference:** `.planning/notes/rust-only-runtime-migration-decisions.md`
+
+### v1.19 UI Product Simplification (Phases 121–128)
+
+**Depends on:** v1.18 complete (Phase 120)
+
+- [ ] **Phase 121: UI Vision Audit and Cut List**
+- [ ] **Phase 122: Advanced Hub Pruning**
+- [ ] **Phase 123: Workflow View Simplification**
+- [ ] **Phase 124: Styles and Token Consolidation**
+- [ ] **Phase 125: AppShell State Decomposition**
+- [ ] **Phase 126: Node Inspector and Settings Slim Down**
+- [ ] **Phase 127: Lazy Routes and Bundle Lightening**
+- [ ] **Phase 128: UI Simplification UAT and Sign Off**
+
+**Reference:** `.planning/notes/ui-product-simplification-decisions.md`
 
 ## Phase Details
 
@@ -150,6 +166,12 @@ Plans:
 1. Inline tests extracted to `tests/persistence/`
 2. Module split by concern if file exceeds ~300 lines
 3. `cargo test -p rlm-core` passes
+
+**Plans:** 2 plans
+
+Plans:
+- [x] 103-01-PLAN.md — extract memory_store.rs inline tests to tests/persistence/memory_store.rs with #[path] stub
+- [x] 103-02-PLAN.md — split into scope/episodic/audit submodules + facade mod.rs (~553 lines post-extraction)
 
 ### Phase 104: Ollama Embedding Test Extraction
 
@@ -335,5 +357,79 @@ Full details: `.planning/milestones/v1.15-ROADMAP.md`
 4. Config-gated; existing two-phase path unchanged when off
 5. Tests cover valid envelope parse and unknown-tool rejection
 
+### Phase 121: UI Vision Audit and Cut List
+
+**Goal:** Score every UI surface against product vision; produce keep/demote/delete cut list for Phases 122–127
+**Depends on:** Phase 120
+**Success Criteria:**
+1. Every component under `ui/src/` mapped to a verdict
+2. Chat refine, quality loop, NodeInspector, WorkflowOverview explicitly scored
+3. Cut list committed; Phases 122–127 derive tasks from it
+
+### Phase 122: Advanced Hub Pruning
+
+**Goal:** Execute cut list on Advanced hub — remove deleted surfaces, collapse demoted panels
+**Depends on:** Phase 121
+**Success Criteria:**
+1. All "delete" verdicts removed from codebase
+2. Advanced landing simplified; essential tabs first (Models, Sessions)
+3. `npm run build:ui` passes
+
+### Phase 123: Workflow View Simplification
+
+**Goal:** Trim workflow chrome to locked shell model — thin top bar, canvas, Run panel on select only
+**Depends on:** Phase 122
+**Success Criteria:**
+1. No domain panels (models/plugins/sessions/memory) on workflow view
+2. TopBar limited to status, run/stop, Advanced entry
+3. Run panel: approve/clarify only — no edit fields
+4. First-run launcher → guided composer → graph path intact
+
+### Phase 124: Styles and Token Consolidation
+
+**Goal:** Split monolithic `styles.css`; remove dead CSS; align tokens to canvas-first polish
+**Depends on:** Phase 123
+**Success Criteria:**
+1. CSS split by concern or reduced to module imports
+2. Dead rules from deleted components removed
+3. Canvas dot grid and light card visual unchanged
+4. `npm run build:ui` passes
+
+### Phase 125: AppShell State Decomposition
+
+**Goal:** Move domain state/fetches out of AppShell into Advanced views
+**Depends on:** Phase 124
+**Success Criteria:**
+1. AppShell under ~200 lines
+2. No model/plugin/memory fetch on workflow view mount
+3. Session/graph refresh still works on workflow view
+
+### Phase 126: Node Inspector and Settings Slim Down
+
+**Goal:** Execute cut list on Settings/NodeInspector; prompt edit stays on node card only
+**Depends on:** Phase 125
+**Success Criteria:**
+1. NodeInspector reduced per cut list
+2. No duplicate prompt editing in Run panel or inspector
+3. Core plan/run/approve path unchanged
+
+### Phase 127: Lazy Routes and Bundle Lightening
+
+**Goal:** Code-split Advanced hub; measure and reduce bundle size
+**Depends on:** Phase 126
+**Success Criteria:**
+1. Advanced routes lazy-loaded via `React.lazy`
+2. Before/after bundle size documented
+3. Workflow-first load skips Advanced chunks until navigated
+
+### Phase 128: UI Simplification UAT and Sign Off
+
+**Goal:** Operator UAT on Rust-only stack; milestone sign-off
+**Depends on:** Phase 127
+**Success Criteria:**
+1. UAT checklist covers first-run → graph → run → Advanced → save/reopen
+2. First-run to successful run under 5 minutes (operator verified)
+3. VERIFICATION.md signed
+
 ---
-*Roadmap updated: 2026-05-24 — v1.18 Phases 113–120 from /gsd-explore*
+*Roadmap updated: 2026-05-24 — v1.19 Phases 121–128 from /gsd-explore*
