@@ -2,16 +2,20 @@
 
 ## Current State
 
-**Latest shipped milestone:** v1.13 — Runtime Safety & WSL Hardening (2026-05-24)  
-**Requirements:** 11/11 (MEM-01–06, SAFE-01–04, REG-03)  
-**Audit status:** no formal milestone audit; REG-03 operator signed 2026-05-23 (item 7 WSL SKIP D-05)
+**Latest shipped milestone:** v1.17 — Rust Infrastructure Layer (2026-05-24)  
+**Requirements:** 73/75 satisfied (2 partial: PLUG-106-04, PLUG-107-05 — env RAM golden fixture)  
+**Audit status:** tech_debt accepted — `.planning/milestones/v1.17-MILESTONE-AUDIT.md`
 
-v1.13 delivered end-to-end memory guardrails: live Ollama `/api/ps` in Rust and TypeScript guards, config validation, WSL auto cap, single-run concurrency (409), stop-triggered model unload, UI `resourceGuard` with budget panel, WSL operator runbook, and agent-safe verification (`test:reg03:preflight`).
+v1.17 delivered Rust infrastructure decomposition: config moved to `persistence/config/`, inline tests extracted to mirrored `tests/{persistence,adapters,plugins}/` trees (16 `#[path]` stubs), oversized modules split (memory/run_state/session/ollama LM stores), ports consolidation (`ToolExecutionResult`, `AgentProfile`, `PluginRegistryConfig`), and empty `rust-boundary-baseline.json` with strict boundary checks passing. 60/60 lib unit tests pass; `control_server_matches_golden_fixtures` env-sensitive on low-RAM hosts.
 
-**Prior shipped:** v1.12 UI Canvas Visual Polish (2026-05-23); v1.11 UI Product Hardening; v1.10 v1.9 Debt Closure; v1.9 Rust Runtime Hardening; v1.8 Rust Runtime Migration.
+**Prior shipped:** v1.16 Application Memory & Config; v1.15 Application Layer Architecture; v1.14 Rust Architecture & Test Layout (2026-05-23–24); v1.13 Runtime Safety & WSL Hardening (2026-05-24).
 
 <details>
-<summary>Prior milestone context (v1.0–v1.12)</summary>
+<summary>Prior milestone context (v1.0–v1.16)</summary>
+
+**v1.16** split `ram_guard.rs`, extracted memory block inline tests, zero inline tests in `src/application/`. **v1.15** split graph executor into execution_order/run_state_sync/executor with mirrored application tests. **v1.14** extracted domain/recursion inline tests to mirrored tree with `#[path]` stub pattern.
+
+**v1.13** delivered end-to-end memory guardrails: live Ollama `/api/ps` in Rust and TypeScript guards, config validation, WSL auto cap, single-run concurrency (409), stop-triggered model unload, UI `resourceGuard` with budget panel, WSL operator runbook, and agent-safe verification (`test:reg03:preflight`).
 
 **v1.12** delivered theme system (light/dark/system), high-contrast edges, dot-grid canvas, light node cards, Radix context menu, initial RAM guards (`ram_guard.rs`), and workflow overview/run-control fixes. REG-02 visual UAT checklist archived unsigned.
 
@@ -123,10 +127,18 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ Execution concurrency — single-run mutex, keep_alive ratchet, stop unload — v1.13
 - ✓ UI memory visibility — live resourceGuard, budget panel, WSL runbook — v1.13
 - ✓ REG-03 operator safety UAT signed (native Linux; WSL item 7 SKIP) — v1.13 Phase 89
+- ✓ Domain recursion inline tests extracted to mirrored `tests/domain/recursion/` tree — v1.14
+- ✓ Graph executor split into execution_order/run_state_sync/executor with application test mirror — v1.15
+- ✓ Application-layer inline tests zeroed; RAM guard split into probe/budget/eligibility modules — v1.16
+- ✓ Config loaders moved to `persistence/config/` facade; persistence owns config resolution — v1.17
+- ✓ Inline tests extracted from persistence/adapters/plugins to mirrored `tests/` trees via `#[path]` stubs — v1.17
+- ✓ Oversized infrastructure modules split (memory_store, run_state_store, session_store, ollama_language_model) — v1.17
+- ✓ `ToolExecutionResult`, `AgentProfile`, `PluginRegistryConfig` consolidated under ports — v1.17
+- ✓ Rust boundary baseline empty; strict `check-rust-boundaries.sh` passes — v1.17
 
 ### Active
 
-(No active requirements — start next milestone with `/gsd-new-milestone`)
+(No active requirements — v1.18 Node Runtime Retirement queued in ROADMAP.md)
 
 ### Recently Validated (v1.12)
 
@@ -148,9 +160,9 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 
 ## Context
 
-The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI in `ui/`, a Tauri shell under `src-tauri/`, and a Rust workspace under `crates/` (`rlm-core` ~15k LOC). **Production desktop uses Rust-only runtime** — Tauri embeds the Axum control server in-process; Node is no longer bundled. TypeScript remains for UI, tooling, and strangler parity tests (`RLM_RUNTIME=node|rust`).
+The repository has a layered TypeScript architecture (`src/application`, `src/domain`, `src/ports`, `src/adapters`), a React/Vite UI in `ui/`, a Tauri shell under `src-tauri/`, and a Rust workspace under `crates/` (`rlm-core`). **Production desktop uses Rust-only runtime** — Tauri embeds the Axum control server in-process. TypeScript runtime layers remain for strangler parity (`RLM_RUNTIME=node|rust`) until v1.18 retirement.
 
-Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` (fmt, clippy, boundary check, test). Agent-safe verification: `npm run test:agent:verify:light` or `npm run test:reg03:preflight`. **471+** TS tests and **67+** Rust integration tests green at v1.10 close; v1.13 added RAM-gated preflight smoke.
+**v1.17 state:** Zero inline tests in `src/persistence/`, `src/adapters/`, `src/plugins/`; 16 mirrored test stubs; `scripts/rust-boundary-baseline.json` empty. Primary verification: `npm run check:rust` (fmt, clippy, boundaries, test) plus `npm run test:agent:verify:light`.
 
 ## Constraints
 
@@ -186,17 +198,20 @@ Primary verification: `npm run check` (TypeScript/UI) plus `npm run check:rust` 
 | REG-01 operator UAT accepted as tech_debt at milestone close | Autonomous executor cannot substitute browser sign-off; automated gates green | ✓ Resolved — v1.11 operator signed `81-UAT.md` |
 | Adaptive RAM gates for agent verification | Full chained preflight OOM'd on WSL/desktop during autonomous runs | ✓ Good — v1.13 `ram-gate.mjs` + sequential verify profiles |
 | REG-03 WSL item 7 SKIP when operator not on WSL | Cannot verify WSL stability without WSL host | ✓ Accepted — D-05; items 1–6 signed on native Linux |
+| Rust boundary baseline ratcheted to zero deferrals | Infrastructure layers must not depend upward | ✓ Good — v1.17 Phase 107 |
+| Config resolution owned by persistence facade | Eliminate persistence→application baseline | ✓ Good — v1.17 Phase 97 |
+| `#[path]` stub pattern for mirrored Rust tests | Private access without pub test hooks | ✓ Good — v1.14–v1.17 |
 | Fine-tuning / LoRA explicitly out of scope | Compute and ecosystem cost | — Deferred |
 
 ## Next Milestone Goals
 
-Not yet defined. Run `/gsd-new-milestone` to set scope.
+**v1.18 Node Runtime Retirement** (Phases 113–120): delete TypeScript control server, CLI, application, domain, ports, adapters, and plugins; flip default runtime to Rust; npm toolchain cleanup; constrained Ollama tool envelope.
 
-Candidate themes from prior planning: managed llama.cpp (INFR-01), multi-runner adapters, release hardening (REL-01/02), execution trace/output panel, REG-02 visual re-verification.
+Queued after v1.18: v1.19 UI simplification, v1.20 desktop/run outcome, v1.21 inference expansion, v1.22 agent primitives, v1.23 docs audit.
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-24 after v1.13 milestone archive*
+*Last updated: 2026-05-24 after v1.17 milestone archive*

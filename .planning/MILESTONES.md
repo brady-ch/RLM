@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.17 Rust Infrastructure Layer (Shipped: 2026-05-24)
+
+**Phases completed:** 16 phases (97–112), 20 plans  
+**Requirements:** 73/75 satisfied (2 partial: PLUG-106-04, PLUG-107-05)  
+**Audit status:** tech_debt accepted — `.planning/milestones/v1.17-MILESTONE-AUDIT.md`  
+**Known deferred items at close:** 7 (see STATE.md Deferred Items)
+
+**Key accomplishments:**
+
+- Config loaders moved to `persistence/config/`; `application/config` deleted; boundary baseline ratcheted
+- Mirrored test trees for persistence/adapters/plugins — 16 `#[path]` stubs; zero inline tests in source
+- Module splits: memory_store (scope/episodic/audit), run_state_store (persist/mutation), session_store (persist/verify), ollama_language_model (request/response)
+- Ports consolidation: `ToolExecutionResult`, `AgentProfile`, `PluginRegistryConfig` at composition boundary
+- Empty `rust-boundary-baseline.json`; strict boundary checks pass; 60/60 lib unit tests pass
+
+**Archive:** `.planning/milestones/v1.17-ROADMAP.md`, `.planning/milestones/v1.17-MILESTONE-AUDIT.md`
+
+---
+
 ## v1.16 Rust Application Memory & Config (Shipped: 2026-05-24)
 
 **Phases completed:** 5 phases (92–96), 5 plans  

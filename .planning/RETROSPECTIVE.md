@@ -2,6 +2,53 @@
 
 *A living document updated after each milestone. Lessons feed forward into future planning.*
 
+## Milestone: v1.17 — Rust Infrastructure Layer
+
+**Shipped:** 2026-05-24  
+**Phases:** 16 | **Plans:** 20 | **Requirements:** 73/75 (2 partial env-dependent)
+
+### What Was Built
+
+- Config facade — `persistence/config/` owns loaders; `application/config` deleted; baseline entry removed.
+- Mirrored test extraction — 16 `#[path]` stubs across persistence/adapters/plugins; zero inline tests in source.
+- Module splits — memory_store, run_state_store, session_store, ollama_language_model split by concern/size threshold.
+- Ports consolidation — `ToolExecutionResult`, `AgentProfile`, `PluginRegistryConfig` at composition boundary.
+- Boundary ratchet complete — `rust-boundary-baseline.json` empty; strict checks pass.
+
+### What Worked
+
+- Sequential block execution (persistence → adapters → plugins) kept dependency direction clear.
+- Conditional split rule (>300 lines post-extraction) avoided unnecessary module fragmentation.
+- `#[path]` stub pattern from v1.14–v1.16 scaled cleanly to 16 infrastructure modules.
+- Same-day concentrated execution across 16 phases after decomposition note planning.
+
+### What Was Inefficient
+
+- 7 phases (100–105, 107) shipped without formal `VERIFICATION.md` — process debt accepted at close.
+- Nyquist validation enabled but zero `*-VALIDATION.md` artifacts produced.
+- `control_server_matches_golden_fixtures` RAM sensitivity blocks full `cargo test -p rlm-core` on constrained hosts.
+- No REQUIREMENTS.md traceability file — requirements cross-referenced from PLAN frontmatter only.
+
+### Patterns Established
+
+- Three-level `#[path]` stubs for `src/plugins/builtin/*` modules.
+- Port DTO injection (`PluginRegistryConfig`) instead of direct persistence imports in plugins.
+- Post-extraction line count gate triggers submodule split, not pre-emptive splitting.
+
+### Key Lessons
+
+1. Implementation goal can be fully achieved while process artifacts (VERIFICATION, Nyquist) lag — audit `tech_debt` status captures this explicitly.
+2. Environmental test flakes should be gated or mocked before they block requirement sign-off on partial status.
+3. Infrastructure milestone close benefits from automated boundary + inline-test grep checks beyond SUMMARY claims.
+
+### Cost Observations
+
+- Model mix: autonomous executor with tech_debt acceptance at milestone close.
+- Sessions: multi-day execution (2026-05-23 through 2026-05-24).
+- Notable: strict boundary ratchet to zero baseline was achievable incrementally per phase.
+
+---
+
 ## Milestone: v1.13 — Runtime Safety & WSL Hardening
 
 **Shipped:** 2026-05-24  
