@@ -24,11 +24,7 @@ import { runPlanNodeMode } from "./cli/run-modes/plan-node.js";
 import { handleSessionCommands } from "./cli/run-modes/session-commands.js";
 import { handlePluginCommands } from "./cli/run-modes/plugin-commands.js";
 import { handleWorkflowExport, handleWorkflowImport } from "./cli/run-modes/workflow-graph-io.js";
-import { runUiMode } from "./cli/run-modes/ui.js";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const CLI_ENTRY_PATH = fileURLToPath(import.meta.url);
 
 async function main(): Promise<void> {
   let cliArgv = process.argv.slice(2);
@@ -110,7 +106,13 @@ async function main(): Promise<void> {
       return;
     }
     if (options.command === "ui") {
-      await runUiMode(ctx, CLI_ENTRY_PATH);
+      process.stderr.write(
+        "The TypeScript UI bootstrap was removed in Phase 114.\n" +
+          "Use the Rust control server instead:\n" +
+          "  npm run rlm -- ui\n" +
+          "  RLM_UI_DIST=ui/dist cargo run -p rlm-cli -- ui\n",
+      );
+      process.exitCode = 1;
       return;
     }
     await runAskWorkflowOrApprove(ctx);
