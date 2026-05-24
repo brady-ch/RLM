@@ -25,6 +25,7 @@ pub struct RecursiveLanguageModel {
     pub(crate) model: Arc<dyn LanguageModel>,
     pub(crate) trace: Arc<dyn Trace>,
     pub(crate) tools: HashMap<String, Arc<dyn Tool>>,
+    pub(crate) memory: Option<Arc<dyn crate::ports::MemoryContextPort>>,
     pub(crate) state: Mutex<EngineState>,
 }
 
@@ -42,6 +43,7 @@ impl RecursiveLanguageModel {
             model,
             trace,
             tools: tools_map,
+            memory: None,
             state: Mutex::new(EngineState {
                 next_id: 1,
                 model_calls: 0,
@@ -55,6 +57,11 @@ impl RecursiveLanguageModel {
                 token_usage: TokenUsageTrace::default(),
             }),
         }
+    }
+
+    pub fn with_memory(mut self, memory: Arc<dyn crate::ports::MemoryContextPort>) -> Self {
+        self.memory = Some(memory);
+        self
     }
 
     pub async fn run(
@@ -96,6 +103,7 @@ impl RecursiveLanguageModel {
                 depth: 0,
                 kind: None,
                 model_override: None,
+                context_policy: None
             }
         };
 

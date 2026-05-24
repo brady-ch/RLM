@@ -2,32 +2,45 @@
 
 ## Milestones
 
-- ✅ **v1.13 Runtime Safety & WSL Hardening** — Phases 86-89 (shipped 2026-05-24; archive: `.planning/milestones/v1.13-ROADMAP.md`)
-- ✅ **v1.12 UI Canvas Visual Polish** — Phases 82-85 (shipped 2026-05-23; archive: `.planning/milestones/v1.12-phases/`)
-- ✅ **v1.11 UI Product Hardening** — Phases 77-81 (shipped 2026-05-23)
-- ✅ **v1.10 v1.9 Debt Closure** — Phases 72-76 (shipped 2026-05-23; archive: `.planning/milestones/v1.10-ROADMAP.md`)
-- ✅ **v1.9 Rust Runtime Hardening** — Phases 62-71 (shipped 2026-05-22; archive: `.planning/milestones/v1.9-ROADMAP.md`)
-- ✅ **v1.8 Rust Runtime Migration** — Phases 1, 52-61 (shipped 2026-05-22; archive: `.planning/milestones/v1.8-ROADMAP.md`)
+- ✅ **v1.16 Rust Application Memory & Config** — Phases 92–96 (shipped 2026-05-24)
+- ✅ **v1.15 Rust Application Layer Architecture** — Phase 91 (shipped 2026-05-24)
+- ✅ **v1.14 Rust Architecture & Test Layout** — Phase 90 (shipped 2026-05-23)
+- ✅ **v1.13 Runtime Safety & WSL Hardening** — Phases 86-89 (shipped 2026-05-24)
 
 ## Overview
 
-**Current milestone:** None — v1.13 shipped 2026-05-24. Start next milestone with `/gsd-new-milestone`.
+**Current milestone:** Awaiting next milestone
 
-## Phases
+**Last shipped:** v1.16 — application memory block decomposition + config loader test extraction. Zero inline test bodies in `src/application/`.
 
 <details>
-<summary>✅ v1.13 Runtime Safety & WSL Hardening (Phases 86-89) — SHIPPED 2026-05-24</summary>
+<summary>✅ v1.16 Rust Application Memory & Config (Phases 92–96) — SHIPPED 2026-05-24</summary>
 
-**Milestone Goal:** Operators can plan and run workflows without OOM from stacked model loads — memory budget enforced end-to-end with visible UI feedback.
+- [x] **Phase 92: Rust RAM Guard Architecture & Test Extraction** — completed 2026-05-24
+- [x] **Phase 93: Rust Session Memory Bridge Test Extraction** — completed 2026-05-24
+- [x] **Phase 94: Rust Semantic Memory Index Test Extraction** — completed 2026-05-24
+- [x] **Phase 95: Rust Memory Resolver Test Extraction** — completed 2026-05-24
+- [x] **Phase 96: Rust Config Loader Test Extraction** — completed 2026-05-24
 
-- [x] **Phase 86: RAM Guard Completion** — Live Ollama ps in guards, config validation, TS parity (MEM-*) — completed 2026-05-23
-- [x] **Phase 87: Execution Concurrency & Model Lifecycle** — Single-run mutex, keep_alive ratchet, stop unload (SAFE-01–03) — completed 2026-05-23
-- [x] **Phase 88: Memory Visibility & WSL Runbook** — Live resourceGuard in UI, budget panel, docs (SAFE-04, MEM-05) — completed 2026-05-23
-- [x] **Phase 89: Operator Safety UAT** — REG-03 signed 2026-05-23 (Brady; items 1–6 PASS, item 7 SKIP D-05) — completed 2026-05-23
+Full details: `.planning/milestones/v1.16-ROADMAP.md`
 
-Full phase details: `.planning/milestones/v1.13-ROADMAP.md`
+</details>
+
+<details>
+<summary>✅ v1.15 Rust Application Layer Architecture (Phase 91) — SHIPPED 2026-05-24</summary>
+
+- [x] **Phase 91: Rust Graph Executor Architecture & Test Extraction** — completed 2026-05-24
+
+Full details: `.planning/milestones/v1.15-ROADMAP.md`
+
+</details>
+
+<details>
+<summary>✅ v1.14 Rust Architecture & Test Layout (Phase 90) — SHIPPED 2026-05-23</summary>
+
+- [x] **Phase 90: Rust Domain Layer Architecture & Test Extraction** — completed 2026-05-23
 
 </details>
 
 ---
-*Roadmap updated: 2026-05-24 after v1.13 milestone archive*
+*Roadmap updated: 2026-05-24 — v1.16 shipped via /gsd-autonomous --auto*

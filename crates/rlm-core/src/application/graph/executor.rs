@@ -4,15 +4,17 @@ use std::sync::Arc;
 use crate::application::execution::agent_registry::{filter_agent_tools, resolve_agent};
 use crate::application::execution::{InteractiveExecutionSession, SessionExecutionControl};
 use crate::domain::recursive_language_model::ExecutionControl;
-use crate::domain::run_state_persistence::{LoadedResumeState, RunStatePersistence};
-use crate::domain::run_state_types::ResumeCursor;
+use crate::domain::run_state_persistence::RunStatePersistence;
 use crate::domain::types::{
-    ExecutionGraph, ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail,
-    ExpertRuntimeMode, RecursiveModelConfig,
+    ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail, ExpertRuntimeMode,
+    RecursiveModelConfig,
 };
 use crate::domain::RecursiveLanguageModel;
 use crate::plugins::resolve_tools_for_agent;
 use crate::ports::{LanguageModel, LanguageModelCompleteOptions};
+
+use super::execution_order::topological_execution_order;
+use super::run_state_sync::{persist_resume_cursor, persist_run_state_status, prepare_run_state};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GraphExecutorErrorCode {
@@ -43,108 +45,9 @@ pub struct GraphExecutorInput {
     pub create_model: Arc<dyn Fn() -> Arc<dyn LanguageModel> + Send + Sync>,
     pub runtime: Option<crate::plugins::RuntimeContext>,
     pub run_state: Option<Arc<RunStatePersistence>>,
+    pub memory: Option<Arc<dyn crate::ports::MemoryContextPort>>,
     /// When true, load persisted resumeCursor + nodeStatuses and skip completed nodes.
     pub resume: bool,
-}
-
-fn execution_status_label(status: ExecutionStatus) -> String {
-    serde_json::to_value(status)
-        .ok()
-        .and_then(|value| value.as_str().map(str::to_string))
-        .unwrap_or_else(|| "running".into())
-}
-
-fn persist_run_state_status(input: &GraphExecutorInput, node_id: &str, status: ExecutionStatus) {
-    if let Some(run_state) = input.run_state.as_ref() {
-        let _ = run_state.persist_node_status(node_id, &execution_status_label(status));
-    }
-}
-
-fn persist_resume_cursor(
-    input: &GraphExecutorInput,
-    active_node_id: &str,
-    completed_node_ids: &[String],
-) {
-    if let Some(run_state) = input.run_state.as_ref() {
-        let _ = run_state.persist_resume_cursor(&ResumeCursor {
-            active_node_id: active_node_id.to_string(),
-            completed_node_ids: completed_node_ids.to_vec(),
-            variant: "playbook".into(),
-        });
-    }
-}
-
-pub fn topological_execution_order(
-    graph: &ExecutionGraph,
-) -> Result<Vec<String>, GraphExecutorError> {
-    let node_ids: Vec<_> = graph.nodes.iter().map(|n| n.id.clone()).collect();
-    if node_ids.is_empty() {
-        return Err(GraphExecutorError {
-            code: GraphExecutorErrorCode::EmptyGraph,
-            message: "Graph has no nodes.".into(),
-        });
-    }
-
-    let node_by_id: HashMap<_, _> = graph.nodes.iter().map(|n| (n.id.clone(), n)).collect();
-    let mut in_degree: HashMap<String, i32> = HashMap::new();
-    let mut adjacency: HashMap<String, Vec<String>> = HashMap::new();
-
-    for id in &node_ids {
-        in_degree.insert(id.clone(), 0);
-        adjacency.insert(id.clone(), Vec::new());
-    }
-
-    for edge in &graph.edges {
-        if !node_by_id.contains_key(&edge.from) || !node_by_id.contains_key(&edge.to) {
-            continue;
-        }
-        adjacency.get_mut(&edge.from).unwrap().push(edge.to.clone());
-        *in_degree.entry(edge.to.clone()).or_insert(0) += 1;
-    }
-
-    for node in &graph.nodes {
-        if let Some(parent_id) = &node.parent_id {
-            if !node_by_id.contains_key(parent_id) {
-                continue;
-            }
-            let siblings = adjacency.get_mut(parent_id).unwrap();
-            if !siblings.contains(&node.id) {
-                siblings.push(node.id.clone());
-                *in_degree.entry(node.id.clone()).or_insert(0) += 1;
-            }
-        }
-    }
-
-    let mut queue: Vec<_> = node_ids
-        .iter()
-        .filter(|id| *in_degree.get(*id).unwrap_or(&0) == 0)
-        .cloned()
-        .collect();
-    queue.sort();
-
-    let mut order = Vec::new();
-    while let Some(current) = queue.first().cloned() {
-        queue.remove(0);
-        order.push(current.clone());
-        let mut neighbors = adjacency.get(&current).cloned().unwrap_or_default();
-        neighbors.sort();
-        for next in neighbors {
-            let deg = in_degree.get_mut(&next).unwrap();
-            *deg -= 1;
-            if *deg == 0 {
-                queue.push(next);
-                queue.sort();
-            }
-        }
-    }
-
-    if order.len() != node_ids.len() {
-        return Err(GraphExecutorError {
-            code: GraphExecutorErrorCode::CycleDetected,
-            message: "Cycle detected in execution graph.".into(),
-        });
-    }
-    Ok(order)
 }
 
 pub fn build_execution_prompt(
@@ -201,56 +104,6 @@ fn should_skip_status(status: ExecutionStatus) -> bool {
         status,
         ExecutionStatus::Skipped | ExecutionStatus::Cancelled | ExecutionStatus::Completed
     )
-}
-
-fn apply_resume_to_session(session: &Arc<InteractiveExecutionSession>, resume: &LoadedResumeState) {
-    let control: Arc<dyn ExecutionControl> =
-        Arc::new(SessionExecutionControl::new(Arc::clone(session)));
-    for node_id in &resume.completed_node_ids {
-        if session
-            .snapshot()
-            .graph
-            .nodes
-            .iter()
-            .any(|n| n.id == *node_id)
-        {
-            control.update_node_status(node_id, ExecutionStatus::Completed, None);
-        }
-    }
-}
-
-fn prepare_run_state(
-    input: &GraphExecutorInput,
-    session: &Arc<InteractiveExecutionSession>,
-    graph: &ExecutionGraph,
-) -> (HashSet<String>, Vec<String>) {
-    let mut skip_completed = HashSet::new();
-    let mut completed_node_ids = Vec::new();
-
-    let Some(run_state) = input.run_state.as_ref() else {
-        return (skip_completed, completed_node_ids);
-    };
-
-    let existing = run_state.get_snapshot().ok().flatten();
-    if input.resume {
-        if let Some(resume) = run_state.load_resume_state().ok().flatten() {
-            apply_resume_to_session(session, &resume);
-            for node_id in &resume.completed_node_ids {
-                skip_completed.insert(node_id.clone());
-                completed_node_ids.push(node_id.clone());
-            }
-        }
-    } else if existing.is_none() {
-        let root_prompt = graph
-            .nodes
-            .iter()
-            .find(|node| node.parent_id.is_none())
-            .and_then(|node| node.prompt.clone())
-            .unwrap_or_else(|| "graph run".into());
-        let _ = run_state.initialize(&root_prompt, "default");
-    }
-
-    (skip_completed, completed_node_ids)
 }
 
 pub async fn execute_graph(
@@ -407,12 +260,12 @@ pub async fn execute_graph(
                             crate::domain::types::ChatMessage {
                                 role: "system".into(),
                                 content: filtered.system_prompt.clone(),
-            ..Default::default()
+                                ..Default::default()
                             },
                             crate::domain::types::ChatMessage {
                                 role: "user".into(),
                                 content: prompt,
-            ..Default::default()
+                                ..Default::default()
                             },
                         ],
                         LanguageModelCompleteOptions::simple(Some("answer"), false),
@@ -438,7 +291,10 @@ pub async fn execute_graph(
                         )
                     })
                     .unwrap_or_default();
-                let engine = RecursiveLanguageModel::new(model, trace, tools);
+                let mut engine = RecursiveLanguageModel::new(model, trace, tools);
+                if let Some(memory) = &input.memory {
+                    engine = engine.with_memory(Arc::clone(memory));
+                }
                 engine
                     .run(
                         &prompt,
@@ -478,101 +334,9 @@ pub async fn execute_graph(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::application::execution::InteractiveExecutionSession;
-    use crate::domain::types::{ExecutionGraphEdge, ExpertRuntimeMode};
+#[path = "../../../tests/application/graph/executor.rs"]
+mod executor_tests;
 
-    fn make_node(id: &str, mut partial: ExecutionGraphNode) -> ExecutionGraphNode {
-        partial.id = id.into();
-        partial
-    }
-
-    #[test]
-    fn topological_order_parent_before_child() {
-        let graph = ExecutionGraph {
-            nodes: vec![
-                make_node(
-                    "root",
-                    ExecutionGraphNode {
-                        depth: 0,
-                        ..Default::default()
-                    },
-                ),
-                make_node(
-                    "A",
-                    ExecutionGraphNode {
-                        parent_id: Some("root".into()),
-                        depth: 1,
-                        ..Default::default()
-                    },
-                ),
-            ],
-            edges: vec![ExecutionGraphEdge {
-                from: "root".into(),
-                to: "A".into(),
-                source_handle: None,
-                target_handle: None,
-            }],
-            viewport: None,
-        };
-        assert_eq!(
-            topological_execution_order(&graph).unwrap(),
-            vec!["root", "A"]
-        );
-    }
-
-    #[tokio::test]
-    async fn execute_graph_completes_single_pass_nodes() {
-        use crate::domain::types::ApprovalMode;
-        use crate::ports::QueueModel;
-
-        let session = InteractiveExecutionSession::new(ApprovalMode::InitialPlanRecursive);
-        session.register_node_for_test(ExecutionGraphNode {
-            id: "root".into(),
-            label: "Root".into(),
-            prompt: Some("Root task".into()),
-            status: ExecutionStatus::Ready,
-            expert_agent_id: Some("default".into()),
-            expert_runtime: Some(ExpertRuntimeMode::SinglePass),
-            ..Default::default()
-        });
-        session.begin_confirmed_execution();
-
-        let model = Arc::new(QueueModel::new(["done"]));
-        let create_model = {
-            let model = Arc::clone(&model);
-            Arc::new(move || Arc::clone(&model) as Arc<dyn LanguageModel>)
-        };
-        execute_graph(
-            session.clone(),
-            GraphExecutorInput {
-                runtime_config: RecursiveModelConfig {
-                    max_depth: Some(0),
-                    max_dynamic_depth: 0,
-                    max_branches: 4,
-                    max_prompt_characters: 4096,
-                    max_model_calls: 50,
-                    max_tool_rounds: 0,
-                    quality_loop: None,
-                },
-                project_config: None,
-                create_model,
-                runtime: None,
-                run_state: None,
-                resume: false,
-            },
-        )
-        .await
-        .unwrap();
-
-        let node = session
-            .snapshot()
-            .graph
-            .nodes
-            .into_iter()
-            .find(|n| n.id == "root")
-            .unwrap();
-        assert_eq!(node.status, ExecutionStatus::Completed);
-    }
-}
+#[cfg(test)]
+#[path = "../../../tests/application/graph/executor_resume.rs"]
+mod executor_resume_tests;

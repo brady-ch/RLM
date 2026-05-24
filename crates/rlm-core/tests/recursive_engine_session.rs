@@ -157,6 +157,7 @@ fn is_code_task_matches_prefixed_prompts() {
         depth: 0,
         kind: None,
         model_override: None,
+                context_policy: None
     };
     assert!(rlm_core::domain::recursion::is_code_task(&task));
 }

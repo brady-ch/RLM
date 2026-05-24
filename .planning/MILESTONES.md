@@ -1,5 +1,54 @@
 # Milestones
 
+## v1.16 Rust Application Memory & Config (Shipped: 2026-05-24)
+
+**Phases completed:** 5 phases (92–96), 5 plans  
+**Requirements:** Application inline-test zero target achieved  
+**Audit status:** passed — `.planning/v1.16-MILESTONE-AUDIT.md`
+
+**Key accomplishments:**
+
+- Split `ram_guard.rs` into probe/budget/eligibility/ollama modules with facade re-exports
+- Extracted memory block inline tests (session bridge, semantic index, resolver)
+- Extracted config loader tests — zero inline test bodies in `src/application/`
+- 60/60 lib unit tests pass
+
+**Archive:** `.planning/milestones/v1.16-ROADMAP.md`
+
+---
+
+## v1.15 Rust Application Layer Architecture (Shipped: 2026-05-24)
+
+**Phases completed:** 1 phase (91), 1 plan  
+**Requirements:** 5/5 (ARCH-91-01–05; line count 342 vs ~300 target — acceptable)
+
+**Key accomplishments:**
+
+- Split graph executor into `execution_order.rs`, `run_state_sync.rs`, slim `executor.rs`
+- Mirrored `tests/application/graph/` with resume unit test coverage
+- Established application-layer `#[path]` test pattern from Phase 90
+
+**Archive:** `.planning/milestones/v1.15-ROADMAP.md`
+
+---
+
+## v1.14 Rust Architecture & Test Layout (Shipped: 2026-05-23)
+
+**Phases completed:** 1 phase (90), 1 plan  
+**Requirements:** 5/6 (ARCH-90-01–05 complete; ARCH-90-06 partial)  
+**Audit status:** passed — `.planning/v1.14-MILESTONE-AUDIT.md`  
+**Known deferred items at close:** 5 (see STATE.md Deferred Items)
+
+**Key accomplishments:**
+
+- Extracted all five `domain/recursion/` inline test modules to `crates/rlm-core/tests/domain/recursion/`
+- Established `#[path]` stub pattern for mirrored tests with private access
+- 18 domain recursion unit tests pass; flat integration tests unchanged
+
+**Archive:** `.planning/milestones/v1.14-ROADMAP.md`, `.planning/milestones/v1.14-REQUIREMENTS.md`
+
+---
+
 ## v1.13 Runtime Safety & WSL Hardening (Shipped: 2026-05-24)
 
 **Phases completed:** 4 phases (86–89), 4 plans  

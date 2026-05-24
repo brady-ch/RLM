@@ -1,7 +1,13 @@
+pub mod memory_resolver;
+mod ollama_ram;
+pub mod ram_budget;
+pub mod ram_eligibility;
 pub mod ram_guard;
+mod ram_probe;
 pub mod semantic_memory_index;
 pub mod session_memory_bridge;
 
+pub use memory_resolver::MemoryResolver;
 pub use ram_guard::{
     assert_model_ram_eligible, assert_model_ram_eligible_async, assert_runtime_ram_eligible,
     assert_runtime_ram_eligible_async, available_model_ram_mb, configured_model_names,

@@ -133,6 +133,7 @@ async fn run_workflow(
         }),
         runtime: Some(runtime),
         run_state: None,
+        memory: None,
         resume: false,
     };
     execute_graph(Arc::clone(&session), input)

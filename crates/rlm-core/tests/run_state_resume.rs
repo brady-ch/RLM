@@ -104,6 +104,7 @@ async fn partial_run_restart_resume_completes_without_rerunning_finished_nodes()
                 run_id,
                 Arc::clone(&store),
             ))),
+            memory: None,
             resume: true,
         },
     )

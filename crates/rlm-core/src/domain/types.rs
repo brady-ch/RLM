@@ -701,6 +701,61 @@ pub struct TaskNode {
     pub depth: i32,
     pub kind: Option<String>,
     pub model_override: Option<String>,
+    pub context_policy: Option<ComposerContextPolicy>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComposerContextPolicy {
+    pub reads: Vec<String>,
+    pub writes: Vec<String>,
+    pub limits: Vec<String>,
+    pub memory_scopes: Vec<String>,
+}
+
+pub fn default_memory_policy() -> ComposerContextPolicy {
+    ComposerContextPolicy {
+        reads: vec!["rolling summary".into()],
+        writes: vec!["memory updates".into()],
+        limits: vec!["2000 characters".into()],
+        memory_scopes: vec!["run-manifest".into(), "project-preferences".into()],
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MemoryPacketProvenance {
+    pub kind: String,
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MemoryPacketRetrievalHit {
+    pub id: String,
+    pub scope_id: String,
+    pub source: String,
+    pub snippet: String,
+    pub score: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MemoryPacketMetadata {
+    pub session_id: String,
+    pub node_id: String,
+    pub scope_ids: Vec<String>,
+    pub char_limit: u32,
+    pub chars_used: usize,
+    pub truncated: bool,
+    pub degraded: bool,
+    pub reasons: Vec<String>,
+    pub provenance: Vec<MemoryPacketProvenance>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retrieval_hits: Option<Vec<MemoryPacketRetrievalHit>>,
+    pub created_at: String,
 }
 
 #[derive(Debug, Clone)]
@@ -756,6 +811,8 @@ pub struct RecursivePromptMetadata {
     pub errors: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tool_calls: Vec<ToolCallRecord>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub memory_packets: Vec<MemoryPacketMetadata>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quality_loop: Option<QualityLoopMetadata>,
 }

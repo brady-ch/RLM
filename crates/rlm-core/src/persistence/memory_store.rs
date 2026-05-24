@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -7,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::util::{read_json_array, sanitize_id, write_json_atomic};
+use crate::domain::types::MemoryPacketMetadata;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,15 +46,6 @@ pub struct MemoryAuditRecord {
     pub accepted: bool,
     pub reason: String,
     pub timestamp: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MemoryPacketMetadata {
-    pub session_id: String,
-    pub node_id: String,
-    #[serde(flatten)]
-    pub extra: HashMap<String, Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,6 +190,73 @@ impl FileMemoryStore {
 
     pub fn list_episodic(&self, session_id: &str) -> io::Result<Vec<EpisodicMemoryEntry>> {
         read_json_array(&self.episodic_path(session_id))
+    }
+
+    pub fn get_rolling_summary(
+        &self,
+        session_id: &str,
+        scope_ids: &[String],
+        max_chars: usize,
+    ) -> io::Result<String> {
+        let allowed: HashSet<String> = scope_ids.iter().cloned().collect();
+        let entries = self.list_episodic(session_id)?;
+        let lines: Vec<String> = entries
+            .into_iter()
+            .filter(|entry| {
+                entry
+                    .scope_ids
+                    .as_ref()
+                    .is_none_or(|scopes| scopes.is_empty() || scopes.iter().any(|s| allowed.contains(s)))
+            })
+            .rev()
+            .take(12)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .map(|entry| {
+                format!(
+                    "- {}{}: {}",
+                    entry.entry_type,
+                    entry
+                        .node_id
+                        .as_ref()
+                        .map(|id| format!(" {id}"))
+                        .unwrap_or_default(),
+                    entry.summary
+                )
+            })
+            .collect();
+        Ok(truncate_text(&lines.join("\n"), max_chars))
+    }
+
+    pub fn record_packet_metadata(&self, metadata: &MemoryPacketMetadata) -> io::Result<()> {
+        let session_id = metadata.session_id.clone();
+        let mut packets = self.list_packet_metadata(&session_id)?;
+        packets.retain(|packet| {
+            packet
+                .get("nodeId")
+                .and_then(Value::as_str)
+                .is_none_or(|id| id != metadata.node_id)
+        });
+        packets.push(serde_json::to_value(metadata).map_err(|err| {
+            io::Error::new(io::ErrorKind::InvalidData, err.to_string())
+        })?);
+        let trimmed: Vec<_> = packets.into_iter().rev().take(200).rev().collect();
+        self.write_json(
+            &self.packet_path(&session_id),
+            &serde_json::to_value(&trimmed)?,
+        )
+    }
+
+    pub fn append_episodic(&self, entry: EpisodicMemoryEntry) -> io::Result<()> {
+        let session_id = entry.session_id.clone();
+        let mut entries = self.list_episodic(&session_id)?;
+        entries.push(entry);
+        let trimmed: Vec<_> = entries.into_iter().rev().take(500).rev().collect();
+        self.write_json(
+            &self.episodic_path(&session_id),
+            &serde_json::to_value(&trimmed)?,
+        )
     }
 
     pub fn list_packet_metadata(&self, session_id: &str) -> io::Result<Vec<Value>> {
@@ -370,17 +430,6 @@ impl FileMemoryStore {
         })
     }
 
-    fn append_episodic(&self, entry: EpisodicMemoryEntry) -> io::Result<()> {
-        let session_id = entry.session_id.clone();
-        let mut entries = self.list_episodic(&session_id)?;
-        entries.push(entry);
-        let trimmed: Vec<_> = entries.into_iter().rev().take(500).rev().collect();
-        self.write_json(
-            &self.episodic_path(&session_id),
-            &serde_json::to_value(&trimmed)?,
-        )
-    }
-
     fn write_json(&self, path: &Path, value: &Value) -> io::Result<()> {
         write_json_atomic(path, value)
     }
@@ -477,6 +526,14 @@ fn apply_patch(existing: Value, patch: Value) -> Value {
         }
     }
     Value::Object(next)
+}
+
+fn truncate_text(text: &str, max_chars: usize) -> String {
+    if text.len() <= max_chars {
+        return text.to_string();
+    }
+    let keep = max_chars.saturating_sub(15);
+    format!("{}\n[truncated]", text.chars().take(keep).collect::<String>().trim_end())
 }
 
 fn iso_now() -> String {

@@ -1,0 +1,90 @@
+{
+  "aclPrefixes": [
+    "metadata",
+    "nodeStatuses",
+    "artifactRefs",
+    "checkpoints",
+    "resumeCursor"
+  ],
+  "artifactRefs": {},
+  "capabilityTokens": {
+    "graph-executor": [
+      "cap-default"
+    ]
+  },
+  "checkpoints": [],
+  "metadata": {
+    "agent": "default",
+    "prompt": "Create a concise two-step checklist for testing recursive prompting in this workspace."
+  },
+  "mutationLog": [
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 1,
+      "timestamp": "2026-05-23T21:06:13.430609273Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "resumeCursor",
+      "reason": "accepted",
+      "seq": 2,
+      "timestamp": "2026-05-23T21:06:13.4313558Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 3,
+      "timestamp": "2026-05-23T21:06:28.382288023Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "resumeCursor",
+      "reason": "accepted",
+      "seq": 4,
+      "timestamp": "2026-05-23T21:06:28.382937561Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "nodeStatuses.root-composer",
+      "reason": "accepted",
+      "seq": 5,
+      "timestamp": "2026-05-24T05:14:02.470253386Z"
+    },
+    {
+      "accepted": true,
+      "action": "set",
+      "actor": "graph-executor",
+      "path": "resumeCursor",
+      "reason": "accepted",
+      "seq": 6,
+      "timestamp": "2026-05-24T05:14:02.472292507Z"
+    }
+  ],
+  "nodeStatuses": [
+    {
+      "nodeId": "root-composer",
+      "status": "running",
+      "updatedAt": "2026-05-24T05:14:02.469811207Z"
+    }
+  ],
+  "resumeCursor": {
+    "activeNodeId": "root-composer",
+    "completedNodeIds": [],
+    "variant": "playbook"
+  },
+  "runId": "default",
+  "version": 7
+}

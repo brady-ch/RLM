@@ -10,7 +10,9 @@ pub mod util;
 pub use ann_vector_index::{AnnVectorIndex, RetrievalHit, RetrievalResult, RetrievalStatus};
 pub use config::{load_project_config, LoadedProjectConfig};
 pub use file_vector_index::{FileVectorIndex, VectorIndexRecord, VectorRecordSource};
-pub use memory_store::{FileMemoryStore, MemoryInspectionSnapshot};
+pub use memory_store::{
+    EpisodicMemoryEntry, FileMemoryStore, MemoryInspectionSnapshot, MemoryScopePatchRequest,
+};
 pub use paths::ProjectPaths;
 pub use run_state_store::FileRunStateStore;
 pub use session_store::FileSessionStore;

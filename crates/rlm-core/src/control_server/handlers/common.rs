@@ -7,6 +7,9 @@ use serde_json::{json, Value};
 
 use crate::application::execution::InteractiveExecutionSession;
 use crate::application::graph::{execute_graph, GraphExecutorInput};
+use crate::application::memory::MemoryResolver;
+use crate::persistence::FileMemoryStore;
+use crate::ports::MemoryContextPort;
 use crate::application::memory::{ollama_loaded_ram_mb, resource_guard_json, unload_ollama_models, configured_model_names};
 use crate::control_server::resolve_ollama_base_url;
 use crate::domain::run_state_types::ResumeCursor;
@@ -127,20 +130,34 @@ pub(crate) fn spawn_graph_execution(state: &Arc<RouterState>, resume: bool) {
     } else {
         None
     };
-    let input = GraphExecutorInput {
-        runtime_config,
-        project_config,
-        create_model: Arc::new(move || Arc::clone(&exec_model) as Arc<dyn LanguageModel>),
-        runtime: state.runtime_context.clone(),
-        run_state,
-        resume,
-    };
     let lifecycle = state.lifecycle.clone();
+    let state_for_task = Arc::clone(state);
     lifecycle.clone().spawn(async move {
         if lifecycle.is_shutdown() {
             return;
         }
-        if let Err(err) = execute_graph(session.clone(), input).await {
+        let memory: Option<Arc<dyn MemoryContextPort>> =
+            if state_for_task.paths.memory_configured() {
+                let session_id = state_for_task.current_memory_session_id();
+                let index = state_for_task.memory_index(&session_id).await;
+                Some(Arc::new(MemoryResolver::new(
+                    FileMemoryStore::new(state_for_task.paths.memory_dir.clone()),
+                    session_id,
+                    Some(index),
+                )) as Arc<dyn MemoryContextPort>)
+            } else {
+                None
+            };
+        let input = GraphExecutorInput {
+            runtime_config,
+            project_config,
+            create_model: Arc::new(move || Arc::clone(&exec_model) as Arc<dyn LanguageModel>),
+            runtime: state_for_task.runtime_context.clone(),
+            run_state,
+            memory,
+            resume,
+        };
+        if let Err(err) = execute_graph(Arc::clone(&session), input).await {
             session.stop(err.message);
         }
     });

@@ -53,6 +53,7 @@ async fn run_state_snapshot_after_execution_contains_mutation_log() {
             create_model,
             runtime: None,
             run_state: Some(run_state),
+            memory: None,
             resume: false,
         },
     )

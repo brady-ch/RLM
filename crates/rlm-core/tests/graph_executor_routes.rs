@@ -163,6 +163,7 @@ async fn execute_graph_blocks_child_when_parent_fails() {
             create_model,
             runtime: None,
             run_state: None,
+            memory: None,
             resume: false,
         },
     )

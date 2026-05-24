@@ -5,14 +5,35 @@ use async_trait::async_trait;
 use crate::domain::recursion::preview;
 use crate::domain::recursion::{ModelCompletionHost, QualityLoopHost};
 use crate::domain::types::{
-    ChatMessage, ExecutionEvent, ExecutionGraphNode, ExecutionStatus, ExecutionStatusUpdateDetail,
-    QualityLoopManualDecision, QualityLoopMetadata, QualityLoopUsageSummary, RecursiveModelConfig,
-    TaskNode, TokenUsageTrace, ToolCallRecord,
+    ChatMessage, ComposerContextPolicy, ExecutionEvent, ExecutionGraphNode, ExecutionStatus,
+    ExecutionStatusUpdateDetail, QualityLoopManualDecision, QualityLoopMetadata,
+    QualityLoopUsageSummary, RecursiveModelConfig, TaskNode, TokenUsageTrace, ToolCallRecord,
+    default_memory_policy,
 };
 use crate::ports::{LanguageModel, Tool};
 
 use super::execution_control::ExecutionControl;
 use super::RecursiveLanguageModel;
+
+fn resolve_context_policy(engine: &RecursiveLanguageModel, task: &TaskNode) -> ComposerContextPolicy {
+    if let Some(policy) = &task.context_policy {
+        return policy.clone();
+    }
+    let state = engine.state.lock().expect("engine lock");
+    if let Some(node) = state.execution_nodes.get(&task.id) {
+        if let Some(composer) = &node.composer {
+            if let Ok(policy) = serde_json::from_value::<ComposerContextPolicy>(
+                composer
+                    .get("contextPolicy")
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null),
+            ) {
+                return policy;
+            }
+        }
+    }
+    default_memory_policy()
+}
 
 pub(crate) struct QualityLoopHostAdapter<'a> {
     pub(crate) engine: &'a RecursiveLanguageModel,
@@ -224,8 +245,51 @@ impl ModelCompletionHost for EngineHost<'_> {
         state.metadata.tool_calls.push(record);
     }
 
-    async fn resolve_memory_packet(&self, _task: &TaskNode) -> Option<String> {
-        None
+    async fn resolve_memory_packet(&self, task: &TaskNode) -> Option<String> {
+        let memory = self.engine.memory.as_ref()?;
+        let policy = resolve_context_policy(self.engine, task);
+        match memory
+            .build_packet(&task.id, &task.prompt, &policy)
+            .await
+        {
+            Ok(Some(packet)) => {
+                {
+                    let mut state = self.engine.state.lock().expect("engine lock");
+                    state.metadata.memory_packets.push(packet.metadata.clone());
+                }
+                if packet.metadata.degraded {
+                    let message = format!(
+                        "memory context degraded: {}",
+                        if packet.metadata.reasons.is_empty() {
+                            "unknown reason".into()
+                        } else {
+                            packet.metadata.reasons.join("; ")
+                        }
+                    );
+                    self.engine.emit_execution(
+                        &self.execution,
+                        ExecutionStatus::Running,
+                        Some(task.id.clone()),
+                        &message,
+                    );
+                }
+                if packet.text.is_empty() {
+                    None
+                } else {
+                    Some(packet.text)
+                }
+            }
+            Ok(None) => None,
+            Err(err) => {
+                self.engine.emit_execution(
+                    &self.execution,
+                    ExecutionStatus::Running,
+                    Some(task.id.clone()),
+                    &format!("memory context unavailable: {err}"),
+                );
+                None
+            }
+        }
     }
 
     fn mark_execution_node_failed(
