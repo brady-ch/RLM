@@ -42,7 +42,7 @@
 - [x] **Phase 107: Plugin Runtime & Registry Boundary Cleanup**
 - [x] **Phase 108: Plugin Manifest Test Extraction** (2026-05-24)
 - [x] **Phase 109: Plugin Remote Fetch Test Extraction** (2026-05-24)
-- [ ] **Phase 110: Builtin Write File Test Extraction**
+- [x] **Phase 110: Builtin Write File Test Extraction** (2026-05-24)
 - [ ] **Phase 111: Builtin Shell Test Extraction**
 - [ ] **Phase 112: Builtin Web Tools Test Extraction** — `web_fetch` + `web_search`
 
@@ -322,7 +322,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 110-01-PLAN.md — Extract write_file inline tests to tests/plugins/builtin/write_file.rs with 3-level #[path] stub
+- [x] 110-01-PLAN.md — Extract write_file inline tests to tests/plugins/builtin/write_file.rs with 3-level #[path] stub
 
 ### Phase 111: Builtin Shell Test Extraction
 
