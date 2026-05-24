@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { Readable } from "node:stream";
 import test from "node:test";
-import { parseArgs } from "../../../src/cli/args.js";
 import { createPluginRegistryService } from "../../../src/application/plugins/index.js";
 import {
   DEFAULT_PROJECT_CONFIG,
@@ -65,13 +64,6 @@ async function writeSamplePlugin(dir: string, id = "demo.test.plugin"): Promise<
   );
   return pluginDir;
 }
-
-test("parseArgs handles plugin list with json flag", () => {
-  const options = parseArgs(["plugin", "list", "--json"]);
-  assert.equal(options.command, "plugin");
-  assert.equal(options.pluginSubcommand, "list");
-  assert.equal(options.json, true);
-});
 
 test("PluginRegistryService lists builtins and installed plugins", async () => {
   const fixture = await createProjectFixture();
@@ -266,19 +258,6 @@ test("PluginRegistryService doctor reports duplicate ids across catalogs", async
   } finally {
     await fixture.cleanup();
   }
-});
-
-test("parseArgs handles plugin doctor --fix flag", () => {
-  const options = parseArgs(["plugin", "doctor", "--fix"]);
-  assert.equal(options.pluginSubcommand, "doctor");
-  assert.equal(options.pluginFix, true);
-});
-
-test("parseArgs handles plugin install --yes flag", () => {
-  const options = parseArgs(["plugin", "install", "https://example.com/p.tgz", "--yes"]);
-  assert.equal(options.pluginSubcommand, "install");
-  assert.equal(options.pluginTarget, "https://example.com/p.tgz");
-  assert.equal(options.pluginYes, true);
 });
 
 test("PluginRegistryService installRemote previews without confirm", async () => {

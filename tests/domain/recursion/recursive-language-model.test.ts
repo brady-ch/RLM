@@ -41,8 +41,6 @@ import { buildBugfixQueue, runWorkflow } from "../../../src/application/workflow
 import {
   createInteractiveExecutionSession,
 } from "../../../src/application/execution-controller.js";
-import { parseArgs } from "../../../src/cli/args.js";
-import { renderResult } from "../../../src/cli/render.js";
 import { MemoryResolver } from "../../../src/application/memory-resolver.js";
 import {
   DelayedQueueModel,
@@ -108,26 +106,9 @@ test("quality loop metadata contract supports graph nodes", () => {
   assert.equal(node.loop?.stopReason, "budget_exhausted");
 });
 
-test("parse args enables quality loop explicitly", () => {
-  const parsed = parseArgs(["ask", "--quality-loop", "Improve this answer"], {});
+);
 
-  assert.equal(parsed.prompt, "Improve this answer");
-  assert.equal(parsed.config.qualityLoop?.enabled, true);
-  assert.equal(parsed.config.qualityLoop?.maxIterations, 3);
-  assert.deepEqual(parsed.configOverrides.qualityLoop, parsed.config.qualityLoop);
-});
-
-test("parse args sets quality loop max iterations", () => {
-  const parsed = parseArgs(
-    ["ask", "--quality-loop-max-iterations", "5", "Improve this answer"],
-    {},
-  );
-
-  assert.equal(parsed.prompt, "Improve this answer");
-  assert.equal(parsed.config.qualityLoop?.enabled, true);
-  assert.equal(parsed.config.qualityLoop?.maxIterations, 5);
-  assert.deepEqual(parsed.configOverrides.qualityLoop, parsed.config.qualityLoop);
-});
+);
 
 test("answers directly when max depth is zero", async () => {
   const trace = new InMemoryTrace();
@@ -1248,60 +1229,7 @@ test("quality loop strict failure regression matrix exposes diagnostics", async 
   });
 });
 
-test("quality loop observability regression spans events graph and render surfaces", async () => {
-  const trace = new InMemoryTrace();
-  const events: string[] = [];
-  const engine = new RecursiveLanguageModel(
-    new QueueModel([
-      { content: "draft answer", toolCalls: [], model: "draft-model" },
-      { content: structuredCritique, toolCalls: [], model: "critique-model" },
-      { content: "refined answer", toolCalls: [], model: "refine-model" },
-      { content: passingGate, toolCalls: [], model: "gate-model" },
-      { content: bestOfProgress("observable answer"), toolCalls: [], model: "best-model" },
-    ]),
-    trace,
-  );
-
-  const result = await engine.run({
-    prompt: "Improve this answer",
-    config: {
-      ...dynamicDepthConfig,
-      qualityLoop: {
-        enabled: true,
-        maxIterations: 1,
-        budgetBehavior: "stop_before_partial_iteration",
-      },
-    },
-    execution: {
-      isCancelled: () => false,
-      onEvent: (event) => {
-        if (event.message) {
-          events.push(event.message);
-        }
-      },
-    },
-  });
-
-  assert.equal(result.metadata.executionGraph?.nodes[0]?.loop?.stopReason, "passed");
-  assert.ok(events.some((message) => message === "quality loop started"));
-  assert.ok(events.some((message) => message === "quality loop phase completed: gate"));
-  assert.ok(events.some((message) => message === "quality loop stopped: passed"));
-
-  const compact = renderResult(result, {
-    compact: true,
-    json: false,
-    includeTrace: false,
-    model: "m",
-  });
-  assert.match(compact, /qualityLoop: status=completed stopReason=passed/);
-  assert.match(compact, /qualityLoopQuality: score=0\.92 issues=0 status=completed/);
-  assert.match(compact, /qualityLoopRubric: id=/);
-  const parsed = JSON.parse(
-    renderResult(result, { compact: false, json: true, includeTrace: false, model: "m" }),
-  ) as { qualityLoop: QualityLoopMetadata };
-  assert.equal(parsed.qualityLoop.stopReason, "passed");
-  assert.equal(parsed.qualityLoop.iterations[0]?.phases.length, 5);
-});
+);
 
 test("quality loop waits for node approval before model calls", async () => {
   const trace = new InMemoryTrace();
@@ -1377,302 +1305,13 @@ test("quality loop disabled preserves non loop direct execution", async () => {
   );
 });
 
-test("renders compact quality loop metadata", () => {
-  const loop: QualityLoopMetadata = {
-    config: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
-    status: "completed",
-    stopReason: "max_iterations",
-    usage: {
-      iterationsStarted: 1,
-      iterationsCompleted: 1,
-      phaseCallCounts: {
-        draft: 1,
-        critique: 1,
-        refine: 1,
-        gate: 1,
-        best_of_progress: 1,
-      },
-      modelCallsTotal: 5,
-      inputTokens: 10,
-      outputTokens: 20,
-      totalTokens: 30,
-      unknownCompletions: 0,
-    },
-    iterations: [
-      {
-        index: 0,
-        status: "completed",
-        startedAt: "2026-05-17T00:00:00.000Z",
-        completedAt: "2026-05-17T00:00:01.000Z",
-        phases: [],
-        candidates: [],
-        unresolvedIssues: [],
-      },
-    ],
-    candidates: [
-      {
-        id: "candidate-1",
-        iteration: 0,
-        phase: "best_of_progress",
-        summary: "answer",
-        isSelected: true,
-      },
-    ],
-    phaseModels: {
-      gate: {
-        phase: "gate",
-        purpose: "quality_loop_gate",
-        plannedSelection: "large",
-        plannedModel: "large-model",
-        effectiveModel: "large-model",
-        tier: "large",
-        source: "phase_override",
-      },
-    },
-    selectedCandidateId: "candidate-1",
-    unresolvedIssues: [],
-  };
+);
 
-  const rendered = renderResult(
-    {
-      answer: "ok",
-      trace: [],
-      metadata: {
-        agent: { id: "default", source: "auto" },
-        depth: { selected: 0, source: "override" },
-        modelSelections: [],
-        memoryReservations: [],
-        modelCalls: 5,
-        tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
-        toolCalls: [],
-        qualityLoop: loop,
-        errors: [],
-      },
-    },
-    { compact: true, json: false, includeTrace: false, model: "m" },
-  );
+);
 
-  assert.match(
-    rendered,
-    /qualityLoop: status=completed stopReason=max_iterations iterations=1 selectedCandidate=candidate-1/,
-  );
-  assert.match(rendered, /qualityLoopUsage: modelCalls=5 input=10 output=20 total=30 unknown=0/);
-  assert.match(rendered, /qualityLoopQuality: score=none issues=0 status=completed/);
-  assert.match(rendered, /qualityLoopModels: gate:large->large-model/);
-});
+);
 
-test("renders json quality loop metadata", () => {
-  const loop: QualityLoopMetadata = {
-    config: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
-    status: "completed",
-    stopReason: "max_iterations",
-    usage: {
-      iterationsStarted: 1,
-      iterationsCompleted: 1,
-      phaseCallCounts: {
-        draft: 1,
-        critique: 1,
-        refine: 1,
-        gate: 1,
-        best_of_progress: 1,
-      },
-      modelCallsTotal: 5,
-      inputTokens: 10,
-      outputTokens: 20,
-      totalTokens: 30,
-      unknownCompletions: 0,
-    },
-    iterations: [
-      {
-        index: 0,
-        status: "completed",
-        startedAt: "2026-05-17T00:00:00.000Z",
-        completedAt: "2026-05-17T00:00:01.000Z",
-        phases: [],
-        candidates: [],
-        unresolvedIssues: [],
-      },
-    ],
-    candidates: [
-      {
-        id: "candidate-1",
-        iteration: 0,
-        phase: "best_of_progress",
-        summary: "answer",
-        isSelected: true,
-      },
-    ],
-    selectedCandidateId: "candidate-1",
-    unresolvedIssues: [],
-  };
-
-  const rendered = renderResult(
-    {
-      answer: "ok",
-      trace: [],
-      metadata: {
-        agent: { id: "default", source: "auto" },
-        depth: { selected: 0, source: "override" },
-        modelSelections: [],
-        memoryReservations: [],
-        modelCalls: 5,
-        tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
-        toolCalls: [],
-        qualityLoop: loop,
-        errors: [],
-      },
-    },
-    { compact: false, json: true, includeTrace: false, model: "m" },
-  );
-  const parsed = JSON.parse(rendered) as { qualityLoop: QualityLoopMetadata };
-
-  assert.equal(parsed.qualityLoop.stopReason, "max_iterations");
-});
-
-function renderableStructuredLoop(): QualityLoopMetadata {
-  return {
-    config: { enabled: true, maxIterations: 1, budgetBehavior: "stop_before_partial_iteration" },
-    status: "completed",
-    stopReason: "passed",
-    rubric: {
-      id: "code_engineering",
-      label: "Code and Engineering",
-      rationale: "Selected from code signals.",
-      matchedSignals: ["typescript", "test"],
-      confidence: 0.65,
-      criteria: [
-        { id: "behavior", label: "Behavior", description: "Implements requested behavior." },
-        { id: "integration", label: "Integration", description: "Fits existing code." },
-        { id: "verification", label: "Verification", description: "Includes tests." },
-      ],
-    },
-    gate: {
-      decision: "pass",
-      score: 0.91,
-      passThreshold: 0.8,
-      rubricFit: true,
-      critiqueResolved: true,
-      meaningfulImprovement: true,
-      rationale: "Meets rubric.",
-      failedConditions: [],
-      unresolvedIssues: [],
-    },
-    usage: {
-      iterationsStarted: 1,
-      iterationsCompleted: 1,
-      phaseCallCounts: {
-        draft: 1,
-        critique: 1,
-        refine: 1,
-        gate: 1,
-        best_of_progress: 1,
-      },
-      modelCallsTotal: 5,
-      inputTokens: 10,
-      outputTokens: 20,
-      totalTokens: 30,
-      unknownCompletions: 0,
-    },
-    iterations: [
-      {
-        index: 0,
-        status: "completed",
-        startedAt: "2026-05-18T00:00:00.000Z",
-        completedAt: "2026-05-18T00:00:01.000Z",
-        phases: [],
-        candidates: [],
-        unresolvedIssues: [],
-        critiqueEvaluation: {
-          summary: "critique",
-          issues: [],
-          resolved: true,
-          suggestedImprovements: [],
-        },
-        gateEvaluation: {
-          decision: "pass",
-          score: 0.91,
-          passThreshold: 0.8,
-          rubricFit: true,
-          critiqueResolved: true,
-          meaningfulImprovement: true,
-          rationale: "Meets rubric.",
-          failedConditions: [],
-          unresolvedIssues: [],
-        },
-        bestOfProgressEvaluation: {
-          selectedCandidateId: "candidate-1",
-          rationale: "Best candidate.",
-          score: 0.91,
-          comparisonNotes: ["Strongest candidate."],
-        },
-      },
-    ],
-    candidates: [
-      {
-        id: "candidate-1",
-        iteration: 0,
-        phase: "best_of_progress",
-        summary: "answer",
-        isSelected: true,
-      },
-    ],
-    selectedCandidateId: "candidate-1",
-    unresolvedIssues: [],
-  };
-}
-
-test("renders compact quality loop rubric and gate metadata", () => {
-  const rendered = renderResult(
-    {
-      answer: "ok",
-      trace: [],
-      metadata: {
-        agent: { id: "default", source: "auto" },
-        depth: { selected: 0, source: "override" },
-        modelSelections: [],
-        memoryReservations: [],
-        modelCalls: 5,
-        tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
-        toolCalls: [],
-        qualityLoop: renderableStructuredLoop(),
-        errors: [],
-      },
-    },
-    { compact: true, json: false, includeTrace: false, model: "m" },
-  );
-
-  assert.match(rendered, /qualityLoopRubric: id=code_engineering confidence=0\.65 signals=2/);
-  assert.match(
-    rendered,
-    /qualityLoopGate: decision=pass score=0\.91 threshold=0\.8 failedConditions=0/,
-  );
-});
-
-test("renders json quality loop rubric and evaluator metadata", () => {
-  const rendered = renderResult(
-    {
-      answer: "ok",
-      trace: [],
-      metadata: {
-        agent: { id: "default", source: "auto" },
-        depth: { selected: 0, source: "override" },
-        modelSelections: [],
-        memoryReservations: [],
-        modelCalls: 5,
-        tokenUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, unknownCompletions: 0 },
-        toolCalls: [],
-        qualityLoop: renderableStructuredLoop(),
-        errors: [],
-      },
-    },
-    { compact: false, json: true, includeTrace: false, model: "m" },
-  );
-  const parsed = JSON.parse(rendered) as { qualityLoop: QualityLoopMetadata };
-
-  assert.equal(parsed.qualityLoop.rubric?.id, "code_engineering");
-  assert.equal(parsed.qualityLoop.gate?.decision, "pass");
-  assert.equal(parsed.qualityLoop.iterations[0]?.gateEvaluation?.decision, "pass");
-});
+);
 
 test("emits code_execution trace/event for code-only tasks", async () => {
   const trace = new InMemoryTrace();
@@ -1835,77 +1474,15 @@ test("limits branches from decomposition output", async () => {
   assert.equal(result.trace.filter((event) => event.kind === "answer").length, 2);
 });
 
-test("parses cli options with granite default", () => {
-  const options = parseArgs(["ask", "hello", "--depth", "3", "--branches", "4", "--compact"], {});
+);
 
-  assert.equal(options.prompt, "hello");
-  assert.equal(options.model, "granite4.1:3b");
-  assert.equal(options.modelOverride, undefined);
-  assert.equal(options.config.maxDepth, 3);
-  assert.equal(options.config.maxBranches, 4);
-  assert.deepEqual(options.configOverrides, {
-    maxDepth: 3,
-    maxBranches: 4,
-  });
-  assert.equal(options.config.maxModelCalls, 24);
-  assert.equal(options.compact, true);
-  assert.equal(options.verbose, false);
-});
+);
 
-test("parses verbose cli option and env default", () => {
-  assert.equal(parseArgs(["ask", "hello", "--verbose"], {}).verbose, true);
-  assert.equal(parseArgs(["ask", "hello"], { RLM_VERBOSE: "1" }).verbose, true);
-  assert.equal(
-    parseArgs(["ask", "hello"], { RLM_MODEL: "yaml-override-model" }).modelOverride,
-    "yaml-override-model",
-  );
-});
+);
 
-test("parses direct prompt command shape and json output flag", () => {
-  const options = parseArgs(
-    [
-      "hello",
-      "world",
-      "--json",
-      "--agent",
-      "research",
-      "--workflow",
-      "default",
-      "--config",
-      "custom.yaml",
-    ],
-    {},
-  );
+);
 
-  assert.equal(options.prompt, "hello world");
-  assert.equal(options.command, "ask");
-  assert.equal(options.json, true);
-  assert.equal(options.agent, "research");
-  assert.equal(options.workflow, "default");
-  assert.equal(options.configPath, "custom.yaml");
-  assert.equal(options.config.maxDepth, undefined);
-  assert.equal(options.config.maxDynamicDepth, 4);
-});
-
-test("parses ui command and ui port", () => {
-  const options = parseArgs(["ui", "review", "the", "plan", "--ui-port", "4545"], {});
-
-  assert.equal(options.command, "ui");
-  assert.equal(options.prompt, "review the plan");
-  assert.equal(options.uiPort, 4545);
-});
-
-test("parses plan-node command and node id", () => {
-  const options = parseArgs(
-    ["plan-node", "--node-id", "root-composer", "--replan", "merge", "--prompt", "build a graph"],
-    {},
-  );
-
-  assert.equal(options.command, "plan-node");
-  assert.equal(options.nodeId, "root-composer");
-  assert.equal(options.replan, "merge");
-  assert.equal(options.prompt, "build a graph");
-});
+);
 
 test("interactive session seeds a typed root composer for first-run UI", () => {
   const session = createInteractiveExecutionSession({
@@ -3067,53 +2644,7 @@ test("cancellation remains visible in initial-plan-recursive mode", async () => 
   );
 });
 
-test("approval mode contract is consistent across cli api and ui labels", async () => {
-  const parsed = parseArgs(["ask", "hello", "--approval-mode", "initial-plan-recursive"], {});
-  assert.equal(parsed.approvalMode, "initial-plan-recursive");
-  const uiApiSource = await readFile(join(process.cwd(), "ui/src/shared/api.ts"), "utf8");
-  assert.match(uiApiSource, /Full checkpoints/);
-  assert.match(uiApiSource, /Initial plan/);
-  assert.match(uiApiSource, /Initial plan \+ recursive/);
-  const uiPanelsSource = await readFile(
-    join(process.cwd(), "ui/src/advanced/settings/QualityLoopInspector.tsx"),
-    "utf8",
-  );
-  assert.match(uiPanelsSource, /QualityLoopInspector/);
-  assert.match(uiPanelsSource, /quality-loop\/accept/);
-  assert.match(uiPanelsSource, /quality-loop\/stop/);
-  const rendered = renderResult(
-    {
-      answer: "ok",
-      trace: [],
-      metadata: {
-        agent: { id: "default", source: "auto" },
-        depth: { selected: 0, source: "override" },
-        modelSelections: [],
-        memoryReservations: [],
-        modelCalls: 0,
-        tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, unknownCompletions: 0 },
-        toolCalls: [],
-        errors: [],
-        executionGraph: {
-          nodes: [
-            {
-              id: "task-1",
-              kind: "task",
-              label: "x",
-              depth: 0,
-              status: "ready",
-              approvalMode: "initial-plan-recursive",
-              approvalSource: "none",
-            },
-          ],
-          edges: [],
-        },
-      },
-    },
-    { compact: true, json: false, includeTrace: false, model: "m" },
-  );
-  assert.match(rendered, /approvalMode=initial-plan-recursive/);
-});
+);
 
 test("stale quality loop metadata invalidates after prompt and model edits", () => {
   const session = createInteractiveExecutionSession();
@@ -4334,115 +3865,9 @@ test("memory manager reserves, releases, and rejects over-capacity requests", as
   assert.equal(manager.snapshot().reservedRamMb, 0);
 });
 
-test("renders compact output for subprocess use", () => {
-  const output = renderResult(
-    {
-      answer: "Hello\nworld",
-      metadata: {
-        agent: {
-          id: "default",
-          source: "auto",
-        },
-        depth: {
-          selected: 2,
-          source: "override",
-        },
-        modelSelections: [],
-        memoryReservations: [],
-        modelCalls: 1,
-        tokenUsage: {
-          inputTokens: 0,
-          outputTokens: 0,
-          totalTokens: 0,
-          unknownCompletions: 0,
-        },
-        toolCalls: [],
-        errors: [],
-      },
-      trace: [
-        {
-          id: "task-1",
-          depth: 0,
-          kind: "answer",
-          prompt: "hello",
-          output: "Hello\nworld",
-        },
-      ],
-    },
-    {
-      compact: true,
-      json: false,
-      includeTrace: true,
-      model: "granite4.1:3b",
-    },
-  );
+);
 
-  assert.match(output, /model: granite4\.1:3b/);
-  assert.match(output, /answer: Hello world/);
-  assert.match(output, /trace:/);
-});
-
-test("renders json output for tool use", () => {
-  const output = renderResult(
-    {
-      answer: "Hello world",
-      metadata: {
-        agent: {
-          id: "research",
-          source: "auto",
-        },
-        depth: {
-          selected: 1,
-          source: "model",
-        },
-        modelSelections: [],
-        memoryReservations: [],
-        modelCalls: 1,
-        tokenUsage: {
-          inputTokens: 0,
-          outputTokens: 0,
-          totalTokens: 0,
-          unknownCompletions: 0,
-        },
-        toolCalls: [],
-        errors: [],
-      },
-      trace: [],
-    },
-    {
-      compact: false,
-      json: true,
-      includeTrace: false,
-      model: "granite4.1:3b",
-    },
-  );
-
-  assert.deepEqual(JSON.parse(output), {
-    answer: "Hello world",
-    model: "granite4.1:3b",
-    agent: {
-      id: "research",
-      source: "auto",
-    },
-    depth: {
-      selected: 1,
-      source: "model",
-    },
-    modelSelections: [],
-    memoryReservations: [],
-    modelCalls: 1,
-    tokenUsage: {
-      inputTokens: 0,
-      outputTokens: 0,
-      totalTokens: 0,
-      unknownCompletions: 0,
-    },
-    clarificationHistory: [],
-    trace: [],
-    toolCalls: [],
-    errors: [],
-  });
-});
+);
 
 test("Phase 5 regression: workflow model failure marks executionStatus and graph nodes failed", async () => {
   const tool = new EchoTool();
@@ -4541,31 +3966,4 @@ test("Phase 5 regression: approval loop surfaces failed session snapshot when mo
   assert.equal(session.snapshot().status, "failed");
 });
 
-test("Phase 5 regression: default text render shows explicit Errors section when run failed", () => {
-  const text = renderResult(
-    {
-      answer: "partial answer",
-      trace: [],
-      metadata: {
-        agent: { id: "default", source: "auto" },
-        depth: { selected: 0, source: "override" },
-        modelSelections: [],
-        memoryReservations: [],
-        modelCalls: 1,
-        tokenUsage: {
-          inputTokens: 0,
-          outputTokens: 0,
-          totalTokens: 0,
-          unknownCompletions: 0,
-        },
-        toolCalls: [],
-        errors: ["simulated tool failure"],
-        executionStatus: "failed",
-      },
-    },
-    { compact: false, json: false, includeTrace: false, model: "granite4.1:3b" },
-  );
-  assert.match(text, /Run status: failed/);
-  assert.match(text, /Errors:/);
-  assert.match(text, /simulated tool failure/);
-});
+);

@@ -8,7 +8,6 @@ import {
   resolveRuntimeConfig,
   seedProjectRlmStarter,
 } from "../../../src/application/project-config.js";
-import { resolveLaunchMode } from "../../../src/cli/first-run.js";
 
 test("layered config lets project agent override global agent with same id", async () => {
   const prevHome = process.env.HOME;
@@ -111,17 +110,6 @@ test("invalid scoped yaml surfaces the file path in the error message", async ()
     process.env.USERPROFILE = prevUserProfile;
     await rm(sandbox, { recursive: true, force: true });
   }
-});
-
-test("resolveLaunchMode maps env and tty combinations", () => {
-  assert.equal(resolveLaunchMode({ RLM_NON_INTERACTIVE: "1" }, true).mode, "ui");
-  assert.equal(
-    resolveLaunchMode({ RLM_NON_INTERACTIVE: "1", RLM_LAUNCH_MODE: "cli" }, true).mode,
-    "cli",
-  );
-  assert.equal(resolveLaunchMode({}, false).shouldPrompt, false);
-  assert.equal(resolveLaunchMode({}, true, "").mode, "ui");
-  assert.equal(resolveLaunchMode({}, true, "2").mode, "cli");
 });
 
 test("starter seed writes project .rlm once and skips duplicates", async () => {

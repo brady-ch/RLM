@@ -1,28 +1,25 @@
 # Agents and architecture
 
-This repository is a **recursive language model CLI**: CLI entry in `src/index.ts` composes a `RuntimeContext` via `src/runtime/composition/` (facaded through `src/application/bootstrap/`), orchestration in `src/application/`, recursion policy in `src/domain/` (orchestrator + `domain/recursion/` helpers), I/O in `src/cli/`, boundaries in `src/ports/`, infrastructure adapters under `src/adapters/` (`persistence/`, `models/`), plugin packages under `src/plugins/`, and runtime wiring under `src/runtime/` (`composition/`, `interop/`). The local control plane lives under `src/application/control-server/` (HTTP handlers in `handlers/`).
+This repository is a **recursive language model CLI**: Rust `rlm-cli` is the sole CLI (Phase 115); TypeScript retains application/domain/adapters/plugins layers until Phase 116+. Orchestration lives in `src/application/`, recursion policy in `src/domain/` (orchestrator + `domain/recursion/` helpers), boundaries in `src/ports/`, infrastructure adapters under `src/adapters/` (`persistence/`, `models/`), plugin packages under `src/plugins/`. Rust counterparts: `crates/rlm-cli/` (CLI), `crates/rlm-core/` (plugins, interop, control server).
 
 ## Concern map
 
 Canonical layer boundaries for `src/` and how supporting directories relate. **Dependency direction flows inward:** outer layers (CLI, application) orchestrate; inner layers (domain, ports) define policy and contracts; runtime and plugins wire capabilities at the composition root; adapters implement port contracts for I/O.
 
 ```
-cli ──► application ──► domain
-  │         │              ▲
-  │         ▼              │ (types only)
-  └──► runtime/composition ├── ports ◄── adapters (persistence, models)
-              │              ▲
-              ├── interop    │
-              └── plugins/builtin ──► register(host) on ExtensionHostPort
+application ──► domain
+     │              ▲
+     ▼              │ (types only)
+  plugins/builtin ├── ports ◄── adapters (persistence, models)
 ```
 
 | Concern | Path | Role | May import |
 |---------|------|------|------------|
-| **cli** | `src/cli/` | Args, run-mode dispatch, stderr logging, shutdown | application facades, ports (types), bootstrap entry |
-| **application** | `src/application/` | Use cases: execution, graph, memory, config, control-server, plugin manager facade | domain, ports, runtime facades via bootstrap |
+| **cli** | `crates/rlm-cli/` | **Removed Phase 115** — Rust CLI only; was `src/cli/` | `rlm_core` public re-exports |
+| **application** | `src/application/` | Use cases: execution, graph, memory, config, plugin manager facade | domain, ports |
 | **domain** | `src/domain/` | Recursion policy, agent profiles, shared result types | ports (interfaces), domain/recursion helpers only |
 | **ports** | `src/ports/` | Interface contracts (models, tools, stores, extension host) | nothing in `src/` except other ports |
-| **runtime** | `src/runtime/` | Composition root + interop (MCP/skills); builds `RuntimeContext` | application modules needed for wiring, ports, plugins (load/register), adapters via bootstrap |
+| **runtime** | `crates/rlm-core/` (plugins, interop) | **Removed Phase 115** from TS — was `src/runtime/` | Rust composition in `rlm-core` |
 | **plugins** | `src/plugins/` | Manifest schema, loader, builtin/external packages | ports, adapters (tool impl), other plugins/builtin only |
 | **adapters** | `src/adapters/` | Infrastructure: persistence stores, model hosts, tracing | ports, domain (types), plugins/builtin re-exports for transitional imports |
 
@@ -31,7 +28,7 @@ cli ──► application ──► domain
 | Path | Relates to | Notes |
 |------|------------|-------|
 | `tests/` | Mirrors `src/` concerns | `tests/helpers/` shared fixtures; `tests/integration/` cross-cutting; layout matches table below |
-| `ui/` | cli + application/control-server | React UI; talks to control-server HTTP API, not domain directly |
+| `ui/` | Rust control server (Phase 114+) | React UI; talks to Rust HTTP API, not domain directly |
 | `scripts/` | cli packaging, desktop, dev tooling | Build/release helpers; no production import from `src/` |
 
 ### Tests mirror
@@ -44,8 +41,8 @@ cli ──► application ──► domain
 | `application/memory/` | `tests/application/memory/` |
 | `application/execution/` | `tests/application/execution/` |
 | `domain/` | `tests/domain/` |
-| `runtime/composition/` | `tests/runtime/composition/` |
-| `runtime/interop/` | `tests/runtime/interop/` |
+| ~~`runtime/composition/`~~ | **Removed Phase 115** |
+| ~~`runtime/interop/`~~ | **Removed Phase 115** |
 | `plugins/` | `tests/plugins/` |
 | `adapters/persistence/` | `tests/adapters/persistence/` |
 | cross-cutting | `tests/integration/` |
@@ -139,16 +136,15 @@ Run `npm run check:rust:boundaries` or `bash scripts/check-rust-boundaries.sh` t
 
 | Area | Role |
 |------|------|
-| [`src/index.ts`](src/index.ts) | CLI entry: parse args, early exits, `buildRuntimeContext`, dispatch run modes, shutdown. |
-| [`src/cli/`](src/cli/) | Argument parsing (`args.ts`), run-mode dispatch (`run-modes/`), result rendering (`render.ts`), stderr logging (`runtime-logger.ts`), signal handling (`shutdown.ts`). |
+| ~~`src/index.ts`~~ | **Removed Phase 115** — CLI is `crates/rlm-cli/` |
+| ~~`src/cli/`~~ | **Removed Phase 115** — args/render in Rust CLI |
 | [`src/application/config/`](src/application/config/) | Project YAML: types/schema, defaults, loader, validation, runtime resolution, model override, starter seed; [`project-config.ts`](src/application/project-config.ts) re-exports the public facade. |
-| [`src/application/bootstrap/`](src/application/bootstrap/) | Thin facade re-exporting `buildRuntimeContext` from `src/runtime/composition/`; adapter exports for CLI wiring. |
+| [`src/application/bootstrap/`](src/application/bootstrap/) | Transitional bootstrap facade (broken imports until Phase 116). |
 | [`src/application/execution/`](src/application/execution/) | Agent/workflow runners, execution control, model provider/library, runtime events. |
 | [`src/application/graph/`](src/application/graph/) | Graph planner, executor, workflow store/serializer/types. |
 | [`src/application/memory/`](src/application/memory/) | Memory manager, resolver, semantic index. |
 | [`src/application/plugins/`](src/application/plugins/) | Plugin manager application facade (list/doctor UX in later phases); re-exports discovery types from `src/plugins/`. |
-| [`src/runtime/composition/`](src/runtime/composition/) | `ExtensionHost`, `PluginLoader` wiring site, `buildRuntimeContext`, tools resolver, init order. |
-| [`src/runtime/interop/`](src/runtime/interop/) | MCP/skill interop runtime and tool factories. |
+| ~~`src/runtime/`~~ | **Removed Phase 115** — composition/interop in `crates/rlm-core/` |
 | [`src/plugins/`](src/plugins/) | Plugin taxonomy: manifest schema, categories, builtin packages, legacy YAML compat, installed catalog discovery. |
 | [`src/plugins/builtin/`](src/plugins/builtin/) | First-party plugins (`shell/`, `files/`, `web/`) each with `rlm.plugin.json` + `register(host)`. |
 | [`src/domain/recursive-language-model.ts`](src/domain/recursive-language-model.ts) | Core recursion orchestrator: depth, classify, decompose, solve, summarize, synthesize, quality loop, tool rounds; enforces `maxModelCalls`. |
@@ -159,7 +155,7 @@ Run `npm run check:rust:boundaries` or `bash scripts/check-rust-boundaries.sh` t
 | [`tests/helpers/`](tests/helpers/) | Shared mocks and fixtures for engine and integration tests. |
 | [`tests/domain/`](tests/domain/) | Domain and recursion tests mirroring `src/domain/`. |
 | [`tests/application/`](tests/application/) | Application concern tests (config, bootstrap, graph, memory, execution). |
-| [`tests/runtime/`](tests/runtime/) | Runtime composition and interop tests mirroring `src/runtime/`. |
+| ~~`tests/runtime/`~~ | **Removed Phase 115** |
 | [`tests/plugins/`](tests/plugins/) | Plugin manifest validation, loader discovery, and builtin tool tests. |
 | [`tests/adapters/`](tests/adapters/) | Adapter infrastructure tests (persistence stores, etc.). |
 | [`tests/integration/`](tests/integration/) | Cross-cutting integration suites. |

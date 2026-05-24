@@ -29,41 +29,6 @@ test("plugin and runtime depcruise rules are registered with concern map comment
   }
 });
 
-test("no-runtime-to-cli passes for build-runtime-context after bootstrap injection", async () => {
-  const { stdout } = await execFileAsync(
-    "npx",
-    [
-      "dependency-cruise",
-      "src/runtime/composition/build-runtime-context.ts",
-      "--config",
-      ".dependency-cruiser.js",
-      "--output-type",
-      "json",
-    ],
-    { cwd: process.cwd() },
-  );
-
-  const report = JSON.parse(stdout) as {
-    summary: {
-      violations: Array<{ rule: { name: string } }>;
-      ruleSetUsed: {
-        forbidden: Array<{ name: string; comment: string; severity: string }>;
-      };
-    };
-  };
-
-  const runtimeCliViolations = report.summary.violations.filter(
-    (violation) => violation.rule.name === "no-runtime-to-cli",
-  );
-  assert.equal(runtimeCliViolations.length, 0);
-
-  const rule = report.summary.ruleSetUsed.forbidden.find(
-    (entry) => entry.name === "no-runtime-to-cli",
-  );
-  assert.match(String(rule?.comment), /AGENTS\.md concern map/);
-  assert.equal(rule?.severity, "error");
-});
-
 test("no-plugins-to-application fails strict depcruise with named rule", async () => {
   const fixturePath = join(
     process.cwd(),
