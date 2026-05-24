@@ -87,7 +87,7 @@ Plans:
 3. `cargo test -p rlm-core` passes
 
 Plans:
-- [ ] 99-01-PLAN.md — extract file_vector_index.rs inline tests to tests/persistence/file_vector_index.rs with #[path] stub
+- [x] 99-01-PLAN.md — extract file_vector_index.rs inline tests to tests/persistence/file_vector_index.rs with #[path] stub
 
 ### Phase 100: ANN Vector Index Architecture & Test Extraction
 
