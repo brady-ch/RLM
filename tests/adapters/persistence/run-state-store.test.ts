@@ -4,7 +4,29 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 import { FileRunStateStore } from "../../../src/adapters/index.js";
-import { createMutationAuditEvent } from "../../../src/application/runtime-events.js";
+
+function createMutationAuditEvent(input: {
+  runId: string;
+  seq: number;
+  actor: string;
+  path: string;
+  action: "set" | "delete";
+  accepted: boolean;
+  reason: string;
+  occurredAt: string;
+}) {
+  const decision = input.accepted ? "accepted" : "rejected";
+  return {
+    runId: input.runId,
+    code: "RUN_STATE_MUTATION",
+    severity: input.accepted ? "info" : "warn",
+    source: "run-state",
+    subject: `${input.actor}:${input.path}`,
+    occurredAt: input.occurredAt,
+    seq: input.seq,
+    message: `${decision} ${input.action} on ${input.path}: ${input.reason}`,
+  };
+}
 
 test("file run-state store enforces token + etag and records accepted/rejected mutations", async () => {
   const dir = await mkdtemp(join(tmpdir(), "rlm-runstate-"));
