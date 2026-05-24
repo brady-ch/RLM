@@ -2,6 +2,7 @@
 
 ## Milestones
 
+- 📋 **v1.20 Product Desktop & Run Outcome** — Phases 129–135 (planned; starts after v1.19)
 - 📋 **v1.19 UI Product Simplification** — Phases 121–128 (planned; starts after v1.18)
 - 📋 **v1.18 Node Runtime Retirement** — Phases 113–120 (planned; starts after v1.17)
 - 🚧 **v1.17 Rust Infrastructure Layer** — Phases 97–112 (in progress)
@@ -35,7 +36,7 @@
 
 **Plugins block**
 - [ ] **Phase 106: Tool Result Type Ports Consolidation** — Move tool result to `ports/`; drop 4× `no-plugins-to-domain`
-- [ ] **Phase 107: Plugin Runtime & Registry Boundary Cleanup**
+- [x] **Phase 107: Plugin Runtime & Registry Boundary Cleanup**
 - [ ] **Phase 108: Plugin Manifest Test Extraction**
 - [ ] **Phase 109: Plugin Remote Fetch Test Extraction**
 - [ ] **Phase 110: Builtin Write File Test Extraction**
@@ -73,6 +74,23 @@
 - [ ] **Phase 128: UI Simplification UAT and Sign Off**
 
 **Reference:** `.planning/notes/ui-product-simplification-decisions.md`
+
+### v1.20 Product Desktop & Run Outcome (Phases 129–135)
+
+**Depends on:** v1.19 complete (Phase 128)
+
+**Result slice**
+- [ ] **Phase 129: Node Output Capture** — Persist model answers on `ExecutionGraphNode.output`; stop discarding executor results
+- [ ] **Phase 130: Live Node Output UI** — Run panel shows `node.output` as nodes complete
+- [ ] **Phase 131: End-of-Run Synthesis Engine** — Terminal detection, LLM synthesis, SSE stream to UI
+- [ ] **Phase 132: Outcome Panel & Streaming Final Answer** — Outcome panel on completion; partial-failure banner
+
+**Productization slice**
+- [ ] **Phase 133: Artifact Tracking & Diff Preview** — Register file writes; run-start snapshot; snippet/diff in Outcome panel
+- [ ] **Phase 134: Desktop Folder Launcher & Project Switcher** — Tauri folder picker, recent projects, in-app switcher
+- [ ] **Phase 135: Desktop Packaging & Bundled Plugins** — End-user install (.deb/.dmg/.exe); no npm; builtins bundled
+
+**Reference:** `.planning/notes/product-run-outcome-spec.md`, `.planning/notes/product-desktop-productization-decisions.md`
 
 ## Phase Details
 
@@ -222,6 +240,12 @@ Plans:
 2. `filter_agent_tools` exposed through port/bootstrap
 3. Registry service config injected via port, not direct `LoadedProjectConfig` import
 4. `cargo test -p rlm-core` passes
+
+**Plans:** 2 plans
+
+Plans:
+- [x] 107-01-PLAN.md — move AgentProfile/filter_agent_tools to ports/agent.rs; extract runtime tests; ratchet baseline 2→1
+- [x] 107-02-PLAN.md — PluginRegistryConfig port DTO; repoint registry callers; clear baseline to empty
 
 ### Phase 108: Plugin Manifest Test Extraction
 
@@ -447,5 +471,75 @@ Full details: `.planning/milestones/v1.15-ROADMAP.md`
 2. First-run to successful run under 5 minutes (operator verified)
 3. VERIFICATION.md signed
 
+### Phase 129: Node Output Capture
+
+**Goal:** Persist per-node model output in session snapshot; extend Rust + TS types
+**Depends on:** Phase 128
+**Success Criteria:**
+1. `ExecutionGraphNode.output` field added to domain types and snapshot JSON
+2. Graph executor captures RLM `answer` and single-pass model response into `output`
+3. `approvalReason` no longer misused for success paths
+4. `cargo test -p rlm-core` passes
+
+### Phase 130: Live Node Output UI
+
+**Goal:** Show node output in run panel when user selects a completed node during run
+**Depends on:** Phase 129
+**Success Criteria:**
+1. Run panel renders `node.output` for completed nodes
+2. Output updates live via existing session refresh/SSE
+3. `npm run build:ui` passes
+
+### Phase 131: End-of-Run Synthesis Engine
+
+**Goal:** After graph run, synthesize terminal node outputs into one final answer; stream via SSE
+**Depends on:** Phase 129
+**Success Criteria:**
+1. Terminal node detection (leaf nodes with no dependents)
+2. Synthesis LLM call with partial-failure awareness
+3. `runResult.synthesisStatus` + `runResult.finalAnswer` on snapshot
+4. SSE or session endpoint streams synthesis tokens
+5. Best-effort synthesis when some nodes failed
+
+### Phase 132: Outcome Panel & Streaming Final Answer
+
+**Goal:** Outcome panel on run completion — streamed final answer, status strip, partial-failure banner
+**Depends on:** Phases 130, 131
+**Success Criteria:**
+1. Outcome panel replaces/enhances WorkflowOverview when run terminal
+2. Final answer streams token-by-token during synthesis
+3. Copy button; link to source nodes on graph
+4. Partial failure callouts with node links
+
+### Phase 133: Artifact Tracking & Diff Preview
+
+**Goal:** Track files written/modified during run; show snippet/diff in Outcome panel
+**Depends on:** Phase 132
+**Success Criteria:**
+1. Run-start snapshot of project folder (or tool-registered paths)
+2. `write_file` and similar tools register artifacts on `runResult.artifacts`
+3. Text files show snippet; modified files show unified diff
+4. Artifacts scoped to selected project folder
+
+### Phase 134: Desktop Folder Launcher & Project Switcher
+
+**Goal:** Tauri folder picker at launch; recent projects; in-app project switcher
+**Depends on:** Phase 132
+**Success Criteria:**
+1. Cold start shows folder picker before workflow UI
+2. Recent projects persisted and selectable
+3. Top-bar switcher changes `project_root` without app restart
+4. All runs scoped to selected folder
+
+### Phase 135: Desktop Packaging & Bundled Plugins
+
+**Goal:** End-user installable desktop app; bundled builtins; no npm for users
+**Depends on:** Phase 134
+**Success Criteria:**
+1. `.deb`/platform installer builds in CI
+2. Fresh install launches without Node/npm
+3. Builtin plugins bundled; external install path documented in UI
+4. REG-style UAT: install → pick folder → run → see Outcome panel result
+
 ---
-*Roadmap updated: 2026-05-24 — v1.19 Phases 121–128 from /gsd-explore*
+*Roadmap updated: 2026-05-24 — v1.20 Phases 129–135 from /gsd-explore*
