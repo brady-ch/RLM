@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -7,8 +6,8 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use super::util::{read_json_array, sanitize_id, write_json_atomic};
-use crate::domain::types::MemoryPacketMetadata;
+use super::{iso_now, unique_suffix, EpisodicMemoryEntry, FileMemoryStore};
+use super::super::util::sanitize_id;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,43 +18,6 @@ pub struct MemoryScopeDocument {
     pub version: u32,
     pub content: Value,
     pub updated_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EpisodicMemoryEntry {
-    pub id: String,
-    pub session_id: String,
-    #[serde(rename = "type")]
-    pub entry_type: String,
-    pub summary: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub node_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub scope_ids: Option<Vec<String>>,
-    pub timestamp: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MemoryAuditRecord {
-    pub seq: u64,
-    pub session_id: String,
-    pub scope_id: String,
-    pub actor: String,
-    pub accepted: bool,
-    pub reason: String,
-    pub timestamp: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MemoryInspectionSnapshot {
-    pub session_id: String,
-    pub scopes: Vec<MemoryScopeDocument>,
-    pub episodic: Vec<EpisodicMemoryEntry>,
-    pub packets: Vec<Value>,
-    pub audit: Vec<MemoryAuditRecord>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,19 +43,7 @@ pub struct MemoryScopePatchResult {
     pub audit_seq: u64,
 }
 
-pub struct FileMemoryStore {
-    base_dir: PathBuf,
-}
-
 impl FileMemoryStore {
-    pub fn new(base_dir: PathBuf) -> Self {
-        Self { base_dir }
-    }
-
-    pub fn base_dir(&self) -> &Path {
-        &self.base_dir
-    }
-
     pub fn read_scope(
         &self,
         session_id: &str,
@@ -133,7 +83,7 @@ impl FileMemoryStore {
     pub fn patch_scope(
         &self,
         request: MemoryScopePatchRequest,
-    ) -> io::Result<MemoryScopePatchResult> {
+    ) -> io::Result<super::MemoryScopePatchResult> {
         if let Some(reason) = self.authorize(&request) {
             return self.audit_and_result(&request, false, reason, request.expected_version);
         }
@@ -184,132 +134,6 @@ impl FileMemoryStore {
         self.audit_and_result(&request, true, "accepted".into(), next.version)
     }
 
-    pub fn list_audit(&self, session_id: &str) -> io::Result<Vec<MemoryAuditRecord>> {
-        read_json_array(&self.audit_path(session_id))
-    }
-
-    pub fn list_episodic(&self, session_id: &str) -> io::Result<Vec<EpisodicMemoryEntry>> {
-        read_json_array(&self.episodic_path(session_id))
-    }
-
-    pub fn get_rolling_summary(
-        &self,
-        session_id: &str,
-        scope_ids: &[String],
-        max_chars: usize,
-    ) -> io::Result<String> {
-        let allowed: HashSet<String> = scope_ids.iter().cloned().collect();
-        let entries = self.list_episodic(session_id)?;
-        let lines: Vec<String> = entries
-            .into_iter()
-            .filter(|entry| {
-                entry
-                    .scope_ids
-                    .as_ref()
-                    .is_none_or(|scopes| scopes.is_empty() || scopes.iter().any(|s| allowed.contains(s)))
-            })
-            .rev()
-            .take(12)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .map(|entry| {
-                format!(
-                    "- {}{}: {}",
-                    entry.entry_type,
-                    entry
-                        .node_id
-                        .as_ref()
-                        .map(|id| format!(" {id}"))
-                        .unwrap_or_default(),
-                    entry.summary
-                )
-            })
-            .collect();
-        Ok(truncate_text(&lines.join("\n"), max_chars))
-    }
-
-    pub fn record_packet_metadata(&self, metadata: &MemoryPacketMetadata) -> io::Result<()> {
-        let session_id = metadata.session_id.clone();
-        let mut packets = self.list_packet_metadata(&session_id)?;
-        packets.retain(|packet| {
-            packet
-                .get("nodeId")
-                .and_then(Value::as_str)
-                .is_none_or(|id| id != metadata.node_id)
-        });
-        packets.push(serde_json::to_value(metadata).map_err(|err| {
-            io::Error::new(io::ErrorKind::InvalidData, err.to_string())
-        })?);
-        let trimmed: Vec<_> = packets.into_iter().rev().take(200).rev().collect();
-        self.write_json(
-            &self.packet_path(&session_id),
-            &serde_json::to_value(&trimmed)?,
-        )
-    }
-
-    pub fn append_episodic(&self, entry: EpisodicMemoryEntry) -> io::Result<()> {
-        let session_id = entry.session_id.clone();
-        let mut entries = self.list_episodic(&session_id)?;
-        entries.push(entry);
-        let trimmed: Vec<_> = entries.into_iter().rev().take(500).rev().collect();
-        self.write_json(
-            &self.episodic_path(&session_id),
-            &serde_json::to_value(&trimmed)?,
-        )
-    }
-
-    pub fn list_packet_metadata(&self, session_id: &str) -> io::Result<Vec<Value>> {
-        read_json_array(&self.packet_path(session_id))
-    }
-
-    pub fn inspect(&self, session_id: &str) -> io::Result<MemoryInspectionSnapshot> {
-        Ok(MemoryInspectionSnapshot {
-            session_id: session_id.to_string(),
-            scopes: self.list_scopes(session_id)?,
-            episodic: self.list_episodic(session_id)?,
-            packets: self.list_packet_metadata(session_id)?,
-            audit: self.list_audit(session_id)?,
-        })
-    }
-
-    pub fn restore_session_data(
-        &self,
-        session_id: &str,
-        scopes: Vec<MemoryScopeDocument>,
-        episodic: Vec<EpisodicMemoryEntry>,
-        audit: Option<Vec<MemoryAuditRecord>>,
-        packets: Option<Vec<Value>>,
-    ) -> io::Result<()> {
-        for mut scope in scopes {
-            scope.session_id = session_id.to_string();
-            let lifetime = scope.lifetime.clone();
-            self.write_json(
-                &self.scope_path_for_lifetime(session_id, &scope.scope_id, &lifetime),
-                &serde_json::to_value(&scope)?,
-            )?;
-        }
-        let trimmed_episodic: Vec<_> = episodic.into_iter().rev().take(500).rev().collect();
-        self.write_json(
-            &self.episodic_path(session_id),
-            &serde_json::to_value(&trimmed_episodic)?,
-        )?;
-        if let Some(audit_records) = audit {
-            self.write_json(
-                &self.audit_path(session_id),
-                &serde_json::to_value(&audit_records)?,
-            )?;
-        }
-        if let Some(packet_records) = packets {
-            let trimmed: Vec<_> = packet_records.into_iter().rev().take(200).rev().collect();
-            self.write_json(
-                &self.packet_path(session_id),
-                &serde_json::to_value(&trimmed)?,
-            )?;
-        }
-        Ok(())
-    }
-
     pub fn set_preference(
         &self,
         session_id: &str,
@@ -317,7 +141,7 @@ impl FileMemoryStore {
         value: &str,
         source: &str,
         lifetime: &str,
-    ) -> io::Result<MemoryScopePatchResult> {
+    ) -> io::Result<super::MemoryScopePatchResult> {
         let safe_key = sanitize_id(key)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err.to_string()))?;
         if safe_key.is_empty() || value.trim().is_empty() {
@@ -353,7 +177,7 @@ impl FileMemoryStore {
         &self,
         session_id: &str,
         key: &str,
-    ) -> io::Result<MemoryScopePatchResult> {
+    ) -> io::Result<super::MemoryScopePatchResult> {
         let safe_key = sanitize_id(key)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err.to_string()))?;
         if safe_key.is_empty() {
@@ -389,52 +213,12 @@ impl FileMemoryStore {
         None
     }
 
-    fn audit_and_result(
+    pub(super) fn scope_path_for_lifetime(
         &self,
-        request: &MemoryScopePatchRequest,
-        accepted: bool,
-        reason: String,
-        next_version: u32,
-    ) -> io::Result<MemoryScopePatchResult> {
-        let mut records = self.list_audit(&request.session_id)?;
-        let seq = records.last().map(|record| record.seq).unwrap_or(0) + 1;
-        records.push(MemoryAuditRecord {
-            seq,
-            session_id: request.session_id.clone(),
-            scope_id: request.scope_id.clone(),
-            actor: request.actor.clone(),
-            accepted,
-            reason: reason.clone(),
-            timestamp: iso_now(),
-        });
-        self.write_json(
-            &self.audit_path(&request.session_id),
-            &serde_json::to_value(&records)?,
-        )?;
-        if !accepted {
-            self.append_episodic(EpisodicMemoryEntry {
-                id: format!("episode-{}", unique_suffix()),
-                session_id: request.session_id.clone(),
-                entry_type: "rejected_write".into(),
-                summary: format!("Rejected write to {}: {}", request.scope_id, reason),
-                node_id: None,
-                scope_ids: Some(vec![request.scope_id.clone()]),
-                timestamp: iso_now(),
-            })?;
-        }
-        Ok(MemoryScopePatchResult {
-            accepted,
-            reason,
-            next_version,
-            audit_seq: seq,
-        })
-    }
-
-    fn write_json(&self, path: &Path, value: &Value) -> io::Result<()> {
-        write_json_atomic(path, value)
-    }
-
-    fn scope_path_for_lifetime(&self, session_id: &str, scope_id: &str, lifetime: &str) -> PathBuf {
+        session_id: &str,
+        scope_id: &str,
+        lifetime: &str,
+    ) -> PathBuf {
         let safe_scope = sanitize_id(scope_id).unwrap_or_else(|_| scope_id.to_string());
         match lifetime {
             "project" => self
@@ -492,23 +276,6 @@ impl FileMemoryStore {
         }
         Ok(documents)
     }
-
-    fn episodic_path(&self, session_id: &str) -> PathBuf {
-        self.session_dir(session_id).join("episodic.json")
-    }
-
-    fn audit_path(&self, session_id: &str) -> PathBuf {
-        self.session_dir(session_id).join("audit.json")
-    }
-
-    fn packet_path(&self, session_id: &str) -> PathBuf {
-        self.session_dir(session_id).join("packets.json")
-    }
-
-    fn session_dir(&self, session_id: &str) -> PathBuf {
-        let safe = sanitize_id(session_id).unwrap_or_else(|_| session_id.to_string());
-        self.base_dir.join(safe)
-    }
 }
 
 fn apply_patch(existing: Value, patch: Value) -> Value {
@@ -527,30 +294,3 @@ fn apply_patch(existing: Value, patch: Value) -> Value {
     }
     Value::Object(next)
 }
-
-fn truncate_text(text: &str, max_chars: usize) -> String {
-    if text.len() <= max_chars {
-        return text.to_string();
-    }
-    let keep = max_chars.saturating_sub(15);
-    format!("{}\n[truncated]", text.chars().take(keep).collect::<String>().trim_end())
-}
-
-fn iso_now() -> String {
-    time::OffsetDateTime::now_utc()
-        .format(&time::format_description::well_known::Rfc3339)
-        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
-}
-
-fn unique_suffix() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    format!("{nanos}")
-}
-
-#[cfg(test)]
-#[path = "../../tests/persistence/memory_store.rs"]
-mod memory_store_tests;
