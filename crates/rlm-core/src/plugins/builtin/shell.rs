@@ -177,18 +177,5 @@ fn format_shell_output(stdout: &str, stderr: &str, exit_code: i32) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rejects_blocked_operators() {
-        let tool = GuardedShellTool::new(Path::new("."));
-        assert!(tool.validate_command("ls | cat").is_err());
-    }
-
-    #[test]
-    fn allows_allowlisted_command() {
-        let tool = GuardedShellTool::new(Path::new("."));
-        assert!(tool.validate_command("pwd").is_ok());
-    }
-}
+#[path = "../../../tests/plugins/builtin/shell.rs"]
+mod shell_tests;
