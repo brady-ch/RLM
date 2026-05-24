@@ -96,7 +96,7 @@ rlm-cli ──► application / control_server ──► domain
 | **domain** | `crates/rlm-core/src/domain/` | Recursion policy, agent profiles, shared result types | ports (interfaces), `domain/recursion` helpers only |
 | **ports** | `crates/rlm-core/src/ports/` | Trait contracts (models, tools, stores, extension host) | domain types, other ports |
 | **adapters** | `crates/rlm-core/src/adapters/` | Model hosts (Ollama, etc.) | ports, domain types |
-| **persistence** | `crates/rlm-core/src/persistence/` | File stores, vector index, config loader | ports, domain types; may re-export application config loaders (transitional) |
+| **persistence** | `crates/rlm-core/src/persistence/` | File stores, vector index, config loader | ports, domain types |
 | **plugins** | `crates/rlm-core/src/plugins/` | Manifest, registry, builtins, runtime context | ports, interop, adapters (tool impl) |
 | **interop** | `crates/rlm-core/src/interop/` | MCP/skill runtime and tool factories | ports, plugin paths |
 | **control_server** | `crates/rlm-core/src/control_server/` | HTTP transport and handlers | application, ports, persistence (handler wiring) |
@@ -135,7 +135,6 @@ Default CI runs `scripts/check-rust-boundaries.sh` in **baseline mode** (known t
 
 | Rule | From module | Rationale for defer | Removal condition |
 |------|-------------|---------------------|-------------------|
-| `no-persistence-to-application` | `persistence/config.rs` | Transitional config loader re-export from application until persistence owns config resolution | Move `load_project_config` / `merge_yaml_layers` behind a persistence facade or port; drop pub use |
 | `no-plugins-to-application` | `plugins/runtime.rs` | Plugin runtime filters agent tools via `agent_registry` during composition | Expose filter API through ports/bootstrap; plugins register tools only via extension host |
 | `no-plugins-to-persistence` | `plugins/registry/service.rs` | Registry service reads `LoadedProjectConfig` for install/doctor | Inject config through port at composition root; registry depends on ports only |
 | `no-plugins-to-domain` | `plugins/builtin/shell.rs` | Builtin tools return `domain::types::ToolExecutionResult` | Consolidate tool result type under `ports/`; update all four builtin tools |

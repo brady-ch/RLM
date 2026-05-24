@@ -1,10 +1,5 @@
 [
   {
-    "rule": "no-persistence-to-application",
-    "from": "crates/rlm-core/src/persistence/config.rs",
-    "import": "pub use crate::application::config::{load_project_config, merge_yaml_layers, LoadedProjectConfig};"
-  },
-  {
     "rule": "no-plugins-to-application",
     "from": "crates/rlm-core/src/plugins/runtime.rs",
     "import": "use crate::application::execution::agent_registry::{filter_agent_tools, AgentProfile};"
