@@ -38,7 +38,7 @@
 - [x] **Phase 105: Ollama Language Model Architecture & Test Extraction**
 
 **Plugins block**
-- [ ] **Phase 106: Tool Result Type Ports Consolidation** — Move tool result to `ports/`; drop 4× `no-plugins-to-domain`
+- [x] **Phase 106: Tool Result Type Ports Consolidation** (2026-05-24)
 - [x] **Phase 107: Plugin Runtime & Registry Boundary Cleanup**
 - [x] **Phase 108: Plugin Manifest Test Extraction** (2026-05-24)
 - [ ] **Phase 109: Plugin Remote Fetch Test Extraction**
