@@ -1,18 +1,18 @@
 # Agents and architecture
 
-This repository is a **recursive language model CLI**: Rust `rlm-cli` is the sole CLI (Phase 115); application orchestration, domain policy, and port contracts are Rust-only in `crates/rlm-core/`. TypeScript retains `adapters/` and `plugins/` until Phase 118+. Infrastructure adapters under `src/adapters/` (`persistence/`, `models/`), plugin packages under `src/plugins/`. Rust counterparts: `crates/rlm-cli/` (CLI), `crates/rlm-core/` (domain, ports, plugins, interop, control server).
+This repository is a **recursive language model CLI**: Rust `rlm-cli` is the sole CLI (Phase 115); no TypeScript runtime layers remain in `src/` after Phase 118. All orchestration, domain, ports, adapters, and plugins are Rust-only in `crates/rlm-core/`. Rust counterparts: `crates/rlm-cli/` (CLI), `crates/rlm-core/` (domain, ports, plugins, interop, control server).
 
 ## Concern map
 
-Canonical layer boundaries for `src/` and how supporting directories relate. **Dependency direction flows inward:** outer layers (CLI, application) orchestrate; inner layers (domain, ports) define policy and contracts; runtime and plugins wire capabilities at the composition root; adapters implement port contracts for I/O.
+The TypeScript `src/` tree is fully retired (Phases 115–118). **Dependency direction flows inward** in the Rust workspace: outer layers (CLI, application, control server) orchestrate; inner layers (domain, ports) define policy and contracts; runtime and plugins wire capabilities at the composition root; adapters implement port contracts for I/O.
 
 ```
 ~~application~~ ──► ~~domain~~
  (Removed Phase 116)  (Removed Phase 117)
      │                   ▲
      ▼                   │ (types only)
-  plugins/builtin ├── ~~ports~~ ◄── adapters (persistence, models)
-                    (Removed Phase 117)
+  ~~plugins/builtin~~ ├── ~~ports~~ ◄── ~~adapters~~ (persistence, models)
+ (Removed Phase 118)    (Removed Phase 117)  (Removed Phase 118)
 ```
 
 | Concern | Path | Role | May import |
@@ -22,16 +22,16 @@ Canonical layer boundaries for `src/` and how supporting directories relate. **D
 | ~~**domain**~~ | ~~`src/domain/`~~ | **Removed Phase 117** — recursion policy in `crates/rlm-core/src/domain/` | — |
 | ~~**ports**~~ | ~~`src/ports/`~~ | **Removed Phase 117** — port contracts in `crates/rlm-core/src/ports/` | — |
 | **runtime** | `crates/rlm-core/` (plugins, interop) | **Removed Phase 115** from TS — was `src/runtime/` | Rust composition in `rlm-core` |
-| **plugins** | `src/plugins/` | Manifest schema, loader, builtin/external packages | ports, adapters (tool impl), other plugins/builtin only |
-| **adapters** | `src/adapters/` | Infrastructure: persistence stores, model hosts, tracing | ports, domain (types), plugins/builtin re-exports for transitional imports |
+| ~~**plugins**~~ | ~~`src/plugins/`~~ | **Removed Phase 118** — manifest, registry, builtins in `crates/rlm-core/src/plugins/` | — |
+| ~~**adapters**~~ | ~~`src/adapters/`~~ | **Removed Phase 118** — persistence, model hosts in `crates/rlm-core/src/adapters/` and `crates/rlm-core/src/persistence/` | — |
 
 **Supporting directories (not `src/` layers):**
 
 | Path | Relates to | Notes |
 |------|------------|-------|
-| `tests/` | Mirrors `src/` concerns | `tests/helpers/` shared fixtures; `tests/integration/` cross-cutting; layout matches table below |
+| `tests/` | Rust runtime concerns | `tests/ui/` static UI wiring; `tests/depcruise/` boundary probes until Phase 119 |
 | `ui/` | Rust control server (Phase 114+) | React UI; talks to Rust HTTP API, not domain directly |
-| `scripts/` | cli packaging, desktop, dev tooling | Build/release helpers; no production import from `src/` |
+| `scripts/` | cli packaging, desktop, dev tooling | Build/release helpers; no production import from deleted `src/` |
 
 ### Tests mirror
 
@@ -41,10 +41,10 @@ Canonical layer boundaries for `src/` and how supporting directories relate. **D
 | ~~`domain/`~~ | **Removed Phase 117** — Rust tests in `crates/rlm-core/tests/domain/` |
 | ~~`runtime/composition/`~~ | **Removed Phase 115** |
 | ~~`runtime/interop/`~~ | **Removed Phase 115** |
-| `plugins/` | `tests/plugins/` |
-| `adapters/persistence/` | `tests/adapters/persistence/` |
-| cross-cutting | `tests/integration/` |
-| shared | `tests/helpers/` |
+| ~~`plugins/`~~ | **Removed Phase 118** — Rust tests in `crates/rlm-core/tests/plugins/` |
+| ~~`adapters/persistence/`~~ | **Removed Phase 118** — Rust tests in `crates/rlm-core/tests/adapters/` and `crates/rlm-core/tests/persistence/` |
+| ~~cross-cutting~~ | ~~`tests/integration/`~~ — **Removed Phase 116** |
+| ~~shared~~ | ~~`tests/helpers/`~~ — **Removed Phase 118** |
 
 ### Dependency-cruiser rules
 
@@ -138,42 +138,41 @@ Run `npm run check:rust:boundaries` or `bash scripts/check-rust-boundaries.sh` t
 | ~~`src/cli/`~~ | **Removed Phase 115** — args/render in Rust CLI |
 | ~~`src/application/`~~ | **Removed Phase 116** — use cases in [`crates/rlm-core/src/application/`](crates/rlm-core/src/application/) |
 | ~~`src/runtime/`~~ | **Removed Phase 115** — composition/interop in `crates/rlm-core/` |
-| [`src/plugins/`](src/plugins/) | Plugin taxonomy: manifest schema, categories, builtin packages, legacy YAML compat, installed catalog discovery. |
-| [`src/plugins/builtin/`](src/plugins/builtin/) | First-party plugins (`shell/`, `files/`, `web/`) each with `rlm.plugin.json` + `register(host)`. |
+| ~~`src/plugins/`~~ | **Removed Phase 118** — plugin taxonomy in [`crates/rlm-core/src/plugins/`](crates/rlm-core/src/plugins/) |
 | ~~`src/domain/`~~ | **Removed Phase 117** — recursion policy in [`crates/rlm-core/src/domain/`](crates/rlm-core/src/domain/) |
 | ~~`src/ports/`~~ | **Removed Phase 117** — port contracts in [`crates/rlm-core/src/ports/`](crates/rlm-core/src/ports/) |
-| [`src/adapters/`](src/adapters/) | Infrastructure only: persistence stores, model hosts, tracing; barrel [`src/adapters/index.ts`](src/adapters/index.ts) re-exports builtin tool classes from `plugins/builtin/` for tests and transitional imports. |
-| [`tests/helpers/`](tests/helpers/) | Shared mocks and fixtures for engine and integration tests. |
+| ~~`src/adapters/`~~ | **Removed Phase 118** — persistence and model hosts in [`crates/rlm-core/src/adapters/`](crates/rlm-core/src/adapters/) and [`crates/rlm-core/src/persistence/`](crates/rlm-core/src/persistence/) |
+| ~~`tests/helpers/`~~ | **Removed Phase 118** — orphaned fixtures importing deleted domain/ports |
 | ~~`tests/domain/`~~ | **Removed Phase 117** — Rust domain tests in `crates/rlm-core/tests/domain/` |
 | ~~`tests/application/`~~ | **Removed Phase 116** — Rust tests in `crates/rlm-core/tests/application/` |
 | ~~`tests/runtime/`~~ | **Removed Phase 115** |
-| [`tests/plugins/`](tests/plugins/) | Plugin manifest validation, loader discovery, and builtin tool tests. |
-| [`tests/adapters/`](tests/adapters/) | Adapter infrastructure tests (persistence stores, etc.). |
-| [`tests/integration/`](tests/integration/) | Cross-cutting integration suites. |
+| ~~`tests/plugins/`~~ | **Removed Phase 118** — Rust plugin tests in `crates/rlm-core/tests/plugins/` |
+| ~~`tests/adapters/`~~ | **Removed Phase 118** — Rust adapter tests in `crates/rlm-core/tests/adapters/` |
+| ~~`tests/integration/`~~ | **Removed Phase 116** |
 
 ## Plugin taxonomy
 
-Built-in and external plugins share one contract:
+Built-in and external plugins share one contract (Rust canonical):
 
-1. **`rlm.plugin.json`** at the plugin root — validated with Zod (`src/plugins/manifest-schema.ts`) **before** any `import()`.
-2. **`register(host: ExtensionHostPort)`** module export — registers tools/skill loaders/model hosts on the shared extension host.
-3. **Categories** — `shell`, `files`, `web`, `interop` (extensible enum in `src/plugins/categories.ts`).
+1. **`rlm.plugin.json`** at the plugin root — validated in `crates/rlm-core/src/plugins/manifest.rs` before registration.
+2. **`register(host: ExtensionHostPort)`** — registers tools/skill loaders/model hosts on the shared extension host.
+3. **Categories** — `shell`, `files`, `web`, `interop` (extensible enum in `crates/rlm-core/src/plugins/categories.rs`).
 
-Discovery order in `PluginLoader` (`src/plugins/plugin-loader.ts`):
+Discovery order in the Rust plugin loader (`crates/rlm-core/src/plugins/`):
 
-1. Built-ins under `src/plugins/builtin/`
+1. Built-ins under `crates/rlm-core/src/plugins/builtin/`
 2. Configured entries (legacy `extensions.load` YAML normalized via compat shim)
 3. Installed catalog at `.rlm/plugins/catalog.json`
 
-MCP/skill interop tools are registered separately under `src/runtime/interop/` and use the `interop` category in manifests when packaged as plugins.
+MCP/skill interop tools are registered separately under `crates/rlm-core/src/interop/` and use the `interop` category in manifests when packaged as plugins.
 
 ## Extending
 
-- **New built-in tools**: add under `src/plugins/builtin/<category>/` with `rlm.plugin.json`, tool implementation, and `register.ts`; register the package in `src/plugins/builtin/index.ts`. Do **not** add new tool implementations under `src/adapters/tools/`.
-- **New external plugins**: ship `rlm.plugin.json` + `register` export; enable via legacy `extensions.load` (compat shim) or installed catalog; allowlist approval still applies before `import()`.
+- **New built-in tools**: add under `crates/rlm-core/src/plugins/builtin/<category>/` with `rlm.plugin.json`, tool implementation, and `register.rs`; register the package in `crates/rlm-core/src/plugins/builtin/mod.rs`.
+- **New external plugins**: ship `rlm.plugin.json` + `register` export; enable via legacy `extensions.load` (compat shim) or installed catalog; allowlist approval still applies before load.
 - **New recursion policy or domain helpers**: add under `crates/rlm-core/src/domain/` (orchestrator in `recursive_language_model.rs`, pure helpers in `domain/recursion/`).
 - **New port traits**: add under `crates/rlm-core/src/ports/`; keep domain free of concrete I/O.
-- **New persistence or model hosts**: add under `src/adapters/persistence/` or `src/adapters/models/` (TS transitional) or `crates/rlm-core/src/adapters/` / `persistence/` (Rust canonical); wire through bootstrap composition.
+- **New persistence or model hosts**: add under `crates/rlm-core/src/adapters/` or `crates/rlm-core/src/persistence/`; wire through bootstrap composition.
 - **New config fields**: extend schema/types in `crates/rlm-core/src/persistence/config/` and `crates/rlm-core/src/application/config/`; preserve validation messages with path context.
 - **New control-server endpoints**: add a handler module under `crates/rlm-core/src/control_server/handlers/`; keep session/graph authority in execution services.
 - **New agents**: add a block under `agents` in `rlm.config.yaml` (models + tools); extend Rust agent registry in `crates/rlm-core/src/application/execution/` if you need a dedicated profile constructor.
