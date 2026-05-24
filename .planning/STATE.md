@@ -1,35 +1,33 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.16
-milestone_name: Rust Application Memory & Config
-status: Awaiting next milestone
-stopped_at: v1.16 archived — Phase 96 complete
-last_updated: "2026-05-24T12:00:00Z"
-last_activity: 2026-05-24 — /gsd-autonomous --auto completed Phases 92–96
+milestone: v1.17
+milestone_name: Rust Infrastructure Layer
+status: executing
+last_updated: "2026-05-24T06:31:23.831Z"
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_phases: 16
+  completed_phases: 0
+  total_plans: 2
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
-**Current focus:** Awaiting next milestone
+**Current focus:** v1.17 Rust Infrastructure Layer — persistence → adapters → plugins
 
 ## Current Position
 
-Phase: 96 — Complete  
-Status: Milestone v1.16 shipped
+Phase: 97 — Persistence Config Facade  
+Status: Ready to execute
 
-## Accomplishments (v1.16)
+## Milestone Goal
 
-- Split `ram_guard.rs` into probe/budget/eligibility/ollama modules with facade
-- Extracted all memory block inline tests (session bridge, semantic index, resolver)
-- Extracted config loader tests — zero inline test bodies in `src/application/`
+Extract inline tests to mirrored `tests/{persistence,adapters,plugins}/` trees, split oversized infrastructure modules, eliminate all transitional boundary baseline entries.
 
 ## Next Steps
 
-1. `/gsd-new-milestone` to define next application-layer or cross-cutting slice
-2. Optional: strict Rust boundary mode ratchet when baseline reaches zero
+1. Phase 97: Move config loaders behind persistence facade/port
+2. Phases 98–103: Persistence test extraction chain
+3. Phases 104–105: Adapters test extraction
+4. Phases 106–112: Plugin boundary cleanup + test extraction
