@@ -135,7 +135,6 @@ Default CI runs `scripts/check-rust-boundaries.sh` in **baseline mode** (known t
 
 | Rule | From module | Rationale for defer | Removal condition |
 |------|-------------|---------------------|-------------------|
-| `no-plugins-to-application` | `plugins/runtime.rs` | Plugin runtime filters agent tools via `agent_registry` during composition | Expose filter API through ports/bootstrap; plugins register tools only via extension host |
 | `no-plugins-to-persistence` | `plugins/registry/service.rs` | Registry service reads `LoadedProjectConfig` for install/doctor | Inject config through port at composition root; registry depends on ports only |
 
 Run `npm run check:rust:boundaries` or `bash scripts/check-rust-boundaries.sh` to verify. `npm run check:rust` includes the boundary check after fmt/clippy.
