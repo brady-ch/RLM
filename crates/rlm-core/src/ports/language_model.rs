@@ -15,6 +15,7 @@ pub struct LanguageModelCompleteOptions<'a> {
     pub tools_enabled: bool,
     pub tools: Vec<LanguageModelToolDefinition>,
     pub constrained_tool_calling: bool,
+    pub response_format: Option<serde_json::Value>,
 }
 
 impl<'a> LanguageModelCompleteOptions<'a> {
@@ -24,6 +25,7 @@ impl<'a> LanguageModelCompleteOptions<'a> {
             tools_enabled,
             tools: Vec::new(),
             constrained_tool_calling: false,
+            response_format: None,
         }
     }
 }
@@ -32,6 +34,10 @@ impl<'a> LanguageModelCompleteOptions<'a> {
 pub trait LanguageModel: Send + Sync {
     fn model_label(&self) -> Option<&str> {
         None
+    }
+
+    fn use_tool_envelope(&self) -> bool {
+        false
     }
 
     async fn complete(
