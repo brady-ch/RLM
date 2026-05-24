@@ -3,23 +3,23 @@ gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Rust Infrastructure Layer
 status: in_progress
-last_updated: "2026-05-24T10:30:00.000Z"
+last_updated: "2026-05-24T07:12:00.000Z"
 progress:
-  total_phases: 31
-  completed_phases: 12
-  total_plans: 16
-  completed_plans: 16
-  percent: 39
+  total_phases: 32
+  completed_phases: 13
+  total_plans: 17
+  completed_plans: 17
+  percent: 41
 ---
 
 # Project State
 
-**Current focus:** Phase 105 — Ollama Language Model Architecture & Test Extraction
+**Current focus:** Phase 106 — Tool Result Type Ports Consolidation
 
 ## Current Position
 
-Phase: 105
-Plan: 02 complete
+Phase: 106
+Plan: 01 complete
 Status: Complete
 
 ## Decisions
@@ -41,6 +41,8 @@ Status: Complete
 - ollama_language_model.rs post-extraction: 323 lines — split into request/response submodules
 - ollama_language_model/mod.rs #[path] stub uses `../../../tests/adapters/ollama_language_model.rs` (3 levels from subdirectory)
 - OllamaLanguageModel split: mod.rs 197, request.rs 62, response.rs 55 non-blank lines
+- ToolExecutionResult lives in ports/tool.rs without domain re-export shim
+- Boundary baseline ratcheted to 2 entries (runtime.rs, registry/service.rs only)
 
 ## Milestone Goal
 
@@ -48,8 +50,8 @@ Extract inline tests to mirrored `tests/{persistence,adapters,plugins}/` trees, 
 
 ## Next Steps
 
-1. Phase 106: Tool result type ports consolidation
-2. Phases 107–112: Plugin boundary cleanup + test extraction
+1. Phase 107: Plugin runtime registry boundary cleanup
+2. Phases 108–112: Plugin test extraction
 3. **v1.18 queued:** Phases 113–120 Node Runtime Retirement (after v1.17)
 4. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
 
