@@ -72,7 +72,7 @@ Each task was committed atomically:
 2. **Task 2: Replace inline tests with #[path] stub** - `4d5271a` (refactor)
 3. **Task 3: Split into persist/mutation submodules** - `401e708` (refactor)
 
-**Plan metadata:** pending (docs: complete plan)
+**Plan metadata:** `2b4ddac` (docs: complete plan)
 
 ## Files Created/Modified
 - `crates/rlm-core/tests/persistence/run_state_store.rs` - Extracted helper and run state store unit test
