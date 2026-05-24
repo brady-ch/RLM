@@ -103,32 +103,7 @@ pub fn peak_runtime_model_ram_mb(config: &Value) -> Option<u32> {
     (peak > 0).then_some(peak)
 }
 
-pub fn validate_memory_budget(config: &Value) -> Result<(), String> {
-    let Some(cap) = configured_cap_mb(config) else {
-        return Ok(());
-    };
-    let mut violations: Vec<String> = Vec::new();
-    if let Some(tiers) = config.pointer("/models/tiers").and_then(Value::as_object) {
-        for (tier_id, tier) in tiers {
-            let estimate = tier
-                .get("estimatedRamMb")
-                .and_then(Value::as_u64)
-                .and_then(|value| u32::try_from(value).ok());
-            if let Some(estimate) = estimate {
-                if estimate > cap {
-                    violations.push(format!(
-                        "models.tiers.{tier_id}.estimatedRamMb ({estimate} MB) exceeds memory.maxRamMb ({cap} MB)"
-                    ));
-                }
-            }
-        }
-    }
-    if violations.is_empty() {
-        Ok(())
-    } else {
-        Err(violations.join("; "))
-    }
-}
+pub use crate::persistence::config::validate_memory_budget;
 
 pub fn configured_model_names(config: &Value) -> Vec<String> {
     let mut names = Vec::new();
