@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.18
 milestone_name: Node Runtime Retirement
 status: ready_for_verification
-last_updated: "2026-05-24T16:00:00Z"
+last_updated: "2026-05-24T15:46:00Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 32
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 27
   completed_plans: 27
   percent: 100
@@ -15,7 +15,7 @@ progress:
 
 # Project State
 
-**Current focus:** Phase 119 — npm toolchain cleanup (next)
+**Current focus:** Phase 119 — npm toolchain cleanup (execution complete)
 
 ## Project Reference
 
@@ -25,9 +25,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-24)
 
 ## Current Position
 
-Phase: 118
+Phase: 119
 Plan: 3 of 3 complete
-Status: Phase complete — ready for verification
+Status: Execution complete — ready for verification
 Last activity: 2026-05-24
 
 ## Deferred Items
@@ -95,6 +95,8 @@ Items acknowledged and deferred at milestone close on 2026-05-24:
 - Phase 118: src/adapters/, src/plugins/, tests/adapters/, tests/plugins/, tests/helpers/ deleted; entire src/ absent
 - Phase 118: Rust crates/rlm-core is sole runtime; AGENTS.md and ARCHITECTURE.md updated for Rust-only boundary
 - Phase 118: npm run build/typecheck expected fail until Phase 119; depcruise src/ refs deferred to Phase 119
+- Phase 119: npm toolchain Rust-only; npm run check = UI lint/format + check:rust; tsc/depcruise removed
+- Phase 119: tests/depcruise removed; tests/ui/ and tests/fixtures/ are kept Node test paths
 
 ## Milestone Goal
 
@@ -102,8 +104,8 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Next Steps
 
-1. Phase 119: npm Toolchain and CI Rust-Only Cleanup
-2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (118 complete)
+1. Phase 120: Constrained Ollama Tool Envelope (Rust)
+2. **v1.18 in progress:** Phases 113–120 Node Runtime Retirement (119 execution complete)
 3. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
 4. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
 5. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
@@ -117,4 +119,4 @@ Delete TypeScript runtime layers; Rust-only orchestration, CLI, and control serv
 
 ## Operator Next Steps
 
-- Execute Phase 119 with `/gsd-execute-phase 119` or `/gsd-plan-phase 119` if not yet planned
+- Phase 119 executed 2026-05-24; gates green via test:agent:verify:light

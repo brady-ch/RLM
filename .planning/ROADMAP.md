@@ -61,7 +61,7 @@ Full details: `.planning/milestones/v1.17-ROADMAP.md`
 - [x] **Phase 116: Application Layer Removal**
 - [x] **Phase 117: Domain and Ports Removal** (2026-05-24)
 - [x] **Phase 118: Adapters, Plugins, and TS Tests Removal** (2026-05-24)
-- [ ] **Phase 119: npm Toolchain and CI Rust-Only Cleanup**
+- [x] **Phase 119: npm Toolchain and CI Rust-Only Cleanup** (2026-05-24)
 - [ ] **Phase 120: Constrained Ollama Tool Envelope (Rust)**
 
 **Reference:** `.planning/notes/rust-only-runtime-migration-decisions.md`
@@ -278,12 +278,12 @@ Plans:
 3. `npm run check` = UI lint/format + `npm run check:rust`
 4. AGENTS.md updated for Rust-only runtime architecture
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 119-01-PLAN.md — Remove runtime deps; rewrite check/lint/format scripts
-- [ ] 119-02-PLAN.md — Delete tsconfig/depcruise; UI-only eslint and test runner
-- [ ] 119-03-PLAN.md — Update AGENTS.md; run Phase 119 gates
+- [x] 119-01-PLAN.md — Remove runtime deps; rewrite check/lint/format scripts
+- [x] 119-02-PLAN.md — Delete tsconfig/depcruise; UI-only eslint and test runner
+- [x] 119-03-PLAN.md — Update AGENTS.md; run Phase 119 gates (completed 2026-05-24)
 
 ### Phase 120: Constrained Ollama Tool Envelope (Rust)
 
