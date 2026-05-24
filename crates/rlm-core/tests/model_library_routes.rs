@@ -18,7 +18,13 @@ fn project_config() -> Value {
                 "allowUnconstrainedToolCalls": false
             }
         },
-        "runtimeHost": "local_ollama"
+        "runtimeHost": "local_ollama",
+        "memory": {
+            "maxRamMb": 16384,
+            "reserveSystemRamMb": 0,
+            "waitForCapacity": false,
+            "capacityCheckIntervalMs": 1
+        }
     })
 }
 
