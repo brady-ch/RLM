@@ -2,23 +2,23 @@
 gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Rust Infrastructure Layer
-status: ready_to_plan
-last_updated: "2026-05-24T12:42:00Z"
+status: complete
+last_updated: "2026-05-24T13:10:00Z"
 progress:
-  total_phases: 46
-  completed_phases: 18
-  total_plans: 21
-  completed_plans: 24
-  percent: 39
+  total_phases: 48
+  completed_phases: 19
+  total_plans: 24
+  completed_plans: 27
+  percent: 100
 ---
 
 # Project State
 
-**Current focus:** Phase 110 — Builtin Write File Test Extraction (complete 2026-05-24)
+**Current focus:** Phase 112 — Builtin Web Tools Test Extraction (complete 2026-05-24)
 
 ## Current Position
 
-Phase: 111
+Phase: 113
 Plan: Not started
 Status: Ready to plan
 
@@ -51,6 +51,10 @@ Status: Ready to plan
 - remote_fetch.rs post-extraction: 187 lines — no split needed (threshold 300)
 - write_file.rs #[path] stub uses `../../../tests/plugins/builtin/write_file.rs` (3 levels from src/plugins/builtin/)
 - write_file.rs post-extraction: 133 lines — no split needed (threshold 300)
+- web_fetch.rs #[path] stub uses `../../../tests/plugins/builtin/web_fetch.rs` (3 levels from src/plugins/builtin/)
+- web_fetch.rs post-extraction: 191 lines — no split needed (threshold 300)
+- web_search.rs #[path] stub uses `../../../tests/plugins/builtin/web_search.rs` (3 levels from src/plugins/builtin/)
+- web_search.rs post-extraction: 225 lines — no split needed (threshold 300)
 
 ## Milestone Goal
 
@@ -58,14 +62,13 @@ Extract inline tests to mirrored `tests/{persistence,adapters,plugins}/` trees, 
 
 ## Next Steps
 
-1. Phase 111: Builtin shell test extraction
-2. Phase 112: Builtin web tools test extraction
-3. **v1.18 queued:** Phases 113–120 Node Runtime Retirement (after v1.17)
-4. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
-5. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
-6. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
-7. **v1.22 queued:** Phases 141–144 Agent Primitives (after v1.21)
-8. **v1.23 queued:** Phase 145 Documentation & Architecture Audit (after v1.22)
+1. Phase 113: Node runtime retirement audit and cutover gates
+2. **v1.18 queued:** Phases 113–120 Node Runtime Retirement (after v1.17)
+3. **v1.19 queued:** Phases 121–128 UI Product Simplification (after v1.18)
+4. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
+5. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
+6. **v1.22 queued:** Phases 141–144 Agent Primitives (after v1.21)
+7. **v1.23 queued:** Phase 145 Documentation & Architecture Audit (after v1.22)
 
 ## Roadmap Evolution
 

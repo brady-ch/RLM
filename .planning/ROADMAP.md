@@ -43,8 +43,8 @@
 - [x] **Phase 108: Plugin Manifest Test Extraction** (2026-05-24)
 - [x] **Phase 109: Plugin Remote Fetch Test Extraction** (2026-05-24)
 - [x] **Phase 110: Builtin Write File Test Extraction** (2026-05-24)
-- [ ] **Phase 111: Builtin Shell Test Extraction**
-- [ ] **Phase 112: Builtin Web Tools Test Extraction** — `web_fetch` + `web_search`
+- [x] **Phase 111: Builtin Shell Test Extraction** — completed 2026-05-24
+- [x] **Phase 112: Builtin Web Tools Test Extraction** — `web_fetch` + `web_search` (completed 2026-05-24)
 
 **Reference:** `.planning/notes/rust-infrastructure-layer-decomposition.md`
 
@@ -331,6 +331,11 @@ Plans:
 1. Zero inline test bodies in `shell.rs`
 2. Tests under `crates/rlm-core/tests/plugins/`
 3. `cargo test -p rlm-core` passes
+
+**Plans:** 1 plan
+
+Plans:
+- [x] 111-01-PLAN.md — Extract shell inline tests to tests/plugins/builtin/shell.rs with 3-level #[path] stub
 
 ### Phase 112: Builtin Web Tools Test Extraction
 
