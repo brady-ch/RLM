@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.17
 milestone_name: Rust Infrastructure Layer
-status: complete
-last_updated: "2026-05-24T13:10:00Z"
+status: ready_to_plan
+last_updated: "2026-05-24T14:14:00Z"
 progress:
   total_phases: 48
-  completed_phases: 19
+  completed_phases: 20
   total_plans: 24
-  completed_plans: 27
-  percent: 100
+  completed_plans: 29
+  percent: 42
 ---
 
 # Project State
@@ -51,6 +51,8 @@ Status: Ready to plan
 - remote_fetch.rs post-extraction: 187 lines — no split needed (threshold 300)
 - write_file.rs #[path] stub uses `../../../tests/plugins/builtin/write_file.rs` (3 levels from src/plugins/builtin/)
 - write_file.rs post-extraction: 133 lines — no split needed (threshold 300)
+- shell.rs #[path] stub uses `../../../tests/plugins/builtin/shell.rs` (3 levels from src/plugins/builtin/)
+- shell.rs post-extraction: 181 lines — no split needed (threshold 300)
 - web_fetch.rs #[path] stub uses `../../../tests/plugins/builtin/web_fetch.rs` (3 levels from src/plugins/builtin/)
 - web_fetch.rs post-extraction: 191 lines — no split needed (threshold 300)
 - web_search.rs #[path] stub uses `../../../tests/plugins/builtin/web_search.rs` (3 levels from src/plugins/builtin/)
