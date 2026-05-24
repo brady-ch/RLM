@@ -2,7 +2,7 @@
 
 ## Milestones
 
-- 🚧 **v1.13 Runtime Safety & WSL Hardening** — Phases 86-89 (implementation complete; REG-03 operator sign-off pending)
+- ✅ **v1.13 Runtime Safety & WSL Hardening** — Phases 86-89 (shipped 2026-05-23; REG-03 signed)
 - ✅ **v1.12 UI Canvas Visual Polish** — Phases 82-85 (shipped 2026-05-23; archive: `.planning/milestones/v1.12-phases/`)
 - ✅ **v1.11 UI Product Hardening** — Phases 77-81 (shipped 2026-05-23)
 - ✅ **v1.10 v1.9 Debt Closure** — Phases 72-76 (shipped 2026-05-23; archive: `.planning/milestones/v1.10-ROADMAP.md`)
@@ -11,20 +11,20 @@
 
 ## Overview
 
-**Current milestone:** v1.13 Runtime Safety & WSL Hardening — prevent OOM crashes on WSL when Ollama runs on the Windows host; extend RAM guardrails, execution concurrency, and operator runbooks.
+**Current milestone:** v1.13 shipped 2026-05-23 — RAM guardrails, execution concurrency, UI memory visibility, REG-03 operator sign-off (native Linux; WSL item 7 SKIP).
 
 **v1.12 (shipped 2026-05-23)** delivered theme system, canvas polish, Radix context menu, initial RAM guards, and workflow overview fixes. REG-02 visual UAT checklist archived but not operator-signed.
 
 ## Phases
 
-### 🚧 v1.13 Runtime Safety & WSL Hardening (Phases 86-89)
+### ✅ v1.13 Runtime Safety & WSL Hardening (Phases 86-89)
 
-**Milestone Goal:** Operators can plan and run workflows on WSL without OOM-killing the VM — memory budget enforced end-to-end with visible UI feedback.
+**Milestone Goal:** Operators can plan and run workflows without OOM from stacked model loads — memory budget enforced end-to-end with visible UI feedback.
 
 - [x] **Phase 86: RAM Guard Completion** — Live Ollama ps in guards, config validation, TS parity (MEM-*)
 - [x] **Phase 87: Execution Concurrency & Model Lifecycle** — Single-run mutex, keep_alive ratchet, stop unload (SAFE-01–03)
 - [x] **Phase 88: Memory Visibility & WSL Runbook** — Live resourceGuard in UI, budget panel, docs (SAFE-04, MEM-05)
-- [ ] **Phase 89: Operator Safety UAT** — WSL memory checklist; ratchet REG-03 (REG-03) — preflight PASS, operator sign-off pending (`89-UAT.md`, `89-VERIFICATION.md` human_needed)
+- [x] **Phase 89: Operator Safety UAT** — REG-03 signed 2026-05-23 (Brady; items 1–6 PASS, item 7 SKIP D-05)
 
 ## Phase Details
 
@@ -77,7 +77,7 @@
 | 86. RAM Guard Completion | v1.13 | 1/1 | Complete | 2026-05-23 |
 | 87. Execution Concurrency & Model Lifecycle | v1.13 | 1/1 | Complete | 2026-05-23 |
 | 88. Memory Visibility & WSL Runbook | v1.13 | 1/1 | Complete | 2026-05-23 |
-| 89. Operator Safety UAT | v1.13 | 1/1 | Pending operator — preflight PASS | — |
+| 89. Operator Safety UAT | v1.13 | 1/1 | Complete | 2026-05-23 |
 
 ---
 *Roadmap created: 2026-05-23 — milestone v1.13 Runtime Safety & WSL Hardening*

@@ -18,4 +18,4 @@
 
 ## Operator next
 
-Complete [89-UAT.md](./89-UAT.md) browser checklist on WSL + Ollama host, then sign off.
+Signed off 2026-05-23 (Brady) — items 1–6 PASS on native Linux; item 7 SKIP (D-05).

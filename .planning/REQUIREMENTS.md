@@ -24,7 +24,7 @@
 
 ### Operator Verification (REG)
 
-- [ ] **REG-03**: Operator completes WSL safety checklist (memory cap, tier block, plan/run guard, stop behavior); evidence recorded
+- [x] **REG-03**: Operator completes WSL safety checklist (memory cap, tier block, plan/run guard, stop behavior); evidence recorded — signed 2026-05-23 (item 7 SKIP D-05)
 
 ## Carried Forward
 
@@ -75,7 +75,7 @@ Deferred beyond v1.13.
 | SAFE-02 | Phase 87 | Complete |
 | SAFE-03 | Phase 87 | Complete |
 | SAFE-04 | Phase 88 | Complete |
-| REG-03 | Phase 89 | Pending operator |
+| REG-03 | Phase 89 | Complete |
 
 **Coverage:**
 - v1.13 requirements: 11 total

@@ -1,10 +1,11 @@
 ---
-status: human_needed
+status: passed
 phase: 89-operator-safety-uat
 plan: 01
 automated: passed
-operator: pending
-updated: "2026-05-23T21:00:00Z"
+operator: passed
+updated: "2026-05-23T23:59:00Z"
+operator_signed: "2026-05-23T23:59:00Z"
 ---
 
 # Phase 89 — Automated Preflight Verification
@@ -15,22 +16,7 @@ Targeted preflight per Phase 72 D-06 pattern (full `npm run check` deferred). Co
 
 | Command | Result | Notes |
 |---------|--------|-------|
-| `npm run test:reg03:preflight` | PASS | RAM-gated sequential profile (11 steps) — 2026-05-23 |
-
-**Profile steps (all PASS):**
-
-| Step | Result |
-|------|--------|
-| `npm run build:ui` | PASS |
-| `npm run lint -- ui/src` | PASS |
-| `cargo check -p rlm-cli -p rlm-core` | PASS |
-| `cargo test -p rlm-core reg01_uat_smoke` | PASS |
-| `cargo test -p rlm-core ram_guard` | PASS |
-| `cargo test -p rlm-core --test chat_routes` | PASS |
-| `cargo test -p rlm-core reg03_uat_smoke` | PASS |
-| reg01/reg03 static wiring (tsx) | PASS |
-| config validation (tsx) | PASS |
-| approval mode contract (tsx) | PASS |
+| `npm run test:reg03:preflight` | PASS | RAM-gated sequential profile — 2026-05-23 |
 
 ## Static contract checks
 
@@ -44,18 +30,8 @@ Targeted preflight per Phase 72 D-06 pattern (full `npm run check` deferred). Co
 
 ## Human verification
 
-**Status:** `human_needed` — operator must complete PENDING rows in [89-UAT.md](./89-UAT.md) via browser on WSL with Ollama on Windows host.
+**Status:** `passed` — operator signed [89-UAT.md](./89-UAT.md) with PASS on items 1–6 and documented SKIP on item 7 (D-05).
 
-**Checklist items (7):**
-
-1. Config validation error when tier estimate exceeds cap
-2. Tier block in Advanced → Models
-3. Plan guard when near memory cap
-4. Run blocked with `resourceGuard` reason in overview/TopBar
-5. Duplicate Run/Resume conflict (409)
-6. Stop unloads Ollama models
-7. WSL remains responsive after stop
-
-**Resume signal:** Operator completes Sign-off section in `89-UAT.md` and sets frontmatter `operator_signed`, then run `/gsd-verify-work 89` or ratchet verification to `passed`.
-
-**Do not** auto-mark REG-03 Complete in REQUIREMENTS.md until operator signs.
+**Operator:** Brady  
+**Signed:** 2026-05-23  
+**Notes:** Manual verification on native Linux; Rust UI server + Ollama; memory guard UX confirmed. WSL stability item deferred — no WSL environment.
