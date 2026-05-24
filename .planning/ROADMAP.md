@@ -60,7 +60,7 @@ Full details: `.planning/milestones/v1.17-ROADMAP.md`
 - [x] **Phase 115: CLI Entry and Runtime Composition Removal** (2026-05-24)
 - [x] **Phase 116: Application Layer Removal**
 - [x] **Phase 117: Domain and Ports Removal** (2026-05-24)
-- [ ] **Phase 118: Adapters, Plugins, and TS Tests Removal**
+- [x] **Phase 118: Adapters, Plugins, and TS Tests Removal** (2026-05-24)
 - [ ] **Phase 119: npm Toolchain and CI Rust-Only Cleanup**
 - [ ] **Phase 120: Constrained Ollama Tool Envelope (Rust)**
 
@@ -261,12 +261,12 @@ Plans:
 3. Entire `src/` directory absent
 4. `cargo test -p rlm-core` passes
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 118-01-PLAN.md — Delete src/adapters/ and src/plugins/ trees; update AGENTS.md
-- [ ] 118-02-PLAN.md — Delete mirrored TS adapter/plugin/runtime test trees
-- [ ] 118-03-PLAN.md — Prune orphans, remove src/, and run Phase 118 gates
+- [x] 118-01-PLAN.md — Delete src/adapters/ and src/plugins/ trees; update AGENTS.md
+- [x] 118-02-PLAN.md — Delete mirrored TS adapter/plugin/runtime test trees
+- [x] 118-03-PLAN.md — Prune orphans, remove src/, and run Phase 118 gates (completed 2026-05-24)
 
 ### Phase 119: npm Toolchain and CI Rust-Only Cleanup
 
