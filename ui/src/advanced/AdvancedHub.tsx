@@ -16,10 +16,6 @@ export type AdvancedHubProps = {
   errorMessage: string | undefined;
   setErrorMessage: (message: string | undefined) => void;
   refresh: () => Promise<void>;
-  runVariant: "playbook" | "pipeline";
-  setRunVariant: (variant: "playbook" | "pipeline") => void;
-  pipelineInput: string;
-  setPipelineInput: (value: string) => void;
   planningError: { nodeId: string; message: string } | undefined;
 };
 
@@ -31,10 +27,6 @@ export function AdvancedHub({
   errorMessage,
   setErrorMessage,
   refresh,
-  runVariant,
-  setRunVariant,
-  pipelineInput,
-  setPipelineInput,
   planningError,
 }: AdvancedHubProps) {
   const [tab, setTab] = useState<AdvancedTab>(initialTab);
@@ -79,10 +71,6 @@ export function AdvancedHub({
           <SettingsView
             snapshot={snapshot}
             selectedNode={selectedNode}
-            runVariant={runVariant}
-            setRunVariant={setRunVariant}
-            pipelineInput={pipelineInput}
-            setPipelineInput={setPipelineInput}
             planningError={planningError}
             refresh={refresh}
             setErrorMessage={setErrorMessage}

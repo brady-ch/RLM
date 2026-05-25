@@ -2,22 +2,15 @@ import React, { useState } from "react";
 import { Download, RefreshCw, Upload, X } from "lucide-react";
 import type { GraphWorkflowSaveVariant, GraphWorkflowSummary } from "../../shared/types";
 import { post, runAction } from "../../shared/api";
+
 export function GraphWorkflowPanel({
   workflows,
   graphNodeCount,
-  runVariant,
-  setRunVariant,
-  pipelineInput,
-  setPipelineInput,
   refresh,
   setErrorMessage,
 }: {
   workflows: GraphWorkflowSummary[];
   graphNodeCount: number;
-  runVariant: "playbook" | "pipeline";
-  setRunVariant: (variant: "playbook" | "pipeline") => void;
-  pipelineInput: string;
-  setPipelineInput: (value: string) => void;
   refresh: () => Promise<void>;
   setErrorMessage: (message: string | undefined) => void;
 }) {
@@ -44,25 +37,6 @@ export function GraphWorkflowPanel({
             Refresh
           </button>
         </div>
-      </div>
-      <div className="run-variant-controls">
-        <label htmlFor="run-variant">Run as</label>
-        <select
-          id="run-variant"
-          value={runVariant}
-          onChange={(event) => setRunVariant(event.target.value as "playbook" | "pipeline")}
-        >
-          <option value="playbook">Playbook</option>
-          <option value="pipeline">Pipeline</option>
-        </select>
-        {runVariant === "pipeline" ? (
-          <input
-            aria-label="Pipeline task input"
-            placeholder="Task input for {{input}}"
-            value={pipelineInput}
-            onChange={(event) => setPipelineInput(event.target.value)}
-          />
-        ) : null}
       </div>
       {saveMessage ? <div className="meta-row">{saveMessage}</div> : null}
       {workflows.length === 0 ? (

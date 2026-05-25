@@ -39,6 +39,28 @@
 
 }
 
+.settings-collapsible {
+
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-md);
+
+}
+
+.settings-collapsible summary {
+
+  cursor: pointer;
+  font-weight: 700;
+  list-style: disclosure-closed;
+  margin-bottom: var(--space-sm);
+
+}
+
+.settings-collapsible[open] summary {
+
+  list-style: disclosure-open;
+
+}
+
 .session-list {
 
   display: grid;

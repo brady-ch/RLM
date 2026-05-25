@@ -7,10 +7,6 @@ import { NodeInspector } from "./settings/NodeInspector";
 export type SettingsViewProps = {
   snapshot: SessionSnapshot;
   selectedNode: ExecutionNode | undefined;
-  runVariant: "playbook" | "pipeline";
-  setRunVariant: (variant: "playbook" | "pipeline") => void;
-  pipelineInput: string;
-  setPipelineInput: (value: string) => void;
   planningError: { nodeId: string; message: string } | undefined;
   refresh: () => Promise<void>;
   setErrorMessage: (message: string | undefined) => void;
@@ -19,10 +15,6 @@ export type SettingsViewProps = {
 export function SettingsView({
   snapshot,
   selectedNode,
-  runVariant,
-  setRunVariant,
-  pipelineInput,
-  setPipelineInput,
   planningError,
   refresh,
   setErrorMessage,
@@ -48,19 +40,18 @@ export function SettingsView({
         <h3>Appearance</h3>
         <ThemeToggle />
       </section>
-      <GraphWorkflowPanel
-        workflows={graphWorkflows}
-        graphNodeCount={snapshot.graph.nodes.length}
-        runVariant={runVariant}
-        setRunVariant={setRunVariant}
-        pipelineInput={pipelineInput}
-        setPipelineInput={setPipelineInput}
-        refresh={async () => {
-          await refresh();
-          await refreshGraphWorkflows();
-        }}
-        setErrorMessage={setErrorMessage}
-      />
+      <details className="settings-collapsible">
+        <summary>Graph workflows</summary>
+        <GraphWorkflowPanel
+          workflows={graphWorkflows}
+          graphNodeCount={snapshot.graph.nodes.length}
+          refresh={async () => {
+            await refresh();
+            await refreshGraphWorkflows();
+          }}
+          setErrorMessage={setErrorMessage}
+        />
+      </details>
       {selectedNode ? (
         <NodeInspector
           node={selectedNode}

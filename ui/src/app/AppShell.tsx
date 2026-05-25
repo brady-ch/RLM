@@ -33,8 +33,8 @@ export function AppShell() {
     { nodeId: string; message: string } | undefined
   >();
   const [clarificationAnswer, setClarificationAnswer] = useState("");
-  const [runVariant, setRunVariant] = useState<"playbook" | "pipeline">("playbook");
-  const [pipelineInput, setPipelineInput] = useState("");
+  const [runVariant] = useState<"playbook" | "pipeline">("playbook");
+  const [pipelineInput] = useState("");
 
   const selectedNode = selectedNodeId
     ? snapshot.graph.nodes.find((node) => node.id === selectedNodeId)
@@ -120,10 +120,6 @@ export function AppShell() {
           errorMessage={errorMessage}
           setErrorMessage={setErrorMessage}
           refresh={refresh}
-          runVariant={runVariant}
-          setRunVariant={setRunVariant}
-          pipelineInput={pipelineInput}
-          setPipelineInput={setPipelineInput}
           planningError={planningError}
         />
       )}
