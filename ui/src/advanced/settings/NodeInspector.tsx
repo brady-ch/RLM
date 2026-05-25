@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Check, GitBranchPlus, Scissors, Trash2, X } from "lucide-react";
 import type { ExecutionNode } from "../../shared/types";
 import { approvalModeLabel, post, runAction } from "../../shared/api";
 import {
@@ -10,6 +9,7 @@ import {
   SamplingRows,
   toInputValue,
 } from "./inspectorHelpers";
+
 export function NodeInspector({
   node,
   refresh,
@@ -21,7 +21,6 @@ export function NodeInspector({
   setErrorMessage: (message: string | undefined) => void;
   planningError?: { nodeId: string; message: string } | undefined;
 }) {
-  const [prompt, setPrompt] = useState(node.prompt ?? node.label);
   const [modelOverride, setModelOverride] = useState(node.modelOverride ?? "");
   const [expertAgentId, setExpertAgentId] = useState<NonNullable<ExecutionNode["expertAgentId"]>>(
     node.expertAgentId ?? "default",
@@ -36,11 +35,8 @@ export function NodeInspector({
   const [temperature, setTemperature] = useState(toInputValue(node.samplingOverride?.temperature));
   const [topP, setTopP] = useState(toInputValue(node.samplingOverride?.topP));
   const [maxTokens, setMaxTokens] = useState(toInputValue(node.samplingOverride?.maxTokens));
-  const [newChildPrompt, setNewChildPrompt] = useState("");
-  const [connectParentId, setConnectParentId] = useState("");
 
   useEffect(() => {
-    setPrompt(node.prompt ?? node.label);
     setModelOverride(node.modelOverride ?? "");
     setExpertAgentId(node.expertAgentId ?? "default");
     setExpertRuntime(node.expertRuntime ?? "single-pass");
@@ -55,8 +51,7 @@ export function NodeInspector({
     node.expertRuntime,
     node.expertToolAllowlist,
     node.id,
-    node.label,
-    node.prompt,
+    node.modelOverride,
     node.samplingOverride?.maxTokens,
     node.samplingOverride?.temperature,
     node.samplingOverride?.topP,
@@ -64,7 +59,6 @@ export function NodeInspector({
 
   const editable =
     node.status === "planned" || node.status === "ready" || node.status === "awaiting_approval";
-  const waiting = node.status === "awaiting_approval";
   const composer = node.composer;
 
   return (
@@ -72,6 +66,7 @@ export function NodeInspector({
       <div>
         <label>Node</label>
         <h1>{node.id}</h1>
+        <p className="meta-row">{node.prompt ?? node.label}</p>
         {planningError?.nodeId === node.id ? (
           <p className="error" role="alert">
             {planningError.message}
@@ -159,14 +154,6 @@ export function NodeInspector({
           </div>
         </div>
       ) : null}
-      <div>
-        <label>Prompt</label>
-        <textarea
-          value={prompt}
-          disabled={!editable}
-          onChange={(event) => setPrompt(event.target.value)}
-        />
-      </div>
       <div>
         <label>Model Trail</label>
         <div className="meta-row">Planned: {node.plannedModel ?? "resolved-at-runtime"}</div>
@@ -323,127 +310,6 @@ export function NodeInspector({
             }
           >
             Set sampling
-          </button>
-        </div>
-      </div>
-      <div className="actions">
-        <button
-          disabled={!editable}
-          onClick={() =>
-            runAction(
-              setErrorMessage,
-              () => post(`/api/nodes/${node.id}/edit`, { prompt }),
-              refresh,
-            )
-          }
-        >
-          Save prompt
-        </button>
-        <button
-          disabled={!editable}
-          onClick={() =>
-            runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/plan`, {}), refresh)
-          }
-        >
-          <GitBranchPlus size={16} /> Plan children
-        </button>
-        <button
-          disabled={!editable}
-          onClick={() =>
-            runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/breakdown`, {}), refresh)
-          }
-        >
-          <Scissors size={16} /> Break down
-        </button>
-        <button
-          disabled={!editable || composer?.planBudget.exhausted !== true}
-          onClick={() =>
-            runAction(
-              setErrorMessage,
-              () => post(`/api/nodes/${node.id}/extend-budget`, {}),
-              refresh,
-            )
-          }
-        >
-          Extend budget
-        </button>
-        <button
-          disabled={!waiting}
-          onClick={() =>
-            runAction(
-              setErrorMessage,
-              () => post(`/api/nodes/${node.id}/approve`, { token: node.approvalToken }),
-              refresh,
-            )
-          }
-        >
-          <Check size={16} /> Approve
-        </button>
-        <button
-          disabled={!waiting}
-          onClick={() =>
-            runAction(
-              setErrorMessage,
-              () => post(`/api/nodes/${node.id}/skip`, { token: node.approvalToken }),
-              refresh,
-            )
-          }
-        >
-          <X size={16} /> Skip
-        </button>
-      </div>
-      <div>
-        <label>Add Child</label>
-        <textarea
-          value={newChildPrompt}
-          disabled={!editable}
-          onChange={(event) => setNewChildPrompt(event.target.value)}
-          placeholder="New child prompt"
-        />
-        <div className="actions">
-          <button
-            disabled={!editable || newChildPrompt.trim().length === 0}
-            onClick={() =>
-              runAction(
-                setErrorMessage,
-                () => post("/api/nodes/add", { parentId: node.id, prompt: newChildPrompt }),
-                refresh,
-              )
-            }
-          >
-            Add child
-          </button>
-        </div>
-      </div>
-      <div>
-        <label>Connect Parent ID</label>
-        <input
-          value={connectParentId}
-          disabled={!editable}
-          onChange={(event) => setConnectParentId(event.target.value)}
-          placeholder="task-1"
-        />
-        <div className="actions">
-          <button
-            disabled={!editable || connectParentId.trim().length === 0}
-            onClick={() =>
-              runAction(
-                setErrorMessage,
-                () => post(`/api/nodes/${node.id}/connect`, { parentId: connectParentId }),
-                refresh,
-              )
-            }
-          >
-            Connect
-          </button>
-          <button
-            disabled={!editable}
-            className="danger"
-            onClick={() =>
-              runAction(setErrorMessage, () => post(`/api/nodes/${node.id}/delete`, {}), refresh)
-            }
-          >
-            <Trash2 size={16} /> Delete subtree
           </button>
         </div>
       </div>
