@@ -38,7 +38,7 @@ test("run-panel/ must not import from advanced/", () => {
   }
 });
 
-test("RunPanel excludes prompt edit, plan actions, and domain panels", () => {
+test("RunPanel is selection-gated with approve/clarify only", () => {
   const source = readUi("run-panel/RunPanel.tsx");
   const forbidden = [
     "node-inspector",
@@ -50,6 +50,9 @@ test("RunPanel excludes prompt edit, plan actions, and domain panels", () => {
     "/plan",
     "Plan children",
     "Break down",
+    "WorkflowOverview",
+    "run-panel-prompt",
+    "run-panel-readiness",
   ];
   for (const pattern of forbidden) {
     assert.doesNotMatch(source, new RegExp(pattern), `RunPanel must not contain ${pattern}`);
@@ -57,6 +60,22 @@ test("RunPanel excludes prompt edit, plan actions, and domain panels", () => {
   assert.match(source, /\/approve/);
   assert.match(source, /clarification/i);
   assert.match(source, /if\s*\(\s*!selectedNode\s*\)/);
+  assert.match(source, /return null/);
+});
+
+test("TopBar is thin chrome without approval pill, variant pill, or theme toggle", () => {
+  const source = readUi("app/TopBar.tsx");
+  assert.doesNotMatch(source, /approval-mode-pill/);
+  assert.doesNotMatch(source, /run-variant-pill/);
+  assert.doesNotMatch(source, /ThemeToggle/);
+  assert.match(source, /workflow-topbar-status/);
+  assert.match(source, /\/api\/chat\/confirm-run/);
+});
+
+test("ThemeToggle lives in Advanced settings", () => {
+  const source = readUi("advanced/SettingsView.tsx");
+  assert.match(source, /ThemeToggle/);
+  assert.match(source, /settings-appearance/);
 });
 
 test("NodeContextMenu implements Variant B sections and API mutations", () => {

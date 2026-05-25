@@ -71,11 +71,6 @@ export function AppShell() {
   const selectedNode = selectedNodeId
     ? snapshot.graph.nodes.find((node) => node.id === selectedNodeId)
     : undefined;
-  const readiness = snapshot.chat?.readiness ?? {
-    state: "draft" as const,
-    reason: "Draft graph: confirm graph and run to start execution.",
-  };
-  const runDisabled = readiness.state !== "ready_to_run";
 
   const fitGraphToView = useCallback(() => {
     requestAnimationFrame(() => {
@@ -395,12 +390,9 @@ export function AppShell() {
               snapshot={snapshot}
               clarificationAnswer={clarificationAnswer}
               setClarificationAnswer={setClarificationAnswer}
-              runDisabled={runDisabled}
-              readinessReason={readiness.reason}
               refresh={refresh}
               setErrorMessage={setErrorMessage}
               onSelectNode={setSelectedNodeId}
-              onFitGraph={fitGraphToView}
             />
           </div>
         </>
