@@ -5,8 +5,8 @@
 - 📋 **v1.23 Documentation & Architecture Audit** — Phase 145 (planned; starts after v1.22)
 - 📋 **v1.22 Agent Primitives** — Phases 141–144 (planned; starts after v1.21)
 - 📋 **v1.21 Inference Expansion** — Phases 136–140 (planned; starts after v1.20)
-- 📋 **v1.20 Product Desktop & Run Outcome** — Phases 129–135 (planned; starts after v1.19)
-- 📋 **v1.19 UI Product Simplification** — Phases 121–128 (planned; starts after v1.18)
+- 📋 **v1.20 Product Desktop & Run Outcome** — Phases 129–135 (planned; starts after v1.19 operator sign-off)
+- ✅ **v1.19 UI Product Simplification** — Phases 121–128 (execution complete 2026-05-25; operator UAT sign-off pending)
 - ✅ **v1.18 Node Runtime Retirement** — Phases 113–120 (shipped 2026-05-24)
 - ✅ **v1.17 Rust Infrastructure Layer** — Phases 97–112 (shipped 2026-05-24)
 - ✅ **v1.16 Rust Application Memory & Config** — Phases 92–96 (shipped 2026-05-24)
@@ -16,7 +16,7 @@
 
 ## Overview
 
-**Current milestone:** v1.19 UI Product Simplification — score surfaces, cut list, and slim workflow shell on Rust-only stack.
+**Current milestone:** v1.19 UI Product Simplification — **execution complete**; operator browser UAT sign-off pending (Phase 128).
 
 **Milestone Goal:** Audit UI against product vision, prune Advanced hub, simplify workflow view, consolidate styles/tokens, decompose AppShell, and sign off via operator UAT.
 
@@ -78,7 +78,7 @@ Full details: `.planning/milestones/v1.18-ROADMAP.md`
 - [x] **Phase 125: AppShell State Decomposition** — completed 2026-05-24
 - [x] **Phase 126: Node Inspector and Settings Slim Down** — completed 2026-05-24
 - [x] **Phase 127: Lazy Routes and Bundle Lightening** — completed 2026-05-24
-- [ ] **Phase 128: UI Simplification UAT and Sign Off**
+- [x] **Phase 128: UI Simplification UAT and Sign Off** — execution complete 2026-05-25 (operator sign-off pending)
 
 **Reference:** `.planning/notes/ui-product-simplification-decisions.md`
 

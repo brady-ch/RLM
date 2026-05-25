@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.19
 milestone_name: UI Product Simplification
-status: executing
-last_updated: "2026-05-24T12:00:00.000Z"
-last_activity: 2026-05-24 -- Phase 127 execution complete
+status: ready_for_operator_signoff
+last_updated: "2026-05-25T06:00:00.000Z"
+last_activity: 2026-05-25 -- Phase 128 execution complete (operator UAT pending)
 progress:
   total_phases: 29
-  completed_phases: 11
-  total_plans: 11
-  completed_plans: 14
-  percent: 38
+  completed_phases: 12
+  total_plans: 12
+  completed_plans: 15
+  percent: 41
 ---
 
 # Project State
 
-**Current focus:** Phase 128 — UI Simplification UAT and Sign Off
+**Current focus:** Phase 128 complete — v1.19 execution done; operator browser UAT sign-off pending
 
 ## Project Reference
 
@@ -23,14 +23,14 @@ See: `.planning/PROJECT.md` (updated 2026-05-24)
 
 **Core value:** Developers can reliably plan, inspect, edit, and execute recursive AI node graphs with explicit model routing and no silent failures.
 
-**Current focus:** v1.19 UI Product Simplification — run `/gsd-new-milestone` or begin Phase 121
+**Current focus:** v1.19 UI Product Simplification — execution complete; operator sign-off via 128-UAT-CHECKLIST.md
 
 ## Current Position
 
 Phase: 128
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-24 -- Phase 127 execution complete
+Plan: 01 complete
+Status: Ready for operator sign-off (automated preflight passed)
+Last activity: 2026-05-25 -- Phase 128 execution complete
 
 ## Deferred Items
 
@@ -108,20 +108,21 @@ Items from prior milestones (v1.17):
 - Phase 120: Per-tool const branches in envelope oneOf for args discrimination (Option A)
 - Phase 120: useToolEnvelope default false; two-phase constrained path unchanged when off
 - Phase 120: Ollama format and tools mutually exclusive per ollama#8095
-- Phase 120: Envelope requests use temperature 0; parse errors surface as inference failure content
+- Phase 128: Automated preflight passed (verify:light + 36/36 tests/ui); interactive browser UAT human_needed
+- Phase 128: Tauri desktop smoke deferred to Phase 135 (v1.20)
 
 ## Milestone Goal
 
-Score UI surfaces, execute cut list, simplify workflow shell on Rust-only stack.
+v1.19 UI Product Simplification execution complete. Operator browser UAT (128-UAT-CHECKLIST.md) pending before milestone ship.
 
 ## Next Steps
 
-1. Run `/gsd-new-milestone` to define v1.19 requirements, or begin Phase 121 directly
-2. **v1.19 queued:** Phases 121–128 UI Product Simplification
-3. **v1.20 queued:** Phases 129–135 Product Desktop & Run Outcome (after v1.19)
-4. **v1.21 queued:** Phases 136–140 Inference Expansion (after v1.20)
-5. **v1.22 queued:** Phases 141–144 Agent Primitives (after v1.21)
-6. **v1.23 queued:** Phase 145 Documentation & Architecture Audit (after v1.22)
+1. Operator completes browser UAT per `.planning/phases/128-ui-simplification-uat/128-UAT-CHECKLIST.md`
+2. After operator sign-off: run `/gsd-complete-milestone` to archive v1.19
+3. **v1.20 next:** Phases 129–135 Product Desktop & Run Outcome
+4. **v1.21 queued:** Phases 136–140 Inference Expansion
+5. **v1.22 queued:** Phases 141–144 Agent Primitives
+6. **v1.23 queued:** Phase 145 Documentation & Architecture Audit
 
 ## Roadmap Evolution
 
@@ -130,6 +131,6 @@ Score UI surfaces, execute cut list, simplify workflow shell on Rust-only stack.
 
 ## Operator Next Steps
 
-- Start v1.19 with `/gsd-new-milestone` or begin Phase 121: UI Vision Audit
-- Optional: run `/gsd-verifier` on phases 114, 116–120 to close verification debt
-- Optional: run `npm run tauri:dev` for Tauri interactive smoke (Phase 115 UAT)
+- Complete browser UAT: `.planning/phases/128-ui-simplification-uat/128-UAT-CHECKLIST.md`
+- Tauri packaged smoke deferred to Phase 135 (v1.20)
+- Optional: run `/gsd-complete-milestone` after operator sign-off
