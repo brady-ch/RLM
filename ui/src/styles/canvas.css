@@ -1,0 +1,72 @@
+.canvas .react-flow {
+
+  height: 100%;
+  background-color: var(--color-bg);
+  background-image: radial-gradient(circle, var(--color-canvas-dot) 1px, transparent 1px);
+  background-size: 20px 20px;
+
+}
+
+.canvas .react-flow__edge.graph-edge .react-flow__edge-path {
+
+  stroke: var(--edge-default);
+  stroke-width: var(--edge-width);
+
+}
+
+.canvas .react-flow__edge.edge-running .react-flow__edge-path {
+
+  stroke: var(--edge-running);
+
+}
+
+.canvas .react-flow__edge.edge-completed .react-flow__edge-path {
+
+  stroke: var(--edge-completed);
+
+}
+
+.canvas .react-flow__edge.edge-failed .react-flow__edge-path {
+
+  stroke: var(--edge-failed);
+
+}
+
+.canvas .react-flow__handle {
+
+  background: var(--color-accent);
+  border: 2px solid var(--color-card);
+  width: 10px;
+  height: 10px;
+
+}
+
+.graph-minimap {
+
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  opacity: 0.85;
+
+}
+
+.theme-toggle-label {
+
+  font-size: var(--font-meta);
+  font-weight: 600;
+
+}
+
+.canvas {
+
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+
+}
+
+.canvas .react-flow {
+
+  height: 100%;
+
+}
