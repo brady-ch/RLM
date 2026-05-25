@@ -1,6 +1,10 @@
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import type { OnConnect } from "@xyflow/react";
-import { AdvancedHub } from "../advanced/AdvancedHub";
+import { AdvancedLoadingFallback } from "../advanced/AdvancedLoadingFallback";
+
+const LazyAdvancedHub = React.lazy(() =>
+  import("../advanced/AdvancedHub").then((module) => ({ default: module.AdvancedHub })),
+);
 import { GraphCanvas } from "../canvas/GraphCanvas";
 import { ExecutionNodeCard } from "../nodes/ExecutionNodeCard";
 import { RunPanel } from "../run-panel/RunPanel";
@@ -112,16 +116,18 @@ export function AppShell() {
           </div>
         </>
       ) : (
-        <AdvancedHub
-          onBack={() => setViewMode("workflow")}
-          initialTab={advancedTab}
-          snapshot={snapshot}
-          selectedNode={selectedNode}
-          errorMessage={errorMessage}
-          setErrorMessage={setErrorMessage}
-          refresh={refresh}
-          planningError={planningError}
-        />
+        <Suspense fallback={<AdvancedLoadingFallback label="Loading Advanced…" />}>
+          <LazyAdvancedHub
+            onBack={() => setViewMode("workflow")}
+            initialTab={advancedTab}
+            snapshot={snapshot}
+            selectedNode={selectedNode}
+            errorMessage={errorMessage}
+            setErrorMessage={setErrorMessage}
+            refresh={refresh}
+            planningError={planningError}
+          />
+        </Suspense>
       )}
     </main>
   );
