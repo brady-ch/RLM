@@ -64,6 +64,8 @@ completed: 2026-05-24
 1. **Task 1–2: Lazy-load Advanced hub and tab views** — `2cd9529` (feat)
 2. **Task 3: Bundle measurement and static tests** — `72c7982` (test)
 
+**Plan metadata:** `6c57b4b` (docs: complete plan)
+
 ## Bundle Impact
 
 | Metric | Phase 121 baseline | Pre-127 | Post-127 (workflow-first) |
