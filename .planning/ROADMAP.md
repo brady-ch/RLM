@@ -71,7 +71,7 @@ Full details: `.planning/milestones/v1.18-ROADMAP.md`
 
 **Depends on:** v1.18 complete (Phase 120)
 
-- [ ] **Phase 121: UI Vision Audit and Cut List**
+- [x] **Phase 121: UI Vision Audit and Cut List** — completed 2026-05-24
 - [ ] **Phase 122: Advanced Hub Pruning**
 - [ ] **Phase 123: Workflow View Simplification**
 - [ ] **Phase 124: Styles and Token Consolidation**
