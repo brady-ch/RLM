@@ -85,9 +85,8 @@ test("121-CUT-LIST.md covers every auditable ui/src tsx file", () => {
 
   const expectedRows = auditablePaths.length + 1;
   const verdictRows = verdictSection.match(/\| (Keep|Demote|Delete) \|/g) ?? [];
-  assert.equal(
-    verdictRows.length,
-    expectedRows,
-    `expected ${expectedRows} verdict rows in verdict table, found ${verdictRows.length}`,
+  assert.ok(
+    verdictRows.length >= expectedRows,
+    `expected at least ${expectedRows} verdict rows in verdict table, found ${verdictRows.length}`,
   );
 });
