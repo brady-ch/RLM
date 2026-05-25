@@ -29,21 +29,23 @@ test("session-utils detects pristine first-run graph", () => {
 });
 
 test("AppShell integrates launcher with workflow primary surface", () => {
-  const source = readUi("app/AppShell.tsx");
-  assert.match(source, /FirstRunLauncher/);
-  assert.match(source, /isPristineFirstRunGraph/);
-  assert.match(source, /showLauncher/);
-  assert.match(source, /TopBar/);
-  assert.match(source, /onAdvanced/);
-  const workflowBlock = source.slice(
-    source.indexOf('viewMode === "workflow"'),
-    source.indexOf('viewMode === "workflow"') + 1800,
+  const shell = readUi("app/AppShell.tsx");
+  const router = readUi("app/hooks/useViewRouter.ts");
+  assert.match(shell, /FirstRunLauncher/);
+  assert.match(shell, /showLauncher/);
+  assert.match(shell, /TopBar/);
+  assert.match(shell, /onAdvanced/);
+  assert.match(router, /isPristineFirstRunGraph/);
+  assert.match(router, /showLauncher/);
+  const workflowBlock = shell.slice(
+    shell.indexOf('viewMode === "workflow"'),
+    shell.indexOf('viewMode === "workflow"') + 1800,
   );
   assert.doesNotMatch(workflowBlock, /AdvancedHub/);
 });
 
 test("launcher styles include overlay and composer layout", () => {
-  const source = readFileSync(join(process.cwd(), "ui/src/styles.css"), "utf8");
+  const source = readUi("styles/workflow.css");
   assert.match(source, /\.first-run-overlay/);
   assert.match(source, /\.first-run-composer/);
   assert.match(source, /\.workflow-main-dimmed/);

@@ -116,7 +116,8 @@ ui/src/shared/ThemeToggle.tsx
 
 | Surface | Path | Verdict | Rationale | Phase owner |
 |---------|------|---------|-----------|-------------|
-| AdvancedHub | `ui/src/advanced/AdvancedHub.tsx` | Keep | Essential Advanced power surface; eager-imports all tabs — bundle concern | 127 |
+| AdvancedHub | `ui/src/advanced/AdvancedHub.tsx` | Keep | Essential Advanced power surface; lazy-loads tab views per Phase 127 | 127 |
+| AdvancedLoadingFallback | `ui/src/advanced/AdvancedLoadingFallback.tsx` | Keep | Suspense fallback for lazy Advanced routes — minimal accessible loading state | 127 |
 | ModelsView | `ui/src/advanced/ModelsView.tsx` | Keep | Essential Advanced tab — model routing is power-user capability | — |
 | PluginsView | `ui/src/advanced/PluginsView.tsx` | Keep | Essential Advanced tab — plugin management is power-user capability | — |
 | MemoryView | `ui/src/advanced/MemoryView.tsx` | Keep | Essential Advanced tab — memory inspection is power-user capability | — |
