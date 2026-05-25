@@ -173,6 +173,27 @@ test("AppShell refreshes node UI data when planning and selection state changes"
   );
 });
 
+test("AppShell lazy-loads Advanced hub for workflow-first bundle split", () => {
+  const source = readUi("app/AppShell.tsx");
+  assert.match(source, /React\.lazy/);
+  assert.match(source, /LazyAdvancedHub/);
+  assert.match(source, /Suspense/);
+  assert.doesNotMatch(source, /import \{ AdvancedHub \}/);
+  assert.match(source, /import\("\.\.\/advanced\/AdvancedHub"\)/);
+});
+
+test("AdvancedHub lazy-loads tab views instead of static imports", () => {
+  const source = readUi("advanced/AdvancedHub.tsx");
+  assert.match(source, /React\.lazy|lazy\(/);
+  assert.doesNotMatch(source, /import \{ ModelsView \}/);
+  assert.doesNotMatch(source, /import \{ PluginsView \}/);
+  assert.doesNotMatch(source, /import \{ SessionsView \}/);
+  assert.doesNotMatch(source, /import \{ MemoryView \}/);
+  assert.doesNotMatch(source, /import \{ SettingsView \}/);
+  assert.match(source, /import\("\.\/ModelsView"\)/);
+  assert.match(source, /import\("\.\/SettingsView"\)/);
+});
+
 test("main.tsx is thin entry mounting AppShell only", () => {
   const source = readFileSync(join(UI_ROOT, "main.tsx"), "utf8");
   assert.match(source, /AppShell/);
