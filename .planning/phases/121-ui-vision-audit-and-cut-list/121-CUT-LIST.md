@@ -185,6 +185,14 @@ ui/src/shared/ThemeToggle.tsx
 - TopBar exceeds thin-bar contract (run-variant selector, approval mode pill, theme toggle — trim in Phase 123)
 - AdvancedHub eager-imports all tab views at mount (ModelsView, PluginsView, SessionsView, MemoryView, SettingsView — Phase 127 lazy-route target)
 
+### Bundle baseline (pre-v1.19)
+
+| Asset | Size | Notes |
+|-------|------|-------|
+| JS (main chunk) | 522.60 kB | Single chunk, no lazy routes yet — Phase 127 target (from research — build skipped due to RAM gate) |
+| CSS | 45.52 kB | From styles.css monolith — Phase 124 target (from research — build skipped due to RAM gate) |
+| Build date | 2026-05-24 | Captured during Phase 121 audit |
+
 ## Ready for Phase 122
 
 All Phase 121 deliverables present. Phase 122 executor should use `121-CUT-LIST.md` Delete/Demote rows with Phase owner 122 for Advanced hub pruning; Phases 123–127 use Phase owner column.
