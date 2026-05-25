@@ -2,16 +2,16 @@
 
 ## Current State
 
-**Latest shipped milestone:** v1.18 — Node Runtime Retirement (2026-05-24)  
-**Requirements:** 33/33 satisfied (from PLAN/SUMMARY frontmatter; no REQUIREMENTS.md at close)  
-**Audit status:** tech_debt accepted — `.planning/milestones/v1.18-MILESTONE-AUDIT.md`
+**Latest shipped milestone:** v1.19 — UI Product Simplification (2026-05-25)  
+**Requirements:** 37/37 satisfied at code/static level (from VERIFICATION must-haves; no REQUIREMENTS.md at close)  
+**Audit status:** tech_debt accepted — `.planning/milestones/v1.19-MILESTONE-AUDIT.md`
 
-v1.18 delivered full TypeScript runtime retirement: entire `src/` tree deleted, `npm rlm` dispatches exclusively to Rust CLI, Tauri embeds Axum control server in-process, Vite dev proxy targets Rust APIs, npm toolchain is UI-only (`npm run check` = lint/format + `check:rust`), and Phase 120 constrained Ollama tool envelope (`useToolEnvelope`) wired through config → adapter → tool_round_loop. Process debt accepted: 6/8 phases lack formal VERIFICATION.md; Nyquist validation artifacts absent.
+v1.19 delivered UI product simplification on the Rust-only stack: authoritative cut list (121), Advanced hub pruning (122), workflow-first shell (123), CSS modularization (124), AppShell decomposition to 134 LOC (125), NodeInspector slim-down (126), lazy Advanced routes with 8.1% main-chunk reduction (127), and automated UAT preflight 36/36 (128). Process debt accepted: Phase 128 operator browser UAT and timing gate pending; Tauri packaged smoke deferred to Phase 135.
 
-**Prior shipped:** v1.17 Rust Infrastructure Layer (2026-05-24); v1.16 Application Memory & Config; v1.15 Application Layer Architecture; v1.14 Rust Architecture & Test Layout (2026-05-23–24); v1.13 Runtime Safety & WSL Hardening (2026-05-24).
+**Prior shipped:** v1.18 Node Runtime Retirement (2026-05-24); v1.17 Rust Infrastructure Layer; v1.16 Application Memory & Config; v1.15 Application Layer Architecture; v1.14 Rust Architecture & Test Layout (2026-05-23–24); v1.13 Runtime Safety & WSL Hardening (2026-05-24).
 
 <details>
-<summary>Prior milestone context (v1.0–v1.16)</summary>
+<summary>Prior milestone context (v1.0–v1.18)</summary>
 
 **v1.16** split `ram_guard.rs`, extracted memory block inline tests, zero inline tests in `src/application/`. **v1.15** split graph executor into execution_order/run_state_sync/executor with mirrored application tests. **v1.14** extracted domain/recursion inline tests to mirrored tree with `#[path]` stub pattern.
 
@@ -139,10 +139,16 @@ Developers can reliably plan, inspect, edit, and execute recursive AI node graph
 - ✓ npm rlm dispatches exclusively to Rust CLI; Tauri in-process Axum server — v1.18
 - ✓ npm toolchain UI-only; `npm run check` = lint/format + check:rust — v1.18
 - ✓ Constrained Ollama tool envelope (`useToolEnvelope`) config-gated in Rust — v1.18
+- ✓ UI vision cut list with Keep/Demote/Delete verdicts for all surfaces — v1.19
+- ✓ Advanced hub pruned (RefineGraphPanel, QualityLoopInspector deleted) — v1.19
+- ✓ Workflow-first shell — thin TopBar, canvas default, Run panel on select only — v1.19
+- ✓ CSS split into concern modules; dead rules from deleted components removed — v1.19
+- ✓ AppShell decomposed to ~134 lines; domain fetches moved to Advanced views — v1.19
+- ✓ NodeInspector slimmed; lazy Advanced routes reduce main chunk 8.1% — v1.19
 
 ### Active
 
-(No active requirements — v1.19 UI Product Simplification queued in ROADMAP.md)
+(No active requirements — v1.20 Product Desktop & Run Outcome queued in ROADMAP.md)
 
 ### Recently Validated (v1.12)
 
@@ -220,4 +226,4 @@ Queued after v1.19: v1.20 desktop/run outcome, v1.21 inference expansion, v1.22 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-05-24 after v1.18 milestone archive*
+*Last updated: 2026-05-25 after v1.19 milestone archive*

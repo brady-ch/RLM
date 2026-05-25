@@ -1,5 +1,27 @@
 # Milestones
 
+## v1.19 UI Product Simplification (Shipped: 2026-05-25)
+
+**Phases completed:** 8 phases (121–128), 12 plans  
+**Requirements:** 37/37 satisfied at code/static level (from VERIFICATION must-haves; no REQUIREMENTS.md at close)  
+**Audit status:** tech_debt accepted — `.planning/milestones/v1.19-MILESTONE-AUDIT.md`  
+**Known deferred items at close:** 8 (see STATE.md Deferred Items)
+
+**Key accomplishments:**
+
+- Complete UI surface cut list scoring 26 audit rows with Keep/Demote/Delete verdicts and Phase 122–127 owner assignments
+- Deleted RefineGraphPanel and QualityLoopInspector; reordered Advanced tabs with Models and Sessions first
+- Thin TopBar, canvas-first default view, Run panel on node select only with approve/clarify actions
+- Monolithic styles.css split into five concern modules with dead CSS removed
+- AppShell slimmed to 132 lines via workflow hooks; domain fetches moved into Advanced view mounts
+- NodeInspector cut from 453 to 318 LOC; GraphWorkflowPanel collapsed
+- React.lazy splits Advanced hub — main JS 522.60 kB → 480.34 kB (−8.1%)
+- Automated UAT preflight passed (36/36 static tests); operator browser UAT documented as human_needed
+
+**Archive:** `.planning/milestones/v1.19-ROADMAP.md`, `.planning/milestones/v1.19-MILESTONE-AUDIT.md`
+
+---
+
 ## v1.18 Node Runtime Retirement (Shipped: 2026-05-24)
 
 **Phases completed:** 8 phases (113–120), 24 plans  
