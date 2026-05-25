@@ -416,22 +416,16 @@ npm run build:ui
 | A2 | `inspectorHelpers.tsx` included as auditable `.tsx` row | Inventory | CONTEXT says exclude shared primitives unless fetch weight — helper is borderline |
 | A3 | Phase 121 may add `cut-list-completeness.test.ts` | Validation | Optional; manual checklist works if test deferred |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **WorkflowOverview fate: merge into TopBar vs hide run panel when no selection?**
-   - What we know: Overview duplicates status counts and memory budget; TopBar already shows status/run messages.
-   - What's unclear: Whether first-run users benefit from persistent right rail overview.
-   - Recommendation: Score both options in cut list rationale; default hypothesis Demote with Phase 123 owner; note Claude discretion from CONTEXT.
+   - **Resolution:** Demote with Phase 123 owner. Rationale: duplicates TopBar status; run panel should be selection-gated per ui-shell-architecture.md. Phase 123 decides merge vs hide.
 
 2. **GraphWorkflowPanel: keep run-variant in Advanced only or align entirely with TopBar?**
-   - What we know: TopBar already shows run variant during run; panel has save/load workflow + pipeline input.
-   - What's unclear: Whether pipeline input belongs on default path.
-   - Recommendation: Demote panel content; keep workflow save/load in Advanced (126).
+   - **Resolution:** Demote with Phase 126 owner. Run-variant display stays on TopBar during run; panel retains workflow save/load and pipeline input in Advanced only.
 
 3. **CSS breakdown granularity in cut list?**
-   - What we know: No comment sections in `styles.css`; prefix clusters identifiable programmatically.
-   - What's unclear: Whether planner wants sub-rows per cluster vs single row.
-   - Recommendation: Single row verdict Demote; attach cluster list in rationale for 124 (Claude discretion).
+   - **Resolution:** Single `styles.css` row with Verdict Demote; attach concern clusters (canvas, node cards, run panel, advanced hub) in rationale for Phase 124 split — no sub-rows.
 
 ## Environment Availability
 
