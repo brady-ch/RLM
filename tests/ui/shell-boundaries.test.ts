@@ -125,13 +125,14 @@ test("AppShell workflow mode excludes AdvancedHub and domain panels", () => {
 });
 
 test("AppShell refreshes node UI data when planning and selection state changes", () => {
-  const source = readUi("app/AppShell.tsx");
-  assert.match(source, /nodeUiStateKey/);
-  assert.match(source, /planningNodeId/);
-  assert.match(source, /planningError/);
-  assert.match(source, /selectedNodeId/);
+  const shell = readUi("app/AppShell.tsx");
+  const canvas = readUi("app/hooks/useGraphCanvas.ts");
+  assert.match(shell, /planningNodeId/);
+  assert.match(shell, /planningError/);
+  assert.match(shell, /selectedNodeId/);
+  assert.match(canvas, /nodeUiStateKey/);
   assert.doesNotMatch(
-    source,
+    canvas,
     /const key = JSON\.stringify\(\{ nodes: snapshot\.graph\.nodes, edges: snapshot\.graph\.edges \}\)/,
   );
 });
