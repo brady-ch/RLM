@@ -9,8 +9,6 @@ export type TopBarProps = {
   snapshot: SessionSnapshot;
   runVariant: "playbook" | "pipeline";
   pipelineInput: string;
-  activeRunVariant: "playbook" | "pipeline" | undefined;
-  setActiveRunVariant: (variant: "playbook" | "pipeline" | undefined) => void;
   onAdvanced: () => void;
   refresh: () => Promise<void>;
   setErrorMessage: (message: string | undefined) => void;
@@ -20,8 +18,6 @@ export function TopBar({
   snapshot,
   runVariant,
   pipelineInput,
-  activeRunVariant,
-  setActiveRunVariant,
   onAdvanced,
   refresh,
   setErrorMessage,
@@ -105,7 +101,6 @@ export function TopBar({
             runAction(
               setErrorMessage,
               async () => {
-                setActiveRunVariant(runVariant);
                 await post("/api/chat/confirm-run", {
                   variant: runVariant,
                   input: runVariant === "pipeline" ? pipelineInput : undefined,

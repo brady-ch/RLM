@@ -64,7 +64,6 @@ export function AppShell() {
   const [graphWorkflows, setGraphWorkflows] = useState<GraphWorkflowSummary[]>([]);
   const [runVariant, setRunVariant] = useState<"playbook" | "pipeline">("playbook");
   const [pipelineInput, setPipelineInput] = useState("");
-  const [activeRunVariant, setActiveRunVariant] = useState<"playbook" | "pipeline" | undefined>();
   const [memory, setMemory] = useState<MemorySnapshot | undefined>();
   const [pluginSnapshot, setPluginSnapshot] = useState<PluginSnapshot>({ plugins: [] });
   const [pluginRestartRequired, setPluginRestartRequired] = useState(false);
@@ -341,8 +340,6 @@ export function AppShell() {
             snapshot={snapshot}
             runVariant={runVariant}
             pipelineInput={pipelineInput}
-            activeRunVariant={activeRunVariant}
-            setActiveRunVariant={setActiveRunVariant}
             onAdvanced={() => setViewMode("advanced")}
             refresh={refresh}
             setErrorMessage={setErrorMessage}
