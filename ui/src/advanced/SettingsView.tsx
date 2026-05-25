@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import type { ExecutionNode, GraphWorkflowSummary, SessionSnapshot } from "../shared/types";
 import { GraphWorkflowPanel } from "./settings/GraphWorkflowPanel";
 import { NodeInspector } from "./settings/NodeInspector";
-import { RefineGraphPanel } from "./settings/RefineGraphPanel";
 
 export type SettingsViewProps = {
   snapshot: SessionSnapshot;
@@ -12,11 +11,6 @@ export type SettingsViewProps = {
   setRunVariant: (variant: "playbook" | "pipeline") => void;
   pipelineInput: string;
   setPipelineInput: (value: string) => void;
-  chatMessage: string;
-  setChatMessage: (value: string) => void;
-  deleteStrategy: "delete_subtree" | "rewire_dependents";
-  setDeleteStrategy: (strategy: "delete_subtree" | "rewire_dependents") => void;
-  graphHasPlannedNodes: boolean;
   planningError: { nodeId: string; message: string } | undefined;
   refresh: () => Promise<void>;
   refreshGraphWorkflows: () => Promise<void>;
@@ -33,11 +27,6 @@ export function SettingsView({
   setRunVariant,
   pipelineInput,
   setPipelineInput,
-  chatMessage,
-  setChatMessage,
-  deleteStrategy,
-  setDeleteStrategy,
-  graphHasPlannedNodes,
   planningError,
   refresh,
   refreshGraphWorkflows,
@@ -46,8 +35,6 @@ export function SettingsView({
   useEffect(() => {
     onMount();
   }, [onMount]);
-
-  const pendingMutation = snapshot.chat?.pendingMutation;
 
   return (
     <div className="advanced-settings-view">
@@ -62,16 +49,6 @@ export function SettingsView({
           await refresh();
           await refreshGraphWorkflows();
         }}
-        setErrorMessage={setErrorMessage}
-      />
-      <RefineGraphPanel
-        collapsedByDefault={graphHasPlannedNodes}
-        chatMessage={chatMessage}
-        setChatMessage={setChatMessage}
-        pendingMutation={pendingMutation}
-        deleteStrategy={deleteStrategy}
-        setDeleteStrategy={setDeleteStrategy}
-        refresh={refresh}
         setErrorMessage={setErrorMessage}
       />
       {selectedNode ? (

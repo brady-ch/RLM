@@ -48,11 +48,6 @@ export type AdvancedHubProps = {
   setRunVariant: (variant: "playbook" | "pipeline") => void;
   pipelineInput: string;
   setPipelineInput: (value: string) => void;
-  chatMessage: string;
-  setChatMessage: (value: string) => void;
-  deleteStrategy: "delete_subtree" | "rewire_dependents";
-  setDeleteStrategy: (strategy: "delete_subtree" | "rewire_dependents") => void;
-  graphHasPlannedNodes: boolean;
   planningError: { nodeId: string; message: string } | undefined;
 };
 
@@ -86,11 +81,6 @@ export function AdvancedHub({
   setRunVariant,
   pipelineInput,
   setPipelineInput,
-  chatMessage,
-  setChatMessage,
-  deleteStrategy,
-  setDeleteStrategy,
-  graphHasPlannedNodes,
   planningError,
 }: AdvancedHubProps) {
   const [tab, setTab] = useState<AdvancedTab>(initialTab);
@@ -105,8 +95,8 @@ export function AdvancedHub({
           {(
             [
               ["models", "Models"],
-              ["plugins", "Plugins"],
               ["sessions", "Sessions"],
+              ["plugins", "Plugins"],
               ["memory", "Memory"],
               ["settings", "Settings"],
             ] as const
@@ -177,11 +167,6 @@ export function AdvancedHub({
             setRunVariant={setRunVariant}
             pipelineInput={pipelineInput}
             setPipelineInput={setPipelineInput}
-            chatMessage={chatMessage}
-            setChatMessage={setChatMessage}
-            deleteStrategy={deleteStrategy}
-            setDeleteStrategy={setDeleteStrategy}
-            graphHasPlannedNodes={graphHasPlannedNodes}
             planningError={planningError}
             refresh={refresh}
             refreshGraphWorkflows={refreshGraphWorkflows}

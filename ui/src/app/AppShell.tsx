@@ -55,10 +55,6 @@ export function AppShell() {
   const [planningError, setPlanningError] = useState<
     { nodeId: string; message: string } | undefined
   >();
-  const [chatMessage, setChatMessage] = useState("");
-  const [deleteStrategy, setDeleteStrategy] = useState<"delete_subtree" | "rewire_dependents">(
-    "delete_subtree",
-  );
   const [clarificationAnswer, setClarificationAnswer] = useState("");
   const [modelLibrary, setModelLibrary] = useState<ModelLibrarySnapshot | undefined>();
   const [modelSearch, setModelSearch] = useState("");
@@ -80,7 +76,6 @@ export function AppShell() {
     reason: "Draft graph: confirm graph and run to start execution.",
   };
   const runDisabled = readiness.state !== "ready_to_run";
-  const graphHasPlannedNodes = snapshot.graph.nodes.length >= 2;
 
   const fitGraphToView = useCallback(() => {
     requestAnimationFrame(() => {
@@ -440,11 +435,6 @@ export function AppShell() {
           setRunVariant={setRunVariant}
           pipelineInput={pipelineInput}
           setPipelineInput={setPipelineInput}
-          chatMessage={chatMessage}
-          setChatMessage={setChatMessage}
-          deleteStrategy={deleteStrategy}
-          setDeleteStrategy={setDeleteStrategy}
-          graphHasPlannedNodes={graphHasPlannedNodes}
           planningError={planningError}
         />
       )}

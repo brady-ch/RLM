@@ -10,7 +10,6 @@ import {
   SamplingRows,
   toInputValue,
 } from "./inspectorHelpers";
-import { QualityLoopInspector } from "./QualityLoopInspector";
 export function NodeInspector({
   node,
   refresh,
@@ -198,14 +197,6 @@ export function NodeInspector({
           Spawned after initial approval: {String(node.spawnedAfterInitialApproval ?? false)}
         </div>
       </div>
-      {node.loop ? (
-        <QualityLoopInspector
-          node={node}
-          loop={node.loop}
-          refresh={refresh}
-          setErrorMessage={setErrorMessage}
-        />
-      ) : null}
       <div>
         <label>Model Override</label>
         <input
