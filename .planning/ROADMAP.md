@@ -77,7 +77,7 @@ Full details: `.planning/milestones/v1.18-ROADMAP.md`
 - [x] **Phase 124: Styles and Token Consolidation** — completed 2026-05-24
 - [x] **Phase 125: AppShell State Decomposition** — completed 2026-05-24
 - [x] **Phase 126: Node Inspector and Settings Slim Down** — completed 2026-05-24
-- [ ] **Phase 127: Lazy Routes and Bundle Lightening**
+- [x] **Phase 127: Lazy Routes and Bundle Lightening** — completed 2026-05-24
 - [ ] **Phase 128: UI Simplification UAT and Sign Off**
 
 **Reference:** `.planning/notes/ui-product-simplification-decisions.md`
