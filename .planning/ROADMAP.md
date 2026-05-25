@@ -72,10 +72,10 @@ Full details: `.planning/milestones/v1.18-ROADMAP.md`
 **Depends on:** v1.18 complete (Phase 120)
 
 - [x] **Phase 121: UI Vision Audit and Cut List** — completed 2026-05-24
-- [ ] **Phase 122: Advanced Hub Pruning**
-- [ ] **Phase 123: Workflow View Simplification**
-- [ ] **Phase 124: Styles and Token Consolidation**
-- [ ] **Phase 125: AppShell State Decomposition**
+- [x] **Phase 122: Advanced Hub Pruning** — completed 2026-05-24
+- [x] **Phase 123: Workflow View Simplification** — completed 2026-05-24
+- [x] **Phase 124: Styles and Token Consolidation** — completed 2026-05-24
+- [x] **Phase 125: AppShell State Decomposition** — completed 2026-05-24
 - [ ] **Phase 126: Node Inspector and Settings Slim Down**
 - [ ] **Phase 127: Lazy Routes and Bundle Lightening**
 - [ ] **Phase 128: UI Simplification UAT and Sign Off**
