@@ -78,6 +78,42 @@ test("ThemeToggle lives in Advanced settings", () => {
   assert.match(source, /settings-appearance/);
 });
 
+test("NodeInspector is Advanced metadata and overrides only", () => {
+  const source = readUi("advanced/settings/NodeInspector.tsx");
+  const forbidden = [
+    "Save prompt",
+    "Plan children",
+    "Break down",
+    "Extend budget",
+    "/approve",
+    "/skip",
+    "/nodes/add",
+    "/connect",
+    "/delete",
+    "Add Child",
+    "Connect Parent",
+  ];
+  for (const pattern of forbidden) {
+    assert.doesNotMatch(source, new RegExp(pattern), `NodeInspector must not contain ${pattern}`);
+  }
+  assert.doesNotMatch(source, /<textarea/, "NodeInspector must not contain prompt textarea");
+  assert.match(source, /Set expert/);
+});
+
+test("GraphWorkflowPanel has no run-variant controls", () => {
+  const source = readUi("advanced/settings/GraphWorkflowPanel.tsx");
+  assert.doesNotMatch(source, /run-variant-controls/);
+  assert.doesNotMatch(source, /runVariant/);
+});
+
+test("SettingsView collapses graph workflows by default", () => {
+  const source = readUi("advanced/SettingsView.tsx");
+  assert.match(source, /settings-collapsible/);
+  assert.match(source, /<details/);
+  assert.match(source, /Graph workflows/);
+  assert.doesNotMatch(source, /runVariant/);
+});
+
 test("NodeContextMenu implements Variant B sections and API mutations", () => {
   const source = readUi("nodes/NodeContextMenu.tsx");
   for (const label of ["Plan", "Run", "Graph", "Advanced"]) {
