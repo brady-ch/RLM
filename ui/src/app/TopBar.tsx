@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { PauseCircle, Play, Settings, Square } from "lucide-react";
 import { GraphActionModal } from "../nodes/GraphActionModal";
-import { ThemeToggle } from "../shared/ThemeToggle";
 import type { ExecutionNode, SessionSnapshot } from "../shared/types";
 import { uiRunStatusLabels } from "../shared/labels";
-import { approvalModeLabel, post, runAction } from "../shared/api";
+import { post, runAction } from "../shared/api";
 
 export type TopBarProps = {
   snapshot: SessionSnapshot;
@@ -49,11 +48,6 @@ export function TopBar({
           <span className={`status ${snapshot.status}`} title={snapshot.runSummary?.message}>
             {uiRunStatusLabels[snapshot.status] ?? snapshot.status}
           </span>
-          {snapshot.status === "running" ? (
-            <span className="meta-pill run-variant-pill">
-              Running {activeRunVariant ?? runVariant}
-            </span>
-          ) : null}
           {activeNode ? (
             <span className="run-active-node">
               Running: {activeNode.label} ({activeNode.expertAgentId ?? "default"},{" "}
@@ -72,9 +66,6 @@ export function TopBar({
             </span>
           ) : null}
         </div>
-        <span className="meta-pill approval-mode-pill">
-          {approvalModeLabel(snapshot.approvalMode)}
-        </span>
       </div>
       <div className="workflow-topbar-actions" aria-label="Workflow actions">
         {snapshot.status === "running" && snapshot.approvalMode === "initial-plan-recursive" ? (
@@ -149,7 +140,6 @@ export function TopBar({
           <Settings size={16} aria-hidden />
           Advanced
         </button>
-        <ThemeToggle />
       </div>
       <GraphActionModal
         open={resumeConfirmOpen}

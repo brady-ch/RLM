@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { ExecutionNode, GraphWorkflowSummary, SessionSnapshot } from "../shared/types";
+import { ThemeToggle } from "../shared/ThemeToggle";
 import { GraphWorkflowPanel } from "./settings/GraphWorkflowPanel";
 import { NodeInspector } from "./settings/NodeInspector";
 
@@ -38,6 +39,10 @@ export function SettingsView({
 
   return (
     <div className="advanced-settings-view">
+      <section className="settings-appearance" aria-label="Appearance">
+        <h3>Appearance</h3>
+        <ThemeToggle />
+      </section>
       <GraphWorkflowPanel
         workflows={graphWorkflows}
         graphNodeCount={snapshot.graph.nodes.length}
