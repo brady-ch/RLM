@@ -1,18 +1,25 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { MemorySnapshot } from "../shared/types";
 import { MemoryPanel } from "./memory/MemoryPanel";
 
-export type MemoryViewProps = {
-  memory: MemorySnapshot | undefined;
-  refresh: () => Promise<void>;
+export function MemoryView({
+  setErrorMessage,
+}: {
   setErrorMessage: (message: string | undefined) => void;
-  onMount: () => void;
-};
+}) {
+  const [memory, setMemory] = useState<MemorySnapshot | undefined>();
 
-export function MemoryView(props: MemoryViewProps) {
-  const { onMount, ...panelProps } = props;
+  const refresh = useCallback(async () => {
+    const response = await fetch("/api/memory");
+    if (!response.ok) {
+      return;
+    }
+    setMemory((await response.json()) as MemorySnapshot);
+  }, []);
+
   useEffect(() => {
-    onMount();
-  }, [onMount]);
-  return <MemoryPanel {...panelProps} />;
+    void refresh();
+  }, [refresh]);
+
+  return <MemoryPanel memory={memory} refresh={refresh} setErrorMessage={setErrorMessage} />;
 }

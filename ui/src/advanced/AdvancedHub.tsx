@@ -1,15 +1,5 @@
 import { useState } from "react";
-import type {
-  ExecutionNode,
-  GraphWorkflowSummary,
-  MemorySnapshot,
-  ModelLibraryEntry,
-  ModelLibrarySnapshot,
-  PluginSnapshot,
-  SavedSessionRecord,
-  SavedSessionSummary,
-  SessionSnapshot,
-} from "../shared/types";
+import type { ExecutionNode, SessionSnapshot } from "../shared/types";
 import { MemoryView } from "./MemoryView";
 import { ModelsView } from "./ModelsView";
 import { PluginsView } from "./PluginsView";
@@ -26,24 +16,6 @@ export type AdvancedHubProps = {
   errorMessage: string | undefined;
   setErrorMessage: (message: string | undefined) => void;
   refresh: () => Promise<void>;
-  modelLibrary: ModelLibrarySnapshot | undefined;
-  modelSearch: string;
-  setModelSearch: (value: string) => void;
-  modelSearchResults: ModelLibraryEntry[];
-  setModelSearchResults: (results: ModelLibraryEntry[]) => void;
-  refreshModelLibrary: () => Promise<void>;
-  pluginSnapshot: PluginSnapshot;
-  pluginRestartRequired: boolean;
-  setPluginRestartRequired: (value: boolean) => void;
-  refreshPlugins: () => Promise<void>;
-  savedSessions: SavedSessionSummary[];
-  savedSessionDetail: SavedSessionRecord | undefined;
-  setSavedSessionDetail: (record: SavedSessionRecord | undefined) => void;
-  refreshSavedSessions: () => Promise<void>;
-  memory: MemorySnapshot | undefined;
-  refreshMemory: () => Promise<void>;
-  graphWorkflows: GraphWorkflowSummary[];
-  refreshGraphWorkflows: () => Promise<void>;
   runVariant: "playbook" | "pipeline";
   setRunVariant: (variant: "playbook" | "pipeline") => void;
   pipelineInput: string;
@@ -59,24 +31,6 @@ export function AdvancedHub({
   errorMessage,
   setErrorMessage,
   refresh,
-  modelLibrary,
-  modelSearch,
-  setModelSearch,
-  modelSearchResults,
-  setModelSearchResults,
-  refreshModelLibrary,
-  pluginSnapshot,
-  pluginRestartRequired,
-  setPluginRestartRequired,
-  refreshPlugins,
-  savedSessions,
-  savedSessionDetail,
-  setSavedSessionDetail,
-  refreshSavedSessions,
-  memory,
-  refreshMemory,
-  graphWorkflows,
-  refreshGraphWorkflows,
   runVariant,
   setRunVariant,
   pipelineInput,
@@ -115,65 +69,23 @@ export function AdvancedHub({
         {errorMessage ? <p className="error">{errorMessage}</p> : null}
       </header>
       <div className="advanced-content">
-        {tab === "models" ? (
-          <ModelsView
-            library={modelLibrary}
-            search={modelSearch}
-            setSearch={setModelSearch}
-            searchResults={modelSearchResults}
-            setSearchResults={setModelSearchResults}
-            refresh={refreshModelLibrary}
-            setErrorMessage={setErrorMessage}
-            onMount={() => void refreshModelLibrary()}
-          />
-        ) : null}
-        {tab === "plugins" ? (
-          <PluginsView
-            snapshot={pluginSnapshot}
-            restartRequired={pluginRestartRequired}
-            setRestartRequired={setPluginRestartRequired}
-            refresh={refreshPlugins}
-            setErrorMessage={setErrorMessage}
-            onMount={() => void refreshPlugins()}
-          />
-        ) : null}
+        {tab === "models" ? <ModelsView setErrorMessage={setErrorMessage} /> : null}
+        {tab === "plugins" ? <PluginsView setErrorMessage={setErrorMessage} /> : null}
         {tab === "sessions" ? (
-          <SessionsView
-            sessions={savedSessions}
-            detail={savedSessionDetail}
-            setDetail={setSavedSessionDetail}
-            refresh={async () => {
-              await refresh();
-              await refreshSavedSessions();
-            }}
-            setErrorMessage={setErrorMessage}
-            onMount={() => void refreshSavedSessions()}
-          />
+          <SessionsView refreshSession={refresh} setErrorMessage={setErrorMessage} />
         ) : null}
-        {tab === "memory" ? (
-          <MemoryView
-            memory={memory}
-            refresh={refreshMemory}
-            setErrorMessage={setErrorMessage}
-            onMount={() => void refreshMemory()}
-          />
-        ) : null}
+        {tab === "memory" ? <MemoryView setErrorMessage={setErrorMessage} /> : null}
         {tab === "settings" ? (
           <SettingsView
             snapshot={snapshot}
             selectedNode={selectedNode}
-            graphWorkflows={graphWorkflows}
             runVariant={runVariant}
             setRunVariant={setRunVariant}
             pipelineInput={pipelineInput}
             setPipelineInput={setPipelineInput}
             planningError={planningError}
             refresh={refresh}
-            refreshGraphWorkflows={refreshGraphWorkflows}
             setErrorMessage={setErrorMessage}
-            onMount={() => {
-              void refreshGraphWorkflows();
-            }}
           />
         ) : null}
       </div>

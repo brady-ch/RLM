@@ -1,20 +1,41 @@
-import { useEffect } from "react";
-import type { PluginSnapshot } from "../shared/types";
+import { useCallback, useEffect, useState } from "react";
+import type { PluginDoctorResult, PluginListItem, PluginSnapshot } from "../shared/types";
 import { PluginPanel } from "./PluginPanel";
 
-export type PluginsViewProps = {
-  snapshot: PluginSnapshot;
-  restartRequired: boolean;
-  setRestartRequired: (value: boolean) => void;
-  refresh: () => Promise<void>;
+export function PluginsView({
+  setErrorMessage,
+}: {
   setErrorMessage: (message: string | undefined) => void;
-  onMount: () => void;
-};
+}) {
+  const [snapshot, setSnapshot] = useState<PluginSnapshot>({ plugins: [] });
+  const [restartRequired, setRestartRequired] = useState(false);
 
-export function PluginsView(props: PluginsViewProps) {
-  const { onMount, ...panelProps } = props;
+  const refresh = useCallback(async () => {
+    const [listResponse, doctorResponse] = await Promise.all([
+      fetch("/api/plugins"),
+      fetch("/api/plugins/doctor"),
+    ]);
+    if (!listResponse.ok) {
+      return;
+    }
+    const listPayload = (await listResponse.json()) as { plugins: PluginListItem[] };
+    const doctorPayload = doctorResponse.ok
+      ? ((await doctorResponse.json()) as PluginDoctorResult)
+      : undefined;
+    setSnapshot({ plugins: listPayload.plugins, doctor: doctorPayload });
+  }, []);
+
   useEffect(() => {
-    onMount();
-  }, [onMount]);
-  return <PluginPanel {...panelProps} />;
+    void refresh();
+  }, [refresh]);
+
+  return (
+    <PluginPanel
+      snapshot={snapshot}
+      restartRequired={restartRequired}
+      setRestartRequired={setRestartRequired}
+      refresh={refresh}
+      setErrorMessage={setErrorMessage}
+    />
+  );
 }

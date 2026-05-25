@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ExecutionNode, GraphWorkflowSummary, SessionSnapshot } from "../shared/types";
 import { ThemeToggle } from "../shared/ThemeToggle";
 import { GraphWorkflowPanel } from "./settings/GraphWorkflowPanel";
@@ -7,35 +7,40 @@ import { NodeInspector } from "./settings/NodeInspector";
 export type SettingsViewProps = {
   snapshot: SessionSnapshot;
   selectedNode: ExecutionNode | undefined;
-  graphWorkflows: GraphWorkflowSummary[];
   runVariant: "playbook" | "pipeline";
   setRunVariant: (variant: "playbook" | "pipeline") => void;
   pipelineInput: string;
   setPipelineInput: (value: string) => void;
   planningError: { nodeId: string; message: string } | undefined;
   refresh: () => Promise<void>;
-  refreshGraphWorkflows: () => Promise<void>;
   setErrorMessage: (message: string | undefined) => void;
-  onMount: () => void;
 };
 
 export function SettingsView({
-  onMount,
   snapshot,
   selectedNode,
-  graphWorkflows,
   runVariant,
   setRunVariant,
   pipelineInput,
   setPipelineInput,
   planningError,
   refresh,
-  refreshGraphWorkflows,
   setErrorMessage,
 }: SettingsViewProps) {
+  const [graphWorkflows, setGraphWorkflows] = useState<GraphWorkflowSummary[]>([]);
+
+  const refreshGraphWorkflows = useCallback(async () => {
+    const response = await fetch("/api/graph-workflows");
+    if (!response.ok) {
+      return;
+    }
+    const payload = (await response.json()) as { workflows: GraphWorkflowSummary[] };
+    setGraphWorkflows(payload.workflows);
+  }, []);
+
   useEffect(() => {
-    onMount();
-  }, [onMount]);
+    void refreshGraphWorkflows();
+  }, [refreshGraphWorkflows]);
 
   return (
     <div className="advanced-settings-view">

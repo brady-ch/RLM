@@ -1,22 +1,37 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ModelLibraryEntry, ModelLibrarySnapshot } from "../shared/types";
 import { ModelLibraryPanel } from "./models/ModelLibraryPanel";
 
-export type ModelsViewProps = {
-  library: ModelLibrarySnapshot | undefined;
-  search: string;
-  setSearch: (value: string) => void;
-  searchResults: ModelLibraryEntry[];
-  setSearchResults: (results: ModelLibraryEntry[]) => void;
-  refresh: () => Promise<void>;
+export function ModelsView({
+  setErrorMessage,
+}: {
   setErrorMessage: (message: string | undefined) => void;
-  onMount: () => void;
-};
+}) {
+  const [library, setLibrary] = useState<ModelLibrarySnapshot | undefined>();
+  const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<ModelLibraryEntry[]>([]);
 
-export function ModelsView(props: ModelsViewProps) {
-  const { onMount, ...panelProps } = props;
+  const refresh = useCallback(async () => {
+    const response = await fetch("/api/model-library");
+    if (!response.ok) {
+      return;
+    }
+    setLibrary((await response.json()) as ModelLibrarySnapshot);
+  }, []);
+
   useEffect(() => {
-    onMount();
-  }, [onMount]);
-  return <ModelLibraryPanel {...panelProps} />;
+    void refresh();
+  }, [refresh]);
+
+  return (
+    <ModelLibraryPanel
+      library={library}
+      search={search}
+      setSearch={setSearch}
+      searchResults={searchResults}
+      setSearchResults={setSearchResults}
+      refresh={refresh}
+      setErrorMessage={setErrorMessage}
+    />
+  );
 }
